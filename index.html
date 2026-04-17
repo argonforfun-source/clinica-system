@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="data:,">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>حجز موعد | كلينيكا</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --teal: #0d9488;
+      --teal-dark: #0f766e;
+      --teal-light: #ccfbf1;
+      --sky: #0ea5e9;
+      --bg: #f0fdfa;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: rgba(0,0,0,0.07);
+      --shadow: rgba(13,148,136,0.08);
+      --green: #10b981;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --header-from: #0f766e;
+      --header-to: #0d9488;
+    }
+    [data-theme="dark"] {
+      --bg: #021a18;
+      --card: #0a2320;
+      --header-from: #042f2e;
+      --header-to: #0d9488;
+      --text: #e2e8f0;
+      --border: rgba(255,255,255,0.06);
+      --shadow: rgba(0,0,0,0.3);
+      --teal-light: #042f2e;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 100px;
+      transition: background 0.3s, color 0.3s;
+    }
+    /* LOCKOUT */
+    #lockoutScreen {
+      position: fixed; inset:0; background: #021a18; z-index:10000;
+      display:none; flex-direction:column; align-items:center;
+      justify-content:center; text-align:center; padding:40px; color:#fff;
+    }
+    #lockoutScreen.show { display:flex!important; }
+    /* HEADER */
+    .header {
+      background: linear-gradient(135deg, var(--header-from), var(--header-to));
+      padding: 0 0 22px;
+      position:relative; overflow:hidden;
+    }
+    .header::before {
+      content:''; position:absolute; inset:0;
+      background-image: radial-gradient(circle at 20% 50%, rgba(14,165,233,0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(16,185,129,0.1) 0%, transparent 40%);
+      pointer-events:none;
+    }
+    .htop {
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 14px 18px 0;
+    }
+    .clinic-mark {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size:0.6rem; letter-spacing:2px;
+      color:rgba(255,255,255,0.45); text-transform:uppercase;
+    }
+    .theme-tog {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.8);
+      padding: 6px 13px; border-radius:20px;
+      font-family:'Tajawal',sans-serif; font-size:0.76rem;
+      cursor:pointer; transition:all 0.2s;
+    }
+    .hmain { text-align:center; padding:22px 18px 0; position:relative; }
+    .clinic-logo {
+      width:72px; height:72px;
+      background: rgba(255,255,255,0.12);
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius:22px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:2rem; margin:0 auto 12px;
+      backdrop-filter:blur(10px);
+    }
+    .clinic-name {
+      font-size:1.55rem; font-weight:900; color:#fff; margin-bottom:8px;
+    }
+    .clinic-meta {
+      display:flex; align-items:center; justify-content:center;
+      gap:9px; flex-wrap:wrap;
+    }
+    .chip {
+      display:inline-flex; align-items:center; gap:5px;
+      font-size:0.74rem; padding:4px 11px; border-radius:20px; font-weight:600;
+    }
+    .chip-open { background:rgba(16,185,129,0.2); color:#6ee7b7; border:1px solid rgba(16,185,129,0.3); }
+    .chip-closed { background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.3); }
+    .chip-info { background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.15); }
+    /* SEARCH */
+    .srchwrap { padding:0 15px; margin-top:18px; }
+    .srchbox {
+      background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.15);
+      border-radius:13px; padding:11px 15px 11px 44px;
+      width:100%; color:white; font-family:'Tajawal',sans-serif;
+      font-size:0.93rem; outline:none; backdrop-filter:blur(10px); transition:0.25s;
+    }
+    .srchbox::placeholder { color:rgba(255,255,255,0.4); }
+    .srchico { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:rgba(255,255,255,0.5); font-size:0.88rem; pointer-events:none; }
+    /* SECTIONS */
+    .section { padding:18px 13px 0; }
+    .sec-lbl {
+      font-size:0.7rem; font-weight:700; color:var(--muted);
+      text-transform:uppercase; letter-spacing:1.5px; margin-bottom:13px;
+      font-family:'IBM Plex Mono',monospace;
+    }
+    /* DOCTORS GRID */
+    .dgrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .dcard {
+      background:var(--card); border:1px solid var(--border);
+      border-radius:17px; overflow:hidden; transition:all 0.25s;
+      box-shadow:0 2px 10px var(--shadow); cursor:pointer;
+    }
+    .dcard:active { transform:scale(0.97); }
+    .dcard-img {
+      height:100px; background:linear-gradient(135deg, var(--teal-light), #e0f2fe);
+      display:flex; align-items:center; justify-content:center;
+      font-size:2.5rem; position:relative; overflow:hidden;
+    }
+    [data-theme="dark"] .dcard-img { background:linear-gradient(135deg, #042f2e, #0c2a3a); }
+    .dcard-avail {
+      position:absolute; top:8px; right:8px;
+      width:10px; height:10px; border-radius:50%;
+      border:2px solid var(--card);
+    }
+    .avail-yes { background:var(--green); }
+    .avail-no  { background:var(--red); }
+    .dcard-body { padding:11px; }
+    .dcard-name { font-size:0.86rem; font-weight:700; color:var(--text); margin-bottom:3px; line-height:1.3; }
+    .dcard-spec { font-size:0.73rem; color:var(--teal); font-weight:600; margin-bottom:4px; }
+    .dcard-price {
+      font-family:'IBM Plex Mono',monospace; font-size:0.85rem;
+      font-weight:600; color:var(--teal); margin-bottom:9px;
+    }
+    .book-btn {
+      width:100%; background:var(--teal); border:none;
+      border-radius:10px; padding:8px; color:white;
+      font-family:'Tajawal',sans-serif; font-size:0.83rem;
+      font-weight:700; cursor:pointer; transition:all 0.2s;
+      display:flex; align-items:center; justify-content:center; gap:5px;
+    }
+    .book-btn:disabled { background:var(--muted); cursor:not-allowed; }
+    /* FAB */
+    .cartfab { position:fixed; bottom:24px; left:18px; z-index:500; }
+    .mybookbtn {
+      width:auto; padding:0 18px; height:56px;
+      background:linear-gradient(135deg, var(--teal), #0ea5e9);
+      border-radius:18px; display:flex; align-items:center; justify-content:center;
+      gap:8px; font-size:0.85rem; color:white; cursor:pointer;
+      box-shadow:0 8px 25px rgba(13,148,136,0.4); transition:all 0.3s;
+      border:none; font-family:'Tajawal',sans-serif; font-weight:700;
+    }
+    .bookCnt {
+      background:var(--red); color:white; width:20px; height:20px;
+      border-radius:50%; font-size:0.65rem; font-weight:700;
+      display:flex; align-items:center; justify-content:center;
+      font-family:'IBM Plex Mono',monospace;
+    }
+    /* MODAL */
+    .moverlay {
+      position:fixed; inset:0; background:rgba(0,0,0,0.6);
+      backdrop-filter:blur(8px); z-index:1000;
+      display:none; align-items:flex-end; justify-content:center;
+    }
+    .moverlay.show { display:flex; }
+    .msheet {
+      background:var(--card); border-radius:26px 26px 0 0;
+      padding:26px 20px 30px; width:100%; max-width:500px;
+      animation:sup 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      max-height:92vh; overflow-y:auto;
+    }
+    @keyframes sup { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
+    .shandle { width:34px; height:4px; background:rgba(0,0,0,0.12); border-radius:2px; margin:0 auto 18px; }
+    [data-theme="dark"] .shandle { background:rgba(255,255,255,0.1); }
+    .stitle { font-size:1.15rem; font-weight:800; margin-bottom:18px; text-align:center; }
+    /* BOOKING FORM */
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+    .minp {
+      width:100%; background:var(--bg); border:1.5px solid var(--border);
+      border-radius:11px; padding:12px 14px; color:var(--text);
+      font-family:'Tajawal',sans-serif; font-size:0.97rem;
+      outline:none; text-align:right; transition:all 0.2s;
+    }
+    .minp:focus { border-color:var(--teal); }
+    .minp-full { grid-column:1/-1; }
+    /* DATE TIME PICKER */
+    .date-slots { margin-bottom:14px; }
+    .slot-lbl { font-size:0.75rem; color:var(--muted); font-weight:700; margin-bottom:8px; }
+    .date-scroll { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
+    .date-scroll::-webkit-scrollbar { display:none; }
+    .date-chip {
+      flex-shrink:0; background:var(--bg); border:1.5px solid var(--border);
+      border-radius:12px; padding:8px 14px; text-align:center; cursor:pointer;
+      transition:all 0.2s; min-width:64px;
+    }
+    .date-chip.sel { background:var(--teal); border-color:var(--teal); color:#fff; }
+    .date-chip .dday { font-size:0.62rem; font-weight:700; color:var(--muted); }
+    .date-chip.sel .dday { color:rgba(255,255,255,0.7); }
+    .date-chip .dnum { font-size:1.1rem; font-weight:900; }
+    .time-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
+    .time-chip {
+      background:var(--bg); border:1.5px solid var(--border);
+      border-radius:10px; padding:8px; text-align:center;
+      font-family:'IBM Plex Mono',monospace; font-size:0.78rem;
+      font-weight:600; cursor:pointer; transition:all 0.2s;
+    }
+    .time-chip.sel { background:var(--teal); border-color:var(--teal); color:#fff; }
+    .time-chip.booked { background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.2); color:var(--red); cursor:not-allowed; }
+    /* BILL BOX */
+    .billbox {
+      background:var(--bg); border-radius:15px; padding:16px;
+      border:1.5px dashed rgba(13,148,136,0.25); margin-bottom:16px;
+    }
+    .billrow { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); }
+    .billrow:last-of-type { border-bottom:none; }
+    .billtotal { display:flex; justify-content:space-between; align-items:center; padding-top:11px; margin-top:3px; border-top:2px solid rgba(13,148,136,0.15); }
+    /* BUTTONS */
+    .bnext {
+      width:100%; padding:13px;
+      background:linear-gradient(135deg, var(--teal), var(--sky));
+      border:none; border-radius:13px; color:white;
+      font-family:'Tajawal',sans-serif; font-size:1rem; font-weight:700;
+      cursor:pointer; transition:all 0.2s; margin-bottom:9px;
+      box-shadow:0 4px 14px rgba(13,148,136,0.3);
+    }
+    .bsend {
+      width:100%; padding:14px;
+      background:linear-gradient(135deg, var(--green), #059669);
+      border:none; border-radius:13px; color:white;
+      font-family:'Tajawal',sans-serif; font-size:1rem; font-weight:800;
+      cursor:pointer; transition:all 0.2s;
+      box-shadow:0 4px 14px rgba(16,185,129,0.3);
+    }
+    .bback { display:block; text-align:center; color:var(--muted); font-size:0.83rem; cursor:pointer; padding:8px; }
+    .bclose { display:block; width:100%; text-align:center; color:var(--muted); font-size:0.8rem; cursor:pointer; padding:9px; border:none; background:transparent; font-family:'Tajawal',sans-serif; }
+    /* SUCCESS */
+    .success-wrap { display:block; text-align:center; padding:10px 0; }
+    .success-icon { width:68px; height:68px; background:rgba(16,185,129,0.1); border:2px solid rgba(16,185,129,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.7rem; margin:0 auto 14px; }
+    .order-no-box { background:rgba(13,148,136,0.06); border:1.5px dashed rgba(13,148,136,0.25); border-radius:14px; padding:18px; margin:14px 0; }
+    .on-number { font-family:'IBM Plex Mono',monospace; font-size:1.8rem; font-weight:800; color:var(--teal); letter-spacing:3px; }
+    /* TRACKER */
+    .track-wrap { margin-top:20px; padding:16px; background:rgba(13,148,136,0.05); border:1px dashed var(--teal); border-radius:16px; }
+    .track-steps { display:flex; justify-content:space-between; position:relative; margin:18px 0 8px; }
+    .track-line { position:absolute; top:15px; left:0; right:0; height:2px; background:var(--border); z-index:1; }
+    .track-progress { position:absolute; top:15px; right:0; height:2px; background:var(--teal); z-index:2; transition:width 0.5s ease; width:0%; }
+    .tstep { position:relative; z-index:3; display:flex; flex-direction:column; align-items:center; gap:6px; width:25%; }
+    .tpoint { width:32px; height:32px; background:var(--bg); border:2px solid var(--border); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.8rem; color:var(--muted); transition:0.3s; }
+    .tstep.active .tpoint { background:var(--teal); border-color:var(--teal); color:white; box-shadow:0 0 10px rgba(13,148,136,0.4); }
+    .tlbl { font-size:0.62rem; font-weight:700; color:var(--muted); }
+    .tstep.active .tlbl { color:var(--teal); }
+    /* TOAST */
+    .toast-wrap { position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:9999; display:flex; flex-direction:column; gap:10px; pointer-events:none; }
+    .toast { background:rgba(0,0,0,0.85); color:white; padding:12px 24px; border-radius:50px; font-size:0.9rem; font-weight:600; backdrop-filter:blur(10px); transform:translateY(-20px); opacity:0; transition:0.4s cubic-bezier(0.175,0.885,0.32,1.275); box-shadow:0 10px 20px rgba(0,0,0,0.2); }
+    .toast.show { transform:translateY(0); opacity:1; }
+    /* PWBY */
+    .pwby-foot { text-align:center; font-family:'IBM Plex Mono',monospace; font-size:0.58rem; color:rgba(100,116,139,0.45); letter-spacing:1.5px; padding:20px 0 6px; }
+    .pwby-foot span { color:var(--teal); opacity:0.7; }
+    /* EMPTY */
+    .empty-s { text-align:center; padding:55px 20px; color:var(--muted); }
+    .empty-s i { font-size:2.4rem; display:block; margin-bottom:12px; opacity:0.25; }
+    /* CONN BAR */
+    .conn-bar { position:fixed; top:0; left:0; right:0; z-index:100000; display:none; align-items:center; justify-content:center; gap:8px; padding:10px; font-size:0.82rem; font-weight:700; transition:all 0.3s; }
+    .conn-ok { background:rgba(16,185,129,0.15); color:var(--green); border-bottom:1px solid rgba(16,185,129,0.3); }
+    .conn-off { background:rgba(239,68,68,0.15); color:var(--red); border-bottom:1px solid rgba(239,68,68,0.3); }
+    /* MY BOOKINGS LIST */
+    .booking-item { background:rgba(13,148,136,0.05); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px; }
+    .bi-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+    .bi-no { font-family:'IBM Plex Mono',monospace; font-size:0.8rem; color:var(--teal); font-weight:700; }
+    .bi-status { font-size:0.7rem; font-weight:700; padding:3px 10px; border-radius:20px; }
+    .bs-pending { background:rgba(245,158,11,0.1); color:var(--amber); }
+    .bs-confirmed { background:rgba(16,185,129,0.1); color:var(--green); }
+    .bs-done { background:rgba(13,148,136,0.1); color:var(--teal); }
+    .bs-cancelled { background:rgba(239,68,68,0.08); color:var(--red); }
+    /* RATING */
+    .stars { display:flex; gap:4px; justify-content:center; margin:10px 0; }
+    .star { font-size:1.4rem; cursor:pointer; transition:transform 0.1s; color:#cbd5e1; }
+    .star:hover, .star.active { color:var(--amber); transform:scale(1.15); }
+    /* NOTIF BUTTON */
+    .notif-btn {
+      background:rgba(13,148,136,0.08); border:1px solid rgba(13,148,136,0.15);
+      color:var(--teal); padding:6px 14px; border-radius:50px;
+      font-size:0.75rem; font-weight:700; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; gap:6px;
+      transition:all 0.2s; margin:10px auto 0; width:fit-content;
+    }
+    /* SPECIALTY FILTER */
+    .spec-scroll { display:flex; gap:8px; overflow-x:auto; padding:0 13px 14px; scrollbar-width:none; }
+    .spec-scroll::-webkit-scrollbar { display:none; }
+    .spec-chip {
+      flex-shrink:0; background:var(--card); border:1.5px solid var(--border);
+      border-radius:20px; padding:7px 16px; font-size:0.78rem; font-weight:700;
+      cursor:pointer; transition:all 0.2s; color:var(--muted); white-space:nowrap;
+    }
+    .spec-chip.active { background:var(--teal); border-color:var(--teal); color:#fff; }
+  </style>
+</head>
+<body data-theme="light">
+
+<div id="connBar" class="conn-bar"></div>
+<div class="toast-wrap" id="tw"></div>
+
+<!-- LOCKOUT -->
+<div id="lockoutScreen">
+  <div style="font-size:80px;color:#ef4444;margin-bottom:24px"><i class="fas fa-shield-alt"></i></div>
+  <div style="font-size:24px;font-weight:800;margin-bottom:16px">تم إيقاف العيادة</div>
+  <div style="font-size:16px;opacity:0.7;margin-bottom:30px">راجع الدعم الفني لنظام كلينيكا</div>
+  <a href="https://clinicapro.com" target="_blank" style="background:#0d9488;color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:700">زيارة كلينيكا</a>
+</div>
+
+<div id="mainContent">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="htop">
+      <span class="clinic-mark">CLINICA PRO</span>
+      <button class="theme-tog" id="themeBtn" onclick="toggleTheme()">🌙 الوضع الليلي</button>
+    </div>
+    <div class="hmain">
+      <div class="clinic-logo">🏥</div>
+      <div class="clinic-name" id="clinicName">جاري التحميل...</div>
+      <button class="notif-btn" onclick="openMyBookings()">
+        <i class="fas fa-calendar-check"></i> حجوزاتي
+      </button>
+      <div class="clinic-meta" style="margin-top:10px">
+        <span class="chip chip-open" id="statusChip"><i class="fas fa-circle" style="font-size:0.38rem"></i> مفتوح الآن</span>
+        <span class="chip chip-info" id="hoursChip" style="display:none"><i class="fas fa-clock"></i> <span id="hoursText"></span></span>
+        <span class="chip chip-info" id="specChip" style="display:none"><i class="fas fa-stethoscope"></i> <span id="specText"></span></span>
+      </div>
+    </div>
+    <div class="srchwrap" style="margin-top:16px">
+      <div style="position:relative">
+        <i class="fas fa-magnifying-glass srchico"></i>
+        <input type="text" class="srchbox" id="searchBox" placeholder="ابحث عن طبيب أو تخصص..." oninput="filterDoctors()">
+      </div>
+    </div>
+  </div>
+
+  <!-- SPECIALTY FILTER -->
+  <div class="spec-scroll" id="specFilter" style="margin-top:14px">
+    <div class="spec-chip active" onclick="filterBySpec('all',this)">الكل</div>
+  </div>
+
+  <!-- DOCTORS -->
+  <div class="section">
+    <div class="sec-lbl">الأطباء المتاحون</div>
+    <div class="dgrid" id="doctorsGrid">
+      <div class="empty-s" style="grid-column:1/-1"><i class="fas fa-spinner fa-spin"></i><p>جاري التحميل...</p></div>
+    </div>
+  </div>
+
+  <div class="pwby-foot">POWERED BY <span>CLINICA</span></div>
+</div>
+
+<!-- FAB -->
+<div class="cartfab">
+  <button class="mybookbtn" onclick="openModal()">
+    <i class="fas fa-calendar-plus"></i>
+    <span id="fabLabel">احجز موعد</span>
+    <div class="bookCnt" id="bookCnt" style="display:none">1</div>
+  </button>
+</div>
+
+<!-- BOOKING MODAL -->
+<div class="moverlay" id="bookingModal">
+  <div class="msheet">
+    <div class="shandle"></div>
+
+    <!-- STEP 0: DOCTOR INFO + DATE -->
+    <div id="step0">
+      <div class="stitle">📅 اختر موعدك</div>
+      <div id="docInfoBox" style="background:var(--bg);border-radius:14px;padding:14px;margin-bottom:16px;text-align:right">
+        <div style="font-weight:800;font-size:1rem" id="s0DocName"></div>
+        <div style="font-size:0.8rem;color:var(--teal);font-weight:600" id="s0DocSpec"></div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.85rem;color:var(--teal);margin-top:4px" id="s0DocPrice"></div>
+      </div>
+      <div class="date-slots">
+        <div class="slot-lbl">📆 اختر التاريخ</div>
+        <div class="date-scroll" id="dateSlots"></div>
+      </div>
+      <div class="date-slots">
+        <div class="slot-lbl">🕐 اختر الوقت</div>
+        <div class="time-grid" id="timeSlots"></div>
+      </div>
+      <button class="bnext" onclick="goStep1()" id="stepNextBtn" disabled>
+        <i class="fas fa-arrow-left" style="margin-left:7px"></i> التالي — بيانات المريض
+      </button>
+      <button class="bclose" onclick="closeModal()">إغلاق</button>
+    </div>
+
+    <!-- STEP 1: PATIENT INFO -->
+    <div id="step1" style="display:none">
+      <div class="stitle">👤 بيانات المريض</div>
+      <div class="form-grid">
+        <input type="text" id="patName" class="minp minp-full" placeholder="الاسم الكريم *">
+        <input type="tel"  id="patPhone" class="minp" placeholder="رقم الهاتف *">
+        <input type="number" id="patAge" class="minp" placeholder="العمر">
+        <select id="patGender" class="minp">
+          <option value="">الجنس</option>
+          <option value="ذكر">ذكر</option>
+          <option value="أنثى">أنثى</option>
+        </select>
+        <textarea id="patNotes" class="minp minp-full" rows="2" placeholder="الشكوى / ملاحظات (اختياري)" style="resize:none"></textarea>
+      </div>
+      <button class="bnext" onclick="goStep2()">
+        <i class="fas fa-receipt" style="margin-left:7px"></i> مراجعة الحجز
+      </button>
+      <span class="bback" onclick="goStep0()">← العودة</span>
+      <button class="bclose" onclick="closeModal()">إغلاق</button>
+    </div>
+
+    <!-- STEP 2: CONFIRM -->
+    <div id="step2" style="display:none">
+      <div class="stitle">🧾 تأكيد الحجز</div>
+      <div class="billbox" id="billBox"></div>
+      <button class="bsend" onclick="sendBooking()">
+        <i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز
+      </button>
+      <span class="bback" onclick="goStep1()">← تعديل البيانات</span>
+    </div>
+
+    <!-- STEP 3: SUCCESS -->
+    <div id="step3" style="display:none">
+      <div class="success-wrap">
+        <div class="success-icon">✅</div>
+        <div style="font-size:1.25rem;font-weight:800;color:var(--green);margin-bottom:6px">تم تأكيد الحجز!</div>
+        <div class="order-no-box">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--muted);letter-spacing:1px;font-family:'IBM Plex Mono',monospace;margin-bottom:6px">رقم حجزك</div>
+          <div class="on-number" id="finalBookNo">#0000</div>
+          <div style="font-size:0.82rem;color:var(--muted);margin-top:8px">احتفظ برقم الحجز للمراجعة</div>
+        </div>
+        <div style="margin:15px 0;padding:15px;background:var(--bg);border:1px solid var(--border);border-radius:18px;font-size:0.9rem;text-align:right">
+          <div style="margin-bottom:8px">👨‍⚕️ <span style="color:var(--muted)">الطبيب:</span> <span id="finalDocName" style="font-weight:800"></span></div>
+          <div style="margin-bottom:8px">📅 <span style="color:var(--muted)">التاريخ:</span> <span id="finalDate" style="font-weight:800"></span></div>
+          <div style="margin-bottom:8px">🕐 <span style="color:var(--muted)">الوقت:</span> <span id="finalTime" style="font-weight:800"></span></div>
+          <div>💰 <span style="color:var(--muted)">الرسوم:</span> <span id="finalPrice" style="font-weight:800;color:var(--green)"></span></div>
+        </div>
+        <div class="track-wrap">
+          <div style="font-size:0.9rem;font-weight:800;color:var(--teal);margin-bottom:15px;display:flex;align-items:center;gap:8px"><i class="fas fa-clock"></i> حالة الحجز</div>
+          <div class="track-steps">
+            <div class="track-line"></div>
+            <div class="track-progress" id="trackProgress"></div>
+            <div class="tstep active" id="ts-new"><div class="tpoint"><i class="fas fa-paper-plane"></i></div><div class="tlbl">مستلم</div></div>
+            <div class="tstep" id="ts-confirmed"><div class="tpoint"><i class="fas fa-check"></i></div><div class="tlbl">مؤكد</div></div>
+            <div class="tstep" id="ts-waiting"><div class="tpoint"><i class="fas fa-hourglass-half"></i></div><div class="tlbl">بالانتظار</div></div>
+            <div class="tstep" id="ts-done"><div class="tpoint"><i class="fas fa-star"></i></div><div class="tlbl">مكتمل</div></div>
+          </div>
+        </div>
+        <!-- RATING (shown when done) -->
+        <div id="ratingBox" style="display:none;margin-top:16px;padding:16px;background:var(--bg);border-radius:16px;border:1px solid var(--border)">
+          <div style="font-weight:700;margin-bottom:8px">قيّم تجربتك مع الطبيب</div>
+          <div class="stars" id="ratingStars">
+            <span class="star" onclick="setRating(1)">★</span>
+            <span class="star" onclick="setRating(2)">★</span>
+            <span class="star" onclick="setRating(3)">★</span>
+            <span class="star" onclick="setRating(4)">★</span>
+            <span class="star" onclick="setRating(5)">★</span>
+          </div>
+          <button id="submitRatingBtn" onclick="submitRating()" style="display:none;width:100%;padding:10px;background:var(--amber);border:none;border-radius:10px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;color:#000">إرسال التقييم</button>
+        </div>
+        <button class="bnext" onclick="closeModal()" style="margin-top:20px;background:var(--bg);color:var(--text);border:1px solid var(--border);box-shadow:none">العودة للرئيسية</button>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.55rem;color:var(--muted);margin-top:15px;text-transform:uppercase;letter-spacing:1px">Powered by Clinica System</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MY BOOKINGS MODAL -->
+<div class="moverlay" id="myBookingsModal">
+  <div class="msheet">
+    <div class="shandle"></div>
+    <div class="stitle">📋 حجوزاتي السابقة</div>
+    <div id="myBookingsList"></div>
+    <button class="bclose" onclick="document.getElementById('myBookingsModal').classList.remove('show')">إغلاق</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<script>
+// ══ FIREBASE ══
+// !! يجب استبداله بإعدادات Firebase الجديدة الخاصة بك
+const firebaseConfig = {
+  apiKey: "YOUR_CLINIC_API_KEY",
+  authDomain: "YOUR_CLINIC_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_CLINIC_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_CLINIC_PROJECT",
+  storageBucket: "YOUR_CLINIC_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ── CLINIC ID FROM URL ──
+const urlParams = new URLSearchParams(window.location.search);
+let CLINIC_ID = urlParams.get('id');
+if (!CLINIC_ID) CLINIC_ID = localStorage.getItem('clinica_id') || '1';
+else localStorage.setItem('clinica_id', CLINIC_ID);
+const BASE = 'clinics/' + CLINIC_ID;
+
+// ── STATE ──
+let allDoctors = [];
+let selectedDoctor = null;
+let selectedDate = '';
+let selectedTime = '';
+let currentBookingKey = null;
+let trackListener = null;
+let currentRating = 0;
+let isConnected = true;
+
+// ── CONNECTION ──
+db.ref('.info/connected').on('value', snap => {
+  const was = !isConnected;
+  isConnected = snap.val() === true;
+  const bar = document.getElementById('connBar');
+  if (isConnected) {
+    bar.className = 'conn-bar conn-ok';
+    bar.innerHTML = '<i class="fas fa-wifi"></i> متصل';
+    bar.style.display = 'flex';
+    setTimeout(() => { if(isConnected) bar.style.display='none'; }, 2500);
+    if (was) toast('✅ تم إعادة الاتصال');
+  } else {
+    bar.style.display = 'flex';
+    bar.className = 'conn-bar conn-off';
+    bar.innerHTML = '<i class="fas fa-exclamation-triangle"></i> اتصال ضعيف...';
+  }
+});
+window.addEventListener('offline', () => { isConnected=false; db.goOffline(); });
+window.addEventListener('online', () => { setTimeout(() => db.goOnline(), 1000); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !isConnected) { db.goOffline(); setTimeout(() => db.goOnline(), 1000); }
+});
+
+// ── LOAD CLINIC SETTINGS ──
+db.ref(BASE + '/settings').on('value', snap => {
+  const s = snap.val();
+  const nf = document.getElementById('mainContent');
+  const lo = document.getElementById('lockoutScreen');
+  if (!s) { return; }
+  if (s.status === 'suspended') { lo.classList.add('show'); return; }
+  else lo.classList.remove('show');
+
+  document.getElementById('clinicName').textContent = s.name || 'عيادة';
+  document.title = (s.name || 'كلينيكا') + ' | حجز موعد';
+  const sc = document.getElementById('statusChip');
+  if (s.status === 'closed') {
+    sc.className = 'chip chip-closed';
+    sc.innerHTML = '<i class="fas fa-circle" style="font-size:0.38rem"></i> مغلق مؤقتاً';
+  } else {
+    sc.className = 'chip chip-open';
+    sc.innerHTML = '<i class="fas fa-circle" style="font-size:0.38rem"></i> مفتوح الآن';
+  }
+  if (s.hours) { document.getElementById('hoursChip').style.display='inline-flex'; document.getElementById('hoursText').textContent=s.hours; }
+  if (s.specialty) { document.getElementById('specChip').style.display='inline-flex'; document.getElementById('specText').textContent=s.specialty; }
+  if (s.color) {
+    document.documentElement.style.setProperty('--teal', s.color);
+    document.documentElement.style.setProperty('--teal-dark', s.color);
+    document.documentElement.style.setProperty('--header-to', s.color);
+  }
+  // Logo emoji
+  const logo = document.querySelector('.clinic-logo');
+  if (s.emoji) logo.textContent = s.emoji;
+});
+
+// ── LOAD DOCTORS ──
+db.ref(BASE + '/doctors').on('value', snap => {
+  const docs = snap.val() || {};
+  allDoctors = [];
+  for (let k in docs) allDoctors.push({ key: k, ...docs[k] });
+  renderDoctors(allDoctors);
+  buildSpecFilter();
+});
+
+function buildSpecFilter() {
+  const specs = ['all', ...new Set(allDoctors.map(d => d.specialty).filter(Boolean))];
+  const sf = document.getElementById('specFilter');
+  sf.innerHTML = specs.map((s,i) => `<div class="spec-chip ${i===0?'active':''}" onclick="filterBySpec('${s}',this)">${s==='all'?'الكل':s}</div>`).join('');
+}
+
+function filterBySpec(spec, el) {
+  document.querySelectorAll('.spec-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  if (spec === 'all') renderDoctors(allDoctors);
+  else renderDoctors(allDoctors.filter(d => d.specialty === spec));
+}
+
+function filterDoctors() {
+  const q = document.getElementById('searchBox').value.toLowerCase().trim();
+  if (!q) { renderDoctors(allDoctors); return; }
+  renderDoctors(allDoctors.filter(d => (d.name||'').toLowerCase().includes(q) || (d.specialty||'').toLowerCase().includes(q)));
+}
+
+function renderDoctors(docs) {
+  const grid = document.getElementById('doctorsGrid');
+  if (!docs.length) {
+    grid.innerHTML = `<div class="empty-s" style="grid-column:1/-1"><i class="fas fa-user-md"></i><p>لا يوجد أطباء متاحون</p></div>`;
+    return;
+  }
+  grid.innerHTML = docs.map(d => `
+    <div class="dcard" onclick="selectDoctor('${d.key}')">
+      <div class="dcard-img">
+        ${d.img ? `<img src="${d.img}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:2.5rem">${d.emoji||'👨‍⚕️'}</span>`}
+        <div class="dcard-avail ${d.available!==false?'avail-yes':'avail-no'}"></div>
+      </div>
+      <div class="dcard-body">
+        <div class="dcard-name">${d.name||'الطبيب'}</div>
+        <div class="dcard-spec">${d.specialty||''}</div>
+        <div class="dcard-price">${parseFloat(d.fee||0).toFixed(2)} د.أ</div>
+        <button class="book-btn" ${d.available===false?'disabled':''} onclick="event.stopPropagation();selectDoctor('${d.key}')">
+          <i class="fas fa-calendar-plus"></i> ${d.available===false?'غير متاح':'احجز موعد'}
+        </button>
+      </div>
+    </div>`).join('');
+}
+
+function selectDoctor(key) {
+  const doc = allDoctors.find(d => d.key === key);
+  if (!doc || doc.available === false) return;
+  selectedDoctor = doc;
+  document.getElementById('s0DocName').textContent = 'د. ' + (doc.name||'');
+  document.getElementById('s0DocSpec').textContent = doc.specialty||'';
+  document.getElementById('s0DocPrice').textContent = parseFloat(doc.fee||0).toFixed(2) + ' د.أ';
+  selectedDate = '';
+  selectedTime = '';
+  document.getElementById('stepNextBtn').disabled = true;
+  buildDateSlots();
+  showStep(0);
+  document.getElementById('bookingModal').classList.add('show');
+}
+
+// ── DATE / TIME SLOTS ──
+function buildDateSlots() {
+  const container = document.getElementById('dateSlots');
+  const today = new Date();
+  const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  let html = '';
+  for (let i=0; i<10; i++) {
+    const d = new Date(today); d.setDate(today.getDate()+i);
+    const dateStr = d.toISOString().split('T')[0];
+    const dayName = days[d.getDay()];
+    const dn = d.getDate();
+    html += `<div class="date-chip" id="dc-${dateStr}" onclick="pickDate('${dateStr}',this)">
+      <div class="dday">${i===0?'اليوم':dayName}</div>
+      <div class="dnum">${dn}</div>
+    </div>`;
+  }
+  container.innerHTML = html;
+  document.getElementById('timeSlots').innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px;grid-column:1/-1">اختر تاريخاً أولاً</div>';
+}
+
+function pickDate(dateStr, el) {
+  selectedDate = dateStr;
+  selectedTime = '';
+  document.getElementById('stepNextBtn').disabled = true;
+  document.querySelectorAll('.date-chip').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  buildTimeSlots(dateStr);
+}
+
+async function buildTimeSlots(dateStr) {
+  const container = document.getElementById('timeSlots');
+  container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px;grid-column:1/-1"><i class="fas fa-spinner fa-spin"></i></div>';
+  
+  const doc = selectedDoctor;
+  const workStart = doc.workStart || '09:00';
+  const workEnd = doc.workEnd || '17:00';
+  const slotMins = doc.slotDuration || 30;
+
+  // Get booked slots for this doctor on this date
+  const bookedSnap = await db.ref(`${BASE}/bookings`).orderByChild('docKey').equalTo(doc.key).once('value');
+  const bookedTimes = new Set();
+  if (bookedSnap.val()) {
+    Object.values(bookedSnap.val()).forEach(b => {
+      if (b.date === dateStr && b.status !== 'cancelled') bookedTimes.add(b.time);
+    });
+  }
+
+  // Build time slots
+  const [sh,sm] = workStart.split(':').map(Number);
+  const [eh,em] = workEnd.split(':').map(Number);
+  let cur = sh*60+sm;
+  const end = eh*60+em;
+  const slots = [];
+  while (cur+slotMins <= end) {
+    const hh = String(Math.floor(cur/60)).padStart(2,'0');
+    const mm = String(cur%60).padStart(2,'0');
+    slots.push(`${hh}:${mm}`);
+    cur += slotMins;
+  }
+
+  if (!slots.length) { container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;grid-column:1/-1">لا توجد أوقات متاحة</div>'; return; }
+
+  container.innerHTML = slots.map(t => {
+    const isBooked = bookedTimes.has(t);
+    return `<div class="time-chip ${isBooked?'booked':''}" id="tc-${t}" onclick="${isBooked?'':``pickTime('${t}',this)``}">${t}${isBooked?'<br><span style="font-size:0.6rem">محجوز</span>':''}</div>`;
+  }).join('');
+}
+
+function pickTime(time, el) {
+  selectedTime = time;
+  document.querySelectorAll('.time-chip').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('stepNextBtn').disabled = false;
+}
+
+// ── STEPS ──
+function showStep(n) {
+  [0,1,2,3].forEach(i => {
+    const el = document.getElementById('step'+i);
+    if (el) el.style.display = i===n?'block':'none';
+  });
+}
+function goStep0() { showStep(0); }
+function goStep1() {
+  if (!selectedDate || !selectedTime) { toast('⚠️ اختر التاريخ والوقت'); return; }
+  showStep(1);
+}
+function goStep2() {
+  const name = document.getElementById('patName').value.trim();
+  const phone = document.getElementById('patPhone').value.trim();
+  if (!name || !phone) { toast('⚠️ أدخل الاسم ورقم الهاتف'); return; }
+  const doc = selectedDoctor;
+  const notes = document.getElementById('patNotes').value.trim();
+  document.getElementById('billBox').innerHTML = `
+    <div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:11px;text-transform:uppercase;letter-spacing:1px;font-family:'IBM Plex Mono',monospace">تفاصيل الحجز</div>
+    <div class="billrow"><span>الطبيب</span><span style="font-weight:700">د. ${doc.name}</span></div>
+    <div class="billrow"><span>التخصص</span><span>${doc.specialty||'—'}</span></div>
+    <div class="billrow"><span>التاريخ</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:600">${selectedDate}</span></div>
+    <div class="billrow"><span>الوقت</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:600">${selectedTime}</span></div>
+    <div class="billrow"><span>المريض</span><span style="font-weight:700">${name}</span></div>
+    ${notes?`<div class="billrow"><span>ملاحظات</span><span style="font-size:0.8rem">${notes}</span></div>`:''}
+    <div class="billtotal"><span style="font-weight:700">رسوم الكشف</span><span style="font-family:'IBM Plex Mono',monospace;font-size:1.2rem;font-weight:800;color:var(--green)">${parseFloat(doc.fee||0).toFixed(2)} د.أ</span></div>`;
+  showStep(2);
+}
+
+// ── SEND BOOKING ──
+let isSending = false;
+function sendBooking() {
+  if (isSending) return;
+  const name = document.getElementById('patName').value.trim();
+  const phone = document.getElementById('patPhone').value.trim();
+  if (!name || !phone) return;
+  isSending = true;
+  const btn = document.querySelector('.bsend');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+  btn.disabled = true;
+
+  const bookNo = '#' + Math.floor(1000 + Math.random() * 9000);
+  const booking = {
+    bookNo, docKey: selectedDoctor.key,
+    docName: selectedDoctor.name, docSpec: selectedDoctor.specialty,
+    patName: name, patPhone: phone,
+    patAge: document.getElementById('patAge').value || '',
+    patGender: document.getElementById('patGender').value || '',
+    notes: document.getElementById('patNotes').value.trim(),
+    date: selectedDate, time: selectedTime,
+    fee: parseFloat(selectedDoctor.fee||0).toFixed(2),
+    status: 'new',
+    createdAt: new Date().toISOString(),
+    dateLabel: new Date().toLocaleDateString('ar-JO'),
+    timeLabel: new Date().toLocaleTimeString('ar-JO',{hour:'2-digit',minute:'2-digit'})
+  };
+
+  db.ref(`${BASE}/bookings`).push(booking).then(ref => {
+    currentBookingKey = ref.key;
+    document.getElementById('finalBookNo').textContent = bookNo;
+    document.getElementById('finalDocName').textContent = 'د. ' + selectedDoctor.name;
+    document.getElementById('finalDate').textContent = selectedDate;
+    document.getElementById('finalTime').textContent = selectedTime;
+    document.getElementById('finalPrice').textContent = booking.fee + ' د.أ';
+    showStep(3);
+    startTracking(ref.key);
+    saveBookingLocally(ref.key, bookNo, selectedDoctor.name, selectedDate, selectedTime);
+    isSending = false;
+    btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
+    btn.disabled = false;
+  }).catch(err => {
+    toast('❌ خطأ: ' + err.message);
+    isSending = false;
+    btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
+    btn.disabled = false;
+  });
+}
+
+// ── TRACKING ──
+function startTracking(key) {
+  if (trackListener) db.ref(`${BASE}/bookings/${currentBookingKey}`).off('value', trackListener);
+  trackListener = db.ref(`${BASE}/bookings/${key}`).on('value', snap => {
+    const val = snap.val();
+    if (!val) return;
+    updateTrackUI(val.status||'new');
+    if (val.status === 'done' || val.status === 'completed') {
+      document.getElementById('ratingBox').style.display = 'block';
+    }
+  });
+}
+
+function updateTrackUI(status) {
+  const map = { 'new':0, 'confirmed':1, 'waiting':2, 'done':3, 'completed':3 };
+  const idx = map[status] || 0;
+  document.getElementById('trackProgress').style.width = (idx/3*100)+'%';
+  ['ts-new','ts-confirmed','ts-waiting','ts-done'].forEach((id,i) => {
+    document.getElementById(id).classList.toggle('active', i<=idx);
+  });
+}
+
+// ── RATING ──
+function setRating(n) {
+  currentRating = n;
+  document.querySelectorAll('.star').forEach((s,i) => s.classList.toggle('active', i<n));
+  document.getElementById('submitRatingBtn').style.display = 'block';
+}
+function submitRating() {
+  if (!currentRating || !currentBookingKey) return;
+  db.ref(`${BASE}/bookings/${currentBookingKey}`).update({ rating: currentRating });
+  db.ref(`${BASE}/doctors/${selectedDoctor.key}/ratings/${currentBookingKey}`).set(currentRating);
+  document.getElementById('ratingBox').innerHTML = '<div style="color:var(--green);font-weight:700;text-align:center">شكراً على تقييمك! ⭐</div>';
+  toast('✅ تم إرسال التقييم، شكراً!');
+}
+
+// ── LOCAL BOOKINGS ──
+function saveBookingLocally(key, no, docName, date, time) {
+  let list = JSON.parse(localStorage.getItem('clinica_bookings_'+CLINIC_ID)||'[]');
+  list.unshift({ key, no, docName, date, time, ts: Date.now() });
+  if (list.length > 10) list = list.slice(0,10);
+  localStorage.setItem('clinica_bookings_'+CLINIC_ID, JSON.stringify(list));
+}
+
+async function openMyBookings() {
+  const modal = document.getElementById('myBookingsModal');
+  const listEl = document.getElementById('myBookingsList');
+  modal.classList.add('show');
+  const list = JSON.parse(localStorage.getItem('clinica_bookings_'+CLINIC_ID)||'[]');
+  if (!list.length) {
+    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)"><i class="fas fa-calendar-xmark" style="font-size:2rem;display:block;margin-bottom:10px;opacity:0.3"></i>لا توجد حجوزات سابقة</div>';
+    return;
+  }
+  listEl.innerHTML = '<div style="text-align:center;padding:20px"><i class="fas fa-spinner fa-spin"></i></div>';
+  let html = '';
+  const statusLabels = { new:'جديد', confirmed:'مؤكد', waiting:'بالانتظار', done:'مكتمل', completed:'مكتمل', cancelled:'ملغي' };
+  const statusClasses = { new:'bs-pending', confirmed:'bs-confirmed', waiting:'bs-pending', done:'bs-done', completed:'bs-done', cancelled:'bs-cancelled' };
+  for (const b of list) {
+    let status = 'new';
+    try {
+      const snap = await db.ref(`${BASE}/bookings/${b.key}`).once('value');
+      if (snap.exists()) status = snap.val().status || 'new';
+      else status = 'done';
+    } catch(e) {}
+    html += `<div class="booking-item">
+      <div class="bi-header">
+        <div><div style="font-weight:800">د. ${b.docName}</div><div style="font-size:0.75rem;color:var(--muted)">${b.date} — ${b.time}</div></div>
+        <span class="bi-status ${statusClasses[status]||'bs-pending'}">${statusLabels[status]||status}</span>
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--teal)">${b.no}</div>
+    </div>`;
+  }
+  listEl.innerHTML = html;
+}
+
+// ── MODAL ──
+function openModal() {
+  if (!allDoctors.length) { toast('جاري تحميل قائمة الأطباء...'); return; }
+  showStep(0);
+  if (selectedDoctor) document.getElementById('bookingModal').classList.add('show');
+  else toast('اختر طبيباً أولاً من القائمة');
+}
+function closeModal() {
+  document.getElementById('bookingModal').classList.remove('show');
+  setTimeout(() => { showStep(0); document.getElementById('fabLabel').textContent='احجز موعد'; }, 300);
+}
+document.getElementById('bookingModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+document.getElementById('myBookingsModal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('show'); });
+
+// ── THEME ──
+function toggleTheme() {
+  const body = document.body;
+  const btn = document.getElementById('themeBtn');
+  if (body.getAttribute('data-theme')==='light') { body.setAttribute('data-theme','dark'); btn.textContent='☀️ الوضع النهاري'; }
+  else { body.setAttribute('data-theme','light'); btn.textContent='🌙 الوضع الليلي'; }
+}
+
+// ── TOAST ──
+function toast(msg) {
+  const tw = document.getElementById('tw');
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg; tw.appendChild(t);
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3000);
+}
+</script>
+</body>
+</html>

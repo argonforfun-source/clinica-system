@@ -1,0 +1,6 @@
+services:
+  - type: static
+    name: clinica-system
+    env: static
+    buildCommand: ""
+    publishPath: "."

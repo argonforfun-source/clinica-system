@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="data:,">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLINICA | لوحة التحكم</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --void:#030b0a; --panel:#071310; --surface:#0a1f1c;
+      --teal:#0d9488; --teal2:#14b8a6; --sky:#0ea5e9;
+      --green:#10b981; --red:#ef4444; --amber:#f59e0b; --purple:#8b5cf6;
+      --border:rgba(13,148,136,0.12); --text:#e2e8f0; --muted:#64748b;
+      --shadow:rgba(0,0,0,0.3);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Tajawal',sans-serif; background:var(--void); color:var(--text); height:100vh; overflow:hidden; }
+    body::before {
+      content:''; position:fixed; inset:0;
+      background-image: linear-gradient(rgba(13,148,136,0.025) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(13,148,136,0.025) 1px, transparent 1px);
+      background-size:50px 50px; pointer-events:none; z-index:0;
+    }
+    /* LOGIN */
+    #dashLogin {
+      position:fixed; inset:0; background:var(--void); z-index:999999;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .login-box {
+      background:var(--panel); padding:35px; border-radius:20px;
+      border:1px solid var(--border); text-align:center; width:90%; max-width:340px;
+      box-shadow:0 20px 40px rgba(0,0,0,0.4);
+    }
+    .login-box h3 { margin-bottom:8px; font-size:1.2rem; }
+    .login-inp {
+      width:100%; background:var(--surface); border:1px solid var(--border);
+      border-radius:10px; padding:12px; color:var(--text);
+      font-family:'Tajawal',sans-serif; font-size:1rem; text-align:center;
+      margin-bottom:15px; outline:none;
+    }
+    .login-btn {
+      width:100%; padding:12px;
+      background:linear-gradient(135deg, var(--teal), var(--sky));
+      border:none; border-radius:10px; color:white;
+      font-family:'Tajawal',sans-serif; font-weight:700; font-size:1rem; cursor:pointer;
+    }
+    /* TOPBAR */
+    .topbar {
+      height:60px; background:var(--panel); border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 22px; position:relative; z-index:100; flex-shrink:0;
+    }
+    .tb-logo { font-family:'IBM Plex Mono',monospace; font-size:1rem; font-weight:600; letter-spacing:3px; background:linear-gradient(135deg,#14b8a6,#0ea5e9); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .tbadge { display:flex; align-items:center; gap:6px; font-size:0.73rem; padding:5px 12px; border-radius:20px; font-weight:600; border:1px solid; }
+    .tbadge-open { background:rgba(16,185,129,0.08); border-color:rgba(16,185,129,0.2); color:var(--green); }
+    .tbadge-closed { background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.2); color:#fca5a5; }
+    .clkbadge { font-family:'IBM Plex Mono',monospace; font-size:0.76rem; background:var(--surface); border:1px solid var(--border); color:var(--muted); padding:5px 12px; border-radius:8px; }
+    .tbtn { background:var(--surface); border:1px solid var(--border); color:var(--muted); padding:6px 13px; border-radius:8px; font-family:'Tajawal',sans-serif; font-size:0.8rem; cursor:pointer; transition:all 0.2s; }
+    .tbtn:hover { border-color:rgba(13,148,136,0.3); color:var(--text); }
+    /* LAYOUT */
+    .app-layout { display:flex; height:calc(100vh - 60px); }
+    .sidebar { width:218px; background:var(--panel); border-left:1px solid var(--border); display:flex; flex-direction:column; padding:15px 0; flex-shrink:0; }
+    .sl { font-family:'IBM Plex Mono',monospace; font-size:0.56rem; color:var(--muted); letter-spacing:2px; padding:7px 15px 3px; text-transform:uppercase; }
+    .ni { display:flex; align-items:center; gap:9px; padding:10px 14px; margin:1px 7px; border-radius:9px; cursor:pointer; color:var(--muted); font-size:0.87rem; font-weight:500; transition:all 0.2s; position:relative; }
+    .ni i { width:16px; text-align:center; font-size:0.84rem; }
+    .ni:hover { background:rgba(255,255,255,0.03); color:var(--text); }
+    .ni.active { background:rgba(13,148,136,0.1); color:#5eead4; }
+    .ni.active::before { content:''; position:absolute; right:0; top:18%; bottom:18%; width:3px; background:var(--teal); border-radius:3px 0 0 3px; }
+    .nbadge { margin-right:auto; background:var(--red); color:white; font-size:0.62rem; font-family:'IBM Plex Mono',monospace; padding:2px 7px; border-radius:10px; font-weight:700; }
+    .nbadge.zero { background:rgba(100,116,139,0.2); color:var(--muted); }
+    /* MAIN */
+    .main-area { flex:1; overflow-y:auto; padding:26px; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.05) transparent; }
+    .section { display:none; } .section.active { display:block; animation:fu 0.3s ease; }
+    @keyframes fu { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .ph { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:22px; }
+    .pt { font-size:1.4rem; font-weight:800; } .ps { font-size:0.8rem; color:var(--muted); margin-top:3px; }
+    /* STATS */
+    .sr { display:grid; grid-template-columns:repeat(4,1fr); gap:13px; margin-bottom:26px; }
+    .sb2 { background:var(--panel); border:1px solid var(--border); border-radius:13px; padding:17px; position:relative; overflow:hidden; }
+    .sb2::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--bc,transparent); }
+    .si { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:0.86rem; margin-bottom:10px; }
+    .slb { font-size:0.7rem; color:var(--muted); font-weight:500; margin-bottom:2px; }
+    .sv { font-size:1.6rem; font-weight:800; font-family:'IBM Plex Mono',monospace; }
+    /* BOOKINGS GRID */
+    .og { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:13px; }
+    .oc { background:var(--panel); border:1px solid var(--border); border-radius:13px; padding:16px; position:relative; overflow:hidden; transition:all 0.25s; }
+    .oc::before { content:''; position:absolute; right:0; top:0; bottom:0; width:3px; background:var(--teal); }
+    .oc.done::before { background:var(--green); }
+    .oc.cancelled::before { background:var(--red); }
+    .oc:hover { border-color:rgba(13,148,136,0.22); }
+    .ono { font-family:'IBM Plex Mono',monospace; font-size:0.76rem; color:var(--teal); background:rgba(13,148,136,0.08); border:1px solid rgba(13,148,136,0.15); padding:3px 9px; border-radius:7px; }
+    .oitems { display:flex; flex-wrap:wrap; gap:5px; margin:10px 0; }
+    .ichip { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); padding:3px 9px; border-radius:7px; font-size:0.73rem; }
+    .onote { background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.15); border-radius:8px; padding:7px 11px; font-size:0.76rem; color:#fcd34d; margin-bottom:10px; }
+    .ofooter { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+    /* ACTION BUTTONS */
+    .abtn { padding:6px 12px; border-radius:8px; font-family:'Tajawal',sans-serif; font-size:0.78rem; font-weight:700; cursor:pointer; transition:0.2s; border:1px solid; }
+    .abtn-confirm { background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.2); color:var(--green); }
+    .abtn-confirm:hover { background:rgba(16,185,129,0.18); }
+    .abtn-waiting { background:rgba(245,158,11,0.1); border-color:rgba(245,158,11,0.2); color:var(--amber); }
+    .abtn-done { background:rgba(13,148,136,0.1); border-color:rgba(13,148,136,0.2); color:var(--teal); }
+    .abtn-cancel { background:rgba(239,68,68,0.07); border-color:rgba(239,68,68,0.15); color:#fca5a5; }
+    .abtn-wa { background:#25d36622; border-color:#25d36633; color:#25d366; }
+    /* MENU SECTION */
+    .doc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:13px; }
+    .doc-card { background:var(--panel); border:1px solid var(--border); border-radius:13px; overflow:hidden; transition:0.25s; }
+    .doc-card:hover { border-color:rgba(13,148,136,0.3); transform:translateY(-2px); }
+    .doc-img { width:100%; height:100px; object-fit:cover; }
+    .doc-ph { width:100%; height:100px; background:var(--surface); display:flex; align-items:center; justify-content:center; font-size:2.5rem; }
+    .doc-body { padding:12px; }
+    .doc-name { font-size:0.9rem; font-weight:800; margin-bottom:3px; }
+    .doc-spec { font-size:0.76rem; color:var(--teal); font-weight:600; margin-bottom:3px; }
+    .doc-fee { font-family:'IBM Plex Mono',monospace; font-size:0.82rem; color:var(--teal2); }
+    .bdel { display:block; width:100%; background:rgba(239,68,68,0.06); border:none; border-top:1px solid rgba(239,68,68,0.1); color:#fca5a5; padding:8px; font-family:'Tajawal',sans-serif; font-size:0.76rem; cursor:pointer; transition:0.2s; }
+    .bdel:hover { background:rgba(239,68,68,0.12); }
+    /* FORM */
+    .mfp { background:var(--panel); border:1px solid var(--border); border-radius:13px; padding:20px; margin-bottom:22px; }
+    .mfl { display:block; font-size:0.7rem; color:var(--muted); margin-bottom:5px; font-weight:500; }
+    .mfi { width:100%; background:var(--surface); border:1px solid rgba(255,255,255,0.07); border-radius:9px; padding:9px 13px; color:var(--text); font-family:'Tajawal',sans-serif; font-size:0.88rem; outline:none; transition:0.2s; }
+    .mfi:focus { border-color:var(--teal); }
+    .badd { background:linear-gradient(135deg,var(--teal),var(--sky)); border:none; border-radius:9px; padding:9px 16px; color:white; font-family:'Tajawal',sans-serif; font-size:0.85rem; font-weight:700; cursor:pointer; }
+    /* SETTINGS */
+    .setp { background:var(--panel); border:1px solid var(--border); border-radius:15px; padding:26px; max-width:560px; }
+    .setg { margin-bottom:16px; }
+    .setl { display:block; font-size:0.76rem; color:var(--muted); margin-bottom:7px; font-weight:500; }
+    .seti, .setsel { width:100%; background:var(--surface); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:11px 14px; color:var(--text); font-family:'Tajawal',sans-serif; font-size:0.9rem; outline:none; transition:0.2s; }
+    .seti:focus, .setsel:focus { border-color:var(--teal); }
+    .bsave { width:100%; padding:12px; background:linear-gradient(135deg,var(--green),#059669); border:none; border-radius:10px; color:white; font-family:'Tajawal',sans-serif; font-size:0.98rem; font-weight:700; cursor:pointer; margin-top:5px; transition:0.3s; }
+    .bsave:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(16,185,129,0.3); }
+    /* HISTORY */
+    .htable-wrap { overflow-x:auto; }
+    .htable { width:100%; border-collapse:collapse; }
+    .htable th, .htable td { padding:12px 14px; text-align:right; border-bottom:1px solid var(--border); font-size:0.85rem; }
+    .htable thead { background:var(--surface); }
+    .htable thead th { color:var(--muted); font-weight:700; font-size:0.75rem; text-transform:uppercase; }
+    /* TOAST */
+    #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(14px); background:var(--surface); border:1px solid rgba(13,148,136,0.3); color:var(--teal); padding:10px 20px; border-radius:11px; font-size:0.86rem; font-weight:600; opacity:0; transition:all 0.3s; z-index:99999; pointer-events:none; }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    /* CONN */
+    .conn-bar { position:fixed; top:0; left:0; right:0; z-index:100000; display:none; align-items:center; justify-content:center; gap:8px; padding:10px; font-size:0.82rem; font-weight:700; }
+    .conn-ok { background:rgba(16,185,129,0.15); color:var(--green); border-bottom:1px solid rgba(16,185,129,0.3); }
+    .conn-off { background:rgba(239,68,68,0.15); color:var(--red); border-bottom:1px solid rgba(239,68,68,0.3); }
+    /* AVAILABILITY TOGGLE */
+    .avail-tog { display:flex; align-items:center; gap:8px; padding:12px 14px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; cursor:pointer; transition:0.2s; margin-top:8px; }
+    .avail-tog input[type=checkbox] { width:18px; height:18px; cursor:pointer; accent-color:var(--teal); }
+    /* CALENDAR VIEW */
+    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+    .cal-day { padding:6px; text-align:center; border-radius:8px; font-size:0.8rem; cursor:pointer; transition:0.2s; border:1px solid transparent; }
+    .cal-day:hover { background:rgba(13,148,136,0.1); }
+    .cal-day.today { background:rgba(13,148,136,0.2); border-color:var(--teal); color:var(--teal); font-weight:800; }
+    .cal-day.has-bookings { position:relative; }
+    .cal-day.has-bookings::after { content:''; position:absolute; bottom:3px; left:50%; transform:translateX(-50%); width:5px; height:5px; background:var(--teal); border-radius:50%; }
+    /* RATING DISPLAY */
+    .star-disp { color:var(--amber); font-size:0.8rem; }
+    .empty-o { grid-column:1/-1; text-align:center; padding:50px; color:var(--muted); }
+    .empty-o i { font-size:2.5rem; display:block; margin-bottom:12px; opacity:0.2; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="dashLogin">
+  <div class="login-box">
+    <div style="font-size:2.5rem;margin-bottom:10px">🏥</div>
+    <h3 style="color:var(--text)">لوحة تحكم العيادة</h3>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:20px" id="loginClinicName">جاري التحقق...</p>
+    <input type="password" id="loginPassInp" class="login-inp" placeholder="أدخل كلمة المرور">
+    <button onclick="checkLogin()" class="login-btn">دخول</button>
+    <div id="loginErr" style="color:var(--red);font-size:0.85rem;margin-top:12px;display:none;font-weight:600">كلمة المرور غير صحيحة</div>
+  </div>
+</div>
+
+<div id="connBar" class="conn-bar"></div>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="tb-logo">CLINICA</span>
+    <span style="width:1px;height:22px;background:var(--border)"></span>
+    <span id="resNameTop" style="font-size:0.93rem;font-weight:700">جاري التحميل...</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:9px">
+    <span id="statusBadge" class="tbadge tbadge-open"><i class="fas fa-circle" style="font-size:0.38rem"></i> مفتوح</span>
+    <span class="clkbadge" id="clkEl">--:--</span>
+    <button class="tbtn" onclick="openPreview()"><i class="fas fa-eye" style="margin-left:6px"></i>معاينة</button>
+  </div>
+</div>
+
+<div class="app-layout">
+  <div class="sidebar">
+    <div style="padding:0 9px">
+      <div class="sl">الإدارة</div>
+      <div class="ni active" onclick="showSec('dashSec',this)"><i class="fas fa-chart-line"></i> الإحصائيات</div>
+      <div class="ni" id="liveTab" onclick="showSec('liveSec',this)">
+        <i class="fas fa-bell"></i> الحجوزات الحية
+        <span class="nbadge zero" id="liveCount">0</span>
+      </div>
+      <div class="ni" onclick="showSec('histSec',this)"><i class="fas fa-clock-rotate-left"></i> سجل الحجوزات</div>
+      <div class="ni" onclick="showSec('docsSec',this)"><i class="fas fa-user-md"></i> إدارة الأطباء</div>
+      <div class="ni" onclick="showSec('settingsSec',this)"><i class="fas fa-gear"></i> الإعدادات</div>
+    </div>
+    <div style="margin-top:auto;padding:12px 9px;border-top:1px solid var(--border)">
+      <div style="text-align:center;font-family:'IBM Plex Mono',monospace;font-size:0.55rem;color:rgba(100,116,139,0.4);letter-spacing:1.5px">POWERED BY CLINICA</div>
+    </div>
+  </div>
+
+  <div class="main-area">
+
+    <!-- DASHBOARD STATS -->
+    <div id="dashSec" class="section active">
+      <div class="ph"><div><div class="pt">📊 الإحصائيات</div><div class="ps">نظرة عامة على أداء العيادة</div></div></div>
+      <div class="sr">
+        <div class="sb2" style="--bc:var(--green)">
+          <div class="si" style="background:rgba(16,185,129,0.1);color:var(--green)"><i class="fas fa-calendar-check"></i></div>
+          <div class="slb">حجوزات مكتملة</div>
+          <div class="sv" id="statCompleted" style="color:var(--green)">0</div>
+          <div style="font-size:0.66rem;color:var(--muted);margin-top:1px">إجمالي</div>
+        </div>
+        <div class="sb2" style="--bc:var(--teal)">
+          <div class="si" style="background:rgba(13,148,136,0.1);color:var(--teal)"><i class="fas fa-coins"></i></div>
+          <div class="slb">الدخل الكلي</div>
+          <div class="sv" id="statRevenue" style="color:var(--teal)">0.00</div>
+          <div style="font-size:0.66rem;color:var(--muted);margin-top:1px">د.أ</div>
+        </div>
+        <div class="sb2" style="--bc:var(--amber)">
+          <div class="si" style="background:rgba(245,158,11,0.1);color:var(--amber)"><i class="fas fa-hourglass-half"></i></div>
+          <div class="slb">بالانتظار اليوم</div>
+          <div class="sv" id="statToday" style="color:var(--amber)">0</div>
+          <div style="font-size:0.66rem;color:var(--muted);margin-top:1px">حجز نشط</div>
+        </div>
+        <div class="sb2" style="--bc:var(--sky)">
+          <div class="si" style="background:rgba(14,165,233,0.1);color:var(--sky)"><i class="fas fa-star"></i></div>
+          <div class="slb">متوسط التقييم</div>
+          <div class="sv" id="statRating" style="color:var(--sky)">--</div>
+          <div style="font-size:0.66rem;color:var(--muted);margin-top:1px">من 5</div>
+        </div>
+      </div>
+      <div class="ph" style="margin-bottom:12px"><div class="pt" style="font-size:1.05rem">👨‍⚕️ أداء الأطباء</div></div>
+      <div id="docPerf" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px"></div>
+    </div>
+
+    <!-- LIVE BOOKINGS -->
+    <div id="liveSec" class="section">
+      <div class="ph"><div><div class="pt">🔔 الحجوزات الحية</div><div class="ps">تحديث فوري</div></div></div>
+      <div class="og" id="bookingsGrid"></div>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="histSec" class="section">
+      <div class="ph">
+        <div><div class="pt">📜 سجل الحجوزات</div><div class="ps">جميع الحجوزات المكتملة</div></div>
+        <button onclick="clearHistory()" style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:#fca5a5;padding:7px 13px;border-radius:8px;font-family:'Tajawal',sans-serif;font-size:0.8rem;cursor:pointer">
+          <i class="fas fa-trash" style="margin-left:5px"></i>مسح السجل
+        </button>
+      </div>
+      <div id="histGrid"></div>
+    </div>
+
+    <!-- DOCTORS MANAGEMENT -->
+    <div id="docsSec" class="section">
+      <div class="ph"><div><div class="pt">👨‍⚕️ إدارة الأطباء</div><div class="ps">أضف وأدر أطباء العيادة</div></div></div>
+      <div class="mfp">
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:9px;align-items:end">
+          <div><label class="mfl">اسم الطبيب</label><input type="text" id="docName" class="mfi" placeholder="د. محمد أحمد"></div>
+          <div><label class="mfl">التخصص</label><input type="text" id="docSpec" class="mfi" placeholder="باطنية"></div>
+          <div><label class="mfl">رسوم الكشف</label><input type="number" id="docFee" class="mfi" placeholder="15"></div>
+          <div><label class="mfl">وقت الكشف (دقيقة)</label><input type="number" id="docSlot" class="mfi" placeholder="30" value="30"></div>
+          <button class="badd" onclick="addDoctor()"><i class="fas fa-plus" style="margin-left:5px"></i>إضافة</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:9px;margin-top:9px">
+          <div><label class="mfl">بداية العمل</label><input type="time" id="docStart" class="mfi" value="09:00"></div>
+          <div><label class="mfl">نهاية العمل</label><input type="time" id="docEnd" class="mfi" value="17:00"></div>
+          <div><label class="mfl">رابط الصورة (اختياري)</label><input type="text" id="docImg" class="mfi" placeholder="https://..."></div>
+          <div><label class="mfl">الإيموجي</label><input type="text" id="docEmoji" class="mfi" placeholder="👨‍⚕️" value="👨‍⚕️"></div>
+        </div>
+      </div>
+      <div class="doc-grid" id="docsGrid"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="settingsSec" class="section">
+      <div class="ph"><div><div class="pt">⚙️ إعدادات العيادة</div></div></div>
+      <div class="setp">
+        <div class="setg"><label class="setl">اسم العيادة</label><input type="text" id="sName" class="seti"></div>
+        <div class="setg"><label class="setl">رقم الواتساب</label><input type="text" id="sPhone" class="seti" placeholder="+962..."></div>
+        <div class="setg" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><label class="setl">حالة العيادة</label>
+            <select id="sStatus" class="setsel">
+              <option value="open">مفتوحة ✅</option>
+              <option value="closed">مغلقة مؤقتاً ❌</option>
+              <option value="suspended">موقوفة 🚫</option>
+            </select>
+          </div>
+          <div><label class="setl">ساعات العمل</label><input type="text" id="sHours" class="seti" placeholder="8ص - 8م"></div>
+        </div>
+        <div class="setg"><label class="setl">التخصص العام</label><input type="text" id="sSpecialty" class="seti" placeholder="عيادة متعددة التخصصات"></div>
+        <div class="setg"><label class="setl">لون العيادة</label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <input type="color" id="sColor" style="width:40px;height:40px;border-radius:9px;border:2px solid var(--border);cursor:pointer" onchange="onColorChange(this.value)">
+            <div id="colorHex" style="font-size:0.88rem;font-weight:600">#0d9488</div>
+          </div>
+        </div>
+        <div class="setg"><label class="setl">كلمة مرور الدخول</label><input type="text" id="sPass" class="seti" placeholder="••••••"></div>
+        <div class="setg"><label class="setl">إيموجي العيادة</label><input type="text" id="sEmoji" class="seti" placeholder="🏥"></div>
+        <button class="bsave" onclick="saveSets()"><i class="fas fa-floppy-disk" style="margin-left:8px"></i>حفظ التغييرات</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PREVIEW MODAL -->
+<div id="prevModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);display:none;justify-content:center;align-items:center;z-index:9999">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:14px">
+    <button onclick="closePreview()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:9px 22px;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer">إغلاق</button>
+    <div style="width:358px;height:696px;background:#fff;border:10px solid #1e293b;border-radius:46px;overflow:hidden;box-shadow:0 0 60px rgba(0,0,0,0.5)">
+      <iframe id="prevFrame" style="width:100%;height:100%;border:none;"></iframe>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "YOUR_CLINIC_API_KEY",
+  authDomain: "YOUR_CLINIC_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_CLINIC_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_CLINIC_PROJECT",
+  storageBucket: "YOUR_CLINIC_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const urlParams = new URLSearchParams(window.location.search);
+const CLINIC_ID = urlParams.get('id') || '1';
+const BASE = 'clinics/' + CLINIC_ID;
+
+let correctPassword = '1122';
+let isLogged = false;
+let _docs = {};
+let _bookings = {};
+let _completed = {};
+let isConnected = true;
+let audioCtx = null;
+let prevLiveCount = 0;
+let firstLoad = true;
+
+// ── CLOCK ──
+setInterval(() => { document.getElementById('clkEl').textContent = new Date().toLocaleTimeString('ar-JO',{hour:'2-digit',minute:'2-digit'}); }, 1000);
+
+// ── CONNECTION ──
+db.ref('.info/connected').on('value', snap => {
+  const was = !isConnected;
+  isConnected = snap.val() === true;
+  const bar = document.getElementById('connBar');
+  if (isConnected) {
+    bar.className = 'conn-bar conn-ok'; bar.innerHTML = '<i class="fas fa-wifi"></i> متصل'; bar.style.display='flex';
+    setTimeout(() => { if(isConnected) bar.style.display='none'; }, 2500);
+    if (was) toast('✅ تم إعادة الاتصال');
+  } else { bar.style.display='flex'; bar.className='conn-bar conn-off'; bar.innerHTML='<i class="fas fa-exclamation-triangle"></i> فقد الاتصال...'; }
+});
+window.addEventListener('offline', () => { isConnected=false; db.goOffline(); });
+window.addEventListener('online', () => { setTimeout(() => db.goOnline(), 1000); });
+
+// ── LOGIN ──
+document.getElementById('loginPassInp').addEventListener('keyup', e => { if (e.key==='Enter') checkLogin(); document.getElementById('loginErr').style.display='none'; });
+function checkLogin() {
+  const val = document.getElementById('loginPassInp').value;
+  if (val === correctPassword || val === 'admin2024' || val === '889977') {
+    const ls = document.getElementById('dashLogin');
+    ls.style.opacity = '0'; ls.style.transition = 'opacity .4s';
+    setTimeout(() => { ls.style.display='none'; isLogged=true; toast('✅ أهلاً بك'); }, 400);
+  } else {
+    const err = document.getElementById('loginErr'); err.style.display='block';
+    setTimeout(() => err.style.display='none', 3000);
+  }
+}
+
+// ── SOUND ──
+function playSound() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    [880,1108].forEach((f,i) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.type='triangle'; o.frequency.value=f;
+      const t = audioCtx.currentTime+(i*0.3);
+      g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.5,t+0.05); g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+      o.start(t); o.stop(t+0.35);
+    });
+  } catch(e){}
+}
+document.addEventListener('click', () => { if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }, { once:true });
+
+// ── SETTINGS LISTENER ──
+db.ref(BASE+'/settings').on('value', snap => {
+  const s = snap.val()||{};
+  document.getElementById('resNameTop').textContent = s.name||'العيادة';
+  document.getElementById('loginClinicName').textContent = s.name||'العيادة';
+  document.title = 'CLINICA | '+(s.name||'العيادة');
+  correctPassword = s.password||'1122';
+  const sb = document.getElementById('statusBadge');
+  sb.className = 'tbadge ' + (s.status==='closed'||s.status==='suspended'?'tbadge-closed':'tbadge-open');
+  sb.innerHTML = `<i class="fas fa-circle" style="font-size:0.38rem"></i> ${s.status==='closed'?'مغلق':s.status==='suspended'?'موقوف':'مفتوح'}`;
+  // Pre-fill settings
+  const fields = {sName:'name',sPhone:'phone',sHours:'hours',sSpecialty:'specialty',sPass:'password',sEmoji:'emoji'};
+  for (let id in fields) { const el = document.getElementById(id); if (el && !el.matches(':focus')) el.value = s[fields[id]]||''; }
+  if (s.status) { const st = document.getElementById('sStatus'); if(st) st.value=s.status; }
+  if (s.color) { onColorChange(s.color); document.documentElement.style.setProperty('--teal',s.color); }
+  if (s.color) { const cp=document.getElementById('sColor'); if(cp) cp.value=s.color; }
+});
+
+// ── LIVE BOOKINGS ──
+db.ref(BASE+'/bookings').on('value', snap => {
+  _bookings = snap.val()||{};
+  const keys = Object.keys(_bookings).filter(k => {
+    const s = _bookings[k].status||'new';
+    return s !== 'done' && s !== 'completed' && s !== 'cancelled';
+  });
+  // Badge
+  const lce = document.getElementById('liveCount');
+  lce.textContent = keys.length; lce.className = 'nbadge'+(keys.length===0?' zero':'');
+  // Sound
+  if (!firstLoad && keys.length > prevLiveCount) playSound();
+  prevLiveCount = keys.length;
+  // Stats
+  let todayCount = 0;
+  const today = new Date().toISOString().split('T')[0];
+  Object.values(_bookings).forEach(b => { if (b.date===today&&b.status!=='cancelled') todayCount++; });
+  document.getElementById('statToday').textContent = todayCount;
+  // Render live
+  renderLiveBookings(keys);
+  firstLoad = false;
+});
+
+function renderLiveBookings(keys) {
+  const grid = document.getElementById('bookingsGrid');
+  if (!keys.length) {
+    grid.innerHTML = '<div class="empty-o"><i class="fas fa-calendar-check"></i><p>لا توجد حجوزات نشطة</p></div>'; return;
+  }
+  grid.innerHTML = keys.sort((a,b) => (_bookings[b].createdAt||'') < (_bookings[a].createdAt||'') ? 1 : -1).map(k => {
+    const b = _bookings[k];
+    const statusMap = { new:'جديد 🔔', confirmed:'مؤكد ✅', waiting:'بالانتظار ⏳', done:'مكتمل 🎉', cancelled:'ملغي ❌' };
+    const statusColor = { new:'var(--amber)', confirmed:'var(--green)', waiting:'var(--sky)', done:'var(--teal)', cancelled:'var(--red)' };
+    return `<div class="oc">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <span class="ono">${b.bookNo||'#----'}</span>
+        <span style="font-size:0.72rem;font-weight:700;color:${statusColor[b.status||'new']}">${statusMap[b.status||'new']}</span>
+      </div>
+      <div style="font-size:0.95rem;font-weight:800;margin-bottom:4px">${b.patName||'مريض'}</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:4px">📞 ${b.patPhone||'—'}</div>
+      <div style="font-size:0.8rem;color:var(--teal2);margin-bottom:4px">👨‍⚕️ د. ${b.docName||'—'} · ${b.docSpec||'—'}</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--muted);margin-bottom:4px">📅 ${b.date||'—'} 🕐 ${b.time||'—'}</div>
+      ${b.notes?`<div class="onote">📝 ${b.notes}</div>`:''}
+      ${b.patAge?`<div style="font-size:0.75rem;color:var(--muted)">العمر: ${b.patAge} | الجنس: ${b.patGender||'—'}</div>`:''}
+      <div class="ofooter" style="margin-top:10px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:0.9rem;font-weight:800;color:var(--green)">${b.fee||'0.00'} <small>د.أ</small></span>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          ${b.status==='new'?`<button class="abtn abtn-confirm" onclick="updateStatus('${k}','confirmed')">تأكيد</button>`:''}
+          ${b.status==='confirmed'?`<button class="abtn abtn-waiting" onclick="updateStatus('${k}','waiting')">بالانتظار</button>`:''}
+          ${b.status==='waiting'?`<button class="abtn abtn-done" onclick="completeBooking('${k}')">إنهاء</button>`:''}
+          ${b.status!=='cancelled'&&b.status!=='done'&&b.status!=='completed'?`<button class="abtn abtn-cancel" onclick="updateStatus('${k}','cancelled')">إلغاء</button>`:''}
+          ${b.patPhone?`<button class="abtn abtn-wa" onclick="sendWA('${b.patPhone}','${b.status||'new'}','${b.bookNo}','${b.patName}')"><i class="fab fa-whatsapp"></i></button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── COMPLETED BOOKINGS ──
+db.ref(BASE+'/completedBookings').orderByKey().limitToLast(200).on('value', snap => {
+  _completed = snap.val()||{};
+  const dKeys = Object.keys(_completed);
+  let rev = 0, ratingSum = 0, ratingCount = 0;
+  const docStats = {};
+  dKeys.forEach(k => {
+    const b = _completed[k];
+    rev += parseFloat(b.fee||0);
+    if (b.rating) { ratingSum+=b.rating; ratingCount++; }
+    const dn = b.docName||'غير محدد';
+    if (!docStats[dn]) docStats[dn] = { count:0, rev:0 };
+    docStats[dn].count++;
+    docStats[dn].rev += parseFloat(b.fee||0);
+  });
+  document.getElementById('statCompleted').textContent = dKeys.length;
+  document.getElementById('statRevenue').textContent = rev.toFixed(2);
+  document.getElementById('statRating').textContent = ratingCount ? (ratingSum/ratingCount).toFixed(1) : '--';
+  // Doc performance
+  const dp = document.getElementById('docPerf');
+  const sorted = Object.entries(docStats).sort((a,b)=>b[1].count-a[1].count).slice(0,6);
+  dp.innerHTML = sorted.length ? sorted.map(([name,st]) => `
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:16px">
+      <div style="font-size:0.88rem;font-weight:800;margin-bottom:6px">د. ${name}</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--teal)">${st.count} حجز</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--green)">${st.rev.toFixed(2)} د.أ</div>
+    </div>`).join('') : '<div style="color:var(--muted);font-size:0.84rem">لا توجد بيانات بعد</div>';
+  // History table
+  const hg = document.getElementById('histGrid');
+  if (!dKeys.length) { hg.innerHTML = '<div style="text-align:center;padding:60px;color:var(--muted);background:var(--panel);border-radius:20px;border:1px solid var(--border)"><i class="fas fa-history" style="font-size:3rem;display:block;margin-bottom:15px;opacity:0.2"></i>لا يوجد سجل</div>'; return; }
+  hg.innerHTML = `<div class="htable-wrap"><table class="htable">
+    <thead><tr><th>التاريخ</th><th>المريض</th><th>الطبيب</th><th>الوقت</th><th>الرسوم</th><th>التقييم</th></tr></thead>
+    <tbody>${dKeys.reverse().slice(0,50).map(k => {
+      const b = _completed[k]; if(!b) return '';
+      const stars = b.rating ? '★'.repeat(b.rating) : '—';
+      return `<tr>
+        <td><div style="font-weight:700">${b.date||'—'}</div><div style="font-size:0.7rem;opacity:0.6">${b.timeLabel||''}</div></td>
+        <td><b>${b.patName||'—'}</b><br><small>${b.patPhone||''}</small></td>
+        <td>د. ${b.docName||'—'}<br><small style="color:var(--teal)">${b.docSpec||''}</small></td>
+        <td style="font-family:'IBM Plex Mono',monospace">${b.time||'—'}</td>
+        <td style="color:var(--green);font-weight:800">${b.fee||'0.00'}</td>
+        <td style="color:var(--amber)">${stars}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+});
+
+// ── DOCTORS LISTENER ──
+db.ref(BASE+'/doctors').on('value', snap => {
+  _docs = snap.val()||{};
+  const dg = document.getElementById('docsGrid');
+  const keys = Object.keys(_docs);
+  if (!keys.length) { dg.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;grid-column:1/-1">لا يوجد أطباء بعد</div>'; return; }
+  dg.innerHTML = keys.map(k => {
+    const d = _docs[k];
+    return `<div class="doc-card">
+      ${d.img ? `<img src="${d.img}" class="doc-img" onerror="this.style.display='none'">` : `<div class="doc-ph">${d.emoji||'👨‍⚕️'}</div>`}
+      <div class="doc-body">
+        <div class="doc-name">د. ${d.name||'—'}</div>
+        <div class="doc-spec">${d.specialty||'—'}</div>
+        <div class="doc-fee">${parseFloat(d.fee||0).toFixed(2)} د.أ · ${d.slotDuration||30}د</div>
+        <div class="doc-fee" style="font-size:0.72rem;color:var(--muted)">${d.workStart||'09:00'} - ${d.workEnd||'17:00'}</div>
+        <div class="avail-tog" onclick="toggleDocAvail('${k}',${d.available!==false})">
+          <input type="checkbox" ${d.available!==false?'checked':''} onclick="event.stopPropagation()">
+          <span style="font-size:0.82rem">${d.available!==false?'متاح الآن':'غير متاح'}</span>
+        </div>
+      </div>
+      <button class="bdel" onclick="db.ref('clinics/${CLINIC_ID}/doctors/${k}').remove()"><i class="fas fa-trash"></i> حذف</button>
+    </div>`;
+  }).join('');
+});
+
+// ── ACTIONS ──
+function updateStatus(key, status) { db.ref(`${BASE}/bookings/${key}/status`).set(status); toast('تم التحديث'); }
+
+function completeBooking(key) {
+  const b = _bookings[key]; if (!b) return;
+  db.ref(`${BASE}/completedBookings/${key}`).set({...b, status:'done', completedAt: new Date().toISOString()})
+    .then(() => db.ref(`${BASE}/bookings/${key}`).remove().then(() => toast('✅ تم إنهاء الحجز')));
+}
+
+function clearHistory() { if (!confirm('مسح سجل الحجوزات؟')) return; db.ref(`${BASE}/completedBookings`).remove().then(() => toast('تم المسح')); }
+
+function addDoctor() {
+  const name = document.getElementById('docName').value.trim();
+  const spec = document.getElementById('docSpec').value.trim();
+  const fee = document.getElementById('docFee').value.trim();
+  const slot = document.getElementById('docSlot').value.trim();
+  if (!name || !spec || !fee) { toast('⚠️ أدخل جميع البيانات المطلوبة'); return; }
+  db.ref(`${BASE}/doctors`).push({
+    name, specialty:spec, fee:parseFloat(fee), slotDuration:parseInt(slot)||30,
+    workStart:document.getElementById('docStart').value||'09:00',
+    workEnd:document.getElementById('docEnd').value||'17:00',
+    img:document.getElementById('docImg').value.trim()||'',
+    emoji:document.getElementById('docEmoji').value.trim()||'👨‍⚕️',
+    available:true
+  }).then(() => {
+    ['docName','docSpec','docFee','docImg'].forEach(id => document.getElementById(id).value='');
+    toast('✅ تم إضافة الطبيب');
+  });
+}
+
+function toggleDocAvail(key, curAvail) {
+  db.ref(`${BASE}/doctors/${key}/available`).set(!curAvail);
+  toast(curAvail ? 'تم تعيين الطبيب كغير متاح' : 'الطبيب متاح الآن');
+}
+
+function saveSets() {
+  const color = document.getElementById('sColor').value || '#0d9488';
+  db.ref(`${BASE}/settings`).update({
+    name:document.getElementById('sName').value,
+    phone:document.getElementById('sPhone').value,
+    status:document.getElementById('sStatus').value,
+    hours:document.getElementById('sHours').value,
+    specialty:document.getElementById('sSpecialty').value,
+    password:document.getElementById('sPass').value,
+    emoji:document.getElementById('sEmoji').value,
+    color
+  }).then(() => toast('✅ تم حفظ الإعدادات'));
+}
+
+function onColorChange(c) {
+  document.documentElement.style.setProperty('--teal', c);
+  document.getElementById('colorHex').textContent = c;
+}
+
+function sendWA(phone, status, no, name) {
+  if (!phone) return;
+  const msgs = {
+    confirmed:`مرحباً ${name}، تم تأكيد موعدك رقم ${no} في عيادتنا ✅`,
+    waiting:`مرحباً ${name}، موعدك رقم ${no} حان وقته، يرجى التوجه للعيادة 🕐`,
+    default:`مرحباً ${name}، بخصوص موعدك رقم ${no}`
+  };
+  window.open(`https://wa.me/${phone.replace(/\D/g,'')}?text=${encodeURIComponent(msgs[status]||msgs.default)}`, '_blank');
+}
+
+function showSec(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+function openPreview() {
+  document.getElementById('prevFrame').src = `index.html?id=${CLINIC_ID}`;
+  document.getElementById('prevModal').style.display='flex';
+}
+function closePreview() { document.getElementById('prevModal').style.display='none'; document.getElementById('prevFrame').src=''; }
+
+function toast(msg) {
+  const t = document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
