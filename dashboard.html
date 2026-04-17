@@ -429,9 +429,9 @@ db.ref(BASE+'/settings').on('value', snap => {
   document.getElementById('loginClinicName').textContent = s.name||'العيادة';
   document.title = 'ARGON | '+(s.name||'العيادة');
   correctPassword = s.password||'1122';
-  // LOCKOUT when suspended
+  // LOCKOUT when closed or suspended
   const lockout = document.getElementById('lockoutScreen');
-  if (s.status === 'suspended') {
+  if (s.status === 'suspended' || s.status === 'closed') {
     lockout.style.display = 'flex';
     return;
   } else {
