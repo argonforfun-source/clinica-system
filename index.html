@@ -352,7 +352,7 @@
         <span class="chip chip-info" id="specChip" style="display:none"><i class="fas fa-stethoscope"></i> <span id="specText"></span></span>
       </div>
     </div>
-    <div class="srchwrap" style="margin-top:16px">
+    <div class="srchwrap" id="srchWrap" style="margin-top:16px">
       <div style="position:relative">
         <i class="fas fa-magnifying-glass srchico"></i>
         <input type="text" class="srchbox" id="searchBox" placeholder="ابحث عن طبيب أو تخصص..." oninput="filterDoctors()">
@@ -360,16 +360,28 @@
     </div>
   </div>
 
-  <!-- SPECIALTY FILTER -->
-  <div class="spec-scroll" id="specFilter" style="margin-top:14px">
-    <div class="spec-chip active" onclick="filterBySpec('all',this)">الكل</div>
+  <!-- BOOKING STOPPED MSG -->
+  <div id="bookingStoppedMsg" style="display:none;margin-top:30px;background:var(--card);border:1px dashed var(--border);border-radius:24px;padding:40px 20px;text-align:center">
+    <div style="font-size:3rem;color:var(--orange);margin-bottom:15px">📴</div>
+    <div style="font-size:1.3rem;font-weight:800;color:var(--text);margin-bottom:8px">الحجز مغلق حالياً</div>
+    <div style="font-size:0.95rem;color:var(--muted);max-width:280px;margin:0 auto;line-height:1.6">العيادة لا تستقبل حجوزات في الوقت الحالي، يرجى المحاولة في وقت لاحق.</div>
   </div>
 
-  <!-- DOCTORS -->
-  <div class="section">
-    <div class="sec-lbl">الأطباء المتاحون</div>
-    <div class="dgrid" id="doctorsGrid">
-      <div class="empty-s" style="grid-column:1/-1"><i class="fas fa-spinner fa-spin"></i><p>جاري التحميل...</p></div>
+  <!-- DOCTORS BOOKING AREA -->
+  <div id="bookingArea">
+    <!-- SPECIALTY FILTER -->
+    <div class="spec-scroll" id="specFilter" style="margin-top:14px">
+      <div class="spec-chip active" onclick="filterBySpec('all',this)">الكل</div>
+    </div>
+
+    <!-- DOCTORS -->
+    <div class="section">
+      <div class="sec-lbl">الأطباء المتاحون</div>
+      <div class="dgrid" id="doctorsGrid">
+        <div class="empty-s" style="grid-column:1/-1"><i class="fas fa-spinner fa-spin"></i><p>جاري التحميل...</p></div>
+      </div>
+    </div>
+  </div>
     </div>
   </div>
 
@@ -569,6 +581,9 @@ db.ref(BASE + '/settings').on('value', snap => {
   document.getElementById('clinicName').textContent = s.name || 'عيادة';
   document.title = (s.name || 'كلينيكا') + ' | حجز موعد';
   const sc = document.getElementById('statusChip');
+  
+  const isStopped = s.status === 'closed' || s.acceptBookings === false;
+  
   if (s.status === 'closed') {
     sc.className = 'chip chip-closed';
     sc.innerHTML = '<i class="fas fa-circle" style="font-size:0.38rem"></i> مغلق مؤقتاً';
@@ -576,6 +591,17 @@ db.ref(BASE + '/settings').on('value', snap => {
     sc.className = 'chip chip-open';
     sc.innerHTML = '<i class="fas fa-circle" style="font-size:0.38rem"></i> مفتوح الآن';
   }
+  
+  if (isStopped) {
+    document.getElementById('bookingArea').style.display = 'none';
+    document.getElementById('srchWrap').style.display = 'none';
+    document.getElementById('bookingStoppedMsg').style.display = 'block';
+  } else {
+    document.getElementById('bookingArea').style.display = 'block';
+    document.getElementById('srchWrap').style.display = 'block';
+    document.getElementById('bookingStoppedMsg').style.display = 'none';
+  }
+
   if (s.hours) { document.getElementById('hoursChip').style.display='inline-flex'; document.getElementById('hoursText').textContent=s.hours; }
   if (s.specialty) { document.getElementById('specChip').style.display='inline-flex'; document.getElementById('specText').textContent=s.specialty; }
   if (s.color) {
