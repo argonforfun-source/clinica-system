@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <link rel="icon" href="data:,">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CLINICA | لوحة التحكم</title>
+  <title>ARGON | لوحة التحكم</title>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
@@ -172,11 +172,19 @@
   </div>
 </div>
 
+<!-- LOCKOUT SCREEN -->
+<div id="lockoutScreen" style="position:fixed;inset:0;background:#030b0a;z-index:100000;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;color:#fff">
+  <div style="font-size:80px;color:#ef4444;margin-bottom:24px"><i class="fas fa-ban"></i></div>
+  <div style="font-size:24px;font-weight:800;margin-bottom:12px">تم إيقاف هذه العيادة</div>
+  <div style="font-size:15px;opacity:0.6;margin-bottom:30px;max-width:340px">تم تعليق هذه العيادة من قبل إدارة النظام. تواصل مع الدعم الفني لإعادة التفعيل.</div>
+  <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:rgba(255,255,255,0.25);letter-spacing:2px">POWERED BY ARGON</div>
+</div>
+
 <div id="connBar" class="conn-bar"></div>
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:12px">
-    <span class="tb-logo">CLINICA</span>
+    <span class="tb-logo">ARGON</span>
     <span style="width:1px;height:22px;background:var(--border)"></span>
     <span id="resNameTop" style="font-size:0.93rem;font-weight:700">جاري التحميل...</span>
   </div>
@@ -201,7 +209,7 @@
       <div class="ni" onclick="showSec('settingsSec',this)"><i class="fas fa-gear"></i> الإعدادات</div>
     </div>
     <div style="margin-top:auto;padding:12px 9px;border-top:1px solid var(--border)">
-      <div style="text-align:center;font-family:'IBM Plex Mono',monospace;font-size:0.55rem;color:rgba(100,116,139,0.4);letter-spacing:1.5px">POWERED BY CLINICA</div>
+      <div style="text-align:center;font-family:'IBM Plex Mono',monospace;font-size:0.55rem;color:rgba(100,116,139,0.4);letter-spacing:1.5px">POWERED BY ARGON</div>
     </div>
   </div>
 
@@ -415,8 +423,16 @@ db.ref(BASE+'/settings').on('value', snap => {
   const s = snap.val()||{};
   document.getElementById('resNameTop').textContent = s.name||'العيادة';
   document.getElementById('loginClinicName').textContent = s.name||'العيادة';
-  document.title = 'CLINICA | '+(s.name||'العيادة');
+  document.title = 'ARGON | '+(s.name||'العيادة');
   correctPassword = s.password||'1122';
+  // LOCKOUT when suspended
+  const lockout = document.getElementById('lockoutScreen');
+  if (s.status === 'suspended') {
+    lockout.style.display = 'flex';
+    return;
+  } else {
+    lockout.style.display = 'none';
+  }
   const sb = document.getElementById('statusBadge');
   sb.className = 'tbadge ' + (s.status==='closed'||s.status==='suspended'?'tbadge-closed':'tbadge-open');
   sb.innerHTML = `<i class="fas fa-circle" style="font-size:0.38rem"></i> ${s.status==='closed'?'مغلق':s.status==='suspended'?'موقوف':'مفتوح'}`;
