@@ -294,12 +294,17 @@
     .star:hover, .star.active { color:var(--amber); transform:scale(1.15); }
     /* NOTIF BUTTON */
     .notif-btn {
-      background:rgba(13,148,136,0.08); border:1px solid rgba(13,148,136,0.15);
-      color:var(--teal); padding:6px 14px; border-radius:50px;
-      font-size:0.75rem; font-weight:700; cursor:pointer;
-      display:flex; align-items:center; justify-content:center; gap:6px;
-      transition:all 0.2s; margin:10px auto 0; width:fit-content;
+      background:linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+      border:1.5px solid rgba(255,255,255,0.25);
+      color:#fff; padding:10px 22px; border-radius:50px;
+      font-size:0.88rem; font-weight:700; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      transition:all 0.3s; margin:12px auto 0; width:auto;
+      backdrop-filter:blur(10px); box-shadow:0 4px 15px rgba(0,0,0,0.15);
+      font-family:'Tajawal',sans-serif; letter-spacing:0.3px;
     }
+    .notif-btn:hover { background:linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.12)); transform:translateY(-1px); }
+    .notif-btn i { font-size:0.95rem; }
     /* SPECIALTY FILTER */
     .spec-scroll { display:flex; gap:8px; overflow-x:auto; padding:0 13px 14px; scrollbar-width:none; }
     .spec-scroll::-webkit-scrollbar { display:none; }
