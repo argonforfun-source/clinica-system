@@ -190,6 +190,7 @@
     <div style="display:flex;align-items:center;gap:10px">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);background:var(--card);border:1px solid var(--border);padding:7px 13px;border-radius:9px" id="clock">00:00:00</div>
       <div class="hdr-badge">⚡ Super Admin</div>
+      <button onclick="openAdminSettings()" style="background:rgba(6,182,212,.06);border:1px solid rgba(6,182,212,.2);color:var(--g1);padding:7px 16px;border-radius:10px;cursor:pointer;font-size:12px;font-family:'Cairo',sans-serif;font-weight:700;display:flex;align-items:center;gap:6px"><i class="fas fa-cog"></i>إعدادات</button>
       <button onclick="logout()" style="background:rgba(232,64,80,.06);border:1px solid rgba(232,64,80,.2);color:var(--red);padding:7px 16px;border-radius:10px;cursor:pointer;font-size:12px;font-family:'Cairo',sans-serif;font-weight:700;display:flex;align-items:center;gap:6px"><i class="fas fa-sign-out-alt"></i>خروج</button>
     </div>
   </header>
@@ -301,6 +302,29 @@
 
 <div class="toast-wrap" id="tw"></div>
 
+<!-- MODAL: ADMIN SETTINGS -->
+<div class="modal-bg" id="adminModal">
+  <div class="modal" style="width:440px">
+    <div class="modal-title"><i class="fas fa-user-shield"></i> إعدادات المدير العام <button class="modal-close" onclick="cm('adminModal')">✕</button></div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;color:var(--muted);font-weight:700;display:block;margin-bottom:5px"><i class="fas fa-user"></i> اسم المستخدم</label>
+      <input class="fi" type="text" id="adminUser" placeholder="admin" autocomplete="off">
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;color:var(--muted);font-weight:700;display:block;margin-bottom:5px"><i class="fas fa-lock"></i> كلمة المرور الحالية</label>
+      <input class="fi" type="password" id="adminOldPass" placeholder="أدخل كلمة المرور الحالية للتأكيد">
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;color:var(--muted);font-weight:700;display:block;margin-bottom:5px"><i class="fas fa-key"></i> كلمة المرور الجديدة</label>
+      <input class="fi" type="password" id="adminNewPass" placeholder="اتركه فارغاً إذا لا تريد التغيير">
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cyan btn-sm" onclick="saveAdminSettings()"><i class="fas fa-save"></i> حفظ التغييرات</button>
+      <button class="btn btn-outline btn-sm" onclick="cm('adminModal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script>
@@ -317,8 +341,20 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-const ADMIN = { u: 'admin', p: 'clinica2024' };
+let ADMIN = { u: 'admin', p: 'clinica2024' };
 let data = [], curF = 'all', _dataMap = {}, _renderTimer = null;
+
+// ── LOAD ADMIN CREDENTIALS FROM FIREBASE ──
+db.ref('superAdmin').once('value').then(snap => {
+  const val = snap.val();
+  if (val && val.username && val.password) {
+    ADMIN.u = val.username;
+    ADMIN.p = val.password;
+  } else {
+    // First time: save defaults to Firebase
+    db.ref('superAdmin').set({ username: ADMIN.u, password: ADMIN.p });
+  }
+});
 
 // ── CLOCK ──
 setInterval(() => {
@@ -351,6 +387,30 @@ function logout() {
   document.getElementById('mainApp').style.display='none';
   document.getElementById('loginPage').style.cssText='display:flex;opacity:1';
   document.getElementById('lu').value=''; document.getElementById('lp').value='';
+}
+
+// ── ADMIN SETTINGS ──
+function openAdminSettings() {
+  document.getElementById('adminUser').value = ADMIN.u;
+  document.getElementById('adminOldPass').value = '';
+  document.getElementById('adminNewPass').value = '';
+  document.getElementById('adminModal').classList.add('open');
+}
+function saveAdminSettings() {
+  const newUser = document.getElementById('adminUser').value.trim();
+  const oldPass = document.getElementById('adminOldPass').value;
+  const newPass = document.getElementById('adminNewPass').value;
+  if (!newUser) { toast('⚠️ أدخل اسم المستخدم','err'); return; }
+  if (oldPass !== ADMIN.p) { toast('❌ كلمة المرور الحالية غير صحيحة','err'); return; }
+  const updates = { username: newUser };
+  if (newPass) updates.password = newPass;
+  else updates.password = ADMIN.p;
+  db.ref('superAdmin').update(updates).then(() => {
+    ADMIN.u = newUser;
+    if (newPass) ADMIN.p = newPass;
+    toast('✅ تم تحديث بيانات الدخول بنجاح','ok');
+    cm('adminModal');
+  }).catch(err => toast('❌ خطأ: ' + err.message, 'err'));
 }
 
 // ── ADD PANEL ──
