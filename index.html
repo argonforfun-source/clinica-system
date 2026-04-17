@@ -709,7 +709,8 @@ async function buildTimeSlots(dateStr) {
 
   container.innerHTML = slots.map(t => {
     const isBooked = bookedTimes.has(t);
-    return `<div class="time-chip ${isBooked?'booked':''}" id="tc-${t}" onclick="${isBooked?'':``pickTime('${t}',this)``}">${t}${isBooked?'<br><span style="font-size:0.6rem">محجوز</span>':''}</div>`;
+    const clickHandler = isBooked ? '' : "pickTime('" + t + "',this)";
+    return `<div class="time-chip ${isBooked?'booked':''}" id="tc-${t}" onclick="${clickHandler}">${t}${isBooked?'<br><span style="font-size:0.6rem">محجوز</span>':''}</div>`;
   }).join('');
 }
 
