@@ -422,7 +422,20 @@ let prevLiveCount = 0;
 let firstLoad = true;
 
 // ── CLOCK ──
-setInterval(() => { document.getElementById('clkEl').textContent = new Date().toLocaleTimeString('ar-JO',{hour:'2-digit',minute:'2-digit'}); }, 1000);
+setInterval(() => { 
+  const el = document.getElementById('clock');
+  if (el) el.textContent = new Date().toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit', hour12: true }); 
+}, 1000);
+
+// ── LOGOUT ──
+function logout() {
+  isLogged = false;
+  document.getElementById('loginPassInp').value = '';
+  document.getElementById('dashLogin').style.display = 'flex';
+  setTimeout(() => document.getElementById('dashLogin').style.opacity = '1', 50);
+  document.getElementById('mainContent').style.display = 'none'; // optional hard reset
+  window.location.reload(); // The safest way to clear states for security.
+}
 
 // ── CONNECTION ──
 db.ref('.info/connected').on('value', snap => {

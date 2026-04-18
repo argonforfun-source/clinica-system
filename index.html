@@ -511,6 +511,24 @@
   </div>
 </div>
 
+<!-- EDIT BOOKING MODAL -->
+<div class="moverlay" id="editBookingModal">
+  <div class="msheet">
+    <div class="shandle"></div>
+    <div class="stitle">✏️ تعديل بيانات الحجز</div>
+    <div class="form-grid" style="margin-top:10px">
+      <input type="hidden" id="editKey">
+      <input type="text" id="editName" class="minp minp-full" placeholder="الاسم الكريم">
+      <input type="tel" id="editPhone" class="minp minp-full" placeholder="رقم الهاتف">
+      <textarea id="editNotes" class="minp minp-full" rows="2" placeholder="الملاحظات" style="resize:none"></textarea>
+    </div>
+    <button class="bnext" id="editSaveBtn" onclick="saveEditBooking()" style="margin-top:15px">
+      <i class="fas fa-save" style="margin-left:7px"></i> حفظ التعديلات
+    </button>
+    <button class="bclose" onclick="document.getElementById('editBookingModal').classList.remove('show')">تراجع</button>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script>
@@ -920,20 +938,74 @@ async function openMyBookings() {
   const statusClasses = { new:'bs-pending', confirmed:'bs-confirmed', waiting:'bs-pending', done:'bs-done', completed:'bs-done', cancelled:'bs-cancelled' };
   for (const b of list) {
     let status = 'new';
+    let bData = null;
     try {
       const snap = await db.ref(`${BASE}/bookings/${b.key}`).once('value');
-      if (snap.exists()) status = snap.val().status || 'new';
-      else status = 'done';
+      if (snap.exists()) {
+        bData = snap.val();
+        status = bData.status || 'new';
+      } else {
+        status = 'done';
+      }
     } catch(e) {}
+    
+    let editBtnHtml = '';
+    if (status === 'new' && bData) {
+      const safeNotes = (bData.notes||'').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      const safeName = (bData.patName||'').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      const safePhone = (bData.patPhone||'').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      
+      editBtnHtml = `<button onclick="openEditBooking('${b.key}', '${safeName}', '${safePhone}', '${safeNotes}')" style="width:100%;margin-top:10px;padding:8px;background:rgba(13,148,136,0.1);border:1px dashed var(--teal);color:var(--teal);border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.8rem;cursor:pointer">
+        <i class="fas fa-edit"></i> تعديل بيانات الحجز
+      </button>`;
+    }
+
     html += `<div class="booking-item">
       <div class="bi-header">
         <div><div style="font-weight:800">د. ${b.docName}</div><div style="font-size:0.75rem;color:var(--muted)">${b.date} — ${b.time}</div></div>
         <span class="bi-status ${statusClasses[status]||'bs-pending'}">${statusLabels[status]||status}</span>
       </div>
       <div style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--teal)">${b.no}</div>
+      ${editBtnHtml}
     </div>`;
   }
   listEl.innerHTML = html;
+}
+
+// ── EDIT BOOKING ──
+function openEditBooking(key, name, phone, notes) {
+  document.getElementById('editKey').value = key;
+  document.getElementById('editName').value = name;
+  document.getElementById('editPhone').value = phone;
+  document.getElementById('editNotes').value = notes;
+  document.getElementById('editBookingModal').classList.add('show');
+}
+
+function saveEditBooking() {
+  const key = document.getElementById('editKey').value;
+  const name = sanitizeHTML(document.getElementById('editName').value.trim());
+  const phone = sanitizeHTML(document.getElementById('editPhone').value.trim());
+  const notes = sanitizeHTML(document.getElementById('editNotes').value.trim());
+  
+  if (!name || !phone) { toast('⚠️ يرجى إدخال الاسم ورقم الهاتف'); return; }
+  
+  const btn = document.getElementById('editSaveBtn');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+  btn.disabled = true;
+  
+  db.ref(`${BASE}/bookings/${key}`).update({
+    patName: name, patPhone: phone, notes: notes
+  }).then(() => {
+    toast('✅ تم تعديل الحجز بنجاح!');
+    document.getElementById('editBookingModal').classList.remove('show');
+    btn.innerHTML = '<i class="fas fa-save" style="margin-left:7px"></i> حفظ التعديلات';
+    btn.disabled = false;
+    openMyBookings(); // refresh list
+  }).catch(err => {
+    toast('❌ أيرور: ' + err.message);
+    btn.innerHTML = '<i class="fas fa-save" style="margin-left:7px"></i> حفظ التعديلات';
+    btn.disabled = false;
+  });
 }
 
 // ── MODAL ──
