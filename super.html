@@ -389,6 +389,14 @@ function logout() {
   document.getElementById('lu').value=''; document.getElementById('lp').value='';
 }
 
+// ── SECURITY (SANITIZATION) ──
+function sanitizeHTML(str) {
+  if (typeof str !== 'string') return str;
+  const temp = document.createElement('div');
+  temp.textContent = str;
+  return temp.innerHTML;
+}
+
 // ── ADMIN SETTINGS ──
 function openAdminSettings() {
   document.getElementById('adminUser').value = ADMIN.u;
@@ -397,9 +405,9 @@ function openAdminSettings() {
   document.getElementById('adminModal').classList.add('open');
 }
 function saveAdminSettings() {
-  const newUser = document.getElementById('adminUser').value.trim();
-  const oldPass = document.getElementById('adminOldPass').value;
-  const newPass = document.getElementById('adminNewPass').value;
+  const newUser = sanitizeHTML(document.getElementById('adminUser').value.trim());
+  const oldPass = sanitizeHTML(document.getElementById('adminOldPass').value);
+  const newPass = sanitizeHTML(document.getElementById('adminNewPass').value);
   if (!newUser) { toast('⚠️ أدخل اسم المستخدم','err'); return; }
   if (oldPass !== ADMIN.p) { toast('❌ كلمة المرور الحالية غير صحيحة','err'); return; }
   const updates = { username: newUser };
@@ -554,9 +562,10 @@ function renderCards(d) {
 
 // ── ADD CLINIC ──
 async function addClinic() {
-  const id = document.getElementById('nId').value.trim().toLowerCase().replace(/\s+/g,'-');
-  const name = document.getElementById('nName').value.trim();
-  const pass = document.getElementById('nPass').value;
+  const inputId = document.getElementById('nId').value.trim().toLowerCase().replace(/\s+/g,'-');
+  const id = sanitizeHTML(inputId);
+  const name = sanitizeHTML(document.getElementById('nName').value.trim());
+  const pass = sanitizeHTML(document.getElementById('nPass').value);
   if (!id||!name||!pass) { toast('يرجى إدخال جميع البيانات المطلوبة','err'); return; }
   const btn = document.getElementById('addBtn');
   const orig = btn.innerHTML; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> جاري...'; btn.disabled=true;
@@ -566,9 +575,9 @@ async function addClinic() {
     await db.ref(`clinics/${id}`).set({
       settings: {
         name, password:pass,
-        phone:document.getElementById('nPhone').value.trim(),
-        specialty:document.getElementById('nSpec').value.trim(),
-        color:document.getElementById('nColor').value,
+        phone:sanitizeHTML(document.getElementById('nPhone').value.trim()),
+        specialty:sanitizeHTML(document.getElementById('nSpec').value.trim()),
+        color:sanitizeHTML(document.getElementById('nColor').value),
         status:'open', acceptBookings:true, emoji:'🏥',
         createdAt: new Date().toISOString()
       },

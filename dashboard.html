@@ -15,6 +15,12 @@
       --border:rgba(13,148,136,0.12); --text:#e2e8f0; --muted:#64748b;
       --shadow:rgba(0,0,0,0.3);
     }
+    html[data-theme="light"] {
+      --void:#f8fafc; --panel:#ffffff; --surface:#f1f5f9;
+      --teal:#0f766e; --teal2:#0d9488; --sky:#0284c7;
+      --border:rgba(15,118,110,0.15); --text:#0f172a; --muted:#64748b;
+      --shadow:rgba(0,0,0,0.05);
+    }
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family:'Tajawal',sans-serif; background:var(--void); color:var(--text); height:100vh; overflow:hidden; }
     body::before {
@@ -159,6 +165,11 @@
   </style>
 </head>
 <body>
+<script>
+  if(localStorage.getItem('dashboard_theme') === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+</script>
 
 <!-- LOGIN -->
 <div id="dashLogin">
@@ -194,8 +205,9 @@
   </div>
   <div style="display:flex;align-items:center;gap:9px">
     <span id="statusBadge" class="tbadge tbadge-open"><i class="fas fa-circle" style="font-size:0.38rem"></i> مفتوح</span>
-    <span class="clkbadge" id="clkEl">--:--</span>
-    <button class="tbtn" onclick="openPreview()"><i class="fas fa-eye" style="margin-left:6px"></i>معاينة</button>
+    <span class="clkbadge" id="clock">00:00</span>
+    <button class="tbtn" id="themeBtn" onclick="toggleDashboardTheme()" style="min-width:110px;text-align:center">☀️ نهاري</button>
+    <button class="tbtn" onclick="logout()"><i class="fas fa-sign-out-alt" style="color:var(--red)"></i></button>
   </div>
 </div>
 
@@ -326,7 +338,21 @@
         </div>
         <div class="setg"><label class="setl">كلمة مرور الدخول</label><input type="text" id="sPass" class="seti" placeholder="••••••"></div>
         <div class="setg"><label class="setl">إيموجي العيادة</label><input type="text" id="sEmoji" class="seti" placeholder="🏥"></div>
-        <button class="bsave" onclick="saveSets()"><i class="fas fa-floppy-disk" style="margin-left:8px"></i>حفظ التغييرات</button>
+
+        <div style="margin:20px 0 10px;font-weight:800;color:var(--teal);border-bottom:1px dashed var(--border);padding-bottom:5px">📅 إعدادات المواعيد المتقدمة</div>
+        <div class="setg">
+          <label class="setl" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="sSameDay" style="width:16px;height:16px;accent-color:var(--teal)">
+            السماح للمرضى بالحجز في نفس اليوم؟
+          </label>
+        </div>
+        <div class="setg">
+          <label class="setl">عدد الأيام المتاحة للحجز مستقبلاً</label>
+          <input type="number" id="sBookingDays" class="seti" placeholder="مثلاً: 7" value="7">
+          <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">كم يوم للأمام تريد أن يظهر المواعيد للمريض؟ (مثلاً أسبوع = 7، شهر = 30)</div>
+        </div>
+
+        <button class="bsave" style="margin-top:10px" onclick="saveSets()"><i class="fas fa-floppy-disk" style="margin-left:8px"></i>حفظ التغييرات</button>
       </div>
     </div>
 
@@ -364,6 +390,26 @@ const db = firebase.database();
 const urlParams = new URLSearchParams(window.location.search);
 const CLINIC_ID = urlParams.get('id') || '1';
 const BASE = 'clinics/' + CLINIC_ID;
+
+// ── THEME ──
+function toggleDashboardTheme() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  if (isLight) {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('dashboard_theme', 'dark');
+    document.getElementById('themeBtn').innerHTML = '☀️ نهاري';
+  } else {
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('dashboard_theme', 'light');
+    document.getElementById('themeBtn').innerHTML = '🌙 ليلي';
+  }
+}
+function initThemeBtn() {
+  if(localStorage.getItem('dashboard_theme') === 'light') {
+    document.getElementById('themeBtn').innerHTML = '🌙 ليلي';
+  }
+}
+initThemeBtn();
 
 let correctPassword = '1122';
 let isLogged = false;
@@ -441,8 +487,16 @@ db.ref(BASE+'/settings').on('value', snap => {
   sb.className = 'tbadge ' + (s.status==='closed'||s.status==='suspended'?'tbadge-closed':'tbadge-open');
   sb.innerHTML = `<i class="fas fa-circle" style="font-size:0.38rem"></i> ${s.status==='closed'?'مغلق':s.status==='suspended'?'موقوف':'مفتوح'}`;
   // Pre-fill settings
-  const fields = {sName:'name',sPhone:'phone',sHours:'hours',sSpecialty:'specialty',sPass:'password',sEmoji:'emoji'};
+  const fields = {sName:'name',sPhone:'phone',sHours:'hours',sSpecialty:'specialty',sPass:'password',sEmoji:'emoji',sBookingDays:'bookingDays'};
   for (let id in fields) { const el = document.getElementById(id); if (el && !el.matches(':focus')) el.value = s[fields[id]]||''; }
+  
+  if (!document.getElementById('sBookingDays').matches(':focus') && !s.bookingDays) {
+    document.getElementById('sBookingDays').value = 10; // default 10 days
+  }
+  
+  const chk = document.getElementById('sSameDay');
+  if (chk && !chk.matches(':focus')) chk.checked = s.sameDayBooking !== false; // default true
+
   if (s.status) { const st = document.getElementById('sStatus'); if(st) st.value=s.status; }
   if (s.color) { onColorChange(s.color); document.documentElement.style.setProperty('--teal',s.color); }
   if (s.color) { const cp=document.getElementById('sColor'); if(cp) cp.value=s.color; }
@@ -615,11 +669,19 @@ function previewDocImg(input) {
   reader.readAsDataURL(file);
 }
 
+// ── SECURITY (SANITIZATION) ──
+function sanitizeHTML(str) {
+  if (typeof str !== 'string') return str;
+  const temp = document.createElement('div');
+  temp.textContent = str;
+  return temp.innerHTML;
+}
+
 function addDoctor() {
-  const name = document.getElementById('docName').value.trim();
-  const spec = document.getElementById('docSpec').value.trim();
-  const fee = document.getElementById('docFee').value.trim();
-  const slot = document.getElementById('docSlot').value.trim();
+  const name = sanitizeHTML(document.getElementById('docName').value.trim());
+  const spec = sanitizeHTML(document.getElementById('docSpec').value.trim());
+  const fee = sanitizeHTML(document.getElementById('docFee').value.trim());
+  const slot = sanitizeHTML(document.getElementById('docSlot').value.trim());
   if (!name || !spec || !fee) { toast('⚠️ أدخل جميع البيانات المطلوبة'); return; }
   db.ref(`${BASE}/doctors`).push({
     name, specialty:spec, fee:parseFloat(fee), slotDuration:parseInt(slot)||30,
@@ -644,15 +706,17 @@ function toggleDocAvail(key, curAvail) {
 }
 
 function saveSets() {
-  const color = document.getElementById('sColor').value || '#0d9488';
+  const color = sanitizeHTML(document.getElementById('sColor').value) || '#0d9488';
   db.ref(`${BASE}/settings`).update({
-    name:document.getElementById('sName').value,
-    phone:document.getElementById('sPhone').value,
-    status:document.getElementById('sStatus').value,
-    hours:document.getElementById('sHours').value,
-    specialty:document.getElementById('sSpecialty').value,
-    password:document.getElementById('sPass').value,
-    emoji:document.getElementById('sEmoji').value,
+    name: sanitizeHTML(document.getElementById('sName').value),
+    phone: sanitizeHTML(document.getElementById('sPhone').value),
+    status: sanitizeHTML(document.getElementById('sStatus').value),
+    hours: sanitizeHTML(document.getElementById('sHours').value),
+    specialty: sanitizeHTML(document.getElementById('sSpecialty').value),
+    password: sanitizeHTML(document.getElementById('sPass').value),
+    emoji: sanitizeHTML(document.getElementById('sEmoji').value),
+    sameDayBooking: document.getElementById('sSameDay').checked,
+    bookingDays: parseInt(document.getElementById('sBookingDays').value) || 10,
     color
   }).then(() => toast('✅ تم حفظ الإعدادات'));
 }

@@ -570,11 +570,14 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ── LOAD CLINIC SETTINGS ──
+let clinicSettings = {};
 db.ref(BASE + '/settings').on('value', snap => {
   const s = snap.val();
+  if (!s) { return; }
+  clinicSettings = s;
+  
   const nf = document.getElementById('mainContent');
   const lo = document.getElementById('lockoutScreen');
-  if (!s) { return; }
   if (s.status === 'suspended') { lo.classList.add('show'); return; }
   else lo.classList.remove('show');
 
@@ -686,13 +689,21 @@ function buildDateSlots() {
   const today = new Date();
   const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
   let html = '';
-  for (let i=0; i<10; i++) {
-    const d = new Date(today); d.setDate(today.getDate()+i);
+  
+  const allowSameDay = clinicSettings.sameDayBooking !== false;
+  const daysToShow = clinicSettings.bookingDays || 10;
+  let startOffset = allowSameDay ? 0 : 1;
+
+  for (let i = 0; i < daysToShow; i++) {
+    const d = new Date(today); 
+    d.setDate(today.getDate() + startOffset + i);
     const dateStr = d.toISOString().split('T')[0];
     const dayName = days[d.getDay()];
     const dn = d.getDate();
+    const isToday = (startOffset + i) === 0;
+    
     html += `<div class="date-chip" id="dc-${dateStr}" onclick="pickDate('${dateStr}',this)">
-      <div class="dday">${i===0?'اليوم':dayName}</div>
+      <div class="dday">${isToday ? 'اليوم' : dayName}</div>
       <div class="dnum">${dn}</div>
     </div>`;
   }
@@ -786,13 +797,28 @@ function goStep2() {
   showStep(2);
 }
 
+// ── SECURITY (SANITIZATION) ──
+function sanitizeHTML(str) {
+  if (typeof str !== 'string') return str;
+  const temp = document.createElement('div');
+  temp.textContent = str;
+  return temp.innerHTML;
+}
+
 // ── SEND BOOKING ──
 let isSending = false;
 function sendBooking() {
   if (isSending) return;
-  const name = document.getElementById('patName').value.trim();
-  const phone = document.getElementById('patPhone').value.trim();
-  if (!name || !phone) return;
+  const rawName = document.getElementById('patName').value.trim();
+  const rawPhone = document.getElementById('patPhone').value.trim();
+  if (!rawName || !rawPhone) return;
+  
+  const name = sanitizeHTML(rawName);
+  const phone = sanitizeHTML(rawPhone);
+  const rawNotes = document.getElementById('patNotes').value.trim();
+  const notes = sanitizeHTML(rawNotes);
+  const age = sanitizeHTML(document.getElementById('patAge').value || '');
+  const gender = sanitizeHTML(document.getElementById('patGender').value || '');
   isSending = true;
   const btn = document.querySelector('.bsend');
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
@@ -803,9 +829,9 @@ function sendBooking() {
     bookNo, docKey: selectedDoctor.key,
     docName: selectedDoctor.name, docSpec: selectedDoctor.specialty,
     patName: name, patPhone: phone,
-    patAge: document.getElementById('patAge').value || '',
-    patGender: document.getElementById('patGender').value || '',
-    notes: document.getElementById('patNotes').value.trim(),
+    patAge: age,
+    patGender: gender,
+    notes: notes,
     date: selectedDate, time: selectedTime,
     fee: parseFloat(selectedDoctor.fee||0).toFixed(2),
     status: 'new',
