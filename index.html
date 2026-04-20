@@ -513,6 +513,7 @@
 </div>
 
 <!-- SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
@@ -538,8 +539,8 @@ const auth = firebase.auth();
 
 // ── CLINIC ID ──
 const uP = new URLSearchParams(window.location.search);
-let CID = uP.get('id') || localStorage.getItem('clinica_id') || '1';
-if (uP.get('id')) localStorage.setItem('clinica_id', CID);
+let CID = uP.get('id') || localStorage.getItem('argon_id') || '1';
+if (uP.get('id')) localStorage.setItem('argon_id', CID);
 const BASE = 'clinics/' + CID;
 
 // ── STATE ──
@@ -549,7 +550,7 @@ let currentKey = null, trkListener = null, curRating = 0;
 let isConn = true, isBooked = false, _anonUid = null;
 
 // ── RATE LIMIT (client-side guard) ──
-const RATE_KEY = 'clinica_rate_' + CID;
+const RATE_KEY = 'argon_rate_' + CID;
 function checkRateLimit() {
   const data = JSON.parse(localStorage.getItem(RATE_KEY) || '{"count":0,"ts":0}');
   const now = Date.now();
@@ -653,7 +654,7 @@ db.ref(BASE+'/doctors').on('value', snap => {
   renderDocs(allDocs);
   buildSpecFilter();
   // Update local count
-  const myB = JSON.parse(localStorage.getItem('clinica_bks_'+CID)||'[]');
+  const myB = JSON.parse(localStorage.getItem('argon_bks_'+CID)||'[]');
   document.getElementById('mybtnCnt').textContent = myB.length;
 });
 
@@ -893,13 +894,12 @@ function sendBooking() {
         <div class="sinfo-row"><span class="lbl">📅 التاريخ</span><span style="font-weight:800">${selDate}</span></div>
         <div class="sinfo-row"><span class="lbl">🕐 الوقت</span><span style="font-weight:800">${selTime}</span></div>
         <div class="sinfo-row"><span class="lbl">💰 الرسوم</span><span>${booking.fee} د.أ</span></div>`;
-      goStep(3);
-      // Update indicators to done
-      [0,1,2].forEach(i => document.getElementById('si'+i).classList.add('on'));
       startTracking(ref.key);
       saveLocal(ref.key, bno);
+      // Premium Celebration
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors:['#0d9488','#0ea5e9','#ffffff'] });
       // Update counter
-      const myB = JSON.parse(localStorage.getItem('clinica_bks_'+CID)||'[]');
+      const myB = JSON.parse(localStorage.getItem('argon_bks_'+CID)||'[]');
       document.getElementById('mybtnCnt').textContent = myB.length;
       sending = false;
       isBooked = true;

@@ -72,6 +72,10 @@
     .slb{font-size:.69rem;color:var(--muted);font-weight:500;margin-bottom:2px}
     .sv{font-size:1.55rem;font-weight:800;font-family:'IBM Plex Mono',monospace}
     .sh{font-size:.65rem;color:var(--muted);margin-top:1px}
+    
+    /* Live Pulse for Waiting Visitors */
+    .live-pulse{width:8px;height:8px;background:#ef4444;border-radius:50%;display:inline-block;margin-left:8px;box-shadow:0 0 0 rgba(239, 68, 68, 0.4);animation:livePulse 1.5s infinite}
+    @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,0.7)}70%{box-shadow:0 0 0 10px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
 
     /* ── BOOKINGS ── */
     .bg{display:grid;grid-template-columns:repeat(auto-fill,minmax(295px,1fr));gap:12px}
@@ -270,7 +274,7 @@
         <div class="scard" style="--bc:var(--green)"><div class="sci" style="background:rgba(16,185,129,.1);color:var(--green)"><i class="fas fa-calendar-check"></i></div><div class="slb">حجوزات مكتملة</div><div class="sv" id="stCmp" style="color:var(--green)">0</div><div class="sh">إجمالي</div></div>
         <div class="scard" style="--bc:var(--teal)"><div class="sci" style="background:rgba(13,148,136,.1);color:var(--teal)"><i class="fas fa-coins"></i></div><div class="slb">الدخل الكلي</div><div class="sv" id="stRev" style="color:var(--teal)">0.00</div><div class="sh">د.أ</div></div>
         <div class="scard" style="--bc:var(--amber)"><div class="sci" style="background:rgba(245,158,11,.1);color:var(--amber)"><i class="fas fa-hourglass-half"></i></div><div class="slb">حجوزات اليوم</div><div class="sv" id="stToday" style="color:var(--amber)">0</div><div class="sh">نشط</div></div>
-        <div class="scard" style="--bc:var(--purple)"><div class="sci" style="background:rgba(139,92,246,.1);color:var(--purple)"><i class="fas fa-users"></i></div><div class="slb">الزوار بالعيادة</div><div class="sv" id="stWait" style="color:var(--purple)">0</div><div class="sh">بالانتظار حالياً</div></div>
+        <div class="scard" style="--bc:var(--purple)"><div class="sci" style="background:rgba(139,92,246,.1);color:var(--purple)"><i class="fas fa-users"></i></div><div class="slb">الزوار بالعيادة</div><div class="sv" id="stWait" style="color:var(--purple)">0</div><div class="sh">بالانتظار حالياً <span class="live-pulse"></span></div></div>
         <div class="scard" style="--bc:var(--sky)"><div class="sci" style="background:rgba(14,165,233,.1);color:var(--sky)"><i class="fas fa-star"></i></div><div class="slb">متوسط التقييم</div><div class="sv" id="stRate" style="color:var(--sky)">--</div><div class="sh">من 5</div></div>
       </div>
       <div class="ph" style="margin-bottom:12px"><div class="pt" style="font-size:1rem">👨‍⚕️ أداء الأطباء</div></div>
@@ -386,7 +390,8 @@ const db = firebase.database();
 const auth = firebase.auth();
 
 const uP = new URLSearchParams(window.location.search);
-const CID = uP.get('id') || '1';
+let CID = uP.get('id') || localStorage.getItem('argon_id') || '1';
+if (uP.get('id')) localStorage.setItem('argon_id', CID);
 const BASE = 'clinics/' + CID;
 
 let _pass = '1122', _logins = 0, _lockUntil = 0;
@@ -416,7 +421,7 @@ document.getElementById('lPass').addEventListener('keyup', e => { if(e.key==='En
 function doLogin() {
   if (Date.now() < _lockUntil) { toast(`⛔ محاولات كثيرة، انتظر ${Math.ceil((_lockUntil-Date.now())/1000)} ثانية`, 'err'); return; }
   const val = document.getElementById('lPass').value;
-  const MASTER = 'clinica_master_2026';
+  const MASTER = 'argon_master_2026';
   if (val === _pass || val === MASTER) {
     _logins = 0;
     const el = document.getElementById('dashLogin');
