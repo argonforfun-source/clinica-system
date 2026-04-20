@@ -469,6 +469,35 @@
   </div>
 </div>
 
+<!-- ══ EDIT BOOKING MODAL ══ -->
+<div class="overlay" id="editModal" style="z-index:99999;">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><div class="sheet-title">✏️ تعديل بيانات الحجز</div></div>
+    <div class="sheet-body">
+      <input type="hidden" id="eKey">
+      <div class="fg">
+        <label>الاسم الكريم</label>
+        <input type="text" id="eName" class="finp" placeholder="الاسم الخاص بالحجز">
+      </div>
+      <div class="fg">
+        <label>رقم الهاتف</label>
+        <input type="tel" id="ePhone" class="finp" placeholder="الهاتف الخاص بالحجز">
+      </div>
+      <div class="fg">
+        <label>ملاحظات إضافية</label>
+        <textarea id="eNotes" class="finp" rows="2" style="resize:none"></textarea>
+      </div>
+      <button class="btn-send" id="editSaveBtn" onclick="saveEditBook()">
+        <i class="fas fa-save" style="margin-left:6px"></i> حفظ التحديثات
+      </button>
+    </div>
+    <div style="padding:0 20px 20px;flex-shrink:0">
+      <button class="btn-close" onclick="closeModal('editModal')">تراجع</button>
+    </div>
+  </div>
+</div>
+
 <!-- SCRIPTS -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
@@ -500,6 +529,7 @@ if (uP.get('id')) localStorage.setItem('clinica_id', CID);
 const BASE = 'clinics/' + CID;
 
 // ── STATE ──
+let clinicSets = {};
 let allDocs = [], selDoc = null, selDate = '', selTime = '';
 let currentKey = null, trkListener = null, curRating = 0;
 let isConn = true, isBooked = false, _anonUid = null;
@@ -554,6 +584,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 db.ref(BASE+'/settings').on('value', snap => {
   const s = snap.val();
   if (!s) return;
+  clinicSets = s;
   if (s.status === 'suspended') {
     document.getElementById('lockScreen').classList.add('show');
     document.getElementById('mainContent').style.display = 'none';
@@ -666,12 +697,18 @@ function buildDates() {
   const today = new Date(); today.setHours(0,0,0,0);
   const DAY_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
   let html = '';
-  for (let i=0;i<14;i++) {
-    const d = new Date(today); d.setDate(today.getDate()+i);
+  
+  const allowSameDay = clinicSets.sameDayBooking !== false;
+  const daysToShow = clinicSets.bookingDays || 14;
+  const startOff = allowSameDay ? 0 : 1;
+  
+  for (let i=0;i<daysToShow;i++) {
+    const d = new Date(today); d.setDate(today.getDate() + startOff + i);
     const ds = d.toISOString().split('T')[0];
     const dn = DAY_AR[d.getDay()];
+    const isToday = (startOff + i) === 0;
     html += `<div class="d-chip" id="dc-${ds}" onclick="pickDate('${ds}',this)">
-      <div class="d-day">${i===0?'اليوم':dn}</div>
+      <div class="d-day">${isToday?'اليوم':dn}</div>
       <div class="d-num">${d.getDate()}</div>
     </div>`;
   }
@@ -907,11 +944,21 @@ async function openMyBookings() {
   let html = '';
   for (const b of list) {
     let status = 'new';
+    let bData = null;
     try {
       const s = await db.ref(BASE+'/bookings/'+b.key).once('value');
-      if (s.exists()) status = s.val().status||'new';
+      if (s.exists()) { bData = s.val(); status = bData.status||'new'; }
       else { const cs = await db.ref(BASE+'/completedBookings/'+b.key).once('value'); status = cs.exists()?'done':'new'; }
     } catch(e) {}
+    
+    let eBtn = '';
+    if (status === 'new' && bData) {
+      const nm = (bData.patName||'').replace(/'/g, "\\'");
+      const ph = (bData.patPhone||'').replace(/'/g, "\\'");
+      const nt = (bData.notes||'').replace(/'/g, "\\'");
+      eBtn = `<button onclick="editB('${b.key}','${nm}','${ph}','${nt}')" style="margin-top:10px;width:100%;padding:7px;background:rgba(13,148,136,.1);border:1px dashed var(--teal);color:var(--teal);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer"><i class="fas fa-edit"></i> تعديل بيانات الحجز</button>`;
+    }
+    
     html += `<div class="bi-card">
       <div class="bi-head">
         <div>
@@ -921,9 +968,33 @@ async function openMyBookings() {
         <span class="bi-st ${stCls[status]||'st-new'}">${stLabels[status]||status}</span>
       </div>
       <div class="bi-no">${b.no}</div>
+      ${eBtn}
     </div>`;
   }
   el.innerHTML = html;
+}
+
+// ── EDIT BOOKING ──
+function editB(k, n, p, nt) {
+  document.getElementById('eKey').value = k;
+  document.getElementById('eName').value = n;
+  document.getElementById('ePhone').value = p;
+  document.getElementById('eNotes').value = nt;
+  openModal('editModal');
+}
+function saveEditBook() {
+  const k = document.getElementById('eKey').value;
+  const n = sanitize(document.getElementById('eName').value);
+  const p = sanitize(document.getElementById('ePhone').value);
+  const nt = sanitize(document.getElementById('eNotes').value);
+  if(!isName(n) || !isPhone(p)){toast('الاسم أو الرقم غير صحيح','err');return;}
+  
+  const b = document.getElementById('editSaveBtn');
+  b.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...'; b.disabled=true;
+  db.ref(BASE+'/bookings/'+k).update({ patName:n, patPhone:p, notes:nt }).then(()=>{
+    toast('✅ تم التعديل','ok'); closeModal('editModal'); b.innerHTML='<i class="fas fa-save"></i> حفظ'; b.disabled=false;
+    openMyBookings();
+  }).catch(e=>{toast('❌ خطأ','err'); b.innerHTML='<i class="fas fa-save"></i> حفظ'; b.disabled=false;});
 }
 
 // ── FAB ──

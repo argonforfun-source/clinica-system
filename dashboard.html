@@ -280,6 +280,15 @@
           <div><label class="setl">ساعات العمل</label><input type="text" id="sH" class="seti" placeholder="9ص - 5م"></div>
         </div>
         <div class="setg"><label class="setl">التخصص العام</label><input type="text" id="sSpec" class="seti" placeholder="عيادة متعددة التخصصات"></div>
+        <div class="setg" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div><label class="setl">حجز نفس اليوم</label>
+            <select id="sSameDay" class="setsel">
+              <option value="true">مسموح ✅</option>
+              <option value="false">ممنوع ❌</option>
+            </select>
+          </div>
+          <div><label class="setl">أيام المواعيد المرئية</label><input type="number" id="sBookingDays" class="seti" value="10" min="1" max="30"></div>
+        </div>
         <div class="setg">
           <label class="setl">لون العيادة</label>
           <div style="display:flex;align-items:center;gap:12px">
@@ -336,7 +345,7 @@ let prevCount = 0, firstLoad = true, audioCtx = null;
 
 // ── CLOCK ──
 setInterval(() => {
-  document.getElementById('tclk').textContent = new Date().toLocaleTimeString('ar-JO',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('tclk').textContent = new Date().toLocaleTimeString('ar-JO',{hour:'2-digit',minute:'2-digit',hour12:true});
 }, 1000);
 
 // ── CONN ──
@@ -409,9 +418,11 @@ db.ref(BASE+'/settings').on('value', snap => {
   b.className='tbadge '+(isOpen?'tb-open':'tb-closed');
   b.innerHTML=`<i class="fas fa-circle" style="font-size:.38rem"></i> ${s.status==='closed'?'مغلق':s.status==='suspended'?'موقوف':'مفتوح'}`;
   if(s.color){onColor(s.color);const cp=document.getElementById('sC');if(cp)cp.value=s.color;}
-  const F={sN:'name',sP:'phone',sH:'hours',sSpec:'specialty',sEm:'emoji'};
+  const F={sN:'name',sP:'phone',sH:'hours',sSpec:'specialty',sEm:'emoji',sBookingDays:'bookingDays'};
   for(let id in F){const el=document.getElementById(id);if(el&&!el.matches(':focus'))el.value=s[F[id]]||'';}
   const st=document.getElementById('sSt');if(st)st.value=s.status||'open';
+  const ssd=document.getElementById('sSameDay');if(ssd)ssd.value=(s.sameDayBooking!==false)?'true':'false';
+  if(!s.bookingDays) document.getElementById('sBookingDays').value = '10';
 });
 
 // ── LIVE BOOKINGS LISTENER ──
@@ -576,12 +587,14 @@ function saveSettings() {
   const color=document.getElementById('sC').value||'#0d9488';
   const newPass=document.getElementById('sPw').value.trim();
   const update={
-    name:document.getElementById('sN').value,
-    phone:document.getElementById('sP').value,
+    name:sanitize(document.getElementById('sN').value),
+    phone:sanitize(document.getElementById('sP').value),
     status:document.getElementById('sSt').value,
-    hours:document.getElementById('sH').value,
-    specialty:document.getElementById('sSpec').value,
-    emoji:document.getElementById('sEm').value,
+    hours:sanitize(document.getElementById('sH').value),
+    specialty:sanitize(document.getElementById('sSpec').value),
+    emoji:sanitize(document.getElementById('sEm').value),
+    sameDayBooking: document.getElementById('sSameDay').value === 'true',
+    bookingDays: parseInt(document.getElementById('sBookingDays').value) || 10,
     color
   };
   if(newPass.length>=4) update.password=newPass;
