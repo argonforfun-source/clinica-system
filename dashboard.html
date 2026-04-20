@@ -162,6 +162,17 @@
     /* ── BELL RING ── */
     @keyframes ring{0%{transform:rotate(0)}10%{transform:rotate(15deg)}20%{transform:rotate(-10deg)}30%{transform:rotate(10deg)}40%{transform:rotate(-8deg)}50%{transform:rotate(0)}100%{transform:rotate(0)}}
     .ringing{animation:ring .6s ease infinite}
+
+    /* ── LOCK SCREEN ── */
+    #lockScreen{position:fixed;inset:0;background:#050b14;z-index:999999;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px}
+    #lockScreen.show{display:flex;animation:fadeIn .4s}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    .ls-icon{font-size:5rem;color:#ef4444;margin-bottom:15px;animation:pulse .8s infinite alternate}
+    @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.05)}}
+    .ls-title{font-size:2rem;font-weight:900;color:#fff;margin-bottom:10px}
+    .ls-sub{font-size:1rem;color:var(--muted);margin-bottom:30px;max-width:400px;line-height:1.6}
+    .ls-btn{background:#3b82f6;color:#fff;padding:12px 28px;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:1.1rem;font-weight:800;text-decoration:none;transition:0.2s;box-shadow:0 8px 24px rgba(59,130,246,0.25)}
+    .ls-btn:hover{background:#2563eb;transform:translateY(-2px)}
   </style>
 </head>
 <body>
@@ -179,6 +190,14 @@
 </div>
 
 <div id="connBar" class="cbar"></div>
+
+<!-- LOCK SCREEN -->
+<div id="lockScreen">
+  <div class="ls-icon"><i class="fas fa-shield-alt"></i></div>
+  <div class="ls-title">تم إيقاف حساب العيادة</div>
+  <div class="ls-sub">يرجى مراجعة الدعم الفني لشركة CLINICA PRO لتفعيل الحساب واستعادة الوصول للوحة التحكم.</div>
+  <a href="#" class="ls-btn">تواصل مع الدعم الفني</a>
+</div>
 
 <!-- TOPBAR -->
 <div class="topbar">
@@ -409,6 +428,13 @@ function onColor(c) {
 // ── SETTINGS LISTENER ──
 db.ref(BASE+'/settings').on('value', snap => {
   const s = snap.val()||{};
+  
+  if (s.status === 'suspended') {
+    document.getElementById('lockScreen').classList.add('show');
+  } else {
+    document.getElementById('lockScreen').classList.remove('show');
+  }
+
   document.getElementById('topName').textContent = s.name||'العيادة';
   document.getElementById('lClinicName').textContent = s.name||'العيادة';
   document.title = 'CLINICA | '+(s.name||'العيادة');
