@@ -2,1042 +2,1015 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" href="data:,">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>حجز موعد | كلينيكا</title>
+  <meta name="theme-color" content="#0d9488">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="كلينيكا">
+  <meta name="description" content="احجز موعدك الطبي بسهولة وسرعة">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="icon" type="image/png" href="/icons/icon-192.png">
+  <title>كلينيكا | حجز موعد</title>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     :root {
-      --teal: #0d9488;
-      --teal-dark: #0f766e;
-      --teal-light: #ccfbf1;
-      --sky: #0ea5e9;
-      --bg: #f0fdfa;
-      --card: #ffffff;
-      --text: #0f172a;
-      --muted: #64748b;
-      --border: rgba(0,0,0,0.07);
-      --shadow: rgba(13,148,136,0.08);
-      --green: #10b981;
-      --red: #ef4444;
-      --amber: #f59e0b;
-      --header-from: #0f766e;
-      --header-to: #0d9488;
+      --teal:#0d9488; --teal-dark:#0f766e; --teal-lt:#ccfbf1;
+      --sky:#0ea5e9; --sky-lt:#e0f2fe;
+      --bg:#f8fffe; --card:#ffffff;
+      --hfrom:#0f766e; --hto:#0d9488;
+      --text:#0f172a; --muted:#64748b; --border:rgba(0,0,0,0.07);
+      --shadow-sm:0 1px 3px rgba(0,0,0,0.06); --shadow-md:0 4px 16px rgba(13,148,136,0.1);
+      --green:#10b981; --red:#ef4444; --amber:#f59e0b;
+      --radius-sm:10px; --radius-md:16px; --radius-lg:22px; --radius-xl:26px;
     }
-    [data-theme="dark"] {
-      --bg: #021a18;
-      --card: #0a2320;
-      --header-from: #042f2e;
-      --header-to: #0d9488;
-      --text: #e2e8f0;
-      --border: rgba(255,255,255,0.06);
-      --shadow: rgba(0,0,0,0.3);
-      --teal-light: #042f2e;
+    [data-theme="dark"]{
+      --bg:#021a17; --card:#0a2420; --hfrom:#031a15; --hto:#0d9488;
+      --text:#e2e8f0; --muted:#64748b; --border:rgba(255,255,255,0.07);
+      --teal-lt:#042f2e; --shadow-sm:0 1px 3px rgba(0,0,0,0.2); --shadow-md:0 4px 16px rgba(0,0,0,0.3);
     }
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body {
-      font-family: 'Tajawal', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding-bottom: 100px;
-      transition: background 0.3s, color 0.3s;
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html{scroll-behavior:smooth}
+    body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:120px;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
+
+    /* ── INSTALL BANNER ── */
+    #installBanner{
+      position:fixed;bottom:0;left:0;right:0;z-index:9000;
+      background:linear-gradient(135deg,var(--teal-dark),var(--teal));
+      padding:14px 18px;display:none;align-items:center;gap:12px;
+      box-shadow:0 -4px 20px rgba(13,148,136,0.3);
+      border-radius:20px 20px 0 0;
     }
-    /* LOCKOUT */
-    #lockoutScreen {
-      position: fixed; inset:0; background: #021a18; z-index:10000;
-      display:none; flex-direction:column; align-items:center;
-      justify-content:center; text-align:center; padding:40px; color:#fff;
-    }
-    #lockoutScreen.show { display:flex!important; }
-    /* HEADER */
-    .header {
-      background: linear-gradient(135deg, var(--header-from), var(--header-to));
-      padding: 0 0 22px;
-      position:relative; overflow:hidden;
-    }
-    .header::before {
-      content:''; position:absolute; inset:0;
-      background-image: radial-gradient(circle at 20% 50%, rgba(14,165,233,0.15) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 20%, rgba(16,185,129,0.1) 0%, transparent 40%);
-      pointer-events:none;
-    }
-    .htop {
-      display:flex; align-items:center; justify-content:space-between;
-      padding: 14px 18px 0;
-    }
-    .clinic-mark {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size:0.6rem; letter-spacing:2px;
-      color:rgba(255,255,255,0.45); text-transform:uppercase;
-    }
-    .theme-tog {
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: rgba(255,255,255,0.8);
-      padding: 6px 13px; border-radius:20px;
-      font-family:'Tajawal',sans-serif; font-size:0.76rem;
-      cursor:pointer; transition:all 0.2s;
-    }
-    .hmain { text-align:center; padding:22px 18px 0; position:relative; }
-    .clinic-logo {
-      width:72px; height:72px;
-      background: rgba(255,255,255,0.12);
-      border: 2px solid rgba(255,255,255,0.2);
-      border-radius:22px;
-      display:flex; align-items:center; justify-content:center;
-      font-size:2rem; margin:0 auto 12px;
-      backdrop-filter:blur(10px);
-    }
-    .clinic-name {
-      font-size:1.55rem; font-weight:900; color:#fff; margin-bottom:8px;
-    }
-    .clinic-meta {
-      display:flex; align-items:center; justify-content:center;
-      gap:9px; flex-wrap:wrap;
-    }
-    .chip {
-      display:inline-flex; align-items:center; gap:5px;
-      font-size:0.74rem; padding:4px 11px; border-radius:20px; font-weight:600;
-    }
-    .chip-open { background:rgba(16,185,129,0.2); color:#6ee7b7; border:1px solid rgba(16,185,129,0.3); }
-    .chip-closed { background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.3); }
-    .chip-info { background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.15); }
-    /* SEARCH */
-    .srchwrap { padding:0 15px; margin-top:18px; }
-    .srchbox {
-      background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.15);
-      border-radius:13px; padding:11px 15px 11px 44px;
-      width:100%; color:white; font-family:'Tajawal',sans-serif;
-      font-size:0.93rem; outline:none; backdrop-filter:blur(10px); transition:0.25s;
-    }
-    .srchbox::placeholder { color:rgba(255,255,255,0.4); }
-    .srchico { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:rgba(255,255,255,0.5); font-size:0.88rem; pointer-events:none; }
-    /* SECTIONS */
-    .section { padding:18px 13px 0; }
-    .sec-lbl {
-      font-size:0.7rem; font-weight:700; color:var(--muted);
-      text-transform:uppercase; letter-spacing:1.5px; margin-bottom:13px;
-      font-family:'IBM Plex Mono',monospace;
-    }
-    /* DOCTORS GRID */
-    .dgrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .dcard {
-      background:var(--card); border:1px solid var(--border);
-      border-radius:17px; overflow:hidden; transition:all 0.25s;
-      box-shadow:0 2px 10px var(--shadow); cursor:pointer;
-    }
-    .dcard:active { transform:scale(0.97); }
-    .dcard-img {
-      height:100px; background:linear-gradient(135deg, var(--teal-light), #e0f2fe);
-      display:flex; align-items:center; justify-content:center;
-      font-size:2.5rem; position:relative; overflow:hidden;
-    }
-    [data-theme="dark"] .dcard-img { background:linear-gradient(135deg, #042f2e, #0c2a3a); }
-    .dcard-avail {
-      position:absolute; top:8px; right:8px;
-      width:10px; height:10px; border-radius:50%;
-      border:2px solid var(--card);
-    }
-    .avail-yes { background:var(--green); }
-    .avail-no  { background:var(--red); }
-    .dcard-body { padding:11px; }
-    .dcard-name { font-size:0.86rem; font-weight:700; color:var(--text); margin-bottom:3px; line-height:1.3; }
-    .dcard-spec { font-size:0.73rem; color:var(--teal); font-weight:600; margin-bottom:4px; }
-    .dcard-price {
-      font-family:'IBM Plex Mono',monospace; font-size:0.85rem;
-      font-weight:600; color:var(--teal); margin-bottom:9px;
-    }
-    .book-btn {
-      width:100%; background:var(--teal); border:none;
-      border-radius:10px; padding:8px; color:white;
-      font-family:'Tajawal',sans-serif; font-size:0.83rem;
-      font-weight:700; cursor:pointer; transition:all 0.2s;
-      display:flex; align-items:center; justify-content:center; gap:5px;
-    }
-    .book-btn:disabled { background:var(--muted); cursor:not-allowed; }
-    /* FAB */
-    .cartfab { position:fixed; bottom:24px; left:18px; z-index:500; }
-    .mybookbtn {
-      width:auto; padding:0 18px; height:56px;
-      background:linear-gradient(135deg, var(--teal), #0ea5e9);
-      border-radius:18px; display:flex; align-items:center; justify-content:center;
-      gap:8px; font-size:0.85rem; color:white; cursor:pointer;
-      box-shadow:0 8px 25px rgba(13,148,136,0.4); transition:all 0.3s;
-      border:none; font-family:'Tajawal',sans-serif; font-weight:700;
-    }
-    .bookCnt {
-      background:var(--red); color:white; width:20px; height:20px;
-      border-radius:50%; font-size:0.65rem; font-weight:700;
-      display:flex; align-items:center; justify-content:center;
-      font-family:'IBM Plex Mono',monospace;
-    }
-    /* MODAL */
-    .moverlay {
-      position:fixed; inset:0; background:rgba(0,0,0,0.6);
-      backdrop-filter:blur(8px); z-index:1000;
-      display:none; align-items:flex-end; justify-content:center;
-    }
-    .moverlay.show { display:flex; }
-    .msheet {
-      background:var(--card); border-radius:26px 26px 0 0;
-      padding:26px 20px 30px; width:100%; max-width:500px;
-      animation:sup 0.3s cubic-bezier(0.34,1.56,0.64,1);
-      max-height:92vh; overflow-y:auto;
-    }
-    @keyframes sup { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
-    .shandle { width:34px; height:4px; background:rgba(0,0,0,0.12); border-radius:2px; margin:0 auto 18px; }
-    [data-theme="dark"] .shandle { background:rgba(255,255,255,0.1); }
-    .stitle { font-size:1.15rem; font-weight:800; margin-bottom:18px; text-align:center; }
-    /* BOOKING FORM */
-    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
-    .minp {
-      width:100%; background:var(--bg); border:1.5px solid var(--border);
-      border-radius:11px; padding:12px 14px; color:var(--text);
-      font-family:'Tajawal',sans-serif; font-size:0.97rem;
-      outline:none; text-align:right; transition:all 0.2s;
-    }
-    .minp:focus { border-color:var(--teal); }
-    .minp-full { grid-column:1/-1; }
-    /* DATE TIME PICKER */
-    .date-slots { margin-bottom:14px; }
-    .slot-lbl { font-size:0.75rem; color:var(--muted); font-weight:700; margin-bottom:8px; }
-    .date-scroll { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
-    .date-scroll::-webkit-scrollbar { display:none; }
-    .date-chip {
-      flex-shrink:0; background:var(--bg); border:1.5px solid var(--border);
-      border-radius:12px; padding:8px 14px; text-align:center; cursor:pointer;
-      transition:all 0.2s; min-width:64px;
-    }
-    .date-chip.sel { background:var(--teal); border-color:var(--teal); color:#fff; }
-    .date-chip .dday { font-size:0.62rem; font-weight:700; color:var(--muted); }
-    .date-chip.sel .dday { color:rgba(255,255,255,0.7); }
-    .date-chip .dnum { font-size:1.1rem; font-weight:900; }
-    .time-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
-    .time-chip {
-      background:var(--bg); border:1.5px solid var(--border);
-      border-radius:10px; padding:8px; text-align:center;
-      font-family:'IBM Plex Mono',monospace; font-size:0.78rem;
-      font-weight:600; cursor:pointer; transition:all 0.2s;
-    }
-    .time-chip.sel { background:var(--teal); border-color:var(--teal); color:#fff; }
-    .time-chip.booked { background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.2); color:var(--red); cursor:not-allowed; }
-    /* BILL BOX */
-    .billbox {
-      background:var(--bg); border-radius:15px; padding:16px;
-      border:1.5px dashed rgba(13,148,136,0.25); margin-bottom:16px;
-    }
-    .billrow { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); }
-    .billrow:last-of-type { border-bottom:none; }
-    .billtotal { display:flex; justify-content:space-between; align-items:center; padding-top:11px; margin-top:3px; border-top:2px solid rgba(13,148,136,0.15); }
-    /* BUTTONS */
-    .bnext {
-      width:100%; padding:13px;
-      background:linear-gradient(135deg, var(--teal), var(--sky));
-      border:none; border-radius:13px; color:white;
-      font-family:'Tajawal',sans-serif; font-size:1rem; font-weight:700;
-      cursor:pointer; transition:all 0.2s; margin-bottom:9px;
-      box-shadow:0 4px 14px rgba(13,148,136,0.3);
-    }
-    .bsend {
-      width:100%; padding:14px;
-      background:linear-gradient(135deg, var(--green), #059669);
-      border:none; border-radius:13px; color:white;
-      font-family:'Tajawal',sans-serif; font-size:1rem; font-weight:800;
-      cursor:pointer; transition:all 0.2s;
-      box-shadow:0 4px 14px rgba(16,185,129,0.3);
-    }
-    .bback { display:block; text-align:center; color:var(--muted); font-size:0.83rem; cursor:pointer; padding:8px; }
-    .bclose { display:block; width:100%; text-align:center; color:var(--muted); font-size:0.8rem; cursor:pointer; padding:9px; border:none; background:transparent; font-family:'Tajawal',sans-serif; }
-    /* SUCCESS */
-    .success-wrap { display:block; text-align:center; padding:10px 0; }
-    .success-icon { width:68px; height:68px; background:rgba(16,185,129,0.1); border:2px solid rgba(16,185,129,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.7rem; margin:0 auto 14px; }
-    .order-no-box { background:rgba(13,148,136,0.06); border:1.5px dashed rgba(13,148,136,0.25); border-radius:14px; padding:18px; margin:14px 0; }
-    .on-number { font-family:'IBM Plex Mono',monospace; font-size:1.8rem; font-weight:800; color:var(--teal); letter-spacing:3px; }
-    /* TRACKER */
-    .track-wrap { margin-top:20px; padding:16px; background:rgba(13,148,136,0.05); border:1px dashed var(--teal); border-radius:16px; }
-    .track-steps { display:flex; justify-content:space-between; position:relative; margin:18px 0 8px; }
-    .track-line { position:absolute; top:15px; left:0; right:0; height:2px; background:var(--border); z-index:1; }
-    .track-progress { position:absolute; top:15px; right:0; height:2px; background:var(--teal); z-index:2; transition:width 0.5s ease; width:0%; }
-    .tstep { position:relative; z-index:3; display:flex; flex-direction:column; align-items:center; gap:6px; width:25%; }
-    .tpoint { width:32px; height:32px; background:var(--bg); border:2px solid var(--border); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.8rem; color:var(--muted); transition:0.3s; }
-    .tstep.active .tpoint { background:var(--teal); border-color:var(--teal); color:white; box-shadow:0 0 10px rgba(13,148,136,0.4); }
-    .tlbl { font-size:0.62rem; font-weight:700; color:var(--muted); }
-    .tstep.active .tlbl { color:var(--teal); }
-    /* TOAST */
-    .toast-wrap { position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:9999; display:flex; flex-direction:column; gap:10px; pointer-events:none; }
-    .toast { background:rgba(0,0,0,0.85); color:white; padding:12px 24px; border-radius:50px; font-size:0.9rem; font-weight:600; backdrop-filter:blur(10px); transform:translateY(-20px); opacity:0; transition:0.4s cubic-bezier(0.175,0.885,0.32,1.275); box-shadow:0 10px 20px rgba(0,0,0,0.2); }
-    .toast.show { transform:translateY(0); opacity:1; }
-    /* PWBY */
-    .pwby-foot { text-align:center; font-family:'IBM Plex Mono',monospace; font-size:0.58rem; color:rgba(100,116,139,0.45); letter-spacing:1.5px; padding:20px 0 6px; }
-    .pwby-foot span { color:var(--teal); opacity:0.7; }
-    /* EMPTY */
-    .empty-s { text-align:center; padding:55px 20px; color:var(--muted); }
-    .empty-s i { font-size:2.4rem; display:block; margin-bottom:12px; opacity:0.25; }
-    /* CONN BAR */
-    .conn-bar { position:fixed; top:0; left:0; right:0; z-index:100000; display:none; align-items:center; justify-content:center; gap:8px; padding:10px; font-size:0.82rem; font-weight:700; transition:all 0.3s; }
-    .conn-ok { background:rgba(16,185,129,0.15); color:var(--green); border-bottom:1px solid rgba(16,185,129,0.3); }
-    .conn-off { background:rgba(239,68,68,0.15); color:var(--red); border-bottom:1px solid rgba(239,68,68,0.3); }
-    /* MY BOOKINGS LIST */
-    .booking-item { background:rgba(13,148,136,0.05); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px; }
-    .bi-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
-    .bi-no { font-family:'IBM Plex Mono',monospace; font-size:0.8rem; color:var(--teal); font-weight:700; }
-    .bi-status { font-size:0.7rem; font-weight:700; padding:3px 10px; border-radius:20px; }
-    .bs-pending { background:rgba(245,158,11,0.1); color:var(--amber); }
-    .bs-confirmed { background:rgba(16,185,129,0.1); color:var(--green); }
-    .bs-done { background:rgba(13,148,136,0.1); color:var(--teal); }
-    .bs-cancelled { background:rgba(239,68,68,0.08); color:var(--red); }
-    /* RATING */
-    .stars { display:flex; gap:4px; justify-content:center; margin:10px 0; }
-    .star { font-size:1.4rem; cursor:pointer; transition:transform 0.1s; color:#cbd5e1; }
-    .star:hover, .star.active { color:var(--amber); transform:scale(1.15); }
-    /* NOTIF BUTTON */
-    .notif-btn {
-      background:linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
-      border:1.5px solid rgba(255,255,255,0.25);
-      color:#fff; padding:10px 22px; border-radius:50px;
-      font-size:0.88rem; font-weight:700; cursor:pointer;
-      display:inline-flex; align-items:center; justify-content:center; gap:8px;
-      transition:all 0.3s; margin:12px auto 0; width:auto;
-      backdrop-filter:blur(10px); box-shadow:0 4px 15px rgba(0,0,0,0.15);
-      font-family:'Tajawal',sans-serif; letter-spacing:0.3px;
-    }
-    .notif-btn:hover { background:linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.12)); transform:translateY(-1px); }
-    .notif-btn i { font-size:0.95rem; }
-    /* SPECIALTY FILTER */
-    .spec-scroll { display:flex; gap:8px; overflow-x:auto; padding:0 13px 14px; scrollbar-width:none; }
-    .spec-scroll::-webkit-scrollbar { display:none; }
-    .spec-chip {
-      flex-shrink:0; background:var(--card); border:1.5px solid var(--border);
-      border-radius:20px; padding:7px 16px; font-size:0.78rem; font-weight:700;
-      cursor:pointer; transition:all 0.2s; color:var(--muted); white-space:nowrap;
-    }
-    .spec-chip.active { background:var(--teal); border-color:var(--teal); color:#fff; }
+    #installBanner.show{display:flex}
+    .ib-icon{width:48px;height:48px;background:rgba(255,255,255,0.15);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0}
+    .ib-text{flex:1;color:#fff}
+    .ib-title{font-size:0.9rem;font-weight:800;margin-bottom:2px}
+    .ib-sub{font-size:0.72rem;opacity:0.8}
+    .ib-btn{background:#fff;color:var(--teal-dark);padding:8px 16px;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:0.82rem;font-weight:800;border:none;cursor:pointer;flex-shrink:0}
+    .ib-close{color:rgba(255,255,255,0.7);background:none;border:none;font-size:1.2rem;cursor:pointer;flex-shrink:0;padding:4px}
+
+    /* ── CONN BAR ── */
+    #connBar{position:fixed;top:0;left:0;right:0;z-index:10000;display:none;align-items:center;justify-content:center;gap:8px;padding:8px;font-size:0.8rem;font-weight:700}
+    .c-ok{background:rgba(16,185,129,0.9);color:#fff} .c-off{background:rgba(239,68,68,0.9);color:#fff}
+
+    /* ── LOCKOUT ── */
+    #lockScreen{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#021a17,#0f766e);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;color:#fff}
+    #lockScreen.show{display:flex}
+    .ls-icon{font-size:5rem;margin-bottom:20px;filter:drop-shadow(0 4px 16px rgba(0,0,0,0.3))}
+    .ls-title{font-size:1.6rem;font-weight:900;margin-bottom:10px}
+    .ls-sub{opacity:0.7;font-size:0.95rem;margin-bottom:30px;line-height:1.7}
+
+    /* ── HEADER ── */
+    .header{background:linear-gradient(150deg,var(--hfrom) 0%,var(--hto) 50%,#0ea5e9 100%);padding:0 0 24px;position:relative;overflow:hidden}
+    .header::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 15% 60%,rgba(255,255,255,0.08) 0%,transparent 50%),radial-gradient(circle at 85% 15%,rgba(6,182,212,0.12) 0%,transparent 45%);pointer-events:none}
+    .header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:24px;background:var(--bg);clip-path:ellipse(55% 100% at 50% 100%)}
+    .htop{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 0}
+    .mark{font-family:'IBM Plex Mono',monospace;font-size:0.58rem;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase}
+    .theme-btn{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.85);padding:6px 12px;border-radius:20px;font-family:'Tajawal',sans-serif;font-size:0.74rem;cursor:pointer;transition:0.2s}
+    .hmain{text-align:center;padding:20px 18px 30px;position:relative}
+    .hlogo{width:74px;height:74px;background:rgba(255,255,255,0.14);border:2px solid rgba(255,255,255,0.22);border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 14px;backdrop-filter:blur(10px);box-shadow:0 8px 32px rgba(0,0,0,0.15)}
+    .hname{font-size:1.6rem;font-weight:900;color:#fff;margin-bottom:6px;letter-spacing:-0.3px}
+    .hmeta{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+    .chip{display:inline-flex;align-items:center;gap:5px;font-size:0.72rem;padding:4px 11px;border-radius:20px;font-weight:700}
+    .c-open{background:rgba(16,185,129,0.2);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3)}
+    .c-closed{background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)}
+    .c-info{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.75);border:1px solid rgba(255,255,255,0.15)}
+
+    /* ── MY BOOKINGS BTN ── */
+    .mybtn{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:8px 18px;border-radius:30px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;display:inline-flex;align-items:center;gap:7px;transition:0.2s;margin-bottom:16px}
+    .mybtn:hover{background:rgba(255,255,255,0.2)}
+    .mybtn-cnt{background:rgba(255,255,255,0.25);width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:800}
+
+    /* ── SEARCH ── */
+    .srchwrap{padding:0 16px;position:relative}
+    .srchbox{background:rgba(255,255,255,0.14);border:1.5px solid rgba(255,255,255,0.2);border-radius:14px;padding:12px 16px 12px 44px;width:100%;color:#fff;font-family:'Tajawal',sans-serif;font-size:0.93rem;outline:none;backdrop-filter:blur(10px);transition:0.25s}
+    .srchbox::placeholder{color:rgba(255,255,255,0.45)}
+    .srchbox:focus{background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.35)}
+    .srchico{position:absolute;left:30px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.5);font-size:0.88rem;pointer-events:none}
+
+    /* ── SPEC FILTER ── */
+    .spec-bar{display:flex;gap:8px;overflow-x:auto;padding:16px 16px 0;scrollbar-width:none}
+    .spec-bar::-webkit-scrollbar{display:none}
+    .spec-chip{flex-shrink:0;background:var(--card);border:1.5px solid var(--border);border-radius:20px;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;color:var(--muted);transition:all 0.2s;white-space:nowrap;box-shadow:var(--shadow-sm)}
+    .spec-chip.act{background:var(--teal);border-color:var(--teal);color:#fff;box-shadow:0 4px 12px rgba(13,148,136,0.3)}
+
+    /* ── SECTION ── */
+    .sec{padding:20px 14px 0}
+    .sec-lbl{font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.8px;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;display:flex;align-items:center;gap:8px}
+    .sec-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+
+    /* ── DOCTOR CARDS ── */
+    .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+    .dcard{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;transition:all 0.25s;box-shadow:var(--shadow-sm);cursor:pointer;position:relative}
+    .dcard:active{transform:scale(0.97)}
+    .dcard:hover{box-shadow:var(--shadow-md);border-color:rgba(13,148,136,0.2)}
+    .dcard-top{height:108px;background:linear-gradient(135deg,var(--teal-lt),var(--sky-lt));display:flex;align-items:center;justify-content:center;font-size:2.8rem;position:relative;overflow:hidden}
+    [data-theme="dark"] .dcard-top{background:linear-gradient(135deg,#042f2e,#0c2a3a)}
+    .dcard-top img{width:100%;height:100%;object-fit:cover}
+    .avail-dot{position:absolute;top:9px;right:9px;width:10px;height:10px;border-radius:50%;border:2px solid var(--card)}
+    .av-yes{background:var(--green)} .av-no{background:var(--red)}
+    .dcard-body{padding:12px 12px 14px}
+    .dname{font-size:0.88rem;font-weight:800;color:var(--text);margin-bottom:2px;line-height:1.3}
+    .dspec{font-size:0.72rem;color:var(--teal);font-weight:700;margin-bottom:3px}
+    .dfee{font-family:'IBM Plex Mono',monospace;font-size:0.82rem;font-weight:600;color:var(--teal);margin-bottom:3px}
+    .drating{font-size:0.7rem;color:var(--amber);margin-bottom:10px}
+    .drating span{color:var(--muted);margin-right:3px}
+    .dbookbtn{width:100%;background:var(--teal);border:none;border-radius:var(--radius-sm);padding:9px;color:#fff;font-family:'Tajawal',sans-serif;font-size:0.83rem;font-weight:700;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:5px}
+    .dbookbtn:disabled{background:var(--muted);cursor:not-allowed}
+    .dbookbtn:active:not(:disabled){transform:scale(0.96)}
+
+    /* ── FAB ── */
+    .fab{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:500}
+    .fabbtn{background:linear-gradient(135deg,var(--teal),var(--sky));border:none;border-radius:20px;padding:14px 28px;color:#fff;font-family:'Tajawal',sans-serif;font-size:0.9rem;font-weight:800;cursor:pointer;box-shadow:0 8px 28px rgba(13,148,136,0.4);display:flex;align-items:center;gap:10px;transition:all 0.3s;white-space:nowrap}
+    .fabbtn:active{transform:scale(0.96)}
+    .fabcnt{background:var(--red);color:#fff;width:22px;height:22px;border-radius:50%;font-size:0.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;display:none}
+
+    /* ── OVERLAY / SHEET ── */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);z-index:1000;display:none;align-items:flex-end;justify-content:center}
+    .overlay.show{display:flex}
+    .sheet{background:var(--card);border-radius:28px 28px 0 0;padding:0;width:100%;max-width:500px;animation:slideUp .35s cubic-bezier(0.34,1.3,0.64,1);max-height:94vh;overflow:hidden;display:flex;flex-direction:column}
+    @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+    .sheet-handle{width:38px;height:4px;background:var(--border);border-radius:2px;margin:14px auto 0;flex-shrink:0}
+    .sheet-head{padding:14px 20px 18px;border-bottom:1px solid var(--border);flex-shrink:0}
+    .sheet-title{font-size:1.1rem;font-weight:800;text-align:center}
+    .sheet-body{padding:20px;overflow-y:auto;flex:1}
+
+    /* ── DATE / TIME ── */
+    .slot-lbl{font-size:0.72rem;font-weight:700;color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:6px}
+    .date-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;margin-bottom:18px}
+    .date-row::-webkit-scrollbar{display:none}
+    .d-chip{flex-shrink:0;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;text-align:center;cursor:pointer;transition:all 0.2s;min-width:62px}
+    .d-chip.sel{background:var(--teal);border-color:var(--teal);color:#fff;box-shadow:0 4px 12px rgba(13,148,136,0.3)}
+    .d-day{font-size:0.6rem;font-weight:700;color:var(--muted);margin-bottom:2px}
+    .d-chip.sel .d-day{color:rgba(255,255,255,0.75)}
+    .d-num{font-size:1.15rem;font-weight:900}
+    .t-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:20px}
+    .t-chip{background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:9px 4px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:0.76rem;font-weight:600;cursor:pointer;transition:all 0.2s}
+    .t-chip.sel{background:var(--teal);border-color:var(--teal);color:#fff}
+    .t-chip.bkd{background:rgba(239,68,68,0.06);border-color:rgba(239,68,68,0.2);color:var(--red);cursor:not-allowed;font-size:0.68rem}
+    .t-chip.past{opacity:0.35;cursor:not-allowed}
+
+    /* ── FORM INPUTS ── */
+    .finp{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;color:var(--text);font-family:'Tajawal',sans-serif;font-size:0.97rem;outline:none;transition:all 0.2s;text-align:right}
+    .finp:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(13,148,136,0.08)}
+    .finp::placeholder{color:var(--muted)}
+    .finp.err{border-color:var(--red)}
+    .fg{margin-bottom:12px}
+    .fg label{display:block;font-size:0.73rem;font-weight:700;color:var(--muted);margin-bottom:6px}
+    .fg-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .err-msg{font-size:0.72rem;color:var(--red);margin-top:4px;display:none}
+
+    /* ── DOC INFO BOX ── */
+    .docbox{background:linear-gradient(135deg,rgba(13,148,136,0.06),rgba(14,165,233,0.04));border:1px solid rgba(13,148,136,0.15);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:18px;display:flex;align-items:center;gap:12px}
+    .docbox-icon{width:48px;height:48px;background:linear-gradient(135deg,var(--teal-lt),var(--sky-lt));border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0}
+    [data-theme="dark"] .docbox-icon{background:linear-gradient(135deg,#042f2e,#0c2a3a)}
+    .docbox-info .dn{font-size:0.95rem;font-weight:800;color:var(--text)}
+    .docbox-info .ds{font-size:0.75rem;color:var(--teal);font-weight:600;margin-top:2px}
+    .docbox-info .dp{font-family:'IBM Plex Mono',monospace;font-size:0.82rem;color:var(--teal);margin-top:2px}
+
+    /* ── BILL BOX ── */
+    .billbox{background:var(--bg);border:1.5px dashed rgba(13,148,136,0.2);border-radius:var(--radius-md);padding:16px;margin-bottom:16px}
+    .brow{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:0.88rem}
+    .brow:last-of-type{border:none}
+    .brow .bl{color:var(--muted)}
+    .brow .bv{font-weight:700}
+    .btotal{display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:2px solid rgba(13,148,136,0.15);margin-top:4px}
+    .btotal .bl{font-weight:800;font-size:0.95rem}
+    .btotal .bv{font-family:'IBM Plex Mono',monospace;font-size:1.25rem;font-weight:900;color:var(--green)}
+
+    /* ── BUTTONS ── */
+    .btn-next{width:100%;padding:14px;background:linear-gradient(135deg,var(--teal),var(--sky));border:none;border-radius:var(--radius-md);color:#fff;font-family:'Tajawal',sans-serif;font-size:1rem;font-weight:800;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 14px rgba(13,148,136,0.3);margin-bottom:10px}
+    .btn-next:disabled{background:var(--muted);box-shadow:none;cursor:not-allowed}
+    .btn-next:active:not(:disabled){transform:scale(0.98)}
+    .btn-send{width:100%;padding:14px;background:linear-gradient(135deg,var(--green),#059669);border:none;border-radius:var(--radius-md);color:#fff;font-family:'Tajawal',sans-serif;font-size:1rem;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(16,185,129,0.3)}
+    .btn-back{display:block;text-align:center;color:var(--muted);font-size:0.83rem;cursor:pointer;padding:8px;background:none;border:none;font-family:'Tajawal',sans-serif;width:100%}
+    .btn-close{display:block;width:100%;text-align:center;color:var(--muted);font-size:0.8rem;cursor:pointer;padding:10px;border:none;background:none;font-family:'Tajawal',sans-serif}
+
+    /* ── SUCCESS ── */
+    .success{text-align:center;padding:10px 0}
+    .scheck{width:72px;height:72px;background:rgba(16,185,129,0.1);border:2px solid rgba(16,185,129,0.25);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto 16px;animation:pop .4s ease}
+    @keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.1)}100%{transform:scale(1)}}
+    .sno-box{background:rgba(13,148,136,0.06);border:1.5px dashed rgba(13,148,136,0.2);border-radius:var(--radius-md);padding:18px;margin:14px 0;text-align:center}
+    .sno{font-family:'IBM Plex Mono',monospace;font-size:2rem;font-weight:900;color:var(--teal);letter-spacing:4px}
+    .sinfo{padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-md);text-align:right;font-size:0.88rem;margin-bottom:14px}
+    .sinfo-row{display:flex;justify-content:space-between;margin-bottom:7px}
+    .sinfo-row:last-child{margin:0;padding-top:8px;border-top:1px dashed var(--border);color:var(--green);font-weight:900}
+    .sinfo-row .lbl{color:var(--muted)}
+
+    /* ── TRACKER ── */
+    .tracker{padding:16px;background:rgba(13,148,136,0.05);border:1px dashed var(--teal);border-radius:var(--radius-md);margin-bottom:14px}
+    .trk-title{font-size:0.85rem;font-weight:800;color:var(--teal);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+    .trk-bar{display:flex;justify-content:space-between;position:relative;margin-bottom:6px}
+    .trk-line{position:absolute;top:15px;left:0;right:0;height:2px;background:var(--border);z-index:1}
+    .trk-prog{position:absolute;top:15px;right:0;height:2px;background:var(--teal);z-index:2;transition:width .6s ease}
+    .tstep{z-index:3;display:flex;flex-direction:column;align-items:center;gap:5px;width:25%;position:relative}
+    .tpt{width:32px;height:32px;background:var(--bg);border:2px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;color:var(--muted);transition:all .3s}
+    .tstep.on .tpt{background:var(--teal);border-color:var(--teal);color:#fff;box-shadow:0 0 12px rgba(13,148,136,0.4)}
+    .tstep.done-st .tpt{background:var(--green);border-color:var(--green);color:#fff}
+    .tlbl{font-size:0.6rem;font-weight:700;color:var(--muted);text-align:center}
+    .tstep.on .tlbl{color:var(--teal)}
+
+    /* ── RATING ── */
+    .rating-box{padding:16px;background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.15);border-radius:var(--radius-md);text-align:center;margin-bottom:14px}
+    .stars{display:flex;gap:6px;justify-content:center;margin:10px 0}
+    .star{font-size:1.6rem;cursor:pointer;transition:transform .15s;color:#cbd5e1;line-height:1}
+    .star.on{color:var(--amber);transform:scale(1.1)}
+    .star:hover{color:var(--amber);transform:scale(1.15)}
+
+    /* ── MY BOOKINGS LIST ── */
+    .bi-card{background:rgba(13,148,136,0.04);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;margin-bottom:10px}
+    .bi-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+    .bi-no{font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--teal);font-weight:700}
+    .bi-st{font-size:0.7rem;font-weight:700;padding:3px 10px;border-radius:20px}
+    .st-new{background:rgba(245,158,11,0.1);color:var(--amber)}
+    .st-confirmed{background:rgba(16,185,129,0.1);color:var(--green)}
+    .st-done{background:rgba(13,148,136,0.1);color:var(--teal)}
+    .st-cancelled{background:rgba(239,68,68,0.08);color:var(--red)}
+    .st-waiting{background:rgba(14,165,233,0.1);color:var(--sky)}
+
+    /* ── PROGRESS STEPS ── */
+    .step-ind{display:flex;justify-content:center;gap:6px;margin-bottom:16px}
+    .si{width:8px;height:8px;border-radius:50%;background:var(--border);transition:all .3s}
+    .si.on{background:var(--teal);width:24px;border-radius:4px}
+
+    /* ── TOAST ── */
+    #toastWrap{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;width:90%;max-width:340px}
+    .toast{background:rgba(15,23,42,0.92);color:#fff;padding:12px 20px;border-radius:40px;font-size:0.88rem;font-weight:600;backdrop-filter:blur(12px);transform:translateY(-20px);opacity:0;transition:all .4s cubic-bezier(0.175,0.885,0.32,1.275);text-align:center;border:1px solid rgba(255,255,255,0.08)}
+    .toast.show{transform:translateY(0);opacity:1}
+    .toast.ok{background:rgba(16,185,129,0.92)}
+    .toast.err{background:rgba(239,68,68,0.92)}
+
+    /* ── FOOTER ── */
+    .foot{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:0.56rem;color:rgba(100,116,139,0.4);letter-spacing:1.8px;padding:24px 0 8px}
+    .foot span{color:var(--teal)}
+    .empty{text-align:center;padding:50px 20px;color:var(--muted)}
+    .empty i{font-size:2.5rem;display:block;margin-bottom:12px;opacity:0.2}
+
+    /* ── ANTI-SELECT ── */
+    .dbookbtn,.btn-next,.btn-send,.btn-back,.btn-close,.fabbtn,.mybtn,.spec-chip,.d-chip,.t-chip,.dcard{user-select:none}
+
+    /* ── RATE LIMIT GUARD ── */
+    .rate-notice{text-align:center;padding:30px 20px;color:var(--amber)}
+    .rate-notice i{font-size:2rem;display:block;margin-bottom:10px}
   </style>
 </head>
 <body data-theme="light">
 
-<div id="connBar" class="conn-bar"></div>
-<div class="toast-wrap" id="tw"></div>
+<!-- CONN BAR -->
+<div id="connBar" class="c-off" style="display:none"></div>
 
-<!-- LOCKOUT -->
-<div id="lockoutScreen">
-  <div style="width:90px;height:90px;background:rgba(239,68,68,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:30px">
-    <i class="fas fa-shield-alt" style="font-size:42px;color:#ef4444"></i>
+<!-- TOAST -->
+<div id="toastWrap"></div>
+
+<!-- INSTALL BANNER (PWA) -->
+<div id="installBanner">
+  <div class="ib-icon">🏥</div>
+  <div class="ib-text">
+    <div class="ib-title">أضف كلينيكا لشاشتك</div>
+    <div class="ib-sub">وصول سريع لحجز المواعيد بدون متصفح</div>
   </div>
-  <div style="font-size:22px;font-weight:800;margin-bottom:14px">تم إيقاف حساب العيادة</div>
-  <div style="font-size:15px;color:rgba(255,255,255,0.5);margin-bottom:35px">يرجى مراجعة الدعم الفني لشركة أرغون لتفعيل الحساب</div>
-  <a href="https://argonforfun.com" target="_blank" style="background:#0d9488;color:#fff;text-decoration:none;padding:14px 32px;border-radius:12px;font-weight:700;font-size:15px;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 15px rgba(13,148,136,0.3)">
-    زيارة موقع الشركة: argonforfun.com
-  </a>
+  <button class="ib-btn" id="installBtn">إضافة</button>
+  <button class="ib-close" onclick="dismissInstall()">×</button>
+</div>
+
+<!-- LOCK SCREEN -->
+<div id="lockScreen">
+  <div class="ls-icon">🔒</div>
+  <div class="ls-title">العيادة غير متاحة حالياً</div>
+  <div class="ls-sub">تم إيقاف هذه العيادة مؤقتاً<br>يرجى التواصل مع الإدارة</div>
+  <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.3);letter-spacing:2px">CLINICA PRO SYSTEM</div>
 </div>
 
 <div id="mainContent">
   <!-- HEADER -->
   <div class="header">
     <div class="htop">
-      <span class="clinic-mark">ARGON PRO</span>
-      <button class="theme-tog" id="themeBtn" onclick="toggleTheme()">🌙 الوضع الليلي</button>
+      <span class="mark">CLINICA PRO</span>
+      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
     </div>
     <div class="hmain">
-      <div class="clinic-logo">🏥</div>
-      <div class="clinic-name" id="clinicName">جاري التحميل...</div>
-      <button class="notif-btn" onclick="openMyBookings()">
-        <i class="fas fa-calendar-check"></i> حجوزاتي
+      <div class="hlogo" id="hLogo">🏥</div>
+      <div class="hname" id="hName">...</div>
+      <div class="hmeta">
+        <span class="chip c-open" id="statusChip"><i class="fas fa-circle" style="font-size:.38rem"></i> مفتوح الآن</span>
+        <span class="chip c-info" id="hoursChip" style="display:none"><i class="fas fa-clock"></i> <span id="hoursText"></span></span>
+      </div>
+      <button class="mybtn" onclick="openMyBookings()">
+        <i class="fas fa-calendar-check"></i>
+        <span>حجوزاتي</span>
+        <span class="mybtn-cnt" id="mybtnCnt">0</span>
       </button>
-      <div class="clinic-meta" style="margin-top:10px">
-        <span class="chip chip-open" id="statusChip"><i class="fas fa-circle" style="font-size:0.38rem"></i> مفتوح الآن</span>
-        <span class="chip chip-info" id="hoursChip" style="display:none"><i class="fas fa-clock"></i> <span id="hoursText"></span></span>
-        <span class="chip chip-info" id="specChip" style="display:none"><i class="fas fa-stethoscope"></i> <span id="specText"></span></span>
-      </div>
-    </div>
-    <div class="srchwrap" id="srchWrap" style="margin-top:16px">
-      <div style="position:relative">
-        <i class="fas fa-magnifying-glass srchico"></i>
-        <input type="text" class="srchbox" id="searchBox" placeholder="ابحث عن طبيب أو تخصص..." oninput="filterDoctors()">
+      <div class="srchwrap">
+        <i class="fas fa-search srchico"></i>
+        <input type="text" class="srchbox" id="searchBox" placeholder="ابحث عن طبيب أو تخصص..." oninput="filterDocs()">
       </div>
     </div>
   </div>
 
-  <!-- BOOKING STOPPED MSG -->
-  <div id="bookingStoppedMsg" style="display:none;margin-top:30px;background:var(--card);border:1px dashed var(--border);border-radius:24px;padding:40px 20px;text-align:center">
-    <div style="font-size:3rem;color:var(--orange);margin-bottom:15px">📴</div>
-    <div style="font-size:1.3rem;font-weight:800;color:var(--text);margin-bottom:8px">الحجز مغلق حالياً</div>
-    <div style="font-size:0.95rem;color:var(--muted);max-width:280px;margin:0 auto;line-height:1.6">العيادة لا تستقبل حجوزات في الوقت الحالي، يرجى المحاولة في وقت لاحق.</div>
+  <!-- SPECIALTY FILTER -->
+  <div class="spec-bar" id="specBar">
+    <div class="spec-chip act" onclick="filterBySpec('all',this)">🩺 الكل</div>
   </div>
 
-  <!-- DOCTORS BOOKING AREA -->
-  <div id="bookingArea">
-    <!-- SPECIALTY FILTER -->
-    <div class="spec-scroll" id="specFilter" style="margin-top:14px">
-      <div class="spec-chip active" onclick="filterBySpec('all',this)">الكل</div>
-    </div>
-
-    <!-- DOCTORS -->
-    <div class="section">
-      <div class="sec-lbl">الأطباء المتاحون</div>
-      <div class="dgrid" id="doctorsGrid">
-        <div class="empty-s" style="grid-column:1/-1"><i class="fas fa-spinner fa-spin"></i><p>جاري التحميل...</p></div>
-      </div>
-    </div>
-  </div>
+  <!-- DOCTORS -->
+  <div class="sec">
+    <div class="sec-lbl"><i class="fas fa-user-md" style="color:var(--teal)"></i> الأطباء المتاحون</div>
+    <div class="dgrid" id="docsGrid">
+      <div class="empty" style="grid-column:1/-1"><i class="fas fa-spinner fa-spin"></i><p>جاري التحميل...</p></div>
     </div>
   </div>
 
-  <div class="pwby-foot">POWERED BY <span>ARGON</span></div>
+  <div class="foot">POWERED BY <span>CLINICA</span> SYSTEM</div>
 </div>
 
 <!-- FAB -->
-<div class="cartfab">
-  <button class="mybookbtn" onclick="openModal()">
+<div class="fab">
+  <button class="fabbtn" id="fab" onclick="fabAction()">
     <i class="fas fa-calendar-plus"></i>
-    <span id="fabLabel">احجز موعد</span>
-    <div class="bookCnt" id="bookCnt" style="display:none">1</div>
+    <span id="fabTxt">احجز موعدك الآن</span>
+    <span class="fabcnt" id="fabCnt"></span>
   </button>
 </div>
 
-<!-- BOOKING MODAL -->
-<div class="moverlay" id="bookingModal">
-  <div class="msheet">
-    <div class="shandle"></div>
-
-    <!-- STEP 0: DOCTOR INFO + DATE -->
-    <div id="step0">
-      <div class="stitle">📅 اختر موعدك</div>
-      <div id="docInfoBox" style="background:var(--bg);border-radius:14px;padding:14px;margin-bottom:16px;text-align:right">
-        <div style="font-weight:800;font-size:1rem" id="s0DocName"></div>
-        <div style="font-size:0.8rem;color:var(--teal);font-weight:600" id="s0DocSpec"></div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.85rem;color:var(--teal);margin-top:4px" id="s0DocPrice"></div>
+<!-- ══ BOOKING MODAL ══ -->
+<div class="overlay" id="bookModal">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <div class="step-ind">
+        <div class="si on" id="si0"></div>
+        <div class="si" id="si1"></div>
+        <div class="si" id="si2"></div>
       </div>
-      <div class="date-slots">
-        <div class="slot-lbl">📆 اختر التاريخ</div>
-        <div class="date-scroll" id="dateSlots"></div>
-      </div>
-      <div class="date-slots">
-        <div class="slot-lbl">🕐 اختر الوقت</div>
-        <div class="time-grid" id="timeSlots"></div>
-      </div>
-      <button class="bnext" onclick="goStep1()" id="stepNextBtn" disabled>
-        <i class="fas fa-arrow-left" style="margin-left:7px"></i> التالي — بيانات المريض
-      </button>
-      <button class="bclose" onclick="closeModal()">إغلاق</button>
+      <div class="sheet-title" id="sheetTitle">📅 اختر موعدك</div>
     </div>
 
-    <!-- STEP 1: PATIENT INFO -->
-    <div id="step1" style="display:none">
-      <div class="stitle">👤 بيانات المريض</div>
-      <div class="form-grid">
-        <input type="text" id="patName" class="minp minp-full" placeholder="الاسم الكريم *">
-        <input type="tel"  id="patPhone" class="minp" placeholder="رقم الهاتف *">
-        <input type="number" id="patAge" class="minp" placeholder="العمر">
-        <select id="patGender" class="minp">
-          <option value="">الجنس</option>
-          <option value="ذكر">ذكر</option>
-          <option value="أنثى">أنثى</option>
-        </select>
-        <textarea id="patNotes" class="minp minp-full" rows="2" placeholder="الشكوى / ملاحظات (اختياري)" style="resize:none"></textarea>
-      </div>
-      <button class="bnext" onclick="goStep2()">
-        <i class="fas fa-receipt" style="margin-left:7px"></i> مراجعة الحجز
-      </button>
-      <span class="bback" onclick="goStep0()">← العودة</span>
-      <button class="bclose" onclick="closeModal()">إغلاق</button>
-    </div>
-
-    <!-- STEP 2: CONFIRM -->
-    <div id="step2" style="display:none">
-      <div class="stitle">🧾 تأكيد الحجز</div>
-      <div class="billbox" id="billBox"></div>
-      <button class="bsend" onclick="sendBooking()">
-        <i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز
-      </button>
-      <span class="bback" onclick="goStep1()">← تعديل البيانات</span>
-    </div>
-
-    <!-- STEP 3: SUCCESS -->
-    <div id="step3" style="display:none">
-      <div class="success-wrap">
-        <div class="success-icon">✅</div>
-        <div style="font-size:1.25rem;font-weight:800;color:var(--green);margin-bottom:6px">تم تأكيد الحجز!</div>
-        <div class="order-no-box">
-          <div style="font-size:0.72rem;font-weight:700;color:var(--muted);letter-spacing:1px;font-family:'IBM Plex Mono',monospace;margin-bottom:6px">رقم حجزك</div>
-          <div class="on-number" id="finalBookNo">#0000</div>
-          <div style="font-size:0.82rem;color:var(--muted);margin-top:8px">احتفظ برقم الحجز للمراجعة</div>
-        </div>
-        <div style="margin:15px 0;padding:15px;background:var(--bg);border:1px solid var(--border);border-radius:18px;font-size:0.9rem;text-align:right">
-          <div style="margin-bottom:8px">👨‍⚕️ <span style="color:var(--muted)">الطبيب:</span> <span id="finalDocName" style="font-weight:800"></span></div>
-          <div style="margin-bottom:8px">📅 <span style="color:var(--muted)">التاريخ:</span> <span id="finalDate" style="font-weight:800"></span></div>
-          <div style="margin-bottom:8px">🕐 <span style="color:var(--muted)">الوقت:</span> <span id="finalTime" style="font-weight:800"></span></div>
-          <div>💰 <span style="color:var(--muted)">الرسوم:</span> <span id="finalPrice" style="font-weight:800;color:var(--green)"></span></div>
-        </div>
-        <div class="track-wrap">
-          <div style="font-size:0.9rem;font-weight:800;color:var(--teal);margin-bottom:15px;display:flex;align-items:center;gap:8px"><i class="fas fa-clock"></i> حالة الحجز</div>
-          <div class="track-steps">
-            <div class="track-line"></div>
-            <div class="track-progress" id="trackProgress"></div>
-            <div class="tstep active" id="ts-new"><div class="tpoint"><i class="fas fa-paper-plane"></i></div><div class="tlbl">مستلم</div></div>
-            <div class="tstep" id="ts-confirmed"><div class="tpoint"><i class="fas fa-check"></i></div><div class="tlbl">مؤكد</div></div>
-            <div class="tstep" id="ts-waiting"><div class="tpoint"><i class="fas fa-hourglass-half"></i></div><div class="tlbl">بالانتظار</div></div>
-            <div class="tstep" id="ts-done"><div class="tpoint"><i class="fas fa-star"></i></div><div class="tlbl">مكتمل</div></div>
+    <div class="sheet-body">
+      <!-- STEP 0 -->
+      <div id="s0">
+        <div class="docbox" id="docPreview">
+          <div class="docbox-icon" id="dp-icon">👨‍⚕️</div>
+          <div class="docbox-info">
+            <div class="dn" id="dp-name">د. اسم الطبيب</div>
+            <div class="ds" id="dp-spec">التخصص</div>
+            <div class="dp" id="dp-fee">0.00 د.أ</div>
           </div>
         </div>
-        <!-- RATING (shown when done) -->
-        <div id="ratingBox" style="display:none;margin-top:16px;padding:16px;background:var(--bg);border-radius:16px;border:1px solid var(--border)">
-          <div style="font-weight:700;margin-bottom:8px">قيّم تجربتك مع الطبيب</div>
-          <div class="stars" id="ratingStars">
-            <span class="star" onclick="setRating(1)">★</span>
-            <span class="star" onclick="setRating(2)">★</span>
-            <span class="star" onclick="setRating(3)">★</span>
-            <span class="star" onclick="setRating(4)">★</span>
-            <span class="star" onclick="setRating(5)">★</span>
-          </div>
-          <button id="submitRatingBtn" onclick="submitRating()" style="display:none;width:100%;padding:10px;background:var(--amber);border:none;border-radius:10px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;color:#000">إرسال التقييم</button>
+        <div class="slot-lbl"><i class="fas fa-calendar-alt" style="color:var(--teal)"></i> اختر التاريخ</div>
+        <div class="date-row" id="dateRow"></div>
+        <div class="slot-lbl"><i class="fas fa-clock" style="color:var(--teal)"></i> اختر الوقت المناسب</div>
+        <div class="t-grid" id="timeGrid">
+          <div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:0.82rem;padding:12px">اختر تاريخاً أولاً</div>
         </div>
-        <button class="bnext" onclick="closeModal()" style="margin-top:20px;background:var(--bg);color:var(--text);border:1px solid var(--border);box-shadow:none">العودة للرئيسية</button>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.55rem;color:var(--muted);margin-top:15px;text-transform:uppercase;letter-spacing:1px">Powered by Argon System</div>
+        <button class="btn-next" id="s0Next" onclick="goStep(1)" disabled>
+          التالي — بيانات المريض <i class="fas fa-arrow-left" style="margin-right:6px"></i>
+        </button>
+        <button class="btn-close" onclick="closeModal('bookModal')">إغلاق</button>
+      </div>
+
+      <!-- STEP 1 -->
+      <div id="s1" style="display:none">
+        <div class="fg">
+          <label>الاسم الكريم *</label>
+          <input type="text" id="pName" class="finp" placeholder="محمد عبدالله" autocomplete="given-name">
+          <div class="err-msg" id="pNameErr">يرجى إدخال الاسم</div>
+        </div>
+        <div class="fg">
+          <label>رقم الهاتف *</label>
+          <input type="tel" id="pPhone" class="finp" placeholder="07XXXXXXXX" autocomplete="tel" dir="ltr">
+          <div class="err-msg" id="pPhoneErr">يرجى إدخال رقم هاتف صحيح</div>
+        </div>
+        <div class="fg-row">
+          <div class="fg">
+            <label>العمر</label>
+            <input type="number" id="pAge" class="finp" placeholder="25" min="1" max="120">
+          </div>
+          <div class="fg">
+            <label>الجنس</label>
+            <select id="pGender" class="finp">
+              <option value="">— اختر —</option>
+              <option value="ذكر">ذكر</option>
+              <option value="أنثى">أنثى</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg">
+          <label>الشكوى / ملاحظات</label>
+          <textarea id="pNotes" class="finp" rows="2" placeholder="صف حالتك باختصار..." style="resize:none"></textarea>
+        </div>
+        <button class="btn-next" onclick="goStep(2)">
+          مراجعة الحجز <i class="fas fa-receipt" style="margin-right:6px"></i>
+        </button>
+        <button class="btn-back" onclick="goStep(0)">← العودة</button>
+        <button class="btn-close" onclick="closeModal('bookModal')">إغلاق</button>
+      </div>
+
+      <!-- STEP 2 -->
+      <div id="s2" style="display:none">
+        <div class="billbox" id="billBox"></div>
+        <button class="btn-send" id="sendBtn" onclick="sendBooking()">
+          <i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز
+        </button>
+        <button class="btn-back" onclick="goStep(1)">← تعديل</button>
+      </div>
+
+      <!-- STEP 3: SUCCESS -->
+      <div id="s3" style="display:none">
+        <div class="success">
+          <div class="scheck">✅</div>
+          <div style="font-size:1.3rem;font-weight:900;color:var(--green);margin-bottom:4px">تم تأكيد حجزك!</div>
+          <div style="font-size:0.85rem;color:var(--muted);margin-bottom:16px">احتفظ برقم الحجز للمراجعة</div>
+          <div class="sno-box">
+            <div style="font-size:0.7rem;font-weight:700;color:var(--muted);letter-spacing:1px;font-family:'IBM Plex Mono',monospace;margin-bottom:6px">رقم حجزك</div>
+            <div class="sno" id="sno">#----</div>
+          </div>
+          <div class="sinfo" id="sinfo"></div>
+          <div class="tracker">
+            <div class="trk-title"><i class="fas fa-clock"></i> حالة الحجز <span id="trkTxt" style="font-size:0.72rem;color:var(--muted);font-weight:400;margin-right:auto">جديد</span></div>
+            <div class="trk-bar">
+              <div class="trk-line"></div>
+              <div class="trk-prog" id="trkProg" style="width:0%"></div>
+              <div class="tstep" id="ts0"><div class="tpt"><i class="fas fa-paper-plane"></i></div><div class="tlbl">مستلم</div></div>
+              <div class="tstep" id="ts1"><div class="tpt"><i class="fas fa-check"></i></div><div class="tlbl">مؤكد</div></div>
+              <div class="tstep" id="ts2"><div class="tpt"><i class="fas fa-hourglass-half"></i></div><div class="tlbl">انتظار</div></div>
+              <div class="tstep" id="ts3"><div class="tpt"><i class="fas fa-star"></i></div><div class="tlbl">مكتمل</div></div>
+            </div>
+          </div>
+          <div class="rating-box" id="ratingBox" style="display:none">
+            <div style="font-weight:800;font-size:0.9rem;margin-bottom:6px">قيّم تجربتك مع الطبيب</div>
+            <div class="stars">
+              <span class="star" onclick="setStar(1)">★</span>
+              <span class="star" onclick="setStar(2)">★</span>
+              <span class="star" onclick="setStar(3)">★</span>
+              <span class="star" onclick="setStar(4)">★</span>
+              <span class="star" onclick="setStar(5)">★</span>
+            </div>
+            <button id="rateBtn" onclick="sendRating()" style="display:none;width:100%;padding:10px;background:var(--amber);border:none;border-radius:10px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;color:#000;margin-top:6px">إرسال التقييم</button>
+          </div>
+          <button class="btn-next" onclick="closeModal('bookModal')" style="background:var(--bg);color:var(--text);border:1px solid var(--border);box-shadow:none;margin-top:4px">العودة للرئيسية</button>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- MY BOOKINGS MODAL -->
-<div class="moverlay" id="myBookingsModal">
-  <div class="msheet">
-    <div class="shandle"></div>
-    <div class="stitle">📋 حجوزاتي السابقة</div>
-    <div id="myBookingsList"></div>
-    <button class="bclose" onclick="document.getElementById('myBookingsModal').classList.remove('show')">إغلاق</button>
-  </div>
-</div>
-
-<!-- EDIT BOOKING MODAL -->
-<div class="moverlay" id="editBookingModal">
-  <div class="msheet">
-    <div class="shandle"></div>
-    <div class="stitle">✏️ تعديل بيانات الحجز</div>
-    <div class="form-grid" style="margin-top:10px">
-      <input type="hidden" id="editKey">
-      <input type="text" id="editName" class="minp minp-full" placeholder="الاسم الكريم">
-      <input type="tel" id="editPhone" class="minp minp-full" placeholder="رقم الهاتف">
-      <textarea id="editNotes" class="minp minp-full" rows="2" placeholder="الملاحظات" style="resize:none"></textarea>
+<!-- ══ MY BOOKINGS MODAL ══ -->
+<div class="overlay" id="myModal">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><div class="sheet-title">📋 حجوزاتي</div></div>
+    <div class="sheet-body" id="myBooksList">
+      <div class="empty"><i class="fas fa-calendar-xmark"></i><p>لا توجد حجوزات سابقة</p></div>
     </div>
-    <button class="bnext" id="editSaveBtn" onclick="saveEditBooking()" style="margin-top:15px">
-      <i class="fas fa-save" style="margin-left:7px"></i> حفظ التعديلات
-    </button>
-    <button class="bclose" onclick="document.getElementById('editBookingModal').classList.remove('show')">تراجع</button>
+    <div style="padding:0 20px 20px;flex-shrink:0">
+      <button class="btn-close" onclick="closeModal('myModal')">إغلاق</button>
+    </div>
   </div>
 </div>
 
+<!-- SCRIPTS -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 <script>
-// ══ FIREBASE ══
-// !! يجب استبداله بإعدادات Firebase الجديدة الخاصة بك
-const firebaseConfig = {
+/* ═══════════════════════════════════════════════════════
+   CLINICA PRO — Patient Booking Interface v2.0
+   Security: Anonymous Auth + Rate Limiting + Input Validation
+   ═══════════════════════════════════════════════════════ */
+
+// ── FIREBASE CONFIG ──
+const FB = {
   apiKey: "AIzaSyCDT_H-1klxbtuVR5n5GOVHKlxcmvY_2GA",
   authDomain: "clinica-system-e71b9.firebaseapp.com",
   databaseURL: "https://clinica-system-e71b9-default-rtdb.firebaseio.com",
   projectId: "clinica-system-e71b9",
   storageBucket: "clinica-system-e71b9.firebasestorage.app",
   messagingSenderId: "833103541884",
-  appId: "1:833103541884:web:f8ee6ca4b3d8400cf0fbf9",
-  measurementId: "G-KGN7CPYKTR"
+  appId: "1:833103541884:web:f8ee6ca4b3d8400cf0fbf9"
 };
-firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(FB);
 const db = firebase.database();
+const auth = firebase.auth();
 
-// ── CLINIC ID FROM URL ──
-const urlParams = new URLSearchParams(window.location.search);
-let CLINIC_ID = urlParams.get('id');
-if (!CLINIC_ID) CLINIC_ID = localStorage.getItem('clinica_id') || '1';
-else localStorage.setItem('clinica_id', CLINIC_ID);
-const BASE = 'clinics/' + CLINIC_ID;
+// ── CLINIC ID ──
+const uP = new URLSearchParams(window.location.search);
+let CID = uP.get('id') || localStorage.getItem('clinica_id') || '1';
+if (uP.get('id')) localStorage.setItem('clinica_id', CID);
+const BASE = 'clinics/' + CID;
 
 // ── STATE ──
-let allDoctors = [];
-let selectedDoctor = null;
-let selectedDate = '';
-let selectedTime = '';
-let currentBookingKey = null;
-let trackListener = null;
-let currentRating = 0;
-let isConnected = true;
+let allDocs = [], selDoc = null, selDate = '', selTime = '';
+let currentKey = null, trkListener = null, curRating = 0;
+let isConn = true, isBooked = false, _anonUid = null;
 
-// ── CONNECTION ──
+// ── RATE LIMIT (client-side guard) ──
+const RATE_KEY = 'clinica_rate_' + CID;
+function checkRateLimit() {
+  const data = JSON.parse(localStorage.getItem(RATE_KEY) || '{"count":0,"ts":0}');
+  const now = Date.now();
+  if (now - data.ts > 3600000) { // reset per hour
+    localStorage.setItem(RATE_KEY, JSON.stringify({count:1, ts:now}));
+    return true;
+  }
+  if (data.count >= 5) { // max 5 bookings/hour
+    return false;
+  }
+  data.count++;
+  localStorage.setItem(RATE_KEY, JSON.stringify(data));
+  return true;
+}
+
+// ── INPUT SANITIZER ──
+const sanitize = s => String(s||'').replace(/[<>"'&]/g,'').trim().substring(0,200);
+const isPhone = p => /^[0-9+\s\-]{7,15}$/.test(p.trim());
+const isName = n => n.trim().length >= 2 && n.trim().length <= 80;
+
+// ── ANONYMOUS AUTH ──
+auth.signInAnonymously().then(r => {
+  _anonUid = r.user.uid;
+}).catch(() => {});
+
+// ── CONNECTION MONITOR ──
 db.ref('.info/connected').on('value', snap => {
-  const was = !isConnected;
-  isConnected = snap.val() === true;
+  const was = !isConn;
+  isConn = snap.val() === true;
   const bar = document.getElementById('connBar');
-  if (isConnected) {
-    bar.className = 'conn-bar conn-ok';
-    bar.innerHTML = '<i class="fas fa-wifi"></i> متصل';
-    bar.style.display = 'flex';
-    setTimeout(() => { if(isConnected) bar.style.display='none'; }, 2500);
-    if (was) toast('✅ تم إعادة الاتصال');
+  if (isConn) {
+    bar.className = 'c-ok'; bar.style.display='flex';
+    bar.innerHTML = '<i class="fas fa-wifi" style="margin-left:6px"></i> متصل';
+    setTimeout(() => { if(isConn) bar.style.display='none'; }, 2000);
+    if (was) toast('✅ تم استعادة الاتصال');
   } else {
-    bar.style.display = 'flex';
-    bar.className = 'conn-bar conn-off';
-    bar.innerHTML = '<i class="fas fa-exclamation-triangle"></i> اتصال ضعيف...';
+    bar.style.display='flex'; bar.className='c-off';
+    bar.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-left:6px"></i> لا يوجد اتصال، جاري إعادة المحاولة...';
   }
 });
-window.addEventListener('offline', () => { isConnected=false; db.goOffline(); });
-window.addEventListener('online', () => { setTimeout(() => db.goOnline(), 1000); });
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && !isConnected) { db.goOffline(); setTimeout(() => db.goOnline(), 1000); }
-});
+window.addEventListener('offline', () => { isConn=false; db.goOffline(); });
+window.addEventListener('online', () => setTimeout(() => db.goOnline(), 1000));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && !isConn) { db.goOffline(); setTimeout(()=>db.goOnline(),1000); } });
 
-// ── LOAD CLINIC SETTINGS ──
-let clinicSettings = {};
-db.ref(BASE + '/settings').on('value', snap => {
+// ── LOAD SETTINGS ──
+db.ref(BASE+'/settings').on('value', snap => {
   const s = snap.val();
-  if (!s) { return; }
-  clinicSettings = s;
-  
-  const nf = document.getElementById('mainContent');
-  const lo = document.getElementById('lockoutScreen');
-  if (s.status === 'suspended') { lo.classList.add('show'); return; }
-  else lo.classList.remove('show');
+  if (!s) return;
+  if (s.status === 'suspended') {
+    document.getElementById('lockScreen').classList.add('show');
+    document.getElementById('mainContent').style.display = 'none';
+    return;
+  }
+  document.getElementById('lockScreen').classList.remove('show');
+  document.getElementById('mainContent').style.display = '';
 
-  document.getElementById('clinicName').textContent = s.name || 'عيادة';
-  document.title = (s.name || 'كلينيكا') + ' | حجز موعد';
+  document.getElementById('hName').textContent = s.name || 'العيادة';
+  document.getElementById('hLogo').textContent = s.emoji || '🏥';
+  document.title = (s.name||'كلينيكا') + ' | حجز موعد';
   const sc = document.getElementById('statusChip');
-  
-  const isStopped = s.status === 'closed' || s.acceptBookings === false;
-  
   if (s.status === 'closed') {
-    sc.className = 'chip chip-closed';
-    sc.innerHTML = '<i class="fas fa-circle" style="font-size:0.38rem"></i> مغلق مؤقتاً';
+    sc.className='chip c-closed'; sc.innerHTML='<i class="fas fa-circle" style="font-size:.38rem"></i> مغلق مؤقتاً';
   } else {
-    sc.className = 'chip chip-open';
-    sc.innerHTML = '<i class="fas fa-circle" style="font-size:0.38rem"></i> مفتوح الآن';
+    sc.className='chip c-open'; sc.innerHTML='<i class="fas fa-circle" style="font-size:.38rem"></i> مفتوح الآن';
   }
-  
-  if (isStopped) {
-    document.getElementById('bookingArea').style.display = 'none';
-    document.getElementById('srchWrap').style.display = 'none';
-    document.getElementById('bookingStoppedMsg').style.display = 'block';
-  } else {
-    document.getElementById('bookingArea').style.display = 'block';
-    document.getElementById('srchWrap').style.display = 'block';
-    document.getElementById('bookingStoppedMsg').style.display = 'none';
-  }
-
   if (s.hours) { document.getElementById('hoursChip').style.display='inline-flex'; document.getElementById('hoursText').textContent=s.hours; }
-  if (s.specialty) { document.getElementById('specChip').style.display='inline-flex'; document.getElementById('specText').textContent=s.specialty; }
   if (s.color) {
     document.documentElement.style.setProperty('--teal', s.color);
     document.documentElement.style.setProperty('--teal-dark', s.color);
-    document.documentElement.style.setProperty('--header-to', s.color);
+    const tm = document.querySelector('meta[name="theme-color"]');
+    if (tm) tm.content = s.color;
   }
-  // Logo emoji
-  const logo = document.querySelector('.clinic-logo');
-  if (s.emoji) logo.textContent = s.emoji;
+  document.getElementById('manifest-color')?.setAttribute('content', s.color||'#0d9488');
 });
 
 // ── LOAD DOCTORS ──
-db.ref(BASE + '/doctors').on('value', snap => {
-  const docs = snap.val() || {};
-  allDoctors = [];
-  for (let k in docs) allDoctors.push({ key: k, ...docs[k] });
-  renderDoctors(allDoctors);
+db.ref(BASE+'/doctors').on('value', snap => {
+  const d = snap.val() || {};
+  allDocs = Object.entries(d).map(([k,v]) => ({key:k,...v}));
+  renderDocs(allDocs);
   buildSpecFilter();
+  // Update local count
+  const myB = JSON.parse(localStorage.getItem('clinica_bks_'+CID)||'[]');
+  document.getElementById('mybtnCnt').textContent = myB.length;
 });
 
 function buildSpecFilter() {
-  const specs = ['all', ...new Set(allDoctors.map(d => d.specialty).filter(Boolean))];
-  const sf = document.getElementById('specFilter');
-  sf.innerHTML = specs.map((s,i) => `<div class="spec-chip ${i===0?'active':''}" onclick="filterBySpec('${s}',this)">${s==='all'?'الكل':s}</div>`).join('');
-}
-
-function filterBySpec(spec, el) {
-  document.querySelectorAll('.spec-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  if (spec === 'all') renderDoctors(allDoctors);
-  else renderDoctors(allDoctors.filter(d => d.specialty === spec));
-}
-
-function filterDoctors() {
-  const q = document.getElementById('searchBox').value.toLowerCase().trim();
-  if (!q) { renderDoctors(allDoctors); return; }
-  renderDoctors(allDoctors.filter(d => (d.name||'').toLowerCase().includes(q) || (d.specialty||'').toLowerCase().includes(q)));
-}
-
-function renderDoctors(docs) {
-  const grid = document.getElementById('doctorsGrid');
-  if (!docs.length) {
-    grid.innerHTML = `<div class="empty-s" style="grid-column:1/-1"><i class="fas fa-user-md"></i><p>لا يوجد أطباء متاحون</p></div>`;
-    return;
-  }
-  grid.innerHTML = docs.map(d => `
-    <div class="dcard" onclick="selectDoctor('${d.key}')">
-      <div class="dcard-img">
-        ${d.img ? `<img src="${d.img}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:2.5rem">${d.emoji||'👨‍⚕️'}</span>`}
-        <div class="dcard-avail ${d.available!==false?'avail-yes':'avail-no'}"></div>
-      </div>
-      <div class="dcard-body">
-        <div class="dcard-name">${d.name||'الطبيب'}</div>
-        <div class="dcard-spec">${d.specialty||''}</div>
-        <div class="dcard-price">${parseFloat(d.fee||0).toFixed(2)} د.أ</div>
-        <button class="book-btn" ${d.available===false?'disabled':''} onclick="event.stopPropagation();selectDoctor('${d.key}')">
-          <i class="fas fa-calendar-plus"></i> ${d.available===false?'غير متاح':'احجز موعد'}
-        </button>
-      </div>
+  const specs = ['all', ...new Set(allDocs.map(d=>d.specialty).filter(Boolean))];
+  const bar = document.getElementById('specBar');
+  bar.innerHTML = specs.map((s,i) => `
+    <div class="spec-chip${i===0?' act':''}" onclick="filterBySpec('${sanitize(s)}',this)">
+      ${i===0?'🩺 ':''} ${s==='all'?'الكل':s}
     </div>`).join('');
 }
 
-function selectDoctor(key) {
-  const doc = allDoctors.find(d => d.key === key);
-  if (!doc || doc.available === false) return;
-  selectedDoctor = doc;
-  document.getElementById('s0DocName').textContent = 'د. ' + (doc.name||'');
-  document.getElementById('s0DocSpec').textContent = doc.specialty||'';
-  document.getElementById('s0DocPrice').textContent = parseFloat(doc.fee||0).toFixed(2) + ' د.أ';
-  selectedDate = '';
-  selectedTime = '';
-  document.getElementById('stepNextBtn').disabled = true;
-  buildDateSlots();
-  showStep(0);
-  document.getElementById('bookingModal').classList.add('show');
+let curSpec = 'all';
+function filterBySpec(spec, el) {
+  curSpec = spec;
+  document.querySelectorAll('.spec-chip').forEach(c=>c.classList.remove('act'));
+  el.classList.add('act');
+  const q = document.getElementById('searchBox').value.toLowerCase().trim();
+  applyFilter(spec, q);
+}
+function filterDocs() {
+  const q = document.getElementById('searchBox').value.toLowerCase().trim();
+  applyFilter(curSpec, q);
+}
+function applyFilter(spec, q) {
+  let f = allDocs;
+  if (spec!=='all') f=f.filter(d=>d.specialty===spec);
+  if (q) f=f.filter(d=>(d.name||'').toLowerCase().includes(q)||(d.specialty||'').toLowerCase().includes(q));
+  renderDocs(f);
 }
 
-// ── DATE / TIME SLOTS ──
-function buildDateSlots() {
-  const container = document.getElementById('dateSlots');
-  const today = new Date();
-  const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-  let html = '';
-  
-  const allowSameDay = clinicSettings.sameDayBooking !== false;
-  const daysToShow = clinicSettings.bookingDays || 10;
-  let startOffset = allowSameDay ? 0 : 1;
-
-  for (let i = 0; i < daysToShow; i++) {
-    const d = new Date(today); 
-    d.setDate(today.getDate() + startOffset + i);
-    const dateStr = d.toISOString().split('T')[0];
-    const dayName = days[d.getDay()];
-    const dn = d.getDate();
-    const isToday = (startOffset + i) === 0;
-    
-    html += `<div class="date-chip" id="dc-${dateStr}" onclick="pickDate('${dateStr}',this)">
-      <div class="dday">${isToday ? 'اليوم' : dayName}</div>
-      <div class="dnum">${dn}</div>
+function renderDocs(docs) {
+  const g = document.getElementById('docsGrid');
+  if (!docs.length) { g.innerHTML=`<div class="empty" style="grid-column:1/-1"><i class="fas fa-user-md"></i><p>لا يوجد أطباء</p></div>`; return; }
+  g.innerHTML = docs.map(d => {
+    const avail = d.available !== false;
+    const ratingStr = d.avgRating ? `${'★'.repeat(Math.round(d.avgRating))} <span>(${d.ratingCount||0})</span>` : '<span>لا يوجد تقييم</span>';
+    return `
+    <div class="dcard" onclick="pickDoc('${d.key}')">
+      <div class="dcard-top">
+        ${d.img?`<img src="${d.img}" alt="${d.name}" onerror="this.parentElement.innerHTML='<span style=font-size:2.8rem>${d.emoji||'👨‍⚕️'}</span>">` : `<span>${d.emoji||'👨‍⚕️'}</span>`}
+        <div class="avail-dot ${avail?'av-yes':'av-no'}"></div>
+      </div>
+      <div class="dcard-body">
+        <div class="dname">${sanitize(d.name)}</div>
+        <div class="dspec">${sanitize(d.specialty||'')}</div>
+        <div class="dfee">${parseFloat(d.fee||0).toFixed(2)} د.أ</div>
+        <div class="drating">${ratingStr}</div>
+        <button class="dbookbtn" ${avail?'':`disabled`} onclick="event.stopPropagation();pickDoc('${d.key}')">
+          <i class="fas fa-calendar-plus"></i>${avail?'احجز موعد':'غير متاح'}
+        </button>
+      </div>
     </div>`;
-  }
-  container.innerHTML = html;
-  document.getElementById('timeSlots').innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px;grid-column:1/-1">اختر تاريخاً أولاً</div>';
-}
-
-function pickDate(dateStr, el) {
-  selectedDate = dateStr;
-  selectedTime = '';
-  document.getElementById('stepNextBtn').disabled = true;
-  document.querySelectorAll('.date-chip').forEach(c => c.classList.remove('sel'));
-  el.classList.add('sel');
-  buildTimeSlots(dateStr);
-}
-
-async function buildTimeSlots(dateStr) {
-  const container = document.getElementById('timeSlots');
-  container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:10px;grid-column:1/-1"><i class="fas fa-spinner fa-spin"></i></div>';
-  
-  const doc = selectedDoctor;
-  const workStart = doc.workStart || '09:00';
-  const workEnd = doc.workEnd || '17:00';
-  const slotMins = doc.slotDuration || 30;
-
-  // Get booked slots for this doctor on this date
-  const bookedSnap = await db.ref(`${BASE}/bookings`).orderByChild('docKey').equalTo(doc.key).once('value');
-  const bookedTimes = new Set();
-  if (bookedSnap.val()) {
-    Object.values(bookedSnap.val()).forEach(b => {
-      if (b.date === dateStr && b.status !== 'cancelled') bookedTimes.add(b.time);
-    });
-  }
-
-  // Build time slots
-  const [sh,sm] = workStart.split(':').map(Number);
-  const [eh,em] = workEnd.split(':').map(Number);
-  let cur = sh*60+sm;
-  const end = eh*60+em;
-  const slots = [];
-  while (cur+slotMins <= end) {
-    const hh = String(Math.floor(cur/60)).padStart(2,'0');
-    const mm = String(cur%60).padStart(2,'0');
-    slots.push(`${hh}:${mm}`);
-    cur += slotMins;
-  }
-
-  if (!slots.length) { container.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;grid-column:1/-1">لا توجد أوقات متاحة</div>'; return; }
-
-  container.innerHTML = slots.map(t => {
-    const isBooked = bookedTimes.has(t);
-    const clickHandler = isBooked ? '' : "pickTime('" + t + "',this)";
-    return `<div class="time-chip ${isBooked?'booked':''}" id="tc-${t}" onclick="${clickHandler}">${t}${isBooked?'<br><span style="font-size:0.6rem">محجوز</span>':''}</div>`;
   }).join('');
 }
 
-function pickTime(time, el) {
-  selectedTime = time;
-  document.querySelectorAll('.time-chip').forEach(c => c.classList.remove('sel'));
+// ── PICK DOCTOR ──
+function pickDoc(key) {
+  const d = allDocs.find(x=>x.key===key);
+  if (!d || d.available===false) return;
+  selDoc = d; selDate=''; selTime='';
+  document.getElementById('dp-icon').textContent = d.emoji||'👨‍⚕️';
+  document.getElementById('dp-name').textContent = 'د. '+sanitize(d.name);
+  document.getElementById('dp-spec').textContent = sanitize(d.specialty||'');
+  document.getElementById('dp-fee').textContent = parseFloat(d.fee||0).toFixed(2)+' د.أ';
+  document.getElementById('s0Next').disabled = true;
+  buildDates();
+  goStep(0);
+  openModal('bookModal');
+}
+
+// ── DATE SLOTS ──
+function buildDates() {
+  const r = document.getElementById('dateRow');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const DAY_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  let html = '';
+  for (let i=0;i<14;i++) {
+    const d = new Date(today); d.setDate(today.getDate()+i);
+    const ds = d.toISOString().split('T')[0];
+    const dn = DAY_AR[d.getDay()];
+    html += `<div class="d-chip" id="dc-${ds}" onclick="pickDate('${ds}',this)">
+      <div class="d-day">${i===0?'اليوم':dn}</div>
+      <div class="d-num">${d.getDate()}</div>
+    </div>`;
+  }
+  r.innerHTML = html;
+  document.getElementById('timeGrid').innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:0.82rem;padding:12px">اختر تاريخاً أولاً</div>`;
+}
+
+async function pickDate(ds, el) {
+  selDate = ds; selTime = '';
+  document.getElementById('s0Next').disabled = true;
+  document.querySelectorAll('.d-chip').forEach(c=>c.classList.remove('sel'));
   el.classList.add('sel');
-  document.getElementById('stepNextBtn').disabled = false;
+  await buildTimes(ds);
+}
+
+async function buildTimes(ds) {
+  const tg = document.getElementById('timeGrid');
+  tg.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:12px"><i class="fas fa-spinner fa-spin" style="color:var(--teal)"></i></div>`;
+  const doc = selDoc;
+  const ws = doc.workStart||'09:00', we = doc.workEnd||'17:00', sm = doc.slotDuration||30;
+  const [sh,smm]=ws.split(':').map(Number), [eh,emm]=we.split(':').map(Number);
+  let cur=sh*60+smm; const end=eh*60+emm;
+
+  // Fetch booked times
+  const bookedSet = new Set();
+  try {
+    const snap = await db.ref(BASE+'/bookings').orderByChild('docKey').equalTo(doc.key).once('value');
+    if (snap.val()) Object.values(snap.val()).forEach(b => { if(b.date===ds&&b.status!=='cancelled') bookedSet.add(b.time); });
+  } catch(e){}
+
+  const now = new Date(); const nowMins = now.getHours()*60+now.getMinutes();
+  const isToday = ds === new Date().toISOString().split('T')[0];
+  const slots = [];
+  while (cur+sm <= end) {
+    const hh=String(Math.floor(cur/60)).padStart(2,'0'), mm=String(cur%60).padStart(2,'0');
+    slots.push(`${hh}:${mm}`);
+    cur += sm;
+  }
+  if (!slots.length) { tg.innerHTML=`<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:0.82rem;padding:12px">لا توجد أوقات متاحة</div>`; return; }
+
+  tg.innerHTML = slots.map(t => {
+    const [th,tm]=t.split(':').map(Number); const tMins=th*60+tm;
+    const isBooked = bookedSet.has(t);
+    const isPast = isToday && tMins <= nowMins;
+    const cls = isBooked?'bkd':isPast?'past':'';
+    const clickable = !isBooked && !isPast;
+    return `<div class="t-chip ${cls}" id="tc-${t}" ${clickable?`onclick="pickTime('${t}',this)"`:''}>
+      ${t}${isBooked?'<br><small>محجوز</small>':''}
+    </div>`;
+  }).join('');
+}
+
+function pickTime(t, el) {
+  selTime = t;
+  document.querySelectorAll('.t-chip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('s0Next').disabled = false;
 }
 
 // ── STEPS ──
-function showStep(n) {
+function goStep(n) {
   [0,1,2,3].forEach(i => {
-    const el = document.getElementById('step'+i);
+    const el = document.getElementById('s'+i);
     if (el) el.style.display = i===n?'block':'none';
   });
-}
-function goStep0() { showStep(0); }
-function goStep1() {
-  if (!selectedDate || !selectedTime) { toast('⚠️ اختر التاريخ والوقت'); return; }
-  showStep(1);
-}
-function goStep2() {
-  const name = document.getElementById('patName').value.trim();
-  const phone = document.getElementById('patPhone').value.trim();
-  if (!name || !phone) { toast('⚠️ أدخل الاسم ورقم الهاتف'); return; }
-  const doc = selectedDoctor;
-  const notes = document.getElementById('patNotes').value.trim();
-  document.getElementById('billBox').innerHTML = `
-    <div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:11px;text-transform:uppercase;letter-spacing:1px;font-family:'IBM Plex Mono',monospace">تفاصيل الحجز</div>
-    <div class="billrow"><span>الطبيب</span><span style="font-weight:700">د. ${doc.name}</span></div>
-    <div class="billrow"><span>التخصص</span><span>${doc.specialty||'—'}</span></div>
-    <div class="billrow"><span>التاريخ</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:600">${selectedDate}</span></div>
-    <div class="billrow"><span>الوقت</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:600">${selectedTime}</span></div>
-    <div class="billrow"><span>المريض</span><span style="font-weight:700">${name}</span></div>
-    ${notes?`<div class="billrow"><span>ملاحظات</span><span style="font-size:0.8rem">${notes}</span></div>`:''}
-    <div class="billtotal"><span style="font-weight:700">رسوم الكشف</span><span style="font-family:'IBM Plex Mono',monospace;font-size:1.2rem;font-weight:800;color:var(--green)">${parseFloat(doc.fee||0).toFixed(2)} د.أ</span></div>`;
-  showStep(2);
+  // Update step indicators
+  [0,1,2].forEach(i => {
+    const si = document.getElementById('si'+i);
+    if (si) si.className = 'si' + (i===n?' on':'');
+  });
+  const titles = ['📅 اختر موعدك','👤 بيانات المريض','🧾 مراجعة وتأكيد'];
+  if (titles[n]) document.getElementById('sheetTitle').textContent = titles[n];
+  if (n===2) buildBill();
 }
 
-// ── SECURITY (SANITIZATION) ──
-function sanitizeHTML(str) {
-  if (typeof str !== 'string') return str;
-  const temp = document.createElement('div');
-  temp.textContent = str;
-  return temp.innerHTML;
+function buildBill() {
+  const d = selDoc;
+  const name = sanitize(document.getElementById('pName').value);
+  const notes = sanitize(document.getElementById('pNotes').value);
+  document.getElementById('billBox').innerHTML = `
+    <div class="brow"><span class="bl">الطبيب</span><span class="bv">د. ${sanitize(d.name)}</span></div>
+    <div class="brow"><span class="bl">التخصص</span><span class="bv">${sanitize(d.specialty||'—')}</span></div>
+    <div class="brow"><span class="bl">التاريخ</span><span class="bv" style="font-family:'IBM Plex Mono',monospace">${selDate}</span></div>
+    <div class="brow"><span class="bl">الوقت</span><span class="bv" style="font-family:'IBM Plex Mono',monospace">${selTime}</span></div>
+    <div class="brow"><span class="bl">المريض</span><span class="bv">${name}</span></div>
+    ${notes?`<div class="brow"><span class="bl">ملاحظات</span><span class="bv" style="font-size:.82rem">${notes}</span></div>`:''}
+    <div class="btotal"><span class="bl">رسوم الكشف</span><span class="bv">${parseFloat(d.fee||0).toFixed(2)} د.أ</span></div>`;
 }
+
+// ── VALIDATE STEP 1 ──
+function validateStep1() {
+  const name = document.getElementById('pName').value.trim();
+  const phone = document.getElementById('pPhone').value.trim();
+  let ok = true;
+  if (!isName(name)) { document.getElementById('pName').classList.add('err'); document.getElementById('pNameErr').style.display='block'; ok=false; }
+  else { document.getElementById('pName').classList.remove('err'); document.getElementById('pNameErr').style.display='none'; }
+  if (!isPhone(phone)) { document.getElementById('pPhone').classList.add('err'); document.getElementById('pPhoneErr').style.display='block'; ok=false; }
+  else { document.getElementById('pPhone').classList.remove('err'); document.getElementById('pPhoneErr').style.display='none'; }
+  if (ok) goStep(2);
+}
+document.getElementById('s1').querySelectorAll && document.querySelectorAll && (function(){
+  // Attach validation to step 1 next button
+  const s1btn = document.querySelector('#s1 .btn-next');
+  if (s1btn) { s1btn.onclick = validateStep1; }
+})();
 
 // ── SEND BOOKING ──
-let isSending = false;
+let sending = false;
 function sendBooking() {
-  if (isSending) return;
-  const rawName = document.getElementById('patName').value.trim();
-  const rawPhone = document.getElementById('patPhone').value.trim();
-  if (!rawName || !rawPhone) return;
-  
-  const name = sanitizeHTML(rawName);
-  const phone = sanitizeHTML(rawPhone);
-  const rawNotes = document.getElementById('patNotes').value.trim();
-  const notes = sanitizeHTML(rawNotes);
-  const age = sanitizeHTML(document.getElementById('patAge').value || '');
-  const gender = sanitizeHTML(document.getElementById('patGender').value || '');
-  isSending = true;
-  const btn = document.querySelector('.bsend');
+  if (sending) return;
+  if (!checkRateLimit()) {
+    toast('⚠️ تجاوزت الحد المسموح من الحجوزات. انتظر ساعة ثم حاول مجدداً.', 'err');
+    return;
+  }
+  if (!selDoc || !selDate || !selTime) { toast('⚠️ يرجى اختيار الطبيب والموعد', 'err'); return; }
+
+  const name = sanitize(document.getElementById('pName').value);
+  const phone = sanitize(document.getElementById('pPhone').value);
+  if (!isName(name)||!isPhone(phone)) { toast('⚠️ تحقق من البيانات', 'err'); return; }
+
+  sending = true;
+  const btn = document.getElementById('sendBtn');
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
   btn.disabled = true;
 
-  const bookNo = '#' + Math.floor(1000 + Math.random() * 9000);
+  const bno = '#' + Math.floor(1000 + Math.random()*9000);
   const booking = {
-    bookNo, docKey: selectedDoctor.key,
-    docName: selectedDoctor.name, docSpec: selectedDoctor.specialty,
+    bookNo: bno,
+    docKey: selDoc.key, docName: sanitize(selDoc.name), docSpec: sanitize(selDoc.specialty||''),
     patName: name, patPhone: phone,
-    patAge: age,
-    patGender: gender,
-    notes: notes,
-    date: selectedDate, time: selectedTime,
-    fee: parseFloat(selectedDoctor.fee||0).toFixed(2),
+    patAge: sanitize(document.getElementById('pAge').value),
+    patGender: sanitize(document.getElementById('pGender').value),
+    notes: sanitize(document.getElementById('pNotes').value),
+    date: selDate, time: selTime,
+    fee: parseFloat(selDoc.fee||0).toFixed(2),
     status: 'new',
     createdAt: new Date().toISOString(),
-    dateLabel: new Date().toLocaleDateString('ar-JO'),
-    timeLabel: new Date().toLocaleTimeString('ar-JO',{hour:'2-digit',minute:'2-digit'})
+    anonUid: _anonUid || 'guest'
   };
 
-  db.ref(`${BASE}/bookings`).push(booking).then(ref => {
-    currentBookingKey = ref.key;
-    document.getElementById('finalBookNo').textContent = bookNo;
-    document.getElementById('finalDocName').textContent = 'د. ' + selectedDoctor.name;
-    document.getElementById('finalDate').textContent = selectedDate;
-    document.getElementById('finalTime').textContent = selectedTime;
-    document.getElementById('finalPrice').textContent = booking.fee + ' د.أ';
-    showStep(3);
-    startTracking(ref.key);
-    saveBookingLocally(ref.key, bookNo, selectedDoctor.name, selectedDate, selectedTime);
-    isSending = false;
-    btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
-    btn.disabled = false;
-  }).catch(err => {
-    toast('❌ خطأ: ' + err.message);
-    isSending = false;
-    btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
-    btn.disabled = false;
-  });
+  db.ref(BASE+'/bookings').push(booking)
+    .then(ref => {
+      currentKey = ref.key;
+      // Show success
+      document.getElementById('sno').textContent = bno;
+      document.getElementById('sinfo').innerHTML = `
+        <div class="sinfo-row"><span class="lbl">👨‍⚕️ الطبيب</span><span style="font-weight:800">د. ${sanitize(selDoc.name)}</span></div>
+        <div class="sinfo-row"><span class="lbl">📅 التاريخ</span><span style="font-weight:800">${selDate}</span></div>
+        <div class="sinfo-row"><span class="lbl">🕐 الوقت</span><span style="font-weight:800">${selTime}</span></div>
+        <div class="sinfo-row"><span class="lbl">💰 الرسوم</span><span>${booking.fee} د.أ</span></div>`;
+      goStep(3);
+      // Update indicators to done
+      [0,1,2].forEach(i => document.getElementById('si'+i).classList.add('on'));
+      startTracking(ref.key);
+      saveLocal(ref.key, bno);
+      // Update counter
+      const myB = JSON.parse(localStorage.getItem('clinica_bks_'+CID)||'[]');
+      document.getElementById('mybtnCnt').textContent = myB.length;
+      sending = false;
+      isBooked = true;
+    })
+    .catch(err => {
+      toast('❌ حدث خطأ: '+err.message, 'err');
+      sending = false;
+      btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
+      btn.disabled = false;
+    });
 }
 
 // ── TRACKING ──
 function startTracking(key) {
-  if (trackListener) db.ref(`${BASE}/bookings/${currentBookingKey}`).off('value', trackListener);
-  trackListener = db.ref(`${BASE}/bookings/${key}`).on('value', snap => {
-    const val = snap.val();
-    if (!val) return;
-    updateTrackUI(val.status||'new');
-    if (val.status === 'done' || val.status === 'completed') {
-      document.getElementById('ratingBox').style.display = 'block';
+  if (trkListener && currentKey) db.ref(BASE+'/bookings/'+currentKey).off('value', trkListener);
+  const statusMap = {new:0,confirmed:1,waiting:2,done:3,completed:3};
+  const labelMap = {new:'وصل الطلب ✓',confirmed:'تم التأكيد ✓',waiting:'بالانتظار 🕐',done:'مكتمل 🎉',completed:'مكتمل 🎉',cancelled:'ملغي ❌'};
+  trkListener = db.ref(BASE+'/bookings/'+key).on('value', snap => {
+    const v = snap.val();
+    if (!v) { // moved to completed
+      db.ref(BASE+'/completedBookings/'+key).once('value').then(cs => {
+        if (cs.exists()) updateTrack('done');
+      });
+      return;
     }
+    updateTrack(v.status||'new');
+    if (v.status==='done'||v.status==='completed') document.getElementById('ratingBox').style.display='block';
   });
-}
-
-function updateTrackUI(status) {
-  const map = { 'new':0, 'confirmed':1, 'waiting':2, 'done':3, 'completed':3 };
-  const idx = map[status] || 0;
-  document.getElementById('trackProgress').style.width = (idx/3*100)+'%';
-  ['ts-new','ts-confirmed','ts-waiting','ts-done'].forEach((id,i) => {
-    document.getElementById(id).classList.toggle('active', i<=idx);
-  });
+  function updateTrack(st) {
+    const idx = statusMap[st]||0;
+    document.getElementById('trkProg').style.width = (idx/3*100)+'%';
+    document.getElementById('trkTxt').textContent = labelMap[st]||'قيد المعالجة';
+    [0,1,2,3].forEach(i => {
+      const el = document.getElementById('ts'+i);
+      el.classList.toggle('on', i<=idx);
+      el.classList.toggle('done-st', i<idx);
+    });
+  }
 }
 
 // ── RATING ──
-function setRating(n) {
-  currentRating = n;
-  document.querySelectorAll('.star').forEach((s,i) => s.classList.toggle('active', i<n));
-  document.getElementById('submitRatingBtn').style.display = 'block';
+function setStar(n) {
+  curRating = n;
+  document.querySelectorAll('.star').forEach((s,i) => s.classList.toggle('on', i<n));
+  document.getElementById('rateBtn').style.display = 'block';
 }
-function submitRating() {
-  if (!currentRating || !currentBookingKey) return;
-  db.ref(`${BASE}/bookings/${currentBookingKey}`).update({ rating: currentRating });
-  db.ref(`${BASE}/doctors/${selectedDoctor.key}/ratings/${currentBookingKey}`).set(currentRating);
-  document.getElementById('ratingBox').innerHTML = '<div style="color:var(--green);font-weight:700;text-align:center">شكراً على تقييمك! ⭐</div>';
-  toast('✅ تم إرسال التقييم، شكراً!');
-}
-
-// ── LOCAL BOOKINGS ──
-function saveBookingLocally(key, no, docName, date, time) {
-  let list = JSON.parse(localStorage.getItem('clinica_bookings_'+CLINIC_ID)||'[]');
-  list.unshift({ key, no, docName, date, time, ts: Date.now() });
-  if (list.length > 10) list = list.slice(0,10);
-  localStorage.setItem('clinica_bookings_'+CLINIC_ID, JSON.stringify(list));
+function sendRating() {
+  if (!curRating||!currentKey) return;
+  db.ref(BASE+'/bookings/'+currentKey).update({ rating: curRating });
+  // Update doctor avg rating
+  db.ref(BASE+'/doctors/'+selDoc.key+'/ratings/'+currentKey).set(curRating);
+  document.getElementById('ratingBox').innerHTML = '<div style="color:var(--green);font-weight:800;text-align:center;padding:10px">شكراً على تقييمك! ⭐</div>';
+  toast('✅ تم إرسال تقييمك، شكراً!', 'ok');
 }
 
+// ── LOCAL STORAGE ──
+function saveLocal(key, no) {
+  let list = JSON.parse(localStorage.getItem('clinica_bks_'+CID)||'[]');
+  list.unshift({key,no,docName:selDoc.name,date:selDate,time:selTime,ts:Date.now()});
+  if (list.length>10) list=list.slice(0,10);
+  localStorage.setItem('clinica_bks_'+CID, JSON.stringify(list));
+}
+
+// ── MY BOOKINGS ──
 async function openMyBookings() {
-  const modal = document.getElementById('myBookingsModal');
-  const listEl = document.getElementById('myBookingsList');
-  modal.classList.add('show');
-  const list = JSON.parse(localStorage.getItem('clinica_bookings_'+CLINIC_ID)||'[]');
+  openModal('myModal');
+  const el = document.getElementById('myBooksList');
+  const list = JSON.parse(localStorage.getItem('clinica_bks_'+CID)||'[]');
   if (!list.length) {
-    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)"><i class="fas fa-calendar-xmark" style="font-size:2rem;display:block;margin-bottom:10px;opacity:0.3"></i>لا توجد حجوزات سابقة</div>';
+    el.innerHTML = '<div class="empty"><i class="fas fa-calendar-xmark"></i><p>لا توجد حجوزات سابقة</p></div>';
     return;
   }
-  listEl.innerHTML = '<div style="text-align:center;padding:20px"><i class="fas fa-spinner fa-spin"></i></div>';
+  el.innerHTML = '<div style="text-align:center;padding:20px"><i class="fas fa-spinner fa-spin" style="color:var(--teal)"></i></div>';
+  const stLabels = {new:'جديد',confirmed:'مؤكد',waiting:'بالانتظار',done:'مكتمل',completed:'مكتمل',cancelled:'ملغي'};
+  const stCls = {new:'st-new',confirmed:'st-confirmed',waiting:'st-waiting',done:'st-done',completed:'st-done',cancelled:'st-cancelled'};
   let html = '';
-  const statusLabels = { new:'جديد', confirmed:'مؤكد', waiting:'بالانتظار', done:'مكتمل', completed:'مكتمل', cancelled:'ملغي' };
-  const statusClasses = { new:'bs-pending', confirmed:'bs-confirmed', waiting:'bs-pending', done:'bs-done', completed:'bs-done', cancelled:'bs-cancelled' };
   for (const b of list) {
     let status = 'new';
-    let bData = null;
     try {
-      const snap = await db.ref(`${BASE}/bookings/${b.key}`).once('value');
-      if (snap.exists()) {
-        bData = snap.val();
-        status = bData.status || 'new';
-      } else {
-        status = 'done';
-      }
+      const s = await db.ref(BASE+'/bookings/'+b.key).once('value');
+      if (s.exists()) status = s.val().status||'new';
+      else { const cs = await db.ref(BASE+'/completedBookings/'+b.key).once('value'); status = cs.exists()?'done':'new'; }
     } catch(e) {}
-    
-    let editBtnHtml = '';
-    if (status === 'new' && bData) {
-      const safeNotes = (bData.notes||'').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-      const safeName = (bData.patName||'').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-      const safePhone = (bData.patPhone||'').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-      
-      editBtnHtml = `<button onclick="openEditBooking('${b.key}', '${safeName}', '${safePhone}', '${safeNotes}')" style="width:100%;margin-top:10px;padding:8px;background:rgba(13,148,136,0.1);border:1px dashed var(--teal);color:var(--teal);border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.8rem;cursor:pointer">
-        <i class="fas fa-edit"></i> تعديل بيانات الحجز
-      </button>`;
-    }
-
-    html += `<div class="booking-item">
-      <div class="bi-header">
-        <div><div style="font-weight:800">د. ${b.docName}</div><div style="font-size:0.75rem;color:var(--muted)">${b.date} — ${b.time}</div></div>
-        <span class="bi-status ${statusClasses[status]||'bs-pending'}">${statusLabels[status]||status}</span>
+    html += `<div class="bi-card">
+      <div class="bi-head">
+        <div>
+          <div style="font-weight:800;font-size:0.95rem">د. ${sanitize(b.docName)}</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">${b.date} — ${b.time}</div>
+        </div>
+        <span class="bi-st ${stCls[status]||'st-new'}">${stLabels[status]||status}</span>
       </div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--teal)">${b.no}</div>
-      ${editBtnHtml}
+      <div class="bi-no">${b.no}</div>
     </div>`;
   }
-  listEl.innerHTML = html;
+  el.innerHTML = html;
 }
 
-// ── EDIT BOOKING ──
-function openEditBooking(key, name, phone, notes) {
-  document.getElementById('editKey').value = key;
-  document.getElementById('editName').value = name;
-  document.getElementById('editPhone').value = phone;
-  document.getElementById('editNotes').value = notes;
-  document.getElementById('editBookingModal').classList.add('show');
+// ── FAB ──
+function fabAction() {
+  if (allDocs.length > 0) toast('👆 اختر طبيباً من القائمة');
+  else toast('جاري تحميل الأطباء...');
 }
 
-function saveEditBooking() {
-  const key = document.getElementById('editKey').value;
-  const name = sanitizeHTML(document.getElementById('editName').value.trim());
-  const phone = sanitizeHTML(document.getElementById('editPhone').value.trim());
-  const notes = sanitizeHTML(document.getElementById('editNotes').value.trim());
-  
-  if (!name || !phone) { toast('⚠️ يرجى إدخال الاسم ورقم الهاتف'); return; }
-  
-  const btn = document.getElementById('editSaveBtn');
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
-  btn.disabled = true;
-  
-  db.ref(`${BASE}/bookings/${key}`).update({
-    patName: name, patPhone: phone, notes: notes
-  }).then(() => {
-    toast('✅ تم تعديل الحجز بنجاح!');
-    document.getElementById('editBookingModal').classList.remove('show');
-    btn.innerHTML = '<i class="fas fa-save" style="margin-left:7px"></i> حفظ التعديلات';
-    btn.disabled = false;
-    openMyBookings(); // refresh list
-  }).catch(err => {
-    toast('❌ أيرور: ' + err.message);
-    btn.innerHTML = '<i class="fas fa-save" style="margin-left:7px"></i> حفظ التعديلات';
-    btn.disabled = false;
-  });
+// ── MODAL HELPERS ──
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+  document.body.style.overflow = 'hidden';
 }
-
-// ── MODAL ──
-function openModal() {
-  if (!allDoctors.length) { toast('جاري تحميل قائمة الأطباء...'); return; }
-  showStep(0);
-  if (selectedDoctor) document.getElementById('bookingModal').classList.add('show');
-  else toast('اختر طبيباً أولاً من القائمة');
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+  document.body.style.overflow = '';
+  if (id==='bookModal') {
+    setTimeout(() => {
+      if (!isBooked) { selDoc=null; selDate=''; selTime=''; }
+      goStep(0);
+      ['pName','pPhone','pAge','pNotes'].forEach(i => document.getElementById(i).value='');
+      document.getElementById('pGender').value='';
+      isBooked=false;
+    }, 300);
+  }
 }
-function closeModal() {
-  document.getElementById('bookingModal').classList.remove('show');
-  setTimeout(() => { showStep(0); document.getElementById('fabLabel').textContent='احجز موعد'; }, 300);
-}
-document.getElementById('bookingModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
-document.getElementById('myBookingsModal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('show'); });
+document.getElementById('bookModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal('bookModal'); });
+document.getElementById('myModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal('myModal'); });
 
 // ── THEME ──
 function toggleTheme() {
-  const body = document.body;
-  const btn = document.getElementById('themeBtn');
-  if (body.getAttribute('data-theme')==='light') { body.setAttribute('data-theme','dark'); btn.textContent='☀️ الوضع النهاري'; }
-  else { body.setAttribute('data-theme','light'); btn.textContent='🌙 الوضع الليلي'; }
+  const dark = document.body.getAttribute('data-theme') === 'dark';
+  document.body.setAttribute('data-theme', dark?'light':'dark');
+  document.getElementById('themeBtn').textContent = dark?'🌙':'☀️';
+  localStorage.setItem('clinica_theme', dark?'light':'dark');
 }
+const savedTheme = localStorage.getItem('clinica_theme');
+if (savedTheme) { document.body.setAttribute('data-theme', savedTheme); document.getElementById('themeBtn').textContent = savedTheme==='dark'?'☀️':'🌙'; }
 
 // ── TOAST ──
-function toast(msg) {
-  const tw = document.getElementById('tw');
+function toast(msg, type='') {
+  const w = document.getElementById('toastWrap');
   const t = document.createElement('div');
-  t.className = 'toast'; t.textContent = msg; tw.appendChild(t);
-  setTimeout(() => t.classList.add('show'), 10);
-  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3000);
+  t.className = 'toast'+(type?' '+type:''); t.textContent = msg; w.appendChild(t);
+  setTimeout(()=>t.classList.add('show'),10);
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),400);},3000);
 }
+
+// ── PWA INSTALL ──
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  if (!localStorage.getItem('clinica_pwa_dismissed')) {
+    setTimeout(() => document.getElementById('installBanner').classList.add('show'), 3000);
+  }
+});
+document.getElementById('installBtn').onclick = async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome==='accepted') { toast('✅ تمت الإضافة! ابحث عن أيقونة كلينيكا في شاشتك', 'ok'); dismissInstall(); }
+  deferredPrompt = null;
+};
+function dismissInstall() {
+  document.getElementById('installBanner').classList.remove('show');
+  localStorage.setItem('clinica_pwa_dismissed', '1');
+}
+window.addEventListener('appinstalled', () => { toast('🎉 تم تثبيت التطبيق بنجاح!', 'ok'); dismissInstall(); });
+
+// ── SERVICE WORKER ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state==='installed'&&navigator.serviceWorker.controller) {
+            toast('🔄 تحديث متاح — أعد تحميل الصفحة');
+          }
+        });
+      });
+    }).catch(()=>{});
+  });
+}
+
+// Fix step 1 button
+document.querySelector('#s1 .btn-next').onclick = validateStep1;
 </script>
 </body>
 </html>
