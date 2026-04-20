@@ -622,9 +622,9 @@ function cpTxt(id) { navigator.clipboard.writeText(document.getElementById(id).t
 
 // ── ACTIONS ──
 async function toggleStatus(id, cur) {
-  const n = (cur==='open'||cur==='active') ? 'suspended' : 'open';
+  const n = (cur==='suspended') ? 'open' : 'suspended';
   await db.ref(`clinics/${id}/settings`).update({ status:n });
-  toast(n==='suspended'?'🚫 تم إيقاف وإغلاق العيادة':'✅ تم تفعيل العيادة', n==='suspended'?'err':'ok');
+  toast(n==='suspended'?'🚫 تم إيقاف النظام بالكامل (درع أرغون)':'✅ تم تفعيل العيادة وتنشيطها', n==='suspended'?'err':'ok');
 }
 async function toggleBookings(id, curOn) {
   await db.ref(`clinics/${id}/settings`).update({ acceptBookings: !curOn });
