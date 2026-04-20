@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════════════════════
-   CLINICA PRO — Service Worker v2.0
+   ARGON SYSTEM — Service Worker v2.0
    Handles: Caching, Offline mode, Background sync
    ═══════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'clinica-v2.0';
+const CACHE_NAME = 'argon-v2.0';
 const OFFLINE_URL = '/offline.html';
 
 const STATIC_ASSETS = [

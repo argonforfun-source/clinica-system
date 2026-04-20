@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#030b0a">
   <link rel="manifest" href="/manifest.json">
-  <title>CLINICA | لوحة التحكم</title>
+  <title>ARGON | لوحة التحكم</title>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
@@ -189,12 +189,12 @@
     #lockScreen{position:fixed;inset:0;background:#050b14;z-index:999999;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px}
     #lockScreen.show{display:flex;animation:fadeIn .4s}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-    .ls-icon{font-size:5rem;color:#ef4444;margin-bottom:15px;animation:pulse .8s infinite alternate}
-    @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.05)}}
-    .ls-title{font-size:2rem;font-weight:900;color:#fff;margin-bottom:10px}
-    .ls-sub{font-size:1rem;color:var(--muted);margin-bottom:30px;max-width:400px;line-height:1.6}
-    .ls-btn{background:#3b82f6;color:#fff;padding:12px 28px;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:1.1rem;font-weight:800;text-decoration:none;transition:0.2s;box-shadow:0 8px 24px rgba(59,130,246,0.25)}
-    .ls-btn:hover{background:#2563eb;transform:translateY(-2px)}
+    .ls-icon{font-size:5.5rem;color:#ef4444;margin-bottom:20px;filter:drop-shadow(0 0 15px rgba(239,68,68,0.4));animation:pulse 1s infinite alternate}
+    @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.08)}}
+    .ls-title{font-size:2.4rem;font-weight:900;color:#fff;margin-bottom:12px;letter-spacing:-1px}
+    .ls-sub{font-size:1.1rem;color:rgba(255,255,255,0.6);margin-bottom:35px;max-width:500px;line-height:1.6}
+    .ls-btn{background:#3b82f6;color:#fff;padding:14px 32px;border-radius:14px;font-family:'Tajawal',sans-serif;font-size:1.15rem;font-weight:800;text-decoration:none;transition:0.3s;box-shadow:0 12px 32px rgba(59,130,246,0.35);display:inline-flex;align-items:center;gap:10px}
+    .ls-btn:hover{background:#2563eb;transform:translateY(-2px);box-shadow:0 15px 40px rgba(59,130,246,0.5)}
   </style>
 </head>
 <body>
@@ -217,14 +217,14 @@
 <div id="lockScreen">
   <div class="ls-icon"><i class="fas fa-shield-alt"></i></div>
   <div class="ls-title">تم إيقاف حساب العيادة</div>
-  <div class="ls-sub">يرجى مراجعة الدعم الفني لشركة CLINICA PRO لتفعيل الحساب واستعادة الوصول للوحة التحكم.</div>
-  <a href="#" class="ls-btn">تواصل مع الدعم الفني</a>
+  <div class="ls-sub">يرجى مراجعة الدعم الفني لشركة أرغون لتفعيل الحساب وإعادة تشغيل الخدمات.</div>
+  <a href="https://argonforfun.com" target="_blank" class="ls-btn">زيارة موقع الشركة: argonforfun.com</a>
 </div>
 
 <!-- TOPBAR -->
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:12px">
-    <span class="tlogo">CLINICA</span>
+    <span class="tlogo">ARGON</span>
     <span style="width:1px;height:20px;background:var(--border)"></span>
     <span id="topName" style="font-size:.9rem;font-weight:700">...</span>
   </div>
@@ -367,7 +367,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════
-   CLINICA PRO — Dashboard v2.0
+   ARGON SYSTEM — Dashboard v2.0
    Security: Firebase Auth (email/password per clinic)
    ═══════════════════════════════════════════════════ */
 
@@ -467,7 +467,7 @@ db.ref(BASE+'/settings').on('value', snap => {
 
   document.getElementById('topName').textContent = s.name||'العيادة';
   document.getElementById('lClinicName').textContent = s.name||'العيادة';
-  document.title = 'CLINICA | '+(s.name||'العيادة');
+  document.title = 'ARGON | '+(s.name||'العيادة');
   _pass = s.password||'1122';
   const b = document.getElementById('stBadge');
   const isOpen = s.status!=='closed'&&s.status!=='suspended';

@@ -6,12 +6,12 @@
   <meta name="theme-color" content="#0d9488">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="كلينيكا">
+  <meta name="apple-mobile-web-app-title" content="أرغون">
   <meta name="description" content="احجز موعدك الطبي بسهولة وسرعة">
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="icon" type="image/png" href="/icons/icon-192.png">
-  <title>كلينيكا | حجز موعد</title>
+  <title>أرغون | حجز موعد</title>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
@@ -55,11 +55,15 @@
     .c-ok{background:rgba(16,185,129,0.9);color:#fff} .c-off{background:rgba(239,68,68,0.9);color:#fff}
 
     /* ── LOCKOUT ── */
-    #lockScreen{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#021a17,#0f766e);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;color:#fff}
-    #lockScreen.show{display:flex}
-    .ls-icon{font-size:5rem;margin-bottom:20px;filter:drop-shadow(0 4px 16px rgba(0,0,0,0.3))}
-    .ls-title{font-size:1.6rem;font-weight:900;margin-bottom:10px}
-    .ls-sub{opacity:0.7;font-size:0.95rem;margin-bottom:30px;line-height:1.7}
+    #lockScreen{position:fixed;inset:0;z-index:9999;background:#050a14;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;color:#fff}
+    #lockScreen.show{display:flex;animation:fadeIn .5s ease}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    .ls-icon{font-size:5.5rem;margin-bottom:24px;color:#ef4444;filter:drop-shadow(0 0 15px rgba(239,68,68,0.4));animation:pulse 1s infinite alternate}
+    @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.08)}}
+    .ls-title{font-size:2.4rem;font-weight:900;margin-bottom:12px;letter-spacing:-1px}
+    .ls-sub{opacity:0.6;font-size:1.1rem;margin-bottom:35px;line-height:1.7;max-width:500px}
+    .ls-btn{background:#3b82f6;color:#fff;padding:14px 32px;border-radius:14px;font-family:'Tajawal',sans-serif;font-size:1.1rem;font-weight:800;text-decoration:none;transition:0.3s;box-shadow:0 12px 32px rgba(59,130,246,0.3);display:inline-flex;align-items:center;gap:10px}
+    .ls-btn:hover{background:#2563eb;transform:translateY(-2px)}
 
     /* ── HEADER ── */
     .header{background:linear-gradient(150deg,var(--hfrom) 0%,var(--hto) 50%,#0ea5e9 100%);padding:0 0 24px;position:relative;overflow:hidden}
@@ -271,7 +275,7 @@
 <div id="installBanner">
   <div class="ib-icon">🏥</div>
   <div class="ib-text">
-    <div class="ib-title">أضف كلينيكا لشاشتك</div>
+    <div class="ib-title">أضف أرغون لشاشتك</div>
     <div class="ib-sub">وصول سريع لحجز المواعيد بدون متصفح</div>
   </div>
   <button class="ib-btn" id="installBtn">إضافة</button>
@@ -280,17 +284,17 @@
 
 <!-- LOCK SCREEN -->
 <div id="lockScreen">
-  <div class="ls-icon">🔒</div>
-  <div class="ls-title">العيادة غير متاحة حالياً</div>
-  <div class="ls-sub">تم إيقاف هذه العيادة مؤقتاً<br>يرجى التواصل مع الإدارة</div>
-  <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.3);letter-spacing:2px">CLINICA PRO SYSTEM</div>
+  <div class="ls-icon"><i class="fas fa-shield-alt"></i></div>
+  <div class="ls-title">تم إيقاف حساب العيادة</div>
+  <div class="ls-sub">يرجى مراجعة الدعم الفني لشركة أرغون لتفعيل الحساب وإعادة تشغيل الخدمات.</div>
+  <a href="https://argonforfun.com" target="_blank" class="ls-btn">زيارة موقع الشركة: argonforfun.com</a>
 </div>
 
 <div id="mainContent">
   <!-- HEADER -->
   <div class="header">
     <div class="htop">
-      <span class="mark">CLINICA PRO</span>
+      <span class="mark">ARGON SYSTEM</span>
       <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
     </div>
     <div class="hmain">
@@ -514,7 +518,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════════
-   CLINICA PRO — Patient Booking Interface v2.0
+   ARGON SYSTEM — Patient Booking Interface v2.0
    Security: Anonymous Auth + Rate Limiting + Input Validation
    ═══════════════════════════════════════════════════════ */
 
@@ -600,19 +604,21 @@ db.ref(BASE+'/settings').on('value', snap => {
   const mc = document.getElementById('mainContent');
   
   if (s.status === 'suspended') {
-    ls.innerHTML = `<div class="ls-icon" style="font-size:4rem;margin-bottom:10px">🔒</div>
-                    <div class="ls-title" style="font-size:1.5rem;font-weight:900;margin-bottom:6px">العيادة غير متاحة حالياً</div>
-                    <div class="ls-sub" style="color:rgba(255,255,255,0.7);margin-bottom:20px;line-height:1.6">نعتذر، تم إيقاف هذه العيادة من قِبل الإدارة<br>يرجى التواصل معهم للمزيد من التفاصيل.</div>
-                    <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.3);letter-spacing:2px">CLINICA PRO SYSTEM</div>`;
+    const ls = document.getElementById('lockScreen');
+    ls.innerHTML = `<div class="ls-icon"><i class="fas fa-shield-alt"></i></div>
+                    <div class="ls-title">تم إيقاف حساب العيادة</div>
+                    <div class="ls-sub">نعتذر، تم إيقاف هذه العيادة من قِبل إدارة شركة أرغون.<br>يرجى التواصل مع الدعم الفني لتفعيل الحساب.</div>
+                    <a href="https://argonforfun.com" target="_blank" class="ls-btn">زيارة موقع الشركة: argonforfun.com</a>`;
     ls.classList.add('show');
     mc.style.display = 'none';
     return;
   } else if (s.status === 'closed') {
+    const ls = document.getElementById('lockScreen');
     ls.innerHTML = `<div class="ls-icon" style="font-size:4rem;margin-bottom:10px">⏸️</div>
-                    <div class="ls-title" style="font-size:1.5rem;font-weight:900;margin-bottom:6px">الحجز متوقف حالياً</div>
-                    <div class="ls-sub" style="color:rgba(255,255,255,0.7);margin-bottom:20px;line-height:1.6">عذراً، لقد أوقفت العيادة استقبال حجوزات جديدة في الوقت الحالي.<br>يرجى المحاولة مرة أخرى لاحقاً.</div>
-                    <button onclick="openMyBookings(); document.getElementById('lockScreen').classList.remove('show');" style="background:var(--teal);color:#fff;border:none;padding:12px 24px;border-radius:30px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:0.9rem;cursor:pointer;box-shadow:0 8px 24px rgba(13,148,136,0.3);"><i class="fas fa-calendar-check" style="margin-left:6px"></i>مراجعة حجوزاتي السابقة</button>
-                    <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.3);letter-spacing:2px;margin-top:30px">CLINICA PRO SYSTEM</div>`;
+                    <div class="ls-title" style="font-size:2rem;font-weight:900;margin-bottom:12px">الحجز متوقف حالياً</div>
+                    <div class="ls-sub" style="color:rgba(255,255,255,0.6);margin-bottom:30px;line-height:1.7">عذراً، لقد أوقفت العيادة استقبال حجوزات جديدة في الوقت الحالي.<br>يرجى المحاولة مرة أخرى لاحقاً.</div>
+                    <button onclick="openMyBookings(); document.getElementById('lockScreen').classList.remove('show');" style="background:var(--teal);color:#fff;border:none;padding:14px 30px;border-radius:16px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 8px 24px rgba(13,148,136,0.3);"><i class="fas fa-calendar-check" style="margin-left:6px"></i>مراجعة حجوزاتي السابقة</button>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.3);letter-spacing:4px;margin-top:40px">POWERED BY ARGON SYSTEM</div>`;
     ls.classList.add('show');
     mc.style.display = 'none';
     return;
@@ -623,7 +629,7 @@ db.ref(BASE+'/settings').on('value', snap => {
 
   document.getElementById('hName').textContent = s.name || 'العيادة';
   document.getElementById('hLogo').textContent = s.emoji || '🏥';
-  document.title = (s.name||'كلينيكا') + ' | حجز موعد';
+  document.title = (s.name||'أرغون') + ' | حجز موعد';
   const sc = document.getElementById('statusChip');
   if (s.status === 'closed') {
     sc.className='chip c-closed'; sc.innerHTML='<i class="fas fa-circle" style="font-size:.38rem"></i> مغلق مؤقتاً';
