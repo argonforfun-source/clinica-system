@@ -138,6 +138,21 @@
     thead{background:var(--surf)}
     th{color:var(--muted);font-weight:700;font-size:.72rem;text-transform:uppercase}
     tbody tr:hover{background:rgba(255,255,255,.01)}
+    
+    /* ── PRINTING ── */
+    @media print {
+      body{background:#fff;color:#000;height:auto;overflow:auto;}
+      .topbar, .sidebar, #connBar, .acts, .addpanel, .setp, .tbtn, .tbadge{display:none !important;}
+      .layout{display:block;height:auto;}
+      .main{padding:0;}
+      .scard{border-color:#ccc;color:#000;}
+      .sci{background:none !important;color:#000 !important;}
+      .sv, .slb, .sh{color:#000 !important;}
+      .bc{page-break-inside:avoid;border:1px solid #ccc;color:#000;}
+      .bfooter{border-top:1px dashed #ccc;padding-top:5px;}
+      .bname{color:#000;}
+      *{box-shadow:none !important;animation:none !important;transition:none !important;}
+    }
 
     /* ── TOAST ── */
     #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--surf);border:1px solid rgba(13,148,136,.3);color:var(--teal);padding:10px 20px;border-radius:12px;font-size:.85rem;font-weight:600;opacity:0;transition:.3s;z-index:9999;pointer-events:none;max-width:90vw;text-align:center}
@@ -162,6 +177,13 @@
     /* ── BELL RING ── */
     @keyframes ring{0%{transform:rotate(0)}10%{transform:rotate(15deg)}20%{transform:rotate(-10deg)}30%{transform:rotate(10deg)}40%{transform:rotate(-8deg)}50%{transform:rotate(0)}100%{transform:rotate(0)}}
     .ringing{animation:ring .6s ease infinite}
+
+    /* ── ROYAL ARGON FOOTER ── */
+    .royal-foot{margin-top:auto;padding:20px 10px;text-align:center;border-top:1px solid var(--border);background:linear-gradient(to bottom, transparent, rgba(13,148,136,0.03))}
+    .argon-sig{font-family:'IBM Plex Mono',monospace;font-size:0.6rem;letter-spacing:4px;color:var(--muted);text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:4px}
+    .argon-sig span{background:linear-gradient(135deg, var(--teal2), var(--sky)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; font-weight:900; filter:drop-shadow(0 0 5px rgba(20,184,166,0.3)); animation:argonPulse 3s infinite alternate}
+    @keyframes argonPulse{from{opacity:0.7; transform:scale(0.98)} to{opacity:1; transform:scale(1.02)}}
+    .royal-line{width:30px;height:1px;background:linear-gradient(to right, transparent, var(--teal), transparent);margin-bottom:8px}
 
     /* ── LOCK SCREEN ── */
     #lockScreen{position:fixed;inset:0;background:#050b14;z-index:999999;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px}
@@ -210,6 +232,7 @@
     <span id="stBadge" class="tbadge tb-open"><i class="fas fa-circle" style="font-size:.38rem"></i> مفتوح</span>
     <span class="tclk" id="tclk">--:--</span>
     <button class="tbtn" onclick="openPreview()"><i class="fas fa-eye" style="margin-left:5px"></i>معاينة</button>
+    <button class="tbtn" onclick="printReport()"><i class="fas fa-print" style="margin-left:5px"></i>طباعة التقرير</button>
     <button class="tbtn" onclick="doLogout()" style="color:#fca5a5"><i class="fas fa-sign-out-alt"></i></button>
   </div>
 </div>
@@ -228,7 +251,13 @@
       <div class="ni" onclick="sw('docs',this)"><i class="fas fa-user-md"></i>إدارة الأطباء</div>
       <div class="ni" onclick="sw('settings',this)"><i class="fas fa-gear"></i>الإعدادات</div>
     </div>
-    <div style="margin-top:auto;padding:12px 8px;border-top:1px solid var(--border);text-align:center;font-family:'IBM Plex Mono',monospace;font-size:.53rem;color:rgba(100,116,139,.35);letter-spacing:1.5px">CLINICA PRO</div>
+    <div class="royal-foot">
+      <div class="argon-sig">
+        <div class="royal-line"></div>
+        POWERED BY
+        <span>ARGON SYSTEM</span>
+      </div>
+    </div>
   </div>
 
   <div class="main">
@@ -236,10 +265,11 @@
     <!-- STATS -->
     <div id="stats" class="sec on">
       <div class="ph"><div><div class="pt">📊 الإحصائيات</div><div class="ps">نظرة شاملة على أداء العيادة</div></div></div>
-      <div class="sgrid">
+      <div class="sgrid" style="grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));">
         <div class="scard" style="--bc:var(--green)"><div class="sci" style="background:rgba(16,185,129,.1);color:var(--green)"><i class="fas fa-calendar-check"></i></div><div class="slb">حجوزات مكتملة</div><div class="sv" id="stCmp" style="color:var(--green)">0</div><div class="sh">إجمالي</div></div>
         <div class="scard" style="--bc:var(--teal)"><div class="sci" style="background:rgba(13,148,136,.1);color:var(--teal)"><i class="fas fa-coins"></i></div><div class="slb">الدخل الكلي</div><div class="sv" id="stRev" style="color:var(--teal)">0.00</div><div class="sh">د.أ</div></div>
         <div class="scard" style="--bc:var(--amber)"><div class="sci" style="background:rgba(245,158,11,.1);color:var(--amber)"><i class="fas fa-hourglass-half"></i></div><div class="slb">حجوزات اليوم</div><div class="sv" id="stToday" style="color:var(--amber)">0</div><div class="sh">نشط</div></div>
+        <div class="scard" style="--bc:var(--purple)"><div class="sci" style="background:rgba(139,92,246,.1);color:var(--purple)"><i class="fas fa-users"></i></div><div class="slb">الزوار بالعيادة</div><div class="sv" id="stWait" style="color:var(--purple)">0</div><div class="sh">بالانتظار حالياً</div></div>
         <div class="scard" style="--bc:var(--sky)"><div class="sci" style="background:rgba(14,165,233,.1);color:var(--sky)"><i class="fas fa-star"></i></div><div class="slb">متوسط التقييم</div><div class="sv" id="stRate" style="color:var(--sky)">--</div><div class="sh">من 5</div></div>
       </div>
       <div class="ph" style="margin-bottom:12px"><div class="pt" style="font-size:1rem">👨‍⚕️ أداء الأطباء</div></div>
@@ -364,7 +394,7 @@ let prevCount = 0, firstLoad = true, audioCtx = null;
 
 // ── CLOCK ──
 setInterval(() => {
-  document.getElementById('tclk').textContent = new Date().toLocaleTimeString('ar-JO',{hour:'2-digit',minute:'2-digit',hour12:true});
+  document.getElementById('tclk').textContent = new Date().toLocaleTimeString('ar-JO',{hour:'2-digit',minute:'2-digit',hour12:true,timeZoneName:'short'});
 }, 1000);
 
 // ── CONN ──
@@ -455,6 +485,11 @@ db.ref(BASE+'/settings').on('value', snap => {
 db.ref(BASE+'/bookings').on('value', snap => {
   _bks = snap.val()||{};
   const actKeys = Object.keys(_bks).filter(k=>{const s=_bks[k].status;return s!=='done'&&s!=='completed'&&s!=='cancelled';});
+  
+  // Update Visitors Waiting stat
+  const waitKeys = actKeys.filter(k => _bks[k].status === 'waiting');
+  document.getElementById('stWait').textContent = waitKeys.length;
+
   const lc = document.getElementById('liveC');
   lc.textContent = actKeys.length; lc.className='nbdg'+(actKeys.length===0?' z':'');
   // Notify
@@ -645,6 +680,14 @@ function sw(id,el){
 }
 function openPreview(){document.getElementById('prevFrame').src=`index.html?id=${CID}`;document.getElementById('prevModal').style.display='flex';}
 function closePrev(){document.getElementById('prevModal').style.display='none';document.getElementById('prevFrame').src='';}
+function printReport() {
+  document.querySelectorAll('.sec').forEach(s=>s.classList.add('on'));
+  window.print();
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  const activeID = document.querySelector('.ni.on') ? 
+    document.querySelector('.ni.on').getAttribute('onclick').match(/'([^']+)'/)[1] : 'stats';
+  document.getElementById(activeID).classList.add('on');
+}
 
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className=type?'show '+type:'show';setTimeout(()=>t.className='',3000);}
 

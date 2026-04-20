@@ -242,7 +242,11 @@
     .toast.err{background:rgba(239,68,68,0.92)}
 
     /* ── FOOTER ── */
-    .foot{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:0.56rem;color:rgba(100,116,139,0.4);letter-spacing:1.8px;padding:24px 0 8px}
+    .foot{padding:40px 0 20px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px}
+    .argon-sig{font-family:'IBM Plex Mono',monospace;font-size:0.58rem;letter-spacing:4px;color:rgba(100,116,139,0.5);text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:4px}
+    .argon-sig span{background:linear-gradient(135deg, var(--teal), var(--sky)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; font-weight:900; filter:drop-shadow(0 0 5px rgba(13,148,136,0.2)); animation:argonPulse 3s infinite alternate}
+    @keyframes argonPulse{from{opacity:0.6; transform:scale(0.98)} to{opacity:1; transform:scale(1.02)}}
+    .royal-line{width:40px;height:1px;background:linear-gradient(to right, transparent, var(--teal), transparent);margin-bottom:8px}
     .foot span{color:var(--teal)}
     .empty{text-align:center;padding:50px 20px;color:var(--muted)}
     .empty i{font-size:2.5rem;display:block;margin-bottom:12px;opacity:0.2}
@@ -321,7 +325,13 @@
     </div>
   </div>
 
-  <div class="foot">POWERED BY <span>CLINICA</span> SYSTEM</div>
+  <div class="foot">
+    <div class="argon-sig">
+      <div class="royal-line"></div>
+      POWERED BY
+      <span>ARGON SYSTEM</span>
+    </div>
+  </div>
 </div>
 
 <!-- FAB -->
