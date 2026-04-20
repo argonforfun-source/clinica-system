@@ -449,7 +449,8 @@ setTimeout(() => toggleAddPanel(), 100);
 function loadData() {
   try { db.ref('clinics').off(); } catch(e) {}
   _dataMap = {}; data = [];
-  document.getElementById('resGrid').innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>جاري التحميل...</p></div>';
+  const listEl = document.getElementById('clinicList');
+  if (listEl) listEl.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>جاري التحميل...</p></div>';
   db.ref('clinics').on('child_added', snap => {
     const val = snap.val();
     if (val && typeof val === 'object') { _dataMap[snap.key] = { id:snap.key, ...val }; scheduleRender(); }
@@ -500,7 +501,8 @@ function filterList() {
 }
 
 function renderCards(d) {
-  const grid = document.getElementById('resGrid');
+  const grid = document.getElementById('clinicList');
+  if (!grid) return;
   grid.innerHTML = '';
   if (!d.length) { grid.innerHTML = `<div class="empty-state"><i class="fas fa-hospital"></i><p>لا توجد عيادات مطابقة</p></div>`; return; }
   const base = getBase();
@@ -620,9 +622,9 @@ function cpTxt(id) { navigator.clipboard.writeText(document.getElementById(id).t
 
 // ── ACTIONS ──
 async function toggleStatus(id, cur) {
-  const n = (cur==='open'||cur==='active') ? 'closed' : 'open';
+  const n = (cur==='open'||cur==='active') ? 'suspended' : 'open';
   await db.ref(`clinics/${id}/settings`).update({ status:n });
-  toast(n==='closed'?'⏸ تم إيقاف العيادة':'✅ تم تفعيل العيادة', n==='closed'?'err':'ok');
+  toast(n==='suspended'?'🚫 تم إيقاف وإغلاق العيادة':'✅ تم تفعيل العيادة', n==='suspended'?'err':'ok');
 }
 async function toggleBookings(id, curOn) {
   await db.ref(`clinics/${id}/settings`).update({ acceptBookings: !curOn });
