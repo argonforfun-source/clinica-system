@@ -903,6 +903,7 @@ function sendBooking() {
       document.getElementById('mybtnCnt').textContent = myB.length;
       sending = false;
       isBooked = true;
+      goStep(3);
     })
     .catch(err => {
       toast('❌ حدث خطأ: '+err.message, 'err');
