@@ -568,6 +568,7 @@ function checkRateLimit() {
 
 // ── INPUT SANITIZER ──
 const sanitize = s => String(s||'').replace(/[<>"'&]/g,'').trim().substring(0,200);
+const toEngNum = s => String(s).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
 const isPhone = p => /^[0-9+\s\-]{7,15}$/.test(p.trim());
 const isName = n => n.trim().length >= 2 && n.trim().length <= 80;
 
@@ -836,7 +837,7 @@ function buildBill() {
 // ── VALIDATE STEP 1 ──
 function validateStep1() {
   const name = document.getElementById('pName').value.trim();
-  const phone = document.getElementById('pPhone').value.trim();
+  const phone = toEngNum(document.getElementById('pPhone').value).trim();
   let ok = true;
   if (!isName(name)) { document.getElementById('pName').classList.add('err'); document.getElementById('pNameErr').style.display='block'; ok=false; }
   else { document.getElementById('pName').classList.remove('err'); document.getElementById('pNameErr').style.display='none'; }
@@ -861,7 +862,7 @@ function sendBooking() {
   if (!selDoc || !selDate || !selTime) { toast('⚠️ يرجى اختيار الطبيب والموعد', 'err'); return; }
 
   const name = sanitize(document.getElementById('pName').value);
-  const phone = sanitize(document.getElementById('pPhone').value);
+  const phone = sanitize(toEngNum(document.getElementById('pPhone').value));
   if (!isName(name)||!isPhone(phone)) { toast('⚠️ تحقق من البيانات', 'err'); return; }
 
   sending = true;
@@ -1023,7 +1024,7 @@ function editB(k, n, p, nt) {
 function saveEditBook() {
   const k = document.getElementById('eKey').value;
   const n = sanitize(document.getElementById('eName').value);
-  const p = sanitize(document.getElementById('ePhone').value);
+  const p = sanitize(toEngNum(document.getElementById('ePhone').value));
   const nt = sanitize(document.getElementById('eNotes').value);
   if(!isName(n) || !isPhone(p)){toast('الاسم أو الرقم غير صحيح','err');return;}
   
