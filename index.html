@@ -654,7 +654,7 @@ db.ref(BASE+'/doctors').on('value', snap => {
   renderDocs(allDocs);
   buildSpecFilter();
   // Update local count
-  const myB = JSON.parse(localStorage.getItem('argon_bks_'+CID)||'[]');
+  const myB = JSON.parse(localStorage.getItem('clinica_bks_'+CID)||'[]');
   document.getElementById('mybtnCnt').textContent = myB.length;
 });
 
@@ -899,7 +899,7 @@ function sendBooking() {
       // Premium Celebration
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors:['#0d9488','#0ea5e9','#ffffff'] });
       // Update counter
-      const myB = JSON.parse(localStorage.getItem('argon_bks_'+CID)||'[]');
+      const myB = JSON.parse(localStorage.getItem('clinica_bks_'+CID)||'[]');
       document.getElementById('mybtnCnt').textContent = myB.length;
       sending = false;
       isBooked = true;
@@ -991,7 +991,10 @@ async function openMyBookings() {
       const nm = (bData.patName||'').replace(/'/g, "\\'");
       const ph = (bData.patPhone||'').replace(/'/g, "\\'");
       const nt = (bData.notes||'').replace(/'/g, "\\'");
-      eBtn = `<button onclick="editB('${b.key}','${nm}','${ph}','${nt}')" style="margin-top:10px;width:100%;padding:7px;background:rgba(13,148,136,.1);border:1px dashed var(--teal);color:var(--teal);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer"><i class="fas fa-edit"></i> تعديل بيانات الحجز</button>`;
+      eBtn = `<div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="editB('${b.key}','${nm}','${ph}','${nt}')" style="flex:1;padding:7px;background:rgba(13,148,136,.1);border:1px dashed var(--teal);color:var(--teal);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-edit"></i> تعديل</button>
+        <button onclick="cancelB('${b.key}', this)" style="flex:1;padding:7px;background:rgba(239,68,68,.1);border:1px dashed var(--red);color:var(--red);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-times-circle"></i> إلغاء الحجز</button>
+      </div>`;
     }
     
     html += `<div class="bi-card">
@@ -1030,6 +1033,31 @@ function saveEditBook() {
     toast('✅ تم التعديل','ok'); closeModal('editModal'); b.innerHTML='<i class="fas fa-save"></i> حفظ'; b.disabled=false;
     openMyBookings();
   }).catch(e=>{toast('❌ خطأ','err'); b.innerHTML='<i class="fas fa-save"></i> حفظ'; b.disabled=false;});
+}
+
+// ── CANCEL BOOKING ──
+function cancelB(key, el) {
+  const og = el.innerHTML;
+  el.innerHTML = '<i class="fas fa-exclamation-triangle"></i> متأكد؟ للإلغاء اضغط مجدداً';
+  el.style.background = 'var(--red)';
+  el.style.color = '#fff';
+  el.style.border = 'none';
+  el.onclick = () => {
+    el.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإلغاء...';
+    db.ref(BASE+'/bookings/'+key).update({ status: 'cancelled' }).then(() => {
+      toast('✅ تم إلغاء الحجز', 'ok');
+      openMyBookings();
+    }).catch(e => toast('❌ حدث خطأ', 'err'));
+  };
+  setTimeout(() => {
+    if (el.innerHTML.includes('متأكد')) {
+      el.innerHTML = og;
+      el.style.background = 'rgba(239,68,68,.1)';
+      el.style.color = 'var(--red)';
+      el.style.border = '1px dashed var(--red)';
+      el.onclick = () => cancelB(key, el);
+    }
+  }, 3500);
 }
 
 // ── FAB ──
