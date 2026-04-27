@@ -274,7 +274,7 @@
         <div class="scard" style="--bc:var(--green)"><div class="sci" style="background:rgba(16,185,129,.1);color:var(--green)"><i class="fas fa-calendar-check"></i></div><div class="slb">حجوزات مكتملة</div><div class="sv" id="stCmp" style="color:var(--green)">0</div><div class="sh">إجمالي</div></div>
         <div class="scard" style="--bc:var(--teal)"><div class="sci" style="background:rgba(13,148,136,.1);color:var(--teal)"><i class="fas fa-coins"></i></div><div class="slb">الدخل الكلي</div><div class="sv" id="stRev" style="color:var(--teal)">0.00</div><div class="sh">د.أ</div></div>
         <div class="scard" style="--bc:var(--amber)"><div class="sci" style="background:rgba(245,158,11,.1);color:var(--amber)"><i class="fas fa-hourglass-half"></i></div><div class="slb">حجوزات اليوم</div><div class="sv" id="stToday" style="color:var(--amber)">0</div><div class="sh">نشط</div></div>
-        <div class="scard" style="--bc:var(--purple)"><div class="sci" style="background:rgba(139,92,246,.1);color:var(--purple)"><i class="fas fa-users"></i></div><div class="slb">الزوار بالعيادة</div><div class="sv" id="stWait" style="color:var(--purple)">0</div><div class="sh">بالانتظار حالياً <span class="live-pulse"></span></div></div>
+        <div class="scard" style="--bc:var(--purple)"><div class="sci" style="background:rgba(139,92,246,.1);color:var(--purple)"><i class="fas fa-eye"></i></div><div class="slb">زيارات واجهة الحجز</div><div class="sv" id="stWait" style="color:var(--purple)">0</div><div class="sh">إجمالي المشاهدات <span class="live-pulse"></span></div></div>
         <div class="scard" style="--bc:var(--sky)"><div class="sci" style="background:rgba(14,165,233,.1);color:var(--sky)"><i class="fas fa-star"></i></div><div class="slb">متوسط التقييم</div><div class="sv" id="stRate" style="color:var(--sky)">--</div><div class="sh">من 5</div></div>
       </div>
       <div class="ph" style="margin-bottom:12px"><div class="pt" style="font-size:1rem">👨‍⚕️ أداء الأطباء</div></div>
@@ -312,6 +312,7 @@
           <div><label class="mfl">حتى الساعة</label><input type="time" id="dWe" class="mfi" value="17:00"></div>
           <div><label class="mfl">صورة (رابط)</label><input type="text" id="dImg" class="mfi" placeholder="https://..."></div>
           <div><label class="mfl">إيموجي</label><input type="text" id="dEm" class="mfi" value="👨‍⚕️"></div>
+          <button class="badd" id="btnCancelEdit" onclick="cancelDocEdit()" style="display:none;background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)"><i class="fas fa-times" style="margin-left:4px"></i>تراجع</button>
         </div>
       </div>
       <div class="dgrid2" id="docGrid"></div>
@@ -326,12 +327,15 @@
         <div class="setg" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div><label class="setl">الحالة</label>
             <select id="sSt" class="setsel">
-              <option value="open">مفتوحة ✅</option>
-              <option value="closed">مغلقة ❌</option>
-              <option value="suspended">موقوفة 🚫</option>
+              <option value="open">مفتوحة للعمل ✅</option>
+              <option value="closed">إيقاف استقبال الحجوزات ⏸️</option>
+              <option value="suspended">موقوفة بالكامل 🚫</option>
             </select>
           </div>
-          <div><label class="setl">ساعات العمل</label><input type="text" id="sH" class="seti" placeholder="9ص - 5م"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <div><label class="setl">ساعة بدء الدوام</label><input type="time" id="sWs" class="seti" value="09:00"></div>
+            <div><label class="setl">ساعة الانتهاء</label><input type="time" id="sWe" class="seti" value="22:00"></div>
+          </div>
         </div>
         <div class="setg"><label class="setl">التخصص العام</label><input type="text" id="sSpec" class="seti" placeholder="عيادة متعددة التخصصات"></div>
         <div class="setg" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
@@ -480,11 +484,18 @@ db.ref(BASE+'/settings').on('value', snap => {
   b.className='tbadge '+(isOpen?'tb-open':'tb-closed');
   b.innerHTML=`<i class="fas fa-circle" style="font-size:.38rem"></i> ${s.status==='closed'?'مغلق':s.status==='suspended'?'موقوف':'مفتوح'}`;
   if(s.color){onColor(s.color);const cp=document.getElementById('sC');if(cp)cp.value=s.color;}
-  const F={sN:'name',sP:'phone',sH:'hours',sSpec:'specialty',sEm:'emoji',sBookingDays:'bookingDays'};
+  const F={sN:'name',sP:'phone',sSpec:'specialty',sEm:'emoji',sBookingDays:'bookingDays',sWs:'clinicStart',sWe:'clinicEnd'};
   for(let id in F){const el=document.getElementById(id);if(el&&!el.matches(':focus'))el.value=s[F[id]]||'';}
   const st=document.getElementById('sSt');if(st)st.value=s.status||'open';
   const ssd=document.getElementById('sSameDay');if(ssd)ssd.value=(s.sameDayBooking!==false)?'true':'false';
   if(!s.bookingDays) document.getElementById('sBookingDays').value = '10';
+  if(!s.clinicStart) document.getElementById('sWs').value = '09:00';
+  if(!s.clinicEnd) document.getElementById('sWe').value = '22:00';
+});
+
+// ── VISITORS LISTENER ──
+db.ref(BASE+'/stats/visitors').on('value', snap => {
+  document.getElementById('stWait').textContent = snap.val() || 0;
 });
 
 // ── LIVE BOOKINGS LISTENER ──
@@ -492,10 +503,6 @@ db.ref(BASE+'/bookings').on('value', snap => {
   _bks = snap.val()||{};
   const actKeys = Object.keys(_bks).filter(k=>{const s=_bks[k].status;return s!=='done'&&s!=='completed'&&s!=='cancelled';});
   
-  // Update Visitors Waiting stat
-  const waitKeys = actKeys.filter(k => _bks[k].status === 'waiting');
-  document.getElementById('stWait').textContent = waitKeys.length;
-
   const lc = document.getElementById('liveC');
   lc.textContent = actKeys.length; lc.className='nbdg'+(actKeys.length===0?' z':'');
   // Notify
@@ -613,7 +620,10 @@ db.ref(BASE+'/doctors').on('value', snap => {
           <span class="avl-lbl" style="color:${avail?'var(--green)':'var(--red)'}">${avail?'متاح الآن':'غير متاح'}</span>
         </div>
       </div>
-      <button class="bdel" onclick="db.ref(BASE+'/doctors/${k}').remove();toast('تم الحذف','ok')"><i class="fas fa-trash"></i> حذف الطبيب</button>
+      <div style="display:flex;border-top:1px solid rgba(13,148,136,.1)">
+        <button onclick="editDoc('${k}')" style="flex:1;background:none;border:none;border-left:1px solid rgba(13,148,136,.1);color:var(--sky);padding:8px;font-family:'Tajawal',sans-serif;font-size:.75rem;cursor:pointer;transition:.2s"><i class="fas fa-edit"></i> تعديل</button>
+        <button class="bdel" style="flex:1;border:none" onclick="db.ref(BASE+'/doctors/${k}').remove();toast('تم الحذف','ok')"><i class="fas fa-trash"></i> حذف</button>
+      </div>
     </div>`;
   }).join('');
 });
@@ -629,20 +639,66 @@ function cmpBook(k) {
 
 function clrHist(){if(!confirm('مسح سجل الحجوزات المكتملة؟'))return;db.ref(`${BASE}/completedBookings`).remove().then(()=>toast('تم المسح','ok'));}
 
+let editingDocKey = null;
 function addDoc() {
   const name=document.getElementById('dN').value.trim();
   const spec=document.getElementById('dS').value.trim();
   const fee=document.getElementById('dF').value.trim();
   if(!name||!spec||!fee){toast('⚠️ أدخل الاسم والتخصص والرسوم','err');return;}
-  db.ref(`${BASE}/doctors`).push({
+  const docObj = {
     name,specialty:spec,fee:parseFloat(fee),
     slotDuration:parseInt(document.getElementById('dSlot').value)||30,
     workStart:document.getElementById('dWs').value||'09:00',
     workEnd:document.getElementById('dWe').value||'17:00',
     img:document.getElementById('dImg').value.trim()||'',
     emoji:document.getElementById('dEm').value.trim()||'👨‍⚕️',
-    available:true, avgRating:0, ratingCount:0
-  }).then(()=>{['dN','dS','dF','dImg'].forEach(i=>document.getElementById(i).value='');toast('✅ تم إضافة الطبيب','ok');});
+  };
+  
+  if (editingDocKey) {
+    db.ref(`${BASE}/doctors/${editingDocKey}`).update(docObj).then(() => {
+      toast('✅ تم تحديث الطبيب', 'ok');
+      cancelDocEdit();
+    });
+  } else {
+    docObj.available = true; docObj.avgRating = 0; docObj.ratingCount = 0;
+    db.ref(`${BASE}/doctors`).push(docObj).then(() => {
+      cancelDocEdit();
+      toast('✅ تم إضافة الطبيب', 'ok');
+    });
+  }
+}
+
+function editDoc(k) {
+  editingDocKey = k;
+  const d = _docs[k];
+  document.getElementById('dN').value = d.name;
+  document.getElementById('dS').value = d.specialty;
+  document.getElementById('dF').value = d.fee;
+  document.getElementById('dSlot').value = d.slotDuration || 30;
+  document.getElementById('dWs').value = d.workStart || '09:00';
+  document.getElementById('dWe').value = d.workEnd || '17:00';
+  document.getElementById('dImg').value = d.img || '';
+  document.getElementById('dEm').value = d.emoji || '👨‍⚕️';
+  
+  const b = document.querySelector('.badd');
+  b.innerHTML = '<i class="fas fa-save" style="margin-left:4px"></i>تحديث معلومات الطبيب';
+  b.style.background = 'linear-gradient(135deg, var(--amber), #d97706)';
+  document.getElementById('btnCancelEdit').style.display = 'block';
+  document.getElementById('dN').focus();
+}
+
+function cancelDocEdit() {
+  editingDocKey = null;
+  ['dN','dS','dF','dImg'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('dSlot').value = 30;
+  document.getElementById('dWs').value = '09:00';
+  document.getElementById('dWe').value = '17:00';
+  document.getElementById('dEm').value = '👨‍⚕️';
+  
+  const b = document.querySelector('.badd');
+  b.innerHTML = '<i class="fas fa-plus" style="margin-left:4px"></i>إضافة';
+  b.style.background = 'linear-gradient(135deg,var(--teal),var(--sky))';
+  document.getElementById('btnCancelEdit').style.display = 'none';
 }
 
 function togAvail(k,cur){
@@ -657,7 +713,8 @@ function saveSettings() {
     name:sanitize(document.getElementById('sN').value),
     phone:sanitize(document.getElementById('sP').value),
     status:document.getElementById('sSt').value,
-    hours:sanitize(document.getElementById('sH').value),
+    clinicStart:document.getElementById('sWs').value,
+    clinicEnd:document.getElementById('sWe').value,
     specialty:sanitize(document.getElementById('sSpec').value),
     emoji:sanitize(document.getElementById('sEm').value),
     sameDayBooking: document.getElementById('sSameDay').value === 'true',

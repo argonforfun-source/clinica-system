@@ -572,9 +572,13 @@ const toEngNum = s => String(s).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.
 const isPhone = p => /^[0-9+\s\-]{7,15}$/.test(p.trim());
 const isName = n => n.trim().length >= 2 && n.trim().length <= 80;
 
-// ── ANONYMOUS AUTH ──
+// ── ANONYMOUS AUTH & STATS ──
 auth.signInAnonymously().then(r => {
   _anonUid = r.user.uid;
+  if (!sessionStorage.getItem('clinica_visited')) {
+    db.ref(BASE+'/stats/visitors').transaction(v => (v || 0) + 1);
+    sessionStorage.setItem('clinica_visited', '1');
+  }
 }).catch(() => {});
 
 // ── CONNECTION MONITOR ──
@@ -617,13 +621,33 @@ db.ref(BASE+'/settings').on('value', snap => {
   } else if (s.status === 'closed') {
     const ls = document.getElementById('lockScreen');
     ls.innerHTML = `<div class="ls-icon" style="font-size:4rem;margin-bottom:10px">⏸️</div>
-                    <div class="ls-title" style="font-size:2rem;font-weight:900;margin-bottom:12px">الحجز متوقف حالياً</div>
+                    <div class="ls-title" style="font-size:2rem;font-weight:900;margin-bottom:12px">استقبال الحجوزات متوقف</div>
                     <div class="ls-sub" style="color:rgba(255,255,255,0.6);margin-bottom:30px;line-height:1.7">عذراً، لقد أوقفت العيادة استقبال حجوزات جديدة في الوقت الحالي.<br>يرجى المحاولة مرة أخرى لاحقاً.</div>
                     <button onclick="openMyBookings(); document.getElementById('lockScreen').classList.remove('show');" style="background:var(--teal);color:#fff;border:none;padding:14px 30px;border-radius:16px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 8px 24px rgba(13,148,136,0.3);"><i class="fas fa-calendar-check" style="margin-left:6px"></i>مراجعة حجوزاتي السابقة</button>
                     <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.3);letter-spacing:4px;margin-top:40px">POWERED BY ARGON SYSTEM</div>`;
     ls.classList.add('show');
     mc.style.display = 'none';
     return;
+  }
+  
+  if (s.status === 'open' && s.clinicStart && s.clinicEnd) {
+    const now = new Date();
+    const curTime = now.getHours() * 60 + now.getMinutes();
+    const [sh, sm] = s.clinicStart.split(':').map(Number);
+    const [eh, em] = s.clinicEnd.split(':').map(Number);
+    const stTime = sh * 60 + sm;
+    const enTime = eh * 60 + em;
+    if (curTime < stTime || curTime >= enTime) {
+      const ls = document.getElementById('lockScreen');
+      ls.innerHTML = `<div class="ls-icon" style="font-size:4.5rem;margin-bottom:10px">🌙</div>
+                      <div class="ls-title" style="font-size:2rem;font-weight:900;margin-bottom:12px">خارج أوقات الدوام</div>
+                      <div class="ls-sub" style="color:rgba(255,255,255,0.6);margin-bottom:30px;line-height:1.7">أوقات استقبال الحجوزات الرسمية للعيادة تبدأ من الساعة <b style="color:var(--teal)">${s.clinicStart}</b> وحتى <b style="color:var(--teal)">${s.clinicEnd}</b>.<br>نستقبل حجوزاتكم خلال هذه الأوقات فقط.</div>
+                      <button onclick="openMyBookings(); document.getElementById('lockScreen').classList.remove('show');" style="background:var(--teal);color:#fff;border:none;padding:14px 30px;border-radius:16px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 8px 24px rgba(13,148,136,0.3);"><i class="fas fa-calendar-check" style="margin-left:6px"></i>مراجعة حجوزاتي السابقة</button>
+                      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.3);letter-spacing:4px;margin-top:40px">POWERED BY ARGON SYSTEM</div>`;
+      ls.classList.add('show');
+      mc.style.display = 'none';
+      return;
+    }
   }
   
   ls.classList.remove('show');
@@ -638,7 +662,13 @@ db.ref(BASE+'/settings').on('value', snap => {
   } else {
     sc.className='chip c-open'; sc.innerHTML='<i class="fas fa-circle" style="font-size:.38rem"></i> مفتوح الآن';
   }
-  if (s.hours) { document.getElementById('hoursChip').style.display='inline-flex'; document.getElementById('hoursText').textContent=s.hours; }
+  if (s.clinicStart && s.clinicEnd) {
+    document.getElementById('hoursChip').style.display='inline-flex';
+    document.getElementById('hoursText').textContent=`${s.clinicStart} - ${s.clinicEnd}`;
+  } else if (s.hours) {
+    document.getElementById('hoursChip').style.display='inline-flex';
+    document.getElementById('hoursText').textContent=s.hours;
+  }
   if (s.color) {
     document.documentElement.style.setProperty('--teal', s.color);
     document.documentElement.style.setProperty('--teal-dark', s.color);
@@ -870,48 +900,54 @@ function sendBooking() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
   btn.disabled = true;
 
-  const bno = '#' + Math.floor(1000 + Math.random()*9000);
-  const booking = {
-    bookNo: bno,
-    docKey: selDoc.key, docName: sanitize(selDoc.name), docSpec: sanitize(selDoc.specialty||''),
-    patName: name, patPhone: phone,
-    patAge: sanitize(document.getElementById('pAge').value),
-    patGender: sanitize(document.getElementById('pGender').value),
-    notes: sanitize(document.getElementById('pNotes').value),
-    date: selDate, time: selTime,
-    fee: parseFloat(selDoc.fee||0).toFixed(2),
-    status: 'new',
-    createdAt: new Date().toISOString(),
-    anonUid: _anonUid || 'guest'
-  };
+  const todayDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+  db.ref(BASE+'/stats/dailyBookings/'+todayDate).transaction(cur => (cur || 0) + 1, (err, committed, snap) => {
+    let dailyNum = 1;
+    if (!err && committed && snap.val()) dailyNum = snap.val();
+    const bno = '#' + dailyNum;
 
-  db.ref(BASE+'/bookings').push(booking)
-    .then(ref => {
-      currentKey = ref.key;
-      // Show success
-      document.getElementById('sno').textContent = bno;
-      document.getElementById('sinfo').innerHTML = `
-        <div class="sinfo-row"><span class="lbl">👨‍⚕️ الطبيب</span><span style="font-weight:800">د. ${sanitize(selDoc.name)}</span></div>
-        <div class="sinfo-row"><span class="lbl">📅 التاريخ</span><span style="font-weight:800">${selDate}</span></div>
-        <div class="sinfo-row"><span class="lbl">🕐 الوقت</span><span style="font-weight:800">${selTime}</span></div>
-        <div class="sinfo-row"><span class="lbl">💰 الرسوم</span><span>${booking.fee} د.أ</span></div>`;
-      startTracking(ref.key);
-      saveLocal(ref.key, bno);
-      // Premium Celebration
-      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors:['#0d9488','#0ea5e9','#ffffff'] });
-      // Update counter
-      const myB = JSON.parse(localStorage.getItem('clinica_bks_'+CID)||'[]');
-      document.getElementById('mybtnCnt').textContent = myB.length;
-      sending = false;
-      isBooked = true;
-      goStep(3);
-    })
-    .catch(err => {
-      toast('❌ حدث خطأ: '+err.message, 'err');
-      sending = false;
-      btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
-      btn.disabled = false;
-    });
+    const booking = {
+      bookNo: bno,
+      docKey: selDoc.key, docName: sanitize(selDoc.name), docSpec: sanitize(selDoc.specialty||''),
+      patName: name, patPhone: phone,
+      patAge: sanitize(document.getElementById('pAge').value),
+      patGender: sanitize(document.getElementById('pGender').value),
+      notes: sanitize(document.getElementById('pNotes').value),
+      date: selDate, time: selTime,
+      fee: parseFloat(selDoc.fee||0).toFixed(2),
+      status: 'new',
+      createdAt: new Date().toISOString(),
+      anonUid: _anonUid || 'guest'
+    };
+
+    db.ref(BASE+'/bookings').push(booking)
+      .then(ref => {
+        currentKey = ref.key;
+        // Show success
+        document.getElementById('sno').textContent = bno;
+        document.getElementById('sinfo').innerHTML = `
+          <div class="sinfo-row"><span class="lbl">👨‍⚕️ الطبيب</span><span style="font-weight:800">د. ${sanitize(selDoc.name)}</span></div>
+          <div class="sinfo-row"><span class="lbl">📅 التاريخ</span><span style="font-weight:800">${selDate}</span></div>
+          <div class="sinfo-row"><span class="lbl">🕐 الوقت</span><span style="font-weight:800">${selTime}</span></div>
+          <div class="sinfo-row"><span class="lbl">💰 الرسوم</span><span>${booking.fee} د.أ</span></div>`;
+        startTracking(ref.key);
+        saveLocal(ref.key, bno);
+        // Premium Celebration
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors:['#0d9488','#0ea5e9','#ffffff'] });
+        // Update counter
+        const myB = JSON.parse(localStorage.getItem('clinica_bks_'+CID)||'[]');
+        document.getElementById('mybtnCnt').textContent = myB.length;
+        sending = false;
+        isBooked = true;
+        goStep(3);
+      })
+      .catch(err => {
+        toast('❌ حدث خطأ: '+err.message, 'err');
+        sending = false;
+        btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
+        btn.disabled = false;
+      });
+  });
 }
 
 // ── TRACKING ──
@@ -996,6 +1032,8 @@ async function openMyBookings() {
         <button onclick="editB('${b.key}','${nm}','${ph}','${nt}')" style="flex:1;padding:7px;background:rgba(13,148,136,.1);border:1px dashed var(--teal);color:var(--teal);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-edit"></i> تعديل</button>
         <button onclick="cancelB('${b.key}', this)" style="flex:1;padding:7px;background:rgba(239,68,68,.1);border:1px dashed var(--red);color:var(--red);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-times-circle"></i> إلغاء الحجز</button>
       </div>`;
+    } else if ((status === 'done' || status === 'completed') && bData && !bData.rating) {
+      eBtn = `<button onclick="closeModal('myModal'); currentKey='${b.key}'; document.getElementById('ratingBox').style.display='block'; window.scrollTo(0, document.body.scrollHeight);" style="margin-top:10px;width:100%;padding:7px;background:rgba(245,158,11,.1);border:1px dashed var(--amber);color:var(--amber);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-star"></i> قيم الطبيب الآن</button>`;
     }
     
     html += `<div class="bi-card">
