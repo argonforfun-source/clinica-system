@@ -540,7 +540,7 @@ function renderLive(keys) {
     const b=_bks[k];
     return `<div class="bc">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <span class="bno">${b.bookNo||'#----'}</span>
+        <span class="bno" dir="ltr">${b.bookNo||'#----'}</span>
         <span style="font-size:.72rem;font-weight:700;color:${stColor[b.status||'new']}">${stMap[b.status||'new']}</span>
       </div>
       <div class="bname">${sanitize(b.patName)}</div>

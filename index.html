@@ -908,11 +908,23 @@ function sendBooking() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
   btn.disabled = true;
 
-  // Use selDate to ensure the booking number is tied to the appointment date
-  db.ref(BASE+'/stats/dailyBookings/'+selDate).transaction(cur => (cur || 0) + 1, (err, committed, snap) => {
-    let dailyNum = 1;
-    if (!err && committed && snap.val()) dailyNum = snap.val();
-    const bno = '#D' + String(dailyNum).padStart(2, '0');
+  // Safely find the max daily number across active and completed bookings for this date
+  const p1 = db.ref(BASE+'/bookings').orderByChild('date').equalTo(selDate).once('value');
+  const p2 = db.ref(BASE+'/completedBookings').orderByChild('date').equalTo(selDate).once('value');
+  
+  Promise.all([p1, p2]).then(snaps => {
+    let max = 0;
+    snaps.forEach(snap => {
+      if (snap.exists()) {
+        Object.values(snap.val()).forEach(b => {
+          if (b.bookNo && b.bookNo.startsWith('#D')) {
+            const num = parseInt(b.bookNo.replace('#D', ''), 10);
+            if (!isNaN(num) && num > max) max = num;
+          }
+        });
+      }
+    });
+    const bno = '#D' + String(max + 1).padStart(2, '0');
 
     const booking = {
       bookNo: bno,
