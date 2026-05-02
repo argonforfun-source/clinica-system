@@ -274,7 +274,7 @@
         <div class="scard" style="--bc:var(--green)"><div class="sci" style="background:rgba(16,185,129,.1);color:var(--green)"><i class="fas fa-calendar-check"></i></div><div class="slb">حجوزات مكتملة</div><div class="sv" id="stCmp" style="color:var(--green)">0</div><div class="sh">إجمالي</div></div>
         <div class="scard" style="--bc:var(--teal)"><div class="sci" style="background:rgba(13,148,136,.1);color:var(--teal)"><i class="fas fa-coins"></i></div><div class="slb">الدخل الكلي</div><div class="sv" id="stRev" style="color:var(--teal)">0.00</div><div class="sh">د.أ</div></div>
         <div class="scard" style="--bc:var(--amber)"><div class="sci" style="background:rgba(245,158,11,.1);color:var(--amber)"><i class="fas fa-hourglass-half"></i></div><div class="slb">حجوزات اليوم</div><div class="sv" id="stToday" style="color:var(--amber)">0</div><div class="sh">نشط</div></div>
-        <div class="scard" style="--bc:var(--purple)"><div class="sci" style="background:rgba(139,92,246,.1);color:var(--purple)"><i class="fas fa-eye"></i></div><div class="slb">زيارات واجهة الحجز</div><div class="sv" id="stWait" style="color:var(--purple)">0</div><div class="sh">إجمالي المشاهدات <span class="live-pulse"></span></div></div>
+        <div class="scard" style="--bc:var(--purple)"><div class="sci" style="background:rgba(139,92,246,.1);color:var(--purple)"><i class="fas fa-layer-group"></i></div><div class="slb">إجمالي الحجوزات</div><div class="sv" id="stWait" style="color:var(--purple)">0</div><div class="sh">كافة الحجوزات</div></div>
         <div class="scard" style="--bc:var(--sky)"><div class="sci" style="background:rgba(14,165,233,.1);color:var(--sky)"><i class="fas fa-star"></i></div><div class="slb">متوسط التقييم</div><div class="sv" id="stRate" style="color:var(--sky)">--</div><div class="sh">من 5</div></div>
       </div>
       <div class="ph" style="margin-bottom:12px"><div class="pt" style="font-size:1rem">👨‍⚕️ أداء الأطباء</div></div>
@@ -508,8 +508,8 @@ db.ref(BASE+'/settings').on('value', snap => {
   if(!s.clinicEnd) document.getElementById('sWe').value = '22:00';
 });
 
-// ── VISITORS LISTENER ──
-db.ref(BASE+'/stats/visitors').on('value', snap => {
+// ── TOTAL BOOKINGS LISTENER ──
+db.ref(BASE+'/stats/totalBookings').on('value', snap => {
   document.getElementById('stWait').textContent = snap.val() || 0;
 });
 

@@ -630,17 +630,10 @@ db.ref(BASE+'/settings').on('value', snap => {
     ls.classList.add('show');
     mc.style.display = 'none';
     return;
-  } else if (s.status === 'closed') {
-    ls.innerHTML = `<div class="ls-icon" style="font-size:4rem;margin-bottom:10px">⏸️</div>
-                    <div class="ls-title" style="font-size:2rem;font-weight:900;margin-bottom:12px">استقبال الحجوزات متوقف</div>
-                    <div class="ls-sub" style="color:rgba(255,255,255,0.6);margin-bottom:30px;line-height:1.7">عذراً، لقد أوقفت العيادة استقبال حجوزات جديدة في الوقت الحالي.<br>يرجى المحاولة مرة أخرى لاحقاً.</div>
-                    <button onclick="openMyBookings();" style="padding:14px 28px;background:var(--teal);border:none;border-radius:20px;color:#fff;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif">مراجعة حجوزاتي السابقة</button>`;
-    ls.classList.add('show');
-    mc.style.display = 'none';
-    return;
   }
   
-  // 'open' status ensures the page is unlocked
+  // 'open' or 'closed' status ensures the page is unlocked
+  // For 'closed', booking buttons are disabled in renderDocs and sendBooking
   ls.classList.remove('show');
   mc.style.display = 'block';
   
@@ -906,6 +899,7 @@ function sendBooking() {
     toast('⚠️ تجاوزت الحد المسموح من الحجوزات. انتظر ساعة ثم حاول مجدداً.', 'err');
     return;
   }
+  if (clinicSets && clinicSets.status !== 'open') { toast('⛔ استقبال الحجوزات متوقف حالياً', 'err'); return; }
   if (!selDoc || !selDate || !selTime) { toast('⚠️ يرجى اختيار الطبيب والموعد', 'err'); return; }
 
   const name = sanitize(document.getElementById('pName').value);
@@ -922,6 +916,9 @@ function sendBooking() {
   const p2 = db.ref(BASE+'/completedBookings').orderByChild('date').equalTo(selDate).once('value');
   
   Promise.all([p1, p2]).then(snaps => {
+    // Increment lifetime total bookings counter
+    db.ref(BASE+'/stats/totalBookings').transaction(cur => (cur || 0) + 1).catch(()=>{});
+    
     let max = 0;
     snaps.forEach(snap => {
       if (snap.exists()) {
@@ -1061,7 +1058,11 @@ async function openMyBookings() {
     try {
       const s = await db.ref(BASE+'/bookings/'+b.key).once('value');
       if (s.exists()) { bData = s.val(); status = bData.status||'new'; }
-      else { const cs = await db.ref(BASE+'/completedBookings/'+b.key).once('value'); status = cs.exists()?'done':'new'; }
+      else { 
+        const cs = await db.ref(BASE+'/completedBookings/'+b.key).once('value'); 
+        if (cs.exists()) { bData = cs.val(); status = bData.status||'done'; }
+        else { status = 'new'; }
+      }
     } catch(e) {}
     
     let eBtn = '';
@@ -1074,7 +1075,7 @@ async function openMyBookings() {
         <button onclick="cancelB('${b.key}', this)" style="flex:1;padding:7px;background:rgba(239,68,68,.1);border:1px dashed var(--red);color:var(--red);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-times-circle"></i> إلغاء الحجز</button>
       </div>`;
     } else if ((status === 'done' || status === 'completed') && bData && !bData.rating) {
-      eBtn = `<button onclick="closeModal('myModal'); currentKey='${b.key}'; document.getElementById('ratingBox').style.display='block'; window.scrollTo(0, document.body.scrollHeight);" style="margin-top:10px;width:100%;padding:7px;background:rgba(245,158,11,.1);border:1px dashed var(--amber);color:var(--amber);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-star"></i> قيم الطبيب الآن</button>`;
+      eBtn = `<button onclick="closeModal('myModal'); currentKey='${b.key}'; document.getElementById('bnoDisp').textContent='${b.no}'; startTracking('${b.key}'); goStep(3);" style="margin-top:10px;width:100%;padding:7px;background:rgba(245,158,11,.1);border:1px dashed var(--amber);color:var(--amber);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-star"></i> قيم الطبيب الآن</button>`;
     }
     
     html += `<div class="bi-card">
