@@ -935,7 +935,7 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('themeTog').innerHTML = savedTheme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
 });
 
-function goSec(id,el){
+function sw(id,el){
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
   document.getElementById(id).classList.add('on');
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
