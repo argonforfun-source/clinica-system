@@ -536,6 +536,21 @@
       box-shadow: var(--shadow-md);
       border-color: rgba(13, 148, 136, 0.2)
     }
+    .hlogo {
+      width: 64px;
+      height: 64px;
+      background: var(--card);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      margin: 0 auto 14px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .hlogo img { width:100%; height:100%; object-fit:cover; }
 
     .dcard-top {
       height: 108px;
@@ -1934,7 +1949,11 @@
       mc.style.display = '';
 
       document.getElementById('hName').textContent = s.name || 'العيادة';
-      document.getElementById('hLogo').textContent = s.emoji || '🏥';
+      if(s.logoUrl) {
+        document.getElementById('hLogo').innerHTML = `<img src="${s.logoUrl}" alt="Clinic Logo">`;
+      } else {
+        document.getElementById('hLogo').textContent = s.emoji || '🏥';
+      }
       document.title = (s.name || 'أرغون') + ' | حجز موعد';
       const sc = document.getElementById('statusChip');
       if (s.status === 'closed') {

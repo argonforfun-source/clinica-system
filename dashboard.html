@@ -413,7 +413,18 @@
             <span id="colorHex" style="font-size:.88rem;font-weight:600">#0d9488</span>
           </div>
         </div>
-        <div class="setg"><label class="setl">إيموجي العيادة</label><input type="text" id="sEm" class="seti" placeholder="🏥"></div>
+        <div class="setg">
+          <label class="setl">شعار العيادة (لوغو)</label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div id="logoPrev" style="width:50px;height:50px;border-radius:10px;background:var(--surf);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:1.5rem">🏥</div>
+            <label class="tbtn" style="background:var(--teal);color:#fff;border:none">
+              <i class="fas fa-upload"></i> رفع لوغو
+              <input type="file" id="logoInp" hidden accept="image/*" onchange="upLogo(this)">
+            </label>
+            <button class="tbtn" onclick="delLogo()" style="color:var(--red);background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.2)">حذف</button>
+          </div>
+        </div>
+        <div class="setg"><label class="setl">إيموجي العيادة (بديل اللوغو)</label><input type="text" id="sEm" class="seti" placeholder="🏥"></div>
         <div class="setg"><label class="setl">كلمة المرور الجديدة</label><input type="password" id="sPw" class="seti" placeholder="اتركها فارغة للإبقاء على الحالية"></div>
         <button class="bsave" onclick="saveSettings()"><i class="fas fa-floppy-disk" style="margin-left:8px"></i>حفظ جميع التغييرات</button>
       </div>
@@ -433,6 +444,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════
    ARGON SYSTEM — Dashboard v2.0
@@ -451,6 +463,7 @@ const FB = {
 firebase.initializeApp(FB);
 const db = firebase.database();
 const auth = firebase.auth();
+const storage = firebase.storage();
 
 const uP = new URLSearchParams(window.location.search);
 let CID = uP.get('id') || localStorage.getItem('argon_id') || '1';
@@ -510,6 +523,8 @@ function doLogin() {
     const el = document.getElementById('dashLogin');
     el.style.opacity='0'; el.style.transition='opacity .35s';
     setTimeout(()=>{ el.style.display='none'; toast('✅ أهلاً بك!', 'ok'); },360);
+    // Auto-Auth for Storage Access
+    auth.signInAnonymously().catch(()=>{});
   } else {
     _logins++;
     const inp = document.getElementById('lPass');
@@ -571,6 +586,12 @@ db.ref(BASE+'/settings').on('value', snap => {
     b.className='tbadge tb-closed'; b.innerHTML='<i class="fas fa-pause-circle" style="font-size:.38rem"></i> الحجز متوقف';
   } else {
     b.className='tbadge tb-open'; b.innerHTML='<i class="fas fa-circle" style="font-size:.38rem"></i> مفتوح';
+  }
+  document.getElementById('tlogo').textContent = s.name || 'ARGON CLINIC';
+  if(s.logoUrl) {
+    document.getElementById('logoPrev').innerHTML = `<img src="${s.logoUrl}" style="width:100%;height:100%;object-fit:cover">`;
+  } else {
+    document.getElementById('logoPrev').textContent = s.emoji || '🏥';
   }
   if(s.color){onColor(s.color);const cp=document.getElementById('sC');if(cp)cp.value=s.color;}
   const F={sN:'name',sP:'phone',sSpec:'specialty',sEm:'emoji',sBookingDays:'bookingDays',sWs:'clinicStart',sWe:'clinicEnd'};
@@ -899,6 +920,26 @@ function printReport() {
   const activeID = document.querySelector('.ni.on') ? 
     document.querySelector('.ni.on').getAttribute('onclick').match(/'([^']+)'/)[1] : 'stats';
   document.getElementById(activeID).classList.add('on');
+}
+
+function upLogo(inp) {
+  const file = inp.files[0];
+  if(!file) return;
+  if(file.size > 2*1024*1024) { toast('❌ الملف كبير جداً (الأقصى 2MB)', 'err'); return; }
+  
+  toast('⏳ جاري الرفع...', 'ok');
+  const ref = storage.ref(BASE + '/logo_' + Date.now());
+  ref.put(file).then(snap => snap.ref.getDownloadURL()).then(url => {
+    db.ref(BASE + '/settings/logoUrl').set(url);
+    toast('✅ تم تحديث الشعار', 'ok');
+  }).catch(e => { console.error(e); toast('❌ فشل الرفع', 'err'); });
+}
+
+function delLogo() {
+  if(!confirm('هل أنت متأكد من حذف الشعار؟')) return;
+  db.ref(BASE + '/settings/logoUrl').remove().then(() => {
+    toast('✅ تم حذف الشعار', 'ok');
+  });
 }
 
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className=type?'show '+type:'show';setTimeout(()=>t.className='',3000);}
