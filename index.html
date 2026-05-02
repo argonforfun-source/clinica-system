@@ -1816,6 +1816,7 @@
     let currentKey = null, trkListener = null, curRating = 0;
     let isConn = true, isBooked = false, _anonUid = null;
 
+
     // ── RATE LIMIT (client-side guard) ──
     const RATE_KEY = 'argon_rate_' + CID;
     function checkRateLimit() {
@@ -1869,22 +1870,18 @@
 
     // ── LIVE VISITOR COUNTER (Presence System) ──
     (function initVisitorPresence() {
-      const vId = sessionStorage.getItem('argon_vid') || ('v_' + Math.random().toString(36).substr(2, 9));
+      const vId = sessionStorage.getItem('argon_vid') || ('v_' + Math.random().toString(36).substr(2, 5));
       sessionStorage.setItem('argon_vid', vId);
       const presRef = db.ref(BASE + '/presence/' + vId);
       
-      const updatePres = () => {
-        presRef.set({ type: 'visitor', ts: firebase.database.ServerValue.TIMESTAMP });
-      };
-
       db.ref('.info/connected').on('value', snap => {
         if (snap.val() === true) {
-          updatePres();
+          presRef.set(true);
           presRef.onDisconnect().remove();
         }
       });
-      // Heartbeat every 20s to stay alive
-      setInterval(updatePres, 20000);
+      // Fallback Heartbeat
+      setInterval(() => { if(isConn) presRef.set(true); }, 15000);
       window.addEventListener('beforeunload', () => presRef.remove());
     })();
 

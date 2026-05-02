@@ -327,7 +327,7 @@
             <div class="sci" style="background:rgba(139,92,246,.1);color:var(--purple)"><i class="fas fa-users-viewfinder"></i></div>
             <div class="live-pulse-container"><div class="pulse-dot"></div> LIVE</div>
           </div>
-          <div class="slb">النشاط المباشر الآن</div>
+          <div class="slb">النشاط المباشر الآن <small id="stCID" style="opacity:0.5;font-size:0.5rem"></small></div>
           <div class="sv" id="stLive" style="color:var(--purple)">0</div>
           <div class="scard-sub">زائر يتصفح النظام حالياً</div>
         </div>
@@ -567,6 +567,23 @@ db.ref(BASE+'/settings').on('value', snap => {
   if(!s.clinicStart) document.getElementById('sWs').value = '09:00';
   if(!s.clinicEnd) document.getElementById('sWe').value = '22:00';
 });
+
+// ── CONNECTION & PRESENCE ──
+db.ref('.info/connected').on('value', snap => {
+  const was = !isConn; isConn = snap.val()===true;
+  const bar = document.getElementById('connBar');
+  if (isConn) {
+    bar.className='cbar cok'; bar.innerHTML='<i class="fas fa-wifi"></i> متصل'; bar.style.display='flex';
+    setTimeout(()=>{if(isConn)bar.style.display='none';},2000);
+    if (was) toast('✅ تم الاتصال');
+    
+    // Register Admin Presence
+    const dPres = db.ref(BASE+'/presence/admin_'+Math.floor(Math.random()*1000));
+    dPres.set(true);
+    dPres.onDisconnect().remove();
+  } else { bar.style.display='flex'; bar.className='cbar coff'; bar.innerHTML='<i class="fas fa-exclamation-triangle"></i> لا يوجد اتصال...'; }
+});
+document.getElementById('stCID').textContent = '(ID: '+CID+')';
 
 // ── LIVE PRESENCE LISTENER ──
 db.ref(BASE+'/presence').on('value', snap => {
