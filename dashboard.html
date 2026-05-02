@@ -925,14 +925,15 @@ function printReport() {
 function upLogo(inp) {
   const file = inp.files[0];
   if(!file) return;
-  if(file.size > 2*1024*1024) { toast('❌ الملف كبير جداً (الأقصى 2MB)', 'err'); return; }
-  
-  toast('⏳ جاري الرفع...', 'ok');
-  const ref = storage.ref(BASE + '/logo_' + Date.now());
-  ref.put(file).then(snap => snap.ref.getDownloadURL()).then(url => {
-    db.ref(BASE + '/settings/logoUrl').set(url);
-    toast('✅ تم تحديث الشعار', 'ok');
-  }).catch(e => { console.error(e); toast('❌ فشل الرفع', 'err'); });
+  if(file.size > 200*1024) { toast('❌ حجم اللوغو كبير (الأقصى 200KB)', 'err'); return; }
+  const reader = new FileReader();
+  toast('⏳ جاري المعالجة...', 'ok');
+  reader.onload = e => {
+    db.ref(BASE + '/settings/logoUrl').set(e.target.result)
+      .then(() => toast('✅ تم تحديث الشعار', 'ok'))
+      .catch(() => toast('❌ فشل الحفظ', 'err'));
+  };
+  reader.readAsDataURL(file);
 }
 
 function delLogo() {
