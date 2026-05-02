@@ -2023,7 +2023,12 @@
       g.innerHTML = docs.map(d => {
         const avail = d.available !== false && !isClosed;
         const btnLabel = isClosed ? 'الحجز متوقف حالياً' : (d.available !== false ? 'احجز موعد' : 'غير متاح');
-        const ratingStr = d.avgRating ? `${'★'.repeat(Math.round(d.avgRating))} <span>(${d.ratingCount || 0})</span>` : '<span>لا يوجد تقييم</span>';
+        
+        // Artistic Rating Display
+        const avg = d.avgRating ? Number(d.avgRating).toFixed(1) : '0.0';
+        const rCnt = d.ratingCount || 0;
+        const stars = '★'.repeat(Math.floor(avg)) + '☆'.repeat(5 - Math.floor(avg));
+
         return `
     <div class="dcard" onclick="${avail ? `pickDoc('${d.key}')` : ''}">
       <div class="dcard-top">
@@ -2031,10 +2036,13 @@
         <div class="avail-dot ${avail ? 'av-yes' : 'av-no'}"></div>
       </div>
       <div class="dcard-body">
-        <div class="dname">${sanitize(d.name)}</div>
+        <div class="dname">د. ${sanitize(d.name)}</div>
         <div class="dspec">${sanitize(d.specialty || '')}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin:4px 0">
+          <div style="font-size:0.75rem;color:var(--amber);letter-spacing:1px">${stars}</div>
+          <span style="font-size:0.65rem;color:var(--muted);font-weight:700">${avg} (${rCnt})</span>
+        </div>
         <div class="dfee">${parseFloat(d.fee || 0).toFixed(2)} د.أ</div>
-        <div class="drating">${ratingStr}</div>
         <button class="dbookbtn" ${avail ? '' : `disabled`} onclick="event.stopPropagation();pickDoc('${d.key}')">
           <i class="fas fa-${isClosed ? 'pause-circle' : 'calendar-plus'}"></i>${btnLabel}
         </button>
@@ -2314,7 +2322,6 @@
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
       btn.disabled = true;
 
-      // Find where the booking is to get docKey and update rating
       const p1 = db.ref(BASE + '/bookings/' + currentKey).once('value');
       const p2 = db.ref(BASE + '/completedBookings/' + currentKey).once('value');
 
@@ -2325,12 +2332,22 @@
 
         if (bData) {
           db.ref(BASE + path + currentKey).update({ rating: curRating });
-          const dk = bData.docKey || (selDoc ? selDoc.key : null);
+          const dk = bData.docKey;
           if (dk) {
-            db.ref(BASE + '/doctors/' + dk + '/ratings/' + currentKey).set(curRating);
+            // High-performance Transaction for live averaging
+            db.ref(BASE + '/doctors/' + dk).transaction(doc => {
+              if (doc) {
+                const oldR = doc.avgRating || 0;
+                const oldC = doc.ratingCount || 0;
+                const newC = oldC + 1;
+                doc.avgRating = ((oldR * oldC) + curRating) / newC;
+                doc.ratingCount = newC;
+              }
+              return doc;
+            });
           }
-          document.getElementById('ratingBox').innerHTML = '<div style="color:var(--green);font-weight:800;text-align:center;padding:10px">شكراً على تقييمك! ⭐</div>';
-          toast('✅ تم إرسال تقييمك، شكراً!', 'ok');
+          document.getElementById('ratingBox').innerHTML = '<div style="color:var(--green);font-weight:800;text-align:center;padding:15px;background:rgba(16,185,129,0.05);border-radius:12px">✅ شكراً على تقييمك! ⭐</div>';
+          toast('✅ تم إرسال تقييمك بنجاح', 'ok');
         } else {
           toast('❌ لم يتم العثور على بيانات الحجز', 'err');
           btn.innerHTML = 'إرسال التقييم';
