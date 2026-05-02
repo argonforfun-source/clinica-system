@@ -1869,18 +1869,22 @@
 
     // ── LIVE VISITOR COUNTER (Presence System) ──
     (function initVisitorPresence() {
-      // Use a persistent ID per session to avoid double-counting on refresh
-      let vId = sessionStorage.getItem('argon_vid');
-      if (!vId) { vId = 'v_' + Math.random().toString(36).substr(2, 9); sessionStorage.setItem('argon_vid', vId); }
-      
+      const vId = sessionStorage.getItem('argon_vid') || ('v_' + Math.random().toString(36).substr(2, 9));
+      sessionStorage.setItem('argon_vid', vId);
       const presRef = db.ref(BASE + '/presence/' + vId);
+      
+      const updatePres = () => {
+        presRef.set({ type: 'visitor', ts: firebase.database.ServerValue.TIMESTAMP });
+      };
+
       db.ref('.info/connected').on('value', snap => {
         if (snap.val() === true) {
-          presRef.set({ type: 'visitor', ts: firebase.database.ServerValue.TIMESTAMP });
+          updatePres();
           presRef.onDisconnect().remove();
         }
       });
-      // Fallback for clean exit
+      // Heartbeat every 20s to stay alive
+      setInterval(updatePres, 20000);
       window.addEventListener('beforeunload', () => presRef.remove());
     })();
 
@@ -2371,7 +2375,7 @@
           const dN = (b.docName || '').replace(/'/g, "\\'");
           const dD = (b.date || '').replace(/'/g, "\\'");
           const dT = (b.time || '').replace(/'/g, "\\'");
-          eBtn = `<button onclick="closeModal('myModal'); currentKey='${b.key}'; document.getElementById('sno').textContent='${bno}'; document.getElementById('sinfo').innerHTML='<div class=\\'sinfo-row\\'><span class=\\'lbl\\'>👨‍⚕️ الطبيب</span><span style=\\'font-weight:800\\'>د. ${dN}</span></div><div class=\\'sinfo-row\\'><span class=\\'lbl\\'>📅 التاريخ</span><span style=\\'font-weight:800\\'>${dD}</span></div><div class=\\'sinfo-row\\'><span class=\\'lbl\\'>🕐 الوقت</span><span style=\\'font-weight:800\\'>${dT}</span></div>'; startTracking('${b.key}'); goStep(3);" style="margin-top:10px;width:100%;padding:7px;background:rgba(245,158,11,.1);border:1px dashed var(--amber);color:var(--amber);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-star"></i> قيم الطبيب الآن</button>`;
+          eBtn = `<button onclick="closeModal('myModal'); currentKey='${b.key}'; document.getElementById('sno').textContent='${bno}'; document.getElementById('sinfo').innerHTML='<div class=\\'sinfo-row\\'><span class=\\'lbl\\'>👨‍⚕️ الطبيب</span><span style=\\'font-weight:800\\'>د. ${dN}</span></div><div class=\\'sinfo-row\\'><span class=\\'lbl\\'>📅 التاريخ</span><span style=\\'font-weight:800\\'>${dD}</span></div><div class=\\'sinfo-row\\'><span class=\\'lbl\\'>🕐 الوقت</span><span style=\\'font-weight:800\\'>${dT}</span></div>'; startTracking('${b.key}'); goStep(3); openModal('bookModal'); document.getElementById('sheetTitle').textContent='تتبع الحجز والتقييم';" style="margin-top:10px;width:100%;padding:7px;background:rgba(245,158,11,.1);border:1px dashed var(--amber);color:var(--amber);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-star"></i> قيم الطبيب الآن</button>`;
         }
 
         html += `<div class="bi-card">
