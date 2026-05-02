@@ -1869,13 +1869,18 @@
 
     // ── LIVE VISITOR COUNTER (Presence System) ──
     (function initVisitorPresence() {
-      const presRef = db.ref(BASE + '/presence/' + (_anonUid || ('g_' + Math.random().toString(36).substr(2, 9))));
+      // Use a persistent ID per session to avoid double-counting on refresh
+      let vId = sessionStorage.getItem('argon_vid');
+      if (!vId) { vId = 'v_' + Math.random().toString(36).substr(2, 9); sessionStorage.setItem('argon_vid', vId); }
+      
+      const presRef = db.ref(BASE + '/presence/' + vId);
       db.ref('.info/connected').on('value', snap => {
         if (snap.val() === true) {
-          presRef.set(true);
+          presRef.set({ type: 'visitor', ts: firebase.database.ServerValue.TIMESTAMP });
           presRef.onDisconnect().remove();
         }
       });
+      // Fallback for clean exit
       window.addEventListener('beforeunload', () => presRef.remove());
     })();
 

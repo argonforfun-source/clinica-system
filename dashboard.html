@@ -466,7 +466,7 @@ setInterval(() => {
   document.getElementById('tclk').textContent = new Date().toLocaleTimeString('ar-JO',{hour:'2-digit',minute:'2-digit',hour12:true,timeZoneName:'short'});
 }, 1000);
 
-// ── CONN ──
+// ── CONNECTION & PRESENCE ──
 db.ref('.info/connected').on('value', snap => {
   const was = !isConn; isConn = snap.val()===true;
   const bar = document.getElementById('connBar');
@@ -474,6 +474,11 @@ db.ref('.info/connected').on('value', snap => {
     bar.className='cbar cok'; bar.innerHTML='<i class="fas fa-wifi"></i> متصل'; bar.style.display='flex';
     setTimeout(()=>{if(isConn)bar.style.display='none';},2000);
     if (was) toast('✅ تم الاتصال');
+    
+    // Register Dashboard Presence (Doctor)
+    const dPres = db.ref(BASE+'/presence/admin_'+(Math.random().toString(36).substr(2,5)));
+    dPres.set({ type: 'admin', ts: firebase.database.ServerValue.TIMESTAMP });
+    dPres.onDisconnect().remove();
   } else { bar.style.display='flex'; bar.className='cbar coff'; bar.innerHTML='<i class="fas fa-exclamation-triangle"></i> لا يوجد اتصال...'; }
 });
 window.addEventListener('offline',()=>{isConn=false;db.goOffline();});
