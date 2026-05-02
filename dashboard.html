@@ -237,7 +237,7 @@
 <!-- TOPBAR -->
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:12px">
-    <span class="tlogo">ARGON</span>
+    <span id="tlogo" class="tlogo">ARGON</span>
     <span style="width:1px;height:20px;background:var(--border)"></span>
     <span id="topName" style="font-size:.9rem;font-weight:700">...</span>
   </div>
@@ -877,11 +877,15 @@ function togAvail(k,cur){
 }
 
 function saveSettings() {
+  const sN = document.getElementById('sN').value.trim();
+  const sP = document.getElementById('sP').value.trim();
+  if(!sN) { toast('⚠️ يجب إدخال اسم العيادة', 'err'); return; }
+
   const color=document.getElementById('sC').value||'#0d9488';
   const newPass=document.getElementById('sPw').value.trim();
   const update={
-    name:sanitize(document.getElementById('sN').value),
-    phone:sanitize(document.getElementById('sP').value),
+    name:sanitize(sN),
+    phone:sanitize(sP),
     status:document.getElementById('sSt').value,
     clinicStart:document.getElementById('sWs').value,
     clinicEnd:document.getElementById('sWe').value,
@@ -893,9 +897,9 @@ function saveSettings() {
   };
   if(newPass.length>=4) update.password=newPass;
   db.ref(`${BASE}/settings`).update(update).then(()=>{
-    toast('✅ تم حفظ الإعدادات','ok');
+    toast('✅ تم حفظ الإعدادات بنجاح','ok');
     document.getElementById('sPw').value='';
-  });
+  }).catch(e => toast('❌ فشل الحفظ','err'));
 }
 
 function sendWA(phone,status,no,name) {
@@ -925,13 +929,28 @@ function printReport() {
 function upLogo(inp) {
   const file = inp.files[0];
   if(!file) return;
-  if(file.size > 200*1024) { toast('❌ حجم اللوغو كبير (الأقصى 200KB)', 'err'); return; }
+  toast('⏳ جاري معالجة الصورة...', 'ok');
+  
   const reader = new FileReader();
-  toast('⏳ جاري المعالجة...', 'ok');
   reader.onload = e => {
-    db.ref(BASE + '/settings/logoUrl').set(e.target.result)
-      .then(() => toast('✅ تم تحديث الشعار', 'ok'))
-      .catch(() => toast('❌ فشل الحفظ', 'err'));
+    const img = new Image();
+    img.onload = () => {
+      // Create a canvas to resize and compress the image
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const maxW = 200, maxH = 200;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > maxW) { h *= maxW / w; w = maxW; } }
+      else { if (h > maxH) { w *= maxH / h; h = maxH; } }
+      canvas.width = w; canvas.height = h;
+      ctx.drawImage(img, 0, 0, w, h);
+      
+      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+      db.ref(BASE + '/settings/logoUrl').set(compressedBase64)
+        .then(() => toast('✅ تم تحديث الشعار بنجاح', 'ok'))
+        .catch(() => toast('❌ فشل الحفظ', 'err'));
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
