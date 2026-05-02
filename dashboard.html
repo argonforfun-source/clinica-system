@@ -10,13 +10,23 @@
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    :root{--void:#030b0a;--panel:#081412;--surf:#0c1e1a;
-      --teal:#0d9488;--teal2:#14b8a6;--sky:#0ea5e9;
-      --green:#10b981;--red:#ef4444;--amber:#f59e0b;--purple:#8b5cf6;
-      --border:rgba(13,148,136,0.1);--text:#e2e8f0;--muted:#4a6562;
+    :root{
+      --bg:#f8fafc;--panel:#ffffff;--surf:#f1f5f9;--border:#e2e8f0;
+      --text:#0f172a;--muted:#64748b;--teal:#0d9488;--sky:#0ea5e9;
+      --amber:#d97706;--red:#ef4444;--green:#10b981;--purple:#8b5cf6;
+      --radius-lg:16px;--shadow-sm:0 1px 3px rgba(0,0,0,0.1);
+      --void:#030b0a;
     }
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Tajawal',sans-serif;background:var(--void);color:var(--text);height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased}
+    [data-theme="dark"]{
+      --bg:#050b14;--panel:#0f172a;--surf:#1e293b;--border:#334155;
+      --text:#f8fafc;--muted:#94a3b8;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Tajawal',sans-serif;margin:0;direction:rtl;transition:background 0.3s, color 0.3s;height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    b, strong { font-weight: 800; color: var(--text); }
+    .sv { font-weight: 900; letter-spacing: -0.5px; color: var(--text); }
+    .bname { color: var(--text); font-weight: 800; }
+    .ni.on{background:rgba(13,148,136,.1);color:var(--teal)}
     body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(13,148,136,0.06),transparent 70%);pointer-events:none;z-index:0}
 
     /* ── LOGIN ── */
@@ -91,7 +101,7 @@
     .bc::before{content:'';position:absolute;right:0;top:0;bottom:0;width:3px;background:var(--teal)}
     .bc.done::before{background:var(--green)}.bc.cancel::before{background:var(--red)}
     .bc:hover{border-color:rgba(13,148,136,.2)}
-    .bno{font-family:'IBM Plex Mono',monospace;font-size:.74rem;color:var(--teal);background:rgba(13,148,136,.08);border:1px solid rgba(13,148,136,.15);padding:3px 9px;border-radius:7px}
+    .bno{font-family:'IBM Plex Mono',monospace;font-size:.78rem;color:#fff;background:var(--teal);border:none;padding:4px 10px;border-radius:8px;font-weight:800;box-shadow:0 2px 8px rgba(13,148,136,0.3)}
     .bst{font-size:.72rem;font-weight:700}
     .bname{font-size:.93rem;font-weight:800;margin-bottom:3px}
     .binfo{font-size:.79rem;color:var(--muted);margin-bottom:3px}
@@ -244,6 +254,7 @@
   <div class="tr">
     <span id="stBadge" class="tbadge tb-open"><i class="fas fa-circle" style="font-size:.38rem"></i> مفتوح</span>
     <span class="tclk" id="tclk">--:--</span>
+    <button class="tbtn" id="themeTog" onclick="togTheme()"><i class="fas fa-moon"></i></button>
     <button class="tbtn" onclick="openPreview()"><i class="fas fa-eye" style="margin-left:5px"></i>معاينة</button>
     <button class="tbtn" onclick="printReport()"><i class="fas fa-print" style="margin-left:5px"></i>طباعة التقرير</button>
     <button class="tbtn" onclick="doLogout()" style="color:#fca5a5"><i class="fas fa-sign-out-alt"></i></button>
@@ -297,7 +308,7 @@
           </div>
           <div class="slb">العائد الإجمالي المنجز</div>
           <div class="sv" id="stRev" style="color:var(--teal)">0.00</div>
-          <div class="scard-sub">ريال سعودي / د.أ</div>
+          <div class="scard-sub">دينار أردني</div>
         </div>
 
         <!-- Monthly Growth Card -->
@@ -909,7 +920,22 @@ function sendWA(phone,status,no,name) {
 
 const sanitize = s => String(s||'').replace(/[<>"']/g,'').trim().substring(0,150);
 
-function sw(id,el){
+function togTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('argon_theme', next);
+  document.getElementById('themeTog').innerHTML = next === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+}
+// Init theme
+const savedTheme = localStorage.getItem('argon_theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+window.addEventListener('DOMContentLoaded', () => {
+  if(document.getElementById('themeTog'))
+    document.getElementById('themeTog').innerHTML = savedTheme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+});
+
+function goSec(id,el){
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
   document.getElementById(id).classList.add('on');
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
