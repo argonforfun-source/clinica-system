@@ -87,7 +87,7 @@
     .bst{font-size:.72rem;font-weight:700}
     .bname{font-size:.93rem;font-weight:800;margin-bottom:3px}
     .binfo{font-size:.79rem;color:var(--muted);margin-bottom:3px}
-    .bnote{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.15);border-radius:8px;padding:6px 10px;font-size:.74rem;color:#fcd34d;margin:8px 0}
+    .bnote{background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.15);border-radius:8px;padding:8px 12px;font-size:.74rem;color:#fcd34d;margin:8px 0;word-wrap:break-word;overflow-wrap:anywhere;white-space:pre-wrap;max-height:120px;overflow-y:auto;line-height:1.5}
     .bfooter{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:6px;flex-wrap:wrap}
     .bprice{font-family:'IBM Plex Mono',monospace;font-size:.95rem;font-weight:800;color:var(--green)}
     .acts{display:flex;gap:5px;flex-wrap:wrap}
@@ -310,7 +310,12 @@
         <div class="addrow2">
           <div><label class="mfl">من الساعة</label><input type="time" id="dWs" class="mfi" value="09:00"></div>
           <div><label class="mfl">حتى الساعة</label><input type="time" id="dWe" class="mfi" value="17:00"></div>
-          <div><label class="mfl">صورة (رابط)</label><input type="text" id="dImg" class="mfi" placeholder="https://..."></div>
+          <div><label class="mfl">صورة (رابط أو رفع)</label>
+            <div style="display:flex;gap:5px">
+              <input type="text" id="dImg" class="mfi" placeholder="رابط أو ملف" style="flex:1">
+              <label style="background:var(--teal);color:#fff;padding:9px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fas fa-upload"></i><input type="file" accept="image/*" style="display:none" onchange="handleImageUpload(event)"></label>
+            </div>
+          </div>
           <div><label class="mfl">إيموجي</label><input type="text" id="dEm" class="mfi" value="👨‍⚕️"></div>
           <button class="badd" id="btnCancelEdit" onclick="cancelDocEdit()" style="display:none;background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)"><i class="fas fa-times" style="margin-left:4px"></i>تراجع</button>
         </div>
@@ -329,7 +334,6 @@
             <select id="sSt" class="setsel">
               <option value="open">مفتوحة للعمل ✅</option>
               <option value="closed">إيقاف استقبال الحجوزات ⏸️</option>
-              <option value="suspended">موقوفة بالكامل 🚫</option>
             </select>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
@@ -469,6 +473,7 @@ function onColor(c) {
 db.ref(BASE+'/settings').on('value', snap => {
   const s = snap.val()||{};
   
+  // Only 'suspended' locks the dashboard (Super Admin only)
   if (s.status === 'suspended') {
     document.getElementById('lockScreen').classList.add('show');
   } else {
@@ -480,13 +485,17 @@ db.ref(BASE+'/settings').on('value', snap => {
   document.title = 'ARGON | '+(s.name||'العيادة');
   _pass = s.password||'1122';
   const b = document.getElementById('stBadge');
-  const isOpen = s.status!=='closed'&&s.status!=='suspended';
-  b.className='tbadge '+(isOpen?'tb-open':'tb-closed');
-  b.innerHTML=`<i class="fas fa-circle" style="font-size:.38rem"></i> ${s.status==='closed'?'مغلق':s.status==='suspended'?'موقوف':'مفتوح'}`;
+  if (s.status === 'suspended') {
+    b.className='tbadge tb-closed'; b.innerHTML='<i class="fas fa-shield-alt" style="font-size:.38rem"></i> موقوف بالكامل';
+  } else if (s.status === 'closed') {
+    b.className='tbadge tb-closed'; b.innerHTML='<i class="fas fa-pause-circle" style="font-size:.38rem"></i> الحجز متوقف';
+  } else {
+    b.className='tbadge tb-open'; b.innerHTML='<i class="fas fa-circle" style="font-size:.38rem"></i> مفتوح';
+  }
   if(s.color){onColor(s.color);const cp=document.getElementById('sC');if(cp)cp.value=s.color;}
   const F={sN:'name',sP:'phone',sSpec:'specialty',sEm:'emoji',sBookingDays:'bookingDays',sWs:'clinicStart',sWe:'clinicEnd'};
   for(let id in F){const el=document.getElementById(id);if(el&&!el.matches(':focus'))el.value=s[F[id]]||'';}
-  const st=document.getElementById('sSt');if(st)st.value=s.status||'open';
+  const st=document.getElementById('sSt');if(st&&s.status!=='suspended')st.value=s.status||'open';
   const ssd=document.getElementById('sSameDay');if(ssd)ssd.value=(s.sameDayBooking!==false)?'true':'false';
   if(!s.bookingDays) document.getElementById('sBookingDays').value = '10';
   if(!s.clinicStart) document.getElementById('sWs').value = '09:00';
@@ -494,8 +503,8 @@ db.ref(BASE+'/settings').on('value', snap => {
 });
 
 // ── VISITORS LISTENER ──
-db.ref(BASE+'/stats/visitors').on('value', snap => {
-  document.getElementById('stWait').textContent = snap.val() || 0;
+db.ref(BASE+'/presence').on('value', snap => {
+  document.getElementById('stWait').textContent = snap.numChildren() || 0;
 });
 
 // ── LIVE BOOKINGS LISTENER ──
@@ -699,6 +708,28 @@ function cancelDocEdit() {
   b.innerHTML = '<i class="fas fa-plus" style="margin-left:4px"></i>إضافة';
   b.style.background = 'linear-gradient(135deg,var(--teal),var(--sky))';
   document.getElementById('btnCancelEdit').style.display = 'none';
+}
+
+function handleImageUpload(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const size = 150;
+      canvas.width = size; canvas.height = size;
+      const min = Math.min(img.width, img.height);
+      const sx = (img.width - min)/2, sy = (img.height - min)/2;
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+      document.getElementById('dImg').value = canvas.toDataURL('image/jpeg', 0.55);
+      toast('✅ تم رفع الصورة بنجاح','ok');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 function togAvail(k,cur){

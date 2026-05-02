@@ -600,6 +600,18 @@ window.addEventListener('offline', () => { isConn=false; db.goOffline(); });
 window.addEventListener('online', () => setTimeout(() => db.goOnline(), 1000));
 document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible' && !isConn) { db.goOffline(); setTimeout(()=>db.goOnline(),1000); } });
 
+// ── LIVE VISITOR COUNTER (Presence System) ──
+(function initVisitorPresence() {
+  const presRef = db.ref(BASE+'/presence/'+(_anonUid||('g_'+Math.random().toString(36).substr(2,9))));
+  db.ref('.info/connected').on('value', snap => {
+    if (snap.val() === true) {
+      presRef.set(true);
+      presRef.onDisconnect().remove();
+    }
+  });
+  window.addEventListener('beforeunload', () => presRef.remove());
+})();
+
 // ── LOAD SETTINGS ──
 db.ref(BASE+'/settings').on('value', snap => {
   const s = snap.val();
@@ -609,8 +621,8 @@ db.ref(BASE+'/settings').on('value', snap => {
   const ls = document.getElementById('lockScreen');
   const mc = document.getElementById('mainContent');
   
+  // Only 'suspended' (from Super Admin) shows the full Shield lock
   if (s.status === 'suspended') {
-    const ls = document.getElementById('lockScreen');
     ls.innerHTML = `<div class="ls-icon"><i class="fas fa-shield-alt"></i></div>
                     <div class="ls-title">تم إيقاف حساب العيادة</div>
                     <div class="ls-sub">نعتذر، تم إيقاف هذه العيادة من قِبل إدارة شركة أرغون.<br>يرجى التواصل مع الدعم الفني لتفعيل الحساب.</div>
@@ -618,17 +630,10 @@ db.ref(BASE+'/settings').on('value', snap => {
     ls.classList.add('show');
     mc.style.display = 'none';
     return;
-  } else if (s.status === 'closed') {
-    const ls = document.getElementById('lockScreen');
-    ls.innerHTML = `<div class="ls-icon" style="font-size:4rem;margin-bottom:10px">⏸️</div>
-                    <div class="ls-title" style="font-size:2rem;font-weight:900;margin-bottom:12px">استقبال الحجوزات متوقف</div>
-                    <div class="ls-sub" style="color:rgba(255,255,255,0.6);margin-bottom:30px;line-height:1.7">عذراً، لقد أوقفت العيادة استقبال حجوزات جديدة في الوقت الحالي.<br>يرجى المحاولة مرة أخرى لاحقاً.</div>
-                    <button onclick="openMyBookings(); document.getElementById('lockScreen').classList.remove('show');" style="background:var(--teal);color:#fff;border:none;padding:14px 30px;border-radius:16px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 8px 24px rgba(13,148,136,0.3);"><i class="fas fa-calendar-check" style="margin-left:6px"></i>مراجعة حجوزاتي السابقة</button>
-                    <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.3);letter-spacing:4px;margin-top:40px">POWERED BY ARGON SYSTEM</div>`;
-    ls.classList.add('show');
-    mc.style.display = 'none';
-    return;
   }
+  // 'closed' does NOT lock the page — patients can still see doctors & their bookings
+  // Booking buttons get disabled below in renderDocs()
+
   
   if (s.status === 'open' && s.clinicStart && s.clinicEnd) {
     const now = new Date();
@@ -720,13 +725,15 @@ function applyFilter(spec, q) {
 function renderDocs(docs) {
   const g = document.getElementById('docsGrid');
   if (!docs.length) { g.innerHTML=`<div class="empty" style="grid-column:1/-1"><i class="fas fa-user-md"></i><p>لا يوجد أطباء</p></div>`; return; }
+  const isClosed = clinicSets.status === 'closed';
   g.innerHTML = docs.map(d => {
-    const avail = d.available !== false;
+    const avail = d.available !== false && !isClosed;
+    const btnLabel = isClosed ? 'الحجز متوقف حالياً' : (d.available !== false ? 'احجز موعد' : 'غير متاح');
     const ratingStr = d.avgRating ? `${'★'.repeat(Math.round(d.avgRating))} <span>(${d.ratingCount||0})</span>` : '<span>لا يوجد تقييم</span>';
     return `
-    <div class="dcard" onclick="pickDoc('${d.key}')">
+    <div class="dcard" onclick="${avail?`pickDoc('${d.key}')`:''}">
       <div class="dcard-top">
-        ${d.img?`<img src="${d.img}" alt="${d.name}" onerror="this.parentElement.innerHTML='<span style=font-size:2.8rem>${d.emoji||'👨‍⚕️'}</span>">` : `<span>${d.emoji||'👨‍⚕️'}</span>`}
+        ${d.img?`<img src="${d.img}" alt="${d.name}" onerror="this.parentElement.innerHTML='<span style=font-size:2.8rem>${d.emoji||'👨‍⚕️'}</span>'">` : `<span>${d.emoji||'👨‍⚕️'}</span>`}
         <div class="avail-dot ${avail?'av-yes':'av-no'}"></div>
       </div>
       <div class="dcard-body">
@@ -735,7 +742,7 @@ function renderDocs(docs) {
         <div class="dfee">${parseFloat(d.fee||0).toFixed(2)} د.أ</div>
         <div class="drating">${ratingStr}</div>
         <button class="dbookbtn" ${avail?'':`disabled`} onclick="event.stopPropagation();pickDoc('${d.key}')">
-          <i class="fas fa-calendar-plus"></i>${avail?'احجز موعد':'غير متاح'}
+          <i class="fas fa-${isClosed?'pause-circle':'calendar-plus'}"></i>${btnLabel}
         </button>
       </div>
     </div>`;
@@ -860,7 +867,7 @@ function buildBill() {
     <div class="brow"><span class="bl">التاريخ</span><span class="bv" style="font-family:'IBM Plex Mono',monospace">${selDate}</span></div>
     <div class="brow"><span class="bl">الوقت</span><span class="bv" style="font-family:'IBM Plex Mono',monospace">${selTime}</span></div>
     <div class="brow"><span class="bl">المريض</span><span class="bv">${name}</span></div>
-    ${notes?`<div class="brow"><span class="bl">ملاحظات</span><span class="bv" style="font-size:.82rem">${notes}</span></div>`:''}
+    ${notes?`<div class="brow" style="flex-direction:column;align-items:flex-start;gap:4px"><span class="bl">ملاحظات</span><span class="bv" style="font-size:.82rem;word-wrap:break-word;overflow-wrap:anywhere;white-space:pre-wrap;max-width:100%">${notes}</span></div>`:''}
     <div class="btotal"><span class="bl">رسوم الكشف</span><span class="bv">${parseFloat(d.fee||0).toFixed(2)} د.أ</span></div>`;
 }
 
@@ -904,7 +911,7 @@ function sendBooking() {
   db.ref(BASE+'/stats/dailyBookings/'+todayDate).transaction(cur => (cur || 0) + 1, (err, committed, snap) => {
     let dailyNum = 1;
     if (!err && committed && snap.val()) dailyNum = snap.val();
-    const bno = '#' + dailyNum;
+    const bno = '#D' + String(dailyNum).padStart(2, '0');
 
     const booking = {
       bookNo: bno,
@@ -940,6 +947,9 @@ function sendBooking() {
         sending = false;
         isBooked = true;
         goStep(3);
+        // Re-enable send button for next booking
+        btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
+        btn.disabled = false;
       })
       .catch(err => {
         toast('❌ حدث خطأ: '+err.message, 'err');
@@ -1115,11 +1125,25 @@ function closeModal(id) {
   document.body.style.overflow = '';
   if (id==='bookModal') {
     setTimeout(() => {
-      if (!isBooked) { selDoc=null; selDate=''; selTime=''; }
+      if (trkListener && currentKey) {
+        db.ref(BASE+'/bookings/'+currentKey).off('value', trkListener);
+        trkListener = null;
+      }
+      selDoc=null; selDate=''; selTime='';
+      sending = false;
+      isBooked = false;
+      currentKey = null;
+      curRating = 0;
       goStep(0);
       ['pName','pPhone','pAge','pNotes'].forEach(i => document.getElementById(i).value='');
       document.getElementById('pGender').value='';
-      isBooked=false;
+      ['pName','pPhone'].forEach(i => { document.getElementById(i).classList.remove('err'); });
+      ['pNameErr','pPhoneErr'].forEach(i => { document.getElementById(i).style.display='none'; });
+      const sb = document.getElementById('sendBtn');
+      if (sb) { sb.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز'; sb.disabled = false; }
+      document.querySelectorAll('.star').forEach(s => s.classList.remove('on'));
+      const rb = document.getElementById('ratingBox');
+      if (rb) { rb.style.display = 'none'; rb.innerHTML = `<div style="font-weight:800;font-size:0.9rem;margin-bottom:6px">قيّم تجربتك مع الطبيب</div><div class="stars"><span class="star" onclick="setStar(1)">★</span><span class="star" onclick="setStar(2)">★</span><span class="star" onclick="setStar(3)">★</span><span class="star" onclick="setStar(4)">★</span><span class="star" onclick="setStar(5)">★</span></div><button id="rateBtn" onclick="sendRating()" style="display:none;width:100%;padding:10px;background:var(--amber);border:none;border-radius:10px;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif;color:#000;margin-top:6px">إرسال التقييم</button>`; }
     }, 300);
   }
 }
