@@ -73,9 +73,17 @@
     .sv{font-size:1.55rem;font-weight:800;font-family:'IBM Plex Mono',monospace}
     .sh{font-size:.65rem;color:var(--muted);margin-top:1px}
     
-    /* Live Pulse for Waiting Visitors */
-    .live-pulse{width:8px;height:8px;background:#ef4444;border-radius:50%;display:inline-block;margin-left:8px;box-shadow:0 0 0 rgba(239, 68, 68, 0.4);animation:livePulse 1.5s infinite}
-    @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,0.7)}70%{box-shadow:0 0 0 10px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
+    /* ── STATS CARDS ENHANCEMENTS ── */
+    .scard-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .scard-trend { font-size: 0.65rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 3px; }
+    .trend-up { background: rgba(16,185,129,0.1); color: var(--green); }
+    .trend-down { background: rgba(239,68,68,0.1); color: var(--red); }
+    .scard-sub { font-size: 0.68rem; color: var(--muted); margin-top: 4px; font-weight: 600; }
+    
+    /* Live Pulse for Activity */
+    .live-pulse-container { display: flex; align-items: center; gap: 6px; font-size: 0.65rem; font-weight: 800; color: var(--green); }
+    .pulse-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; box-shadow: 0 0 0 rgba(16,185,129,0.4); animation: pulseAnim 2s infinite; }
+    @keyframes pulseAnim { 0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.7); } 70% { box-shadow: 0 0 0 8px rgba(16,185,129,0); } 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); } }
 
     /* ── BOOKINGS ── */
     .bg{display:grid;grid-template-columns:repeat(auto-fill,minmax(295px,1fr));gap:12px}
@@ -271,11 +279,58 @@
     <div id="stats" class="sec on">
       <div class="ph"><div><div class="pt">📊 الإحصائيات</div><div class="ps">نظرة شاملة على أداء العيادة</div></div></div>
       <div class="sgrid" style="grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));">
-        <div class="scard" style="--bc:var(--green)"><div class="sci" style="background:rgba(16,185,129,.1);color:var(--green)"><i class="fas fa-calendar-check"></i></div><div class="slb">حجوزات مكتملة</div><div class="sv" id="stCmp" style="color:var(--green)">0</div><div class="sh">إجمالي</div></div>
-        <div class="scard" style="--bc:var(--teal)"><div class="sci" style="background:rgba(13,148,136,.1);color:var(--teal)"><i class="fas fa-coins"></i></div><div class="slb">الدخل الكلي</div><div class="sv" id="stRev" style="color:var(--teal)">0.00</div><div class="sh">د.أ</div></div>
-        <div class="scard" style="--bc:var(--amber)"><div class="sci" style="background:rgba(245,158,11,.1);color:var(--amber)"><i class="fas fa-hourglass-half"></i></div><div class="slb">حجوزات اليوم</div><div class="sv" id="stToday" style="color:var(--amber)">0</div><div class="sh">نشط</div></div>
-        <div class="scard" style="--bc:var(--purple)"><div class="sci" style="background:rgba(139,92,246,.1);color:var(--purple)"><i class="fas fa-layer-group"></i></div><div class="slb">إجمالي الحجوزات</div><div class="sv" id="stWait" style="color:var(--purple)">0</div><div class="sh">كافة الحجوزات</div></div>
-        <div class="scard" style="--bc:var(--sky)"><div class="sci" style="background:rgba(14,165,233,.1);color:var(--sky)"><i class="fas fa-star"></i></div><div class="slb">متوسط التقييم</div><div class="sv" id="stRate" style="color:var(--sky)">--</div><div class="sh">من 5</div></div>
+        <!-- Success Rate Card -->
+        <div class="scard" style="--bc:var(--green)">
+          <div class="scard-top">
+            <div class="sci" style="background:rgba(16,185,129,.1);color:var(--green)"><i class="fas fa-check-double"></i></div>
+            <div class="scard-trend trend-up" id="stSuccessTrend">100%</div>
+          </div>
+          <div class="slb">معدل نجاح المواعيد</div>
+          <div class="sv" id="stSuccess" style="color:var(--green)">0%</div>
+          <div class="scard-sub">من إجمالي الحجوزات</div>
+        </div>
+
+        <!-- Revenue Card -->
+        <div class="scard" style="--bc:var(--teal)">
+          <div class="scard-top">
+            <div class="sci" style="background:rgba(13,148,136,.1);color:var(--teal)"><i class="fas fa-wallet"></i></div>
+          </div>
+          <div class="slb">العائد الإجمالي المنجز</div>
+          <div class="sv" id="stRev" style="color:var(--teal)">0.00</div>
+          <div class="scard-sub">ريال سعودي / د.أ</div>
+        </div>
+
+        <!-- Monthly Growth Card -->
+        <div class="scard" style="--bc:var(--sky)">
+          <div class="scard-top">
+            <div class="sci" style="background:rgba(14,165,233,.1);color:var(--sky)"><i class="fas fa-chart-line"></i></div>
+            <div class="scard-trend trend-up" id="stGrowthTrend">+0%</div>
+          </div>
+          <div class="slb">نمو الشهر الحالي</div>
+          <div class="sv" id="stMonth" style="color:var(--sky)">0</div>
+          <div class="scard-sub">حجز جديد هذا الشهر</div>
+        </div>
+
+        <!-- Satisfaction Index Card -->
+        <div class="scard" style="--bc:var(--amber)">
+          <div class="scard-top">
+            <div class="sci" style="background:rgba(245,158,11,.1);color:var(--amber)"><i class="fas fa-award"></i></div>
+          </div>
+          <div class="slb">مؤشر رضا المرضى</div>
+          <div class="sv" id="stSatIndex" style="color:var(--amber)">0%</div>
+          <div class="scard-sub" id="stRate">-- من 5 نجوم</div>
+        </div>
+
+        <!-- Live Activity Card -->
+        <div class="scard" style="--bc:var(--purple)">
+          <div class="scard-top">
+            <div class="sci" style="background:rgba(139,92,246,.1);color:var(--purple)"><i class="fas fa-users-viewfinder"></i></div>
+            <div class="live-pulse-container"><div class="pulse-dot"></div> LIVE</div>
+          </div>
+          <div class="slb">النشاط المباشر الآن</div>
+          <div class="sv" id="stLive" style="color:var(--purple)">0</div>
+          <div class="scard-sub">زائر يتصفح النظام حالياً</div>
+        </div>
       </div>
       <div class="ph" style="margin-bottom:12px"><div class="pt" style="font-size:1rem">👨‍⚕️ أداء الأطباء</div></div>
       <div id="docPerf" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px"></div>
@@ -508,9 +563,10 @@ db.ref(BASE+'/settings').on('value', snap => {
   if(!s.clinicEnd) document.getElementById('sWe').value = '22:00';
 });
 
-// ── TOTAL BOOKINGS LISTENER ──
-db.ref(BASE+'/stats/totalBookings').on('value', snap => {
-  document.getElementById('stWait').textContent = snap.val() || 0;
+// ── LIVE PRESENCE LISTENER ──
+db.ref(BASE+'/presence').on('value', snap => {
+  const count = snap.numChildren() || 0;
+  document.getElementById('stLive').textContent = count;
 });
 
 // ── LIVE BOOKINGS LISTENER ──
@@ -523,11 +579,23 @@ db.ref(BASE+'/bookings').on('value', snap => {
   // Notify
   if (!firstLoad && actKeys.length > prevCount) { beep(); ring(); }
   prevCount = actKeys.length;
-  // Today stats
-  const nowD = new Date();
-  const today = new Date(nowD.getTime() - (nowD.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-  const todayCount = Object.values(_bks).filter(b=>b.date===today&&b.status!=='cancelled').length;
-  document.getElementById('stToday').textContent = todayCount;
+
+  // Monthly stats
+  const now = new Date();
+  const curMonth = now.toISOString().substring(0, 7); // "YYYY-MM"
+  const prevMonthDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const prevMonth = prevMonthDate.toISOString().substring(0, 7);
+
+  const bksArr = Object.values(_bks);
+  const curMonthBks = bksArr.filter(b => (b.date||'').startsWith(curMonth)).length;
+  const prevMonthBks = bksArr.filter(b => (b.date||'').startsWith(prevMonth)).length;
+  
+  document.getElementById('stMonth').textContent = curMonthBks;
+  const growth = prevMonthBks ? Math.round(((curMonthBks - prevMonthBks) / prevMonthBks) * 100) : 100;
+  const gt = document.getElementById('stGrowthTrend');
+  gt.textContent = (growth >= 0 ? '+' : '') + growth + '%';
+  gt.className = 'scard-trend ' + (growth >= 0 ? 'trend-up' : 'trend-down');
+
   renderLive(actKeys);
   firstLoad = false;
 });
@@ -584,9 +652,20 @@ db.ref(BASE+'/completedBookings').orderByKey().limitToLast(200).on('value', snap
     docSt[dn].cnt++;docSt[dn].rev+=parseFloat(b.fee||0);
     if(b.rating)docSt[dn].ratings.push(b.rating);
   });
-  document.getElementById('stCmp').textContent=keys.length;
   document.getElementById('stRev').textContent=rev.toFixed(2);
-  document.getElementById('stRate').textContent=rCnt?(rSum/rCnt).toFixed(1):'--';
+  
+  // Success Rate Logic
+  const cancelledCount = Object.values(_bks).filter(b => b.status === 'cancelled').length;
+  const totalClosed = keys.length + cancelledCount;
+  const successRate = totalClosed ? Math.round((keys.length / totalClosed) * 100) : 100;
+  document.getElementById('stSuccess').textContent = successRate + '%';
+  document.getElementById('stSuccessTrend').textContent = successRate + '%';
+
+  // Satisfaction Index
+  const avgRating = rCnt ? (rSum / rCnt) : 0;
+  const satIndex = Math.round((avgRating / 5) * 100);
+  document.getElementById('stSatIndex').textContent = satIndex + '%';
+  document.getElementById('stRate').textContent = (avgRating ? avgRating.toFixed(1) : '--') + ' من 5 نجوم';
   // Doc performance
   const dp=document.getElementById('docPerf');
   const sorted=Object.entries(docSt).sort((a,b)=>b[1].cnt-a[1].cnt).slice(0,6);
