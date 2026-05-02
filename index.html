@@ -1018,17 +1018,37 @@ function setStar(n) {
 }
 function sendRating() {
   if (!curRating||!currentKey) return;
-  db.ref(BASE+'/bookings/'+currentKey).once('value').then(snap => {
-    if (snap.exists()) {
-      db.ref(BASE+'/bookings/'+currentKey).update({ rating: curRating });
+  const btn = document.getElementById('rateBtn');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+  btn.disabled = true;
+
+  // Find where the booking is to get docKey and update rating
+  const p1 = db.ref(BASE+'/bookings/'+currentKey).once('value');
+  const p2 = db.ref(BASE+'/completedBookings/'+currentKey).once('value');
+
+  Promise.all([p1, p2]).then(snaps => {
+    let bData = null, path = '';
+    if (snaps[0].exists()) { bData = snaps[0].val(); path = '/bookings/'; }
+    else if (snaps[1].exists()) { bData = snaps[1].val(); path = '/completedBookings/'; }
+
+    if (bData) {
+      db.ref(BASE + path + currentKey).update({ rating: curRating });
+      const dk = bData.docKey || (selDoc ? selDoc.key : null);
+      if (dk) {
+        db.ref(BASE + '/doctors/' + dk + '/ratings/' + currentKey).set(curRating);
+      }
+      document.getElementById('ratingBox').innerHTML = '<div style="color:var(--green);font-weight:800;text-align:center;padding:10px">شكراً على تقييمك! ⭐</div>';
+      toast('✅ تم إرسال تقييمك، شكراً!', 'ok');
     } else {
-      db.ref(BASE+'/completedBookings/'+currentKey).update({ rating: curRating });
+      toast('❌ لم يتم العثور على بيانات الحجز', 'err');
+      btn.innerHTML = 'إرسال التقييم';
+      btn.disabled = false;
     }
+  }).catch(e => {
+    toast('❌ حدث خطأ أثناء الإرسال', 'err');
+    btn.innerHTML = 'إرسال التقييم';
+    btn.disabled = false;
   });
-  // Update doctor avg rating
-  db.ref(BASE+'/doctors/'+selDoc.key+'/ratings/'+currentKey).set(curRating);
-  document.getElementById('ratingBox').innerHTML = '<div style="color:var(--green);font-weight:800;text-align:center;padding:10px">شكراً على تقييمك! ⭐</div>';
-  toast('✅ تم إرسال تقييمك، شكراً!', 'ok');
 }
 
 // ── LOCAL STORAGE ──
@@ -1075,7 +1095,11 @@ async function openMyBookings() {
         <button onclick="cancelB('${b.key}', this)" style="flex:1;padding:7px;background:rgba(239,68,68,.1);border:1px dashed var(--red);color:var(--red);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-times-circle"></i> إلغاء الحجز</button>
       </div>`;
     } else if ((status === 'done' || status === 'completed') && bData && !bData.rating) {
-      eBtn = `<button onclick="closeModal('myModal'); currentKey='${b.key}'; document.getElementById('bnoDisp').textContent='${b.no}'; startTracking('${b.key}'); goStep(3);" style="margin-top:10px;width:100%;padding:7px;background:rgba(245,158,11,.1);border:1px dashed var(--amber);color:var(--amber);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-star"></i> قيم الطبيب الآن</button>`;
+      const bno = (b.no||'').replace(/'/g, "\\'");
+      const dN = (b.docName||'').replace(/'/g, "\\'");
+      const dD = (b.date||'').replace(/'/g, "\\'");
+      const dT = (b.time||'').replace(/'/g, "\\'");
+      eBtn = `<button onclick="closeModal('myModal'); currentKey='${b.key}'; document.getElementById('sno').textContent='${bno}'; document.getElementById('sinfo').innerHTML='<div class=\\'sinfo-row\\'><span class=\\'lbl\\'>👨‍⚕️ الطبيب</span><span style=\\'font-weight:800\\'>د. ${dN}</span></div><div class=\\'sinfo-row\\'><span class=\\'lbl\\'>📅 التاريخ</span><span style=\\'font-weight:800\\'>${dD}</span></div><div class=\\'sinfo-row\\'><span class=\\'lbl\\'>🕐 الوقت</span><span style=\\'font-weight:800\\'>${dT}</span></div>'; startTracking('${b.key}'); goStep(3);" style="margin-top:10px;width:100%;padding:7px;background:rgba(245,158,11,.1);border:1px dashed var(--amber);color:var(--amber);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-star"></i> قيم الطبيب الآن</button>`;
     }
     
     html += `<div class="bi-card">
