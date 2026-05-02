@@ -459,7 +459,21 @@ const BASE = 'clinics/' + CID;
 
 let _pass = '1122', _logins = 0, _lockUntil = 0;
 let _bks = {}, _cmp = {}, _docs = {}, isConn = true;
-let prevCount = 0, firstLoad = true, audioCtx = null;
+let prevCount = 0, firstLoad = true, audioCtx = null, _anonUid = null;
+
+// ── AUTH & PRESENCE ──
+auth.signInAnonymously().then(r => {
+  _anonUid = r.user.uid;
+  console.log("Firebase Auth Success:", _anonUid);
+  registerPresence();
+}).catch(e => console.error("Firebase Auth Error:", e));
+
+function registerPresence() {
+  if(!isConn || !_anonUid) return;
+  const dPres = db.ref(BASE+'/presence/admin_'+_anonUid.substr(0,5));
+  dPres.set(true).catch(e => console.error("Presence Set Error:", e));
+  dPres.onDisconnect().remove();
+}
 
 // ── CLOCK ──
 setInterval(() => {
@@ -568,7 +582,7 @@ db.ref(BASE+'/settings').on('value', snap => {
   if(!s.clinicEnd) document.getElementById('sWe').value = '22:00';
 });
 
-// ── CONNECTION & PRESENCE ──
+// ── CONNECTION MONITOR ──
 db.ref('.info/connected').on('value', snap => {
   const was = !isConn; isConn = snap.val()===true;
   const bar = document.getElementById('connBar');
@@ -576,11 +590,7 @@ db.ref('.info/connected').on('value', snap => {
     bar.className='cbar cok'; bar.innerHTML='<i class="fas fa-wifi"></i> متصل'; bar.style.display='flex';
     setTimeout(()=>{if(isConn)bar.style.display='none';},2000);
     if (was) toast('✅ تم الاتصال');
-    
-    // Register Admin Presence
-    const dPres = db.ref(BASE+'/presence/admin_'+Math.floor(Math.random()*1000));
-    dPres.set(true);
-    dPres.onDisconnect().remove();
+    registerPresence();
   } else { bar.style.display='flex'; bar.className='cbar coff'; bar.innerHTML='<i class="fas fa-exclamation-triangle"></i> لا يوجد اتصال...'; }
 });
 document.getElementById('stCID').textContent = '(ID: '+CID+')';
