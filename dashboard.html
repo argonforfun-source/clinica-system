@@ -518,7 +518,8 @@ db.ref(BASE+'/bookings').on('value', snap => {
   if (!firstLoad && actKeys.length > prevCount) { beep(); ring(); }
   prevCount = actKeys.length;
   // Today stats
-  const today = new Date().toISOString().split('T')[0];
+  const nowD = new Date();
+  const today = new Date(nowD.getTime() - (nowD.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const todayCount = Object.values(_bks).filter(b=>b.date===today&&b.status!=='cancelled').length;
   document.getElementById('stToday').textContent = todayCount;
   renderLive(actKeys);

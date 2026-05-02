@@ -437,7 +437,7 @@
           <div style="font-size:0.85rem;color:var(--muted);margin-bottom:16px">احتفظ برقم الحجز للمراجعة</div>
           <div class="sno-box">
             <div style="font-size:0.7rem;font-weight:700;color:var(--muted);letter-spacing:1px;font-family:'IBM Plex Mono',monospace;margin-bottom:6px">رقم حجزك</div>
-            <div class="sno" id="sno">#----</div>
+            <div class="sno" id="sno" dir="ltr">#----</div>
           </div>
           <div class="sinfo" id="sinfo"></div>
           <div class="tracker">
@@ -777,7 +777,8 @@ function buildDates() {
   
   for (let i=0;i<daysToShow;i++) {
     const d = new Date(today); d.setDate(today.getDate() + startOff + i);
-    const ds = d.toISOString().split('T')[0];
+    const localD = new Date(d.getTime() - (d.getTimezoneOffset() * 60000));
+    const ds = localD.toISOString().split('T')[0];
     const dn = DAY_AR[d.getDay()];
     const isToday = (startOff + i) === 0;
     html += `<div class="d-chip" id="dc-${ds}" onclick="pickDate('${ds}',this)">
@@ -813,7 +814,7 @@ async function buildTimes(ds) {
   } catch(e){}
 
   const now = new Date(); const nowMins = now.getHours()*60+now.getMinutes();
-  const isToday = ds === new Date().toISOString().split('T')[0];
+  const isToday = ds === new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const slots = [];
   while (cur+sm <= end) {
     const hh=String(Math.floor(cur/60)).padStart(2,'0'), mm=String(cur%60).padStart(2,'0');
@@ -907,8 +908,8 @@ function sendBooking() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
   btn.disabled = true;
 
-  const todayDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
-  db.ref(BASE+'/stats/dailyBookings/'+todayDate).transaction(cur => (cur || 0) + 1, (err, committed, snap) => {
+  // Use selDate to ensure the booking number is tied to the appointment date
+  db.ref(BASE+'/stats/dailyBookings/'+selDate).transaction(cur => (cur || 0) + 1, (err, committed, snap) => {
     let dailyNum = 1;
     if (!err && committed && snap.val()) dailyNum = snap.val();
     const bno = '#D' + String(dailyNum).padStart(2, '0');
@@ -969,7 +970,10 @@ function startTracking(key) {
     const v = snap.val();
     if (!v) { // moved to completed
       db.ref(BASE+'/completedBookings/'+key).once('value').then(cs => {
-        if (cs.exists()) updateTrack('done');
+        if (cs.exists()) {
+          updateTrack('done');
+          document.getElementById('ratingBox').style.display='block';
+        }
       });
       return;
     }
@@ -1054,7 +1058,7 @@ async function openMyBookings() {
         </div>
         <span class="bi-st ${stCls[status]||'st-new'}">${stLabels[status]||status}</span>
       </div>
-      <div class="bi-no">${b.no}</div>
+      <div class="bi-no" dir="ltr">${b.no}</div>
       ${eBtn}
     </div>`;
   }
