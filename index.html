@@ -131,7 +131,7 @@
     .fabcnt{background:var(--red);color:#fff;width:22px;height:22px;border-radius:50%;font-size:0.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;display:none}
 
     /* ── OVERLAY / SHEET ── */
-    .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);z-index:1000;display:none;align-items:flex-end;justify-content:center}
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);z-index:10000;display:none;align-items:flex-end;justify-content:center}
     .overlay.show{display:flex}
     .sheet{background:var(--card);border-radius:28px 28px 0 0;padding:0;width:100%;max-width:500px;animation:slideUp .35s cubic-bezier(0.34,1.3,0.64,1);max-height:94vh;overflow:hidden;display:flex;flex-direction:column}
     @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -630,10 +630,19 @@ db.ref(BASE+'/settings').on('value', snap => {
     ls.classList.add('show');
     mc.style.display = 'none';
     return;
+  } else if (s.status === 'closed') {
+    ls.innerHTML = `<div class="ls-icon" style="font-size:4rem;margin-bottom:10px">⏸️</div>
+                    <div class="ls-title" style="font-size:2rem;font-weight:900;margin-bottom:12px">استقبال الحجوزات متوقف</div>
+                    <div class="ls-sub" style="color:rgba(255,255,255,0.6);margin-bottom:30px;line-height:1.7">عذراً، لقد أوقفت العيادة استقبال حجوزات جديدة في الوقت الحالي.<br>يرجى المحاولة مرة أخرى لاحقاً.</div>
+                    <button onclick="openMyBookings();" style="padding:14px 28px;background:var(--teal);border:none;border-radius:20px;color:#fff;font-weight:800;cursor:pointer;font-family:'Tajawal',sans-serif">مراجعة حجوزاتي السابقة</button>`;
+    ls.classList.add('show');
+    mc.style.display = 'none';
+    return;
   }
-  // 'closed' does NOT lock the page — patients can still see doctors & their bookings
-  // Booking buttons get disabled below in renderDocs()
-
+  
+  // 'open' status ensures the page is unlocked
+  ls.classList.remove('show');
+  mc.style.display = 'block';
   
   if (s.status === 'open' && s.clinicStart && s.clinicEnd) {
     const now = new Date();
@@ -1012,7 +1021,13 @@ function setStar(n) {
 }
 function sendRating() {
   if (!curRating||!currentKey) return;
-  db.ref(BASE+'/bookings/'+currentKey).update({ rating: curRating });
+  db.ref(BASE+'/bookings/'+currentKey).once('value').then(snap => {
+    if (snap.exists()) {
+      db.ref(BASE+'/bookings/'+currentKey).update({ rating: curRating });
+    } else {
+      db.ref(BASE+'/completedBookings/'+currentKey).update({ rating: curRating });
+    }
+  });
   // Update doctor avg rating
   db.ref(BASE+'/doctors/'+selDoc.key+'/ratings/'+currentKey).set(curRating);
   document.getElementById('ratingBox').innerHTML = '<div style="color:var(--green);font-weight:800;text-align:center;padding:10px">شكراً على تقييمك! ⭐</div>';

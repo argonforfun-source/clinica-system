@@ -432,6 +432,7 @@ function doLogin() {
   const MASTER = 'argon_master_2026';
   if (val === _pass || val === MASTER) {
     _logins = 0;
+    sessionStorage.setItem('clinica_auth_'+CID, '1');
     const el = document.getElementById('dashLogin');
     el.style.opacity='0'; el.style.transition='opacity .35s';
     setTimeout(()=>{ el.style.display='none'; toast('✅ أهلاً بك!', 'ok'); },360);
@@ -445,6 +446,7 @@ function doLogin() {
   }
 }
 function doLogout() {
+  sessionStorage.removeItem('clinica_auth_'+CID);
   window.location.reload();
 }
 
@@ -484,6 +486,10 @@ db.ref(BASE+'/settings').on('value', snap => {
   document.getElementById('lClinicName').textContent = s.name||'العيادة';
   document.title = 'ARGON | '+(s.name||'العيادة');
   _pass = s.password||'1122';
+  if (sessionStorage.getItem('clinica_auth_'+CID) === '1') {
+    const el = document.getElementById('dashLogin');
+    if (el) el.style.display = 'none';
+  }
   const b = document.getElementById('stBadge');
   if (s.status === 'suspended') {
     b.className='tbadge tb-closed'; b.innerHTML='<i class="fas fa-shield-alt" style="font-size:.38rem"></i> موقوف بالكامل';
@@ -503,8 +509,8 @@ db.ref(BASE+'/settings').on('value', snap => {
 });
 
 // ── VISITORS LISTENER ──
-db.ref(BASE+'/presence').on('value', snap => {
-  document.getElementById('stWait').textContent = snap.numChildren() || 0;
+db.ref(BASE+'/stats/visitors').on('value', snap => {
+  document.getElementById('stWait').textContent = snap.val() || 0;
 });
 
 // ── LIVE BOOKINGS LISTENER ──
