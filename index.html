@@ -1957,10 +1957,15 @@
       const ls = document.getElementById('lockScreen');
       const mc = document.getElementById('mainContent');
 
-      // Suspended by Super Admin → Patient sees professional clinic stop screen
-      if (s.status === 'suspended') {
+      // Suspended (Super Admin) or Closed (Clinic Admin) → Patient sees professional clinic stop screen
+      if (s.status === 'suspended' || s.status === 'closed') {
         const waPhone = (s.phone || '').replace(/\D/g, '');
         const waLink  = waPhone ? `https://wa.me/${waPhone}` : null;
+        const mainMsg = s.status === 'suspended' ? '⛔ تم إيقاف الحساب' : '⛔ الحجز متوقف حالياً';
+        const subMsg  = s.status === 'suspended' 
+          ? 'نعتذر منكم، حساب العيادة متوقف مؤقتاً.<br>للاستفسار، يرجى التواصل عبر واتساب.'
+          : 'نعتذر منكم، العيادة لا تستقبل حجوزات إلكترونية في الوقت الحالي.<br>يرجى التواصل معنا عبر واتساب للمساعدة.';
+
         ls.innerHTML = `
           <div style="max-width:440px;margin:auto;text-align:center;padding:20px">
             <div style="margin-bottom:18px">
@@ -1971,10 +1976,9 @@
             </div>
             <div style="font-size:1.9rem;font-weight:900;margin-bottom:10px;color:#fff">${sanitize(s.name || 'العيادة')}</div>
             <div style="width:60px;height:3px;background:var(--teal);border-radius:3px;margin:0 auto 24px"></div>
-            <div style="font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:12px">⛔ تم إيقاف الحجز مؤقتاً</div>
+            <div style="font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:12px">${mainMsg}</div>
             <div style="color:rgba(255,255,255,0.65);line-height:1.9;font-size:0.95rem;margin-bottom:32px">
-              نعتذر منكم، خدمة الحجز الإلكتروني متوقفة مؤقتاً.<br>
-              للاستفسار أو الحجز المباشر، يرجى التواصل معنا عبر واتساب.
+              ${subMsg}
             </div>
             ${waLink ? `
             <a href="${waLink}" target="_blank" style="
@@ -1997,8 +2001,7 @@
         return;
       }
 
-      // 'open' or 'closed' status ensures the page is unlocked
-      // For 'closed', booking buttons are disabled in renderDocs and sendBooking
+      // 'open' status ensures the page is unlocked
       ls.classList.remove('show');
       mc.style.display = 'block';
 
