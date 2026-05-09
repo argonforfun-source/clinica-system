@@ -2108,11 +2108,26 @@
       const [sh, smm] = ws.split(':').map(Number), [eh, emm] = we.split(':').map(Number);
       let cur = sh * 60 + smm; const end = eh * 60 + emm;
 
-      // Fetch booked times
+      // Fetch booked times from BOTH bookings AND slotLocks (real-time locks)
       const bookedSet = new Set();
       try {
-        const snap = await db.ref(BASE + '/bookings').orderByChild('docKey').equalTo(doc.key).once('value');
-        if (snap.val()) Object.values(snap.val()).forEach(b => { if (b.date === ds && b.status !== 'cancelled') bookedSet.add(b.time); });
+        const [bSnap, lSnap] = await Promise.all([
+          db.ref(BASE + '/bookings').orderByChild('docKey').equalTo(doc.key).once('value'),
+          db.ref(BASE + '/slotLocks').once('value')
+        ]);
+        // Add confirmed bookings
+        if (bSnap.val()) Object.values(bSnap.val()).forEach(b => {
+          if (b.date === ds && b.status !== 'cancelled') bookedSet.add(b.time);
+        });
+        // Add active slot locks for this doctor+date (in-progress bookings)
+        if (lSnap.val()) Object.entries(lSnap.val()).forEach(([key, val]) => {
+          // key format: {docKey}_{date}_{time-with-dash}
+          const prefix = `${doc.key}_${ds}_`;
+          if (key.startsWith(prefix)) {
+            const timePart = key.replace(prefix, '').replace('-', ':');
+            bookedSet.add(timePart);
+          }
+        });
       } catch (e) { }
 
       const now = new Date(); const nowMins = now.getHours() * 60 + now.getMinutes();
@@ -2191,7 +2206,7 @@
       if (s1btn) { s1btn.onclick = validateStep1; }
     })();
 
-    // ── SEND BOOKING ──
+    // ── SEND BOOKING (Atomic / Race-condition proof) ──
     let sending = false;
     function sendBooking() {
       if (sending) return;
@@ -2208,32 +2223,51 @@
 
       sending = true;
       const btn = document.getElementById('sendBtn');
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحقق...';
       btn.disabled = true;
 
-      // Safely find the max daily number across active and completed bookings for this date
-      const p1 = db.ref(BASE + '/bookings').orderByChild('date').equalTo(selDate).once('value');
-      const p2 = db.ref(BASE + '/completedBookings').orderByChild('date').equalTo(selDate).once('value');
+      // ══════════════════════════════════════════════════════════
+      // STEP 1: Atomically LOCK the slot (prevents double-booking)
+      // If two patients click at the same millisecond, Firebase
+      // Transaction guarantees only ONE succeeds.
+      // ══════════════════════════════════════════════════════════
+      const slotKey = `${selDoc.key}_${selDate}_${selTime.replace(':', '-')}`;
+      const slotRef = db.ref(BASE + '/slotLocks/' + slotKey);
 
-      Promise.all([p1, p2]).then(snaps => {
-        // Increment lifetime total bookings counter
-        db.ref(BASE + '/stats/totalBookings').transaction(cur => (cur || 0) + 1).catch(() => { });
+      slotRef.transaction(currentValue => {
+        // If slot already locked → ABORT (return undefined)
+        if (currentValue !== null) return undefined;
+        // Slot is free → LOCK IT
+        return { at: Date.now(), uid: _anonUid || 'guest' };
+      }).then(result => {
+        if (!result.committed) {
+          // ✋ Someone else booked this slot a split second before us
+          toast('⚠️ عذراً! تم حجز هذا الموعد للتو. الرجاء اختيار موعد آخر.', 'err');
+          sending = false;
+          btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
+          btn.disabled = false;
+          // Refresh slots so the taken slot shows as booked
+          buildTimes(selDate);
+          return Promise.reject('SLOT_TAKEN');
+        }
 
-        let max = 0;
-        snaps.forEach(snap => {
-          if (snap.exists()) {
-            Object.values(snap.val()).forEach(b => {
-              if (b.bookNo && b.bookNo.startsWith('#D')) {
-                const num = parseInt(b.bookNo.replace('#D', ''), 10);
-                if (!isNaN(num) && num > max) max = num;
-              }
-            });
-          }
-        });
-        const bno = '#D' + String(max + 1).padStart(2, '0');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحجز...';
+
+        // ══════════════════════════════════════════════════════
+        // STEP 2: Get unique daily booking number (atomic)
+        // Transaction ensures #D01, #D02... never duplicate
+        // ══════════════════════════════════════════════════════
+        return db.ref(BASE + '/dailyCounters/' + selDate)
+          .transaction(cur => (cur || 0) + 1);
+
+      }).then(counterResult => {
+        if (!counterResult) return Promise.reject('SLOT_TAKEN');
+
+        const bno = '#D' + String(counterResult.snapshot.val()).padStart(2, '0');
 
         const booking = {
           bookNo: bno,
+          slotKey: slotKey, // stored so we can release lock on cancel
           docKey: selDoc.key, docName: sanitize(selDoc.name), docSpec: sanitize(selDoc.specialty || ''),
           patName: name, patPhone: phone,
           patAge: sanitize(document.getElementById('pAge').value),
@@ -2246,36 +2280,41 @@
           anonUid: _anonUid || 'guest'
         };
 
-        db.ref(BASE + '/bookings').push(booking)
-          .then(ref => {
-            currentKey = ref.key;
-            // Show success
-            document.getElementById('sno').textContent = bno;
-            document.getElementById('sinfo').innerHTML = `
+        // Increment lifetime stats counter
+        db.ref(BASE + '/stats/totalBookings').transaction(c => (c || 0) + 1).catch(() => {});
+
+        return db.ref(BASE + '/bookings').push(booking).then(ref => ({ ref, bno, booking }));
+
+      }).then(({ ref, bno, booking }) => {
+        currentKey = ref.key;
+        document.getElementById('sno').textContent = bno;
+        document.getElementById('sinfo').innerHTML = `
           <div class="sinfo-row"><span class="lbl">👨‍⚕️ الطبيب</span><span style="font-weight:800">د. ${sanitize(selDoc.name)}</span></div>
           <div class="sinfo-row"><span class="lbl">📅 التاريخ</span><span style="font-weight:800">${selDate}</span></div>
           <div class="sinfo-row"><span class="lbl">🕐 الوقت</span><span style="font-weight:800">${selTime}</span></div>
           <div class="sinfo-row"><span class="lbl">💰 الرسوم</span><span>${booking.fee} د.أ</span></div>`;
-            startTracking(ref.key);
-            saveLocal(ref.key, bno);
-            // Premium Celebration
-            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#0d9488', '#0ea5e9', '#ffffff'] });
-            // Update counter
-            const myB = JSON.parse(localStorage.getItem('clinica_bks_' + CID) || '[]');
-            document.getElementById('mybtnCnt').textContent = myB.length;
-            sending = false;
-            isBooked = true;
-            goStep(3);
-            // Re-enable send button for next booking
-            btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
-            btn.disabled = false;
-          })
-          .catch(err => {
-            toast('❌ حدث خطأ: ' + err.message, 'err');
-            sending = false;
-            btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
-            btn.disabled = false;
-          });
+        startTracking(ref.key);
+        saveLocal(ref.key, bno);
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#0d9488', '#0ea5e9', '#ffffff'] });
+        const myB = JSON.parse(localStorage.getItem('clinica_bks_' + CID) || '[]');
+        document.getElementById('mybtnCnt').textContent = myB.length;
+        sending = false;
+        isBooked = true;
+        goStep(3);
+        btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
+        btn.disabled = false;
+
+      }).catch(err => {
+        if (err === 'SLOT_TAKEN') return; // already handled above
+        // ════════════════════════════════════════════
+        // On any error → RELEASE the slot lock
+        // so the slot doesn't stay locked forever
+        // ════════════════════════════════════════════
+        slotRef.remove().catch(() => {});
+        toast('❌ حدث خطأ: ' + (err.message || err), 'err');
+        sending = false;
+        btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
+        btn.disabled = false;
       });
     }
 

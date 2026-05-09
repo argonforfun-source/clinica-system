@@ -788,12 +788,24 @@ db.ref(BASE+'/doctors').on('value', snap => {
 });
 
 // ── ACTIONS ──
-function updSt(k,s){db.ref(`${BASE}/bookings/${k}/status`).set(s);toast('تم التحديث','ok');}
+function updSt(k, s) {
+  db.ref(`${BASE}/bookings/${k}/status`).set(s);
+  // Release slot lock when booking is cancelled
+  if (s === 'cancelled') {
+    const b = _bks[k];
+    if (b && b.slotKey) {
+      db.ref(`${BASE}/slotLocks/${b.slotKey}`).remove().catch(() => {});
+    }
+  }
+  toast('تم التحديث', 'ok');
+}
 
 function cmpBook(k) {
-  const b=_bks[k];if(!b)return;
-  db.ref(`${BASE}/completedBookings/${k}`).set({...b,status:'done',completedAt:new Date().toISOString()})
-    .then(()=>db.ref(`${BASE}/bookings/${k}`).remove().then(()=>toast('✅ تم إنهاء الحجز','ok')));
+  const b = _bks[k]; if (!b) return;
+  db.ref(`${BASE}/completedBookings/${k}`)
+    .set({ ...b, status: 'done', completedAt: new Date().toISOString() })
+    .then(() => db.ref(`${BASE}/bookings/${k}`).remove()
+      .then(() => toast('✅ تم إنهاء الحجز', 'ok')));
 }
 
 function clrHist(){if(!confirm('مسح سجل الحجوزات المكتملة؟'))return;db.ref(`${BASE}/completedBookings`).remove().then(()=>toast('تم المسح','ok'));}
