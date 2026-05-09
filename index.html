@@ -1868,7 +1868,7 @@
     let allDocs = [], selDoc = null, selDate = '', selTime = '';
     let currentKey = null, trkListener = null, curRating = 0;
     let isConn = true, isBooked = false, _anonUid = null;
-
+    let _liveBookings = {}, _liveSlotLocks = {};
 
     // ── RATE LIMIT (client-side guard) ──
     const RATE_KEY = 'argon_rate_' + CID;
@@ -1937,6 +1937,16 @@
       setInterval(() => { if(isConn) presRef.set(true); }, 15000);
       window.addEventListener('beforeunload', () => presRef.remove());
     })();
+
+    // ── LIVE CACHE LISTENERS ──
+    db.ref(BASE + '/bookings').on('value', snap => {
+      _liveBookings = snap.val() || {};
+      if (selDate && selDoc) buildTimes(selDate, true); // true = live update (no spinner)
+    });
+    db.ref(BASE + '/slotLocks').on('value', snap => {
+      _liveSlotLocks = snap.val() || {};
+      if (selDate && selDoc) buildTimes(selDate, true);
+    });
 
     // ── LOAD SETTINGS ──
     db.ref(BASE + '/settings').on('value', snap => {
@@ -2053,6 +2063,17 @@
       // Update local count
       const myB = JSON.parse(localStorage.getItem('clinica_bks_' + CID) || '[]');
       document.getElementById('mybtnCnt').textContent = myB.length;
+      
+      // If a doctor is currently selected, update their data and re-render slots seamlessly
+      if (selDoc) {
+        const updatedDoc = allDocs.find(x => x.key === selDoc.key);
+        if (updatedDoc) {
+          selDoc = updatedDoc;
+          if (selDate) buildTimes(selDate, true);
+        } else {
+          closeModal('bookModal');
+        }
+      }
     });
 
     function buildSpecFilter() {
@@ -2167,35 +2188,34 @@
       await buildTimes(ds);
     }
 
-    async function buildTimes(ds) {
+    async function buildTimes(ds, isLiveUpdate = false) {
       const tg = document.getElementById('timeGrid');
-      tg.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:12px"><i class="fas fa-spinner fa-spin" style="color:var(--teal)"></i></div>`;
+      if (!isLiveUpdate) {
+        tg.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:12px"><i class="fas fa-spinner fa-spin" style="color:var(--teal)"></i></div>`;
+      }
       const doc = selDoc;
       const ws = doc.workStart || '09:00', we = doc.workEnd || '17:00', sm = doc.slotDuration || 30;
       const [sh, smm] = ws.split(':').map(Number), [eh, emm] = we.split(':').map(Number);
       let cur = sh * 60 + smm; const end = eh * 60 + emm;
 
-      // Fetch booked times from BOTH bookings AND slotLocks (real-time locks)
+      // Use live caches instead of fetching
       const bookedSet = new Set();
-      try {
-        const [bSnap, lSnap] = await Promise.all([
-          db.ref(BASE + '/bookings').orderByChild('docKey').equalTo(doc.key).once('value'),
-          db.ref(BASE + '/slotLocks').once('value')
-        ]);
-        // Add confirmed bookings
-        if (bSnap.val()) Object.values(bSnap.val()).forEach(b => {
-          if (b.date === ds && b.status !== 'cancelled') bookedSet.add(b.time);
-        });
-        // Add active slot locks for this doctor+date (in-progress bookings)
-        if (lSnap.val()) Object.entries(lSnap.val()).forEach(([key, val]) => {
-          // key format: {docKey}_{date}_{time-with-dash}
-          const prefix = `${doc.key}_${ds}_`;
-          if (key.startsWith(prefix)) {
-            const timePart = key.replace(prefix, '').replace('-', ':');
-            bookedSet.add(timePart);
-          }
-        });
-      } catch (e) { }
+      
+      // Add confirmed bookings
+      Object.values(_liveBookings).forEach(b => {
+        if (b.docKey === doc.key && b.date === ds && b.status !== 'cancelled') {
+          bookedSet.add(b.time);
+        }
+      });
+      // Add active slot locks for this doctor+date
+      Object.entries(_liveSlotLocks).forEach(([key, val]) => {
+        // key format: {docKey}_{date}_{time-with-dash}
+        const prefix = `${doc.key}_${ds}_`;
+        if (key.startsWith(prefix)) {
+          const timePart = key.replace(prefix, '').replace('-', ':');
+          bookedSet.add(timePart);
+        }
+      });
 
       const now = new Date(); const nowMins = now.getHours() * 60 + now.getMinutes();
       const isToday = ds === new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
