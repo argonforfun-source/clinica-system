@@ -29,6 +29,10 @@
     .ni.on{background:rgba(13,148,136,.1);color:var(--teal)}
     body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(13,148,136,0.06),transparent 70%);pointer-events:none;z-index:0}
 
+    /* LTR fixes */
+    [dir="ltr"] .tr{flex-direction:row-reverse}
+    [dir="ltr"] .tbadge{flex-direction:row-reverse}
+
     /* ── LOGIN ── */
     #dashLogin{position:fixed;inset:0;background:var(--void);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
     .lcard{background:var(--panel);border:1px solid var(--border);border-radius:24px;padding:36px 32px;width:100%;max-width:360px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.5)}
@@ -63,8 +67,11 @@
     .ni:hover{background:rgba(255,255,255,.02);color:var(--text)}
     .ni.on{background:rgba(13,148,136,.1);color:#5eead4}
     .ni.on::before{content:'';position:absolute;right:0;top:18%;bottom:18%;width:3px;background:var(--teal);border-radius:3px 0 0 3px}
+    [dir="ltr"] .ni.on::before{right:auto;left:0;border-radius:0 3px 3px 0}
+    [dir="ltr"] .ni i{margin-right:0;margin-left:8px}
     .nbdg{margin-right:auto;background:var(--red);color:#fff;font-size:.61rem;font-family:'IBM Plex Mono',monospace;padding:2px 7px;border-radius:10px;font-weight:700}
     .nbdg.z{background:rgba(100,116,139,.2);color:var(--muted)}
+    [dir="ltr"] .nbdg{margin-right:0;margin-left:auto}
     .main{flex:1;overflow-y:auto;padding:24px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.04) transparent}
 
     /* ── SECTIONS ── */
@@ -434,6 +441,14 @@
       <div class="setp">
         <div class="setg"><label class="setl">اسم العيادة</label><input type="text" id="sN" class="seti"></div>
         <div class="setg"><label class="setl">رقم الواتساب</label><input type="text" id="sP" class="seti" placeholder="+962..."></div>
+        <div class="setg">
+          <label class="setl">لغة لوحة التحكم (Dashboard Language)</label>
+          <select id="sLang" class="setsel" onchange="setDashLang(this.value)">
+            <option value="ar">العربية (Arabic)</option>
+            <option value="en">English (الإنجليزية)</option>
+            <option value="fr">Français (الفرنسية)</option>
+          </select>
+        </div>
         <div class="setg" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div><label class="setl">الحالة</label>
             <select id="sSt" class="setsel">
@@ -533,6 +548,82 @@ let _pass = '1122', _logins = 0, _lockUntil = 0;
 let _bks = {}, _cmp = {}, _docs = {}, _sets = {}, isConn = true;
 let prevCount = 0, firstLoad = true, audioCtx = null, _anonUid = null;
 
+// ── DASHBOARD MULTI-LANGUAGE (i18n) ENGINE ──
+const dash_i18n = {
+  ar: {
+    menuLive: "الحجوزات الحية", menuHist: "السجل", menuDocs: "الأطباء", menuSets: "الإعدادات",
+    statLive: "النشاط المباشر", statLiveSub: "زائر يتصفح النظام", statToday: "حجوزات اليوم", statRev: "الإيرادات اليومية", statTotal: "إجمالي الحجوزات",
+    badgeOpen: "مفتوح", badgeClosed: "مغلق",
+    docPerf: "أداء الأطباء", bookingsTitle: "الحجوزات الحية",
+    histTitle: "السجل", clearHist: "مسح السجل",
+    docTitle: "إدارة الأطباء", btnAdd: "إضافة",
+    setsTitle: "الإعدادات", btnSave: "حفظ التغييرات",
+    loginTitle: "تسجيل الدخول", loginSub: "لوحة تحكم الطبيب", btnLogin: "دخول",
+    toastConn: "تم الاتصال", toastNoConn: "لا يوجد اتصال",
+    connOk: "متصل", connOff: "لا يوجد اتصال..."
+  },
+  en: {
+    menuLive: "Live Bookings", menuHist: "History", menuDocs: "Doctors", menuSets: "Settings",
+    statLive: "Live Activity", statLiveSub: "Active Visitors", statToday: "Today's Bookings", statRev: "Daily Revenue", statTotal: "Total Bookings",
+    badgeOpen: "Open", badgeClosed: "Closed",
+    docPerf: "Doctors Performance", bookingsTitle: "Live Bookings",
+    histTitle: "History", clearHist: "Clear History",
+    docTitle: "Manage Doctors", btnAdd: "Add",
+    setsTitle: "Settings", btnSave: "Save Changes",
+    loginTitle: "Login", loginSub: "Admin Dashboard", btnLogin: "Login",
+    toastConn: "Connected", toastNoConn: "No Connection",
+    connOk: "Connected", connOff: "No connection..."
+  },
+  fr: {
+    menuLive: "Réservations en direct", menuHist: "Historique", menuDocs: "Médecins", menuSets: "Paramètres",
+    statLive: "Activité en direct", statLiveSub: "Visiteurs actifs", statToday: "Réservations du jour", statRev: "Revenus", statTotal: "Total",
+    badgeOpen: "Ouvert", badgeClosed: "Fermé",
+    docPerf: "Performance", bookingsTitle: "Réservations en direct",
+    histTitle: "Historique", clearHist: "Effacer",
+    docTitle: "Gérer les Médecins", btnAdd: "Ajouter",
+    setsTitle: "Paramètres", btnSave: "Enregistrer",
+    loginTitle: "Connexion", loginSub: "Tableau de Bord", btnLogin: "Entrer",
+    toastConn: "Connecté", toastNoConn: "Pas de connexion",
+    connOk: "Connecté", connOff: "Pas de connexion..."
+  }
+};
+
+let curLang = localStorage.getItem('argon_dash_lang_' + CID) || 'ar';
+function DT(key) { return (dash_i18n[curLang] && dash_i18n[curLang][key]) || dash_i18n['ar'][key] || key; }
+
+function setDashLang(lang) {
+  curLang = lang;
+  localStorage.setItem('argon_dash_lang_' + CID, lang);
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  document.documentElement.lang = lang;
+  document.getElementById('sLang').value = lang;
+  
+  // Update Static Texts
+  const q = (sel, txt) => { const el = document.querySelector(sel); if(el) el.innerHTML = txt; };
+  q('#m1 span', DT('menuLive')); q('#m2 span', DT('menuHist')); q('#m3 span', DT('menuDocs')); q('#m4 span', DT('menuSets'));
+  q('#live .pt', '🔔 ' + DT('bookingsTitle'));
+  q('#hist .pt', '📜 ' + DT('histTitle')); q('#hist button', '<i class="fas fa-trash" style="margin-left:5px"></i>' + DT('clearHist'));
+  q('#docs .pt', '👨‍⚕️ ' + DT('docTitle')); q('.badd', '<i class="fas fa-plus" style="margin-left:4px"></i>' + DT('btnAdd'));
+  q('#settings .pt', '⚙️ ' + DT('setsTitle')); q('.bsave', '<i class="fas fa-floppy-disk" style="margin-left:8px"></i>' + DT('btnSave'));
+  q('.lcard h2', '🏥 ' + DT('loginTitle')); q('.lcard p', DT('loginSub')); q('#btnLog', DT('btnLogin'));
+  
+  const lbls = document.querySelectorAll('.slb');
+  if(lbls[0]) lbls[0].innerHTML = DT('statToday');
+  if(lbls[1]) lbls[1].innerHTML = DT('statRev');
+  if(lbls[2]) lbls[2].innerHTML = DT('statTotal');
+  if(lbls[3]) lbls[3].innerHTML = DT('statLive');
+  const subs = document.querySelectorAll('.scard-sub');
+  if(subs[2]) subs[2].innerHTML = DT('statLiveSub');
+  
+  // Refresh UI
+  renderLive();
+  renderHist();
+  renderDocs();
+}
+
+// Init Dashboard Language
+document.addEventListener('DOMContentLoaded', () => setDashLang(curLang));
+
 // ── AUTH & PRESENCE ──
 auth.signInAnonymously().then(r => {
   _anonUid = r.user.uid;
@@ -557,15 +648,15 @@ db.ref('.info/connected').on('value', snap => {
   const was = !isConn; isConn = snap.val()===true;
   const bar = document.getElementById('connBar');
   if (isConn) {
-    bar.className='cbar cok'; bar.innerHTML='<i class="fas fa-wifi"></i> متصل'; bar.style.display='flex';
+    bar.className='cbar cok'; bar.innerHTML=`<i class="fas fa-wifi"></i> ${DT('connOk')}`; bar.style.display='flex';
     setTimeout(()=>{if(isConn)bar.style.display='none';},2000);
-    if (was) toast('✅ تم الاتصال');
+    if (was) toast('✅ ' + DT('toastConn'), 'ok');
     
     // Register Dashboard Presence (Doctor)
     const dPres = db.ref(BASE+'/presence/admin_'+(Math.random().toString(36).substr(2,5)));
     dPres.set({ type: 'admin', ts: firebase.database.ServerValue.TIMESTAMP });
     dPres.onDisconnect().remove();
-  } else { bar.style.display='flex'; bar.className='cbar coff'; bar.innerHTML='<i class="fas fa-exclamation-triangle"></i> لا يوجد اتصال...'; }
+  } else { bar.style.display='flex'; bar.className='cbar coff'; bar.innerHTML=`<i class="fas fa-exclamation-triangle"></i> ${DT('connOff')}`; }
 });
 window.addEventListener('offline',()=>{isConn=false;db.goOffline();});
 window.addEventListener('online',()=>setTimeout(()=>db.goOnline(),1000));
@@ -641,11 +732,11 @@ db.ref(BASE+'/settings').on('value', snap => {
   }
   const b = document.getElementById('stBadge');
   if (s.status === 'suspended') {
-    b.className='tbadge tb-closed'; b.innerHTML='<i class="fas fa-shield-alt" style="font-size:.38rem"></i> موقوف بالكامل';
+    b.className='tbadge tb-closed'; b.innerHTML=`<i class="fas fa-shield-alt" style="font-size:.38rem"></i> Suspended`;
   } else if (s.status === 'closed') {
-    b.className='tbadge tb-closed'; b.innerHTML='<i class="fas fa-pause-circle" style="font-size:.38rem"></i> الحجز متوقف';
+    b.className='tbadge tb-closed'; b.innerHTML=`<i class="fas fa-pause-circle" style="font-size:.38rem"></i> ${DT('badgeClosed')}`;
   } else {
-    b.className='tbadge tb-open'; b.innerHTML='<i class="fas fa-circle" style="font-size:.38rem"></i> مفتوح';
+    b.className='tbadge tb-open'; b.innerHTML=`<i class="fas fa-circle" style="font-size:.38rem"></i> ${DT('badgeOpen')}`;
   }
   document.getElementById('sSpec').value = s.specialty||'';
   document.getElementById('sSameDay').value = s.sameDayBooking!==false ? 'true' : 'false';
@@ -768,6 +859,8 @@ function renderLive(keys) {
 
     // ── Date header ──
     let dateLabel = '';
+    const thDay = curLang === 'ar' ? 'حجوزات اليوم' : (curLang === 'fr' ? "Réservations d'Aujourd'hui" : "Today's Bookings");
+    const thBook = curLang === 'ar' ? 'حجز' : (curLang === 'fr' ? 'RDV' : 'Bk');
     if (isToday) {
       dateLabel = `<div style="
         display:flex;align-items:center;gap:10px;
@@ -777,15 +870,19 @@ function renderLive(keys) {
         border-radius:12px;
         ">
         <div style="width:10px;height:10px;background:var(--green);border-radius:50%;box-shadow:0 0 8px var(--green);animation:pulseAnim 1.5s infinite"></div>
-        <span style="font-weight:900;font-size:1rem;color:var(--green)">حجوزات اليوم</span>
+        <span style="font-weight:900;font-size:1rem;color:var(--green)">${thDay}</span>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--muted);margin-right:auto">${date}</span>
-        <span style="background:var(--green);color:#fff;font-size:.7rem;font-weight:800;padding:3px 10px;border-radius:20px">${dateKeys.length} حجز</span>
+        <span style="background:var(--green);color:#fff;font-size:.7rem;font-weight:800;padding:3px 10px;border-radius:20px">${dateKeys.length} ${thBook}</span>
       </div>`;
     } else {
+      let DAY_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+      if(curLang === 'en') DAY_AR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      if(curLang === 'fr') DAY_AR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
       const d = new Date(date + 'T12:00:00');
       const dayName = DAY_AR[d.getDay()];
       const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
       const isNext = date === tomorrow.toLocaleDateString('en-CA');
+      const tmrwLbl = isNext ? (curLang === 'ar' ? 'غداً — ' : (curLang === 'fr' ? 'Demain — ' : 'Tmrw — ')) : '';
       dateLabel = `<div style="
         display:flex;align-items:center;gap:10px;
         margin:24px 0 14px 0;padding:10px 16px;
@@ -794,9 +891,9 @@ function renderLive(keys) {
         border-radius:12px;
         ">
         <i class="fas fa-calendar-day" style="color:var(--sky);font-size:.85rem"></i>
-        <span style="font-weight:800;font-size:.95rem;color:var(--text)">${isNext ? 'غداً — ' : ''}${dayName}</span>
+        <span style="font-weight:800;font-size:.95rem;color:var(--text)">${tmrwLbl}${dayName}</span>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--muted);margin-right:auto">${date}</span>
-        <span style="background:var(--surf);border:1px solid var(--border);color:var(--muted);font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px">${dateKeys.length} حجز</span>
+        <span style="background:var(--surf);border:1px solid var(--border);color:var(--muted);font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px">${dateKeys.length} ${thBook}</span>
       </div>`;
     }
 
@@ -900,8 +997,15 @@ db.ref(BASE+'/completedBookings').orderByKey().limitToLast(200).on('value', snap
   }).join(''):`<div style="color:var(--muted);font-size:.84rem">لا توجد بيانات بعد</div>`;
   // History
   const hg=document.getElementById('histGrid');
-  if(!keys.length){hg.innerHTML='<div style="text-align:center;padding:50px;color:var(--muted)">لا يوجد سجل بعد</div>';return;}
-  hg.innerHTML=`<div class="htw"><table><thead><tr><th>التاريخ</th><th>المريض</th><th>الطبيب</th><th>الوقت</th><th>الرسوم</th><th>التقييم</th></tr></thead>
+  const noHistMsg = curLang === 'ar' ? 'لا يوجد سجل بعد' : (curLang === 'fr' ? 'Aucun historique' : 'No History');
+  if(!keys.length){hg.innerHTML=`<div style="text-align:center;padding:50px;color:var(--muted)">${noHistMsg}</div>`;return;}
+  const th1 = curLang === 'ar' ? 'التاريخ' : (curLang === 'fr' ? 'Date' : 'Date');
+  const th2 = curLang === 'ar' ? 'المريض' : (curLang === 'fr' ? 'Patient' : 'Patient');
+  const th3 = curLang === 'ar' ? 'الطبيب' : (curLang === 'fr' ? 'Médecin' : 'Doctor');
+  const th4 = curLang === 'ar' ? 'الوقت' : (curLang === 'fr' ? 'Heure' : 'Time');
+  const th5 = curLang === 'ar' ? 'الرسوم' : (curLang === 'fr' ? 'Frais' : 'Fee');
+  const th6 = curLang === 'ar' ? 'التقييم' : (curLang === 'fr' ? 'Évaluation' : 'Rating');
+  hg.innerHTML=`<div class="htw"><table><thead><tr><th>${th1}</th><th>${th2}</th><th>${th3}</th><th>${th4}</th><th>${th5}</th><th>${th6}</th></tr></thead>
     <tbody>${keys.reverse().slice(0,60).map(k=>{const b=_cmp[k];if(!b)return'';
       return`<tr><td><div style="font-weight:700">${b.date||'—'}</div></td>
         <td><b>${sanitize(b.patName||'—')}</b><br><small>${sanitize(b.patPhone||'')}</small></td>

@@ -1443,6 +1443,22 @@
     }
     .err-close:hover { background: rgba(239,68,68,0.3); }
 
+    /* ── LANG SELECTOR & LTR ── */
+    .lang-sel { position: relative; }
+    .lang-btn { background: var(--surf); border: 1px solid var(--border); color: var(--text); padding: 7px 14px; border-radius: 20px; font-family: inherit; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: .2s; }
+    .lang-btn:hover { border-color: var(--teal); }
+    .lang-menu { position: absolute; top: 110%; left: 0; background: var(--surf); border: 1px solid var(--border); border-radius: 12px; padding: 6px; display: none; flex-direction: column; gap: 4px; z-index: 100; min-width: 120px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .lang-menu.show { display: flex; animation: fadeIn .2s ease; }
+    .lang-opt { padding: 8px 12px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: .2s; text-align: start; }
+    .lang-opt:hover { background: rgba(13,148,136,0.1); color: var(--teal); }
+    
+    [dir="ltr"] .lang-menu { left: auto; right: 0; }
+    [dir="ltr"] .mybtn i { margin-left: 0; margin-right: 6px; }
+    [dir="ltr"] .btn-next i { margin-right: 0; margin-left: 6px; transform: scaleX(-1); }
+    [dir="ltr"] .btn-back i { margin-left: 0; margin-right: 6px; transform: scaleX(-1); }
+    [dir="ltr"] .search-inp { padding: 14px 45px 14px 18px; }
+    [dir="ltr"] .search-icon { right: auto; left: 16px; }
+
     /* ── FOOTER ── */
     .foot {
       padding: 40px 0 20px;
@@ -1583,7 +1599,17 @@
     <div class="header">
       <div class="htop">
         <span class="mark">ARGON SYSTEM</span>
-        <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+        <div style="display:flex; gap:8px; align-items:center">
+          <div class="lang-sel">
+            <button class="lang-btn" id="langBtn" onclick="document.getElementById('langMenu').classList.toggle('show')">🌐 العربية</button>
+            <div class="lang-menu" id="langMenu">
+              <div class="lang-opt" onclick="setLang('ar')">العربية</div>
+              <div class="lang-opt" onclick="setLang('en')">English</div>
+              <div class="lang-opt" onclick="setLang('fr')">Français</div>
+            </div>
+          </div>
+          <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+        </div>
       </div>
       <div class="hmain">
         <div class="hlogo" id="hLogo">🏥</div>
@@ -1869,6 +1895,147 @@
     let currentKey = null, trkListener = null, curRating = 0;
     let isConn = true, isBooked = false, _anonUid = null;
     let _liveBookings = {}, _liveSlotLocks = {};
+    
+    // ── MULTI-LANGUAGE (i18n) ENGINE ──
+    const i18n = {
+      ar: {
+        heroTitle: "احجز موعدك<br>بكل سهولة",
+        heroSub: "اختر طبيبك، حدد الموعد المناسب، وتمتع بتجربة حجز طبية فائقة السهولة.",
+        step1Title: "اختر الطبيب والتخصص", step1Sub: "الرجاء اختيار الطبيب المناسب لحالتك",
+        step2Title: "اختر الموعد المناسب", step2Sub: "تأكد من اختيار يوم ووقت يناسبك",
+        step3Title: "بيانات المريض", step3Sub: "يرجى تعبئة بياناتك بدقة لتأكيد الحجز",
+        searchDoc: "ابحث عن طبيب أو تخصص...", allDocs: "الكل", noDocs: "لا يوجد أطباء",
+        closedBtn: "الحجز متوقف حالياً", bookBtn: "احجز موعد", notAvailBtn: "غير متاح",
+        selectDateFirst: "اختر تاريخاً أولاً", today: "اليوم",
+        patNameLabel: "الاسم الكريم", patNamePh: "مثال: أحمد خالد",
+        patAgeLabel: "العمر", patAgePh: "سنة",
+        patGenderLabel: "الجنس", genderM: "ذكر", genderF: "أنثى",
+        patPhoneLabel: "رقم الهاتف", patPhonePh: "مثال: 0791234567",
+        patNotesLabel: "ملاحظات للطبيب (اختياري)", patNotesPh: "أي أعراض أو ملاحظات تود إضافتها...",
+        btnBack: "رجوع", btnNext: "متابعة", btnConfirm: "تأكيد الحجز",
+        myBookings: "حجوزاتي", bookingNo: "حجز رقم",
+        statusNew: "جديد 🔔", statusConf: "مؤكد ✅", statusWait: "بالانتظار ⏳", statusDone: "مكتمل 🏁", statusCancel: "ملغي ❌",
+        cancelBookBtn: "إلغاء الحجز", editBookBtn: "تعديل الملاحظات",
+        rateExp: "قيم تجربتك مع الطبيب", submitRate: "إرسال التقييم",
+        errLimit: "لقد وصلت للحد الأقصى المسموح به (5 حجوزات في الساعة).\\nيرجى الانتظار قليلاً ثم المحاولة مجدداً.",
+        errSlot: "قام شخص آخر بحجز هذا الموعد في نفس اللحظة.\\nيرجى اختيار موعد آخر من القائمة المتاحة.",
+        errClosed: "استقبال الحجوزات الإلكترونية متوقف مؤقتاً.\\nيرجى المحاولة لاحقاً أو التواصل مع العيادة مباشرة.",
+        errData: "⚠️ يرجى التحقق من البيانات المدخلة", errSelectDT: "⚠️ يرجى اختيار تاريخ ووقت الحجز",
+        succBooked: "✅ تم تأكيد حجزك بنجاح!", succCancel: "✅ تم إلغاء الحجز", succEdit: "✅ تم تحديث بيانات الحجز", succRate: "✅ شكراً لتقييمك!",
+        hMetaOpen: "مفتوح الآن", hMetaClosed: "مغلق مؤقتاً",
+        sysStopMain: "⛔ الحجز متوقف حالياً", sysStopSub: "نعتذر منكم، العيادة لا تستقبل حجوزات إلكترونية في الوقت الحالي.<br>يرجى التواصل معنا عبر واتساب للمساعدة."
+      },
+      en: {
+        heroTitle: "Book Appointment<br>With Ease",
+        heroSub: "Select your doctor, pick a suitable time, and enjoy a seamless booking experience.",
+        step1Title: "Select Doctor & Specialty", step1Sub: "Please select the appropriate doctor for your case",
+        step2Title: "Select Appointment Time", step2Sub: "Ensure you pick a convenient day and time",
+        step3Title: "Patient Details", step3Sub: "Please fill in your details accurately to confirm booking",
+        searchDoc: "Search for a doctor or specialty...", allDocs: "All", noDocs: "No doctors found",
+        closedBtn: "Booking Suspended", bookBtn: "Book Appointment", notAvailBtn: "Not Available",
+        selectDateFirst: "Please select a date first", today: "Today",
+        patNameLabel: "Full Name", patNamePh: "e.g., John Doe",
+        patAgeLabel: "Age", patAgePh: "Years",
+        patGenderLabel: "Gender", genderM: "Male", genderF: "Female",
+        patPhoneLabel: "Phone Number", patPhonePh: "e.g., 0791234567",
+        patNotesLabel: "Notes for Doctor (Optional)", patNotesPh: "Any symptoms or notes you'd like to add...",
+        btnBack: "Back", btnNext: "Continue", btnConfirm: "Confirm Booking",
+        myBookings: "My Bookings", bookingNo: "Booking No",
+        statusNew: "New 🔔", statusConf: "Confirmed ✅", statusWait: "Waiting ⏳", statusDone: "Completed 🏁", statusCancel: "Cancelled ❌",
+        cancelBookBtn: "Cancel Booking", editBookBtn: "Edit Notes",
+        rateExp: "Rate your experience", submitRate: "Submit Rating",
+        errLimit: "Maximum allowed limit reached (5 bookings per hour).\\nPlease wait a while and try again.",
+        errSlot: "Someone else just booked this time slot at the exact same moment.\\nPlease select another available time.",
+        errClosed: "Online booking is temporarily suspended.\\nPlease try again later or contact the clinic.",
+        errData: "⚠️ Please check the entered data", errSelectDT: "⚠️ Please select a date and time",
+        succBooked: "✅ Appointment confirmed successfully!", succCancel: "✅ Booking cancelled", succEdit: "✅ Booking details updated", succRate: "✅ Thank you for your rating!",
+        hMetaOpen: "Open Now", hMetaClosed: "Closed",
+        sysStopMain: "⛔ Booking Suspended", sysStopSub: "We apologize, but online booking is currently suspended.<br>Please contact us via WhatsApp for assistance."
+      },
+      fr: {
+        heroTitle: "Réservez Votre RDV<br>Facilement",
+        heroSub: "Sélectionnez votre médecin, choisissez l'heure, et profitez d'une expérience fluide.",
+        step1Title: "Choisir un Médecin", step1Sub: "Veuillez sélectionner le médecin approprié",
+        step2Title: "Choisir l'heure", step2Sub: "Sélectionnez un jour et une heure",
+        step3Title: "Détails du Patient", step3Sub: "Remplissez vos coordonnées pour confirmer",
+        searchDoc: "Rechercher un médecin...", allDocs: "Tous", noDocs: "Aucun médecin trouvé",
+        closedBtn: "Réservation fermée", bookBtn: "Prendre RDV", notAvailBtn: "Non Disponible",
+        selectDateFirst: "Sélectionnez d'abord une date", today: "Aujourd'hui",
+        patNameLabel: "Nom Complet", patNamePh: "ex: Jean Dupont",
+        patAgeLabel: "Âge", patAgePh: "Ans",
+        patGenderLabel: "Genre", genderM: "Homme", genderF: "Femme",
+        patPhoneLabel: "Téléphone", patPhonePh: "ex: 0791234567",
+        patNotesLabel: "Notes (Optionnel)", patNotesPh: "Symptômes ou notes supplémentaires...",
+        btnBack: "Retour", btnNext: "Continuer", btnConfirm: "Confirmer la Réservation",
+        myBookings: "Mes Rendez-vous", bookingNo: "Rendez-vous N°",
+        statusNew: "Nouveau 🔔", statusConf: "Confirmé ✅", statusWait: "En Attente ⏳", statusDone: "Terminé 🏁", statusCancel: "Annulé ❌",
+        cancelBookBtn: "Annuler", editBookBtn: "Modifier Notes",
+        rateExp: "Évaluez votre expérience", submitRate: "Soumettre",
+        errLimit: "Limite maximale atteinte (5/heure).\\nVeuillez patienter.",
+        errSlot: "Ce créneau vient d'être réservé par quelqu'un d'autre.\\nVeuillez en choisir un autre.",
+        errClosed: "La réservation en ligne est suspendue.\\nVeuillez contacter la clinique.",
+        errData: "⚠️ Veuillez vérifier les données", errSelectDT: "⚠️ Veuillez sélectionner la date et l'heure",
+        succBooked: "✅ Rendez-vous confirmé !", succCancel: "✅ Réservation annulée", succEdit: "✅ Détails mis à jour", succRate: "✅ Merci pour votre évaluation !",
+        hMetaOpen: "Ouvert", hMetaClosed: "Fermé",
+        sysStopMain: "⛔ Réservation Suspendue", sysStopSub: "Nous sommes désolés, la réservation en ligne est actuellement suspendue.<br>Veuillez nous contacter via WhatsApp."
+      }
+    };
+    
+    let curLang = localStorage.getItem('argon_lang_' + CID) || 'ar';
+    function T(key) { return (i18n[curLang] && i18n[curLang][key]) || i18n['ar'][key] || key; }
+    
+    function setLang(lang) {
+      curLang = lang;
+      localStorage.setItem('argon_lang_' + CID, lang);
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      document.documentElement.lang = lang;
+      document.getElementById('langBtn').innerHTML = `🌐 ${lang==='ar'?'العربية':lang==='en'?'English':'Français'}`;
+      document.getElementById('langMenu').classList.remove('show');
+      
+      // Update UI texts dynamically without data-i18n tags for cleaner code
+      const q = (sel, txt) => { const el = document.querySelector(sel); if(el) el.innerHTML = txt; };
+      q('.hero-title', T('heroTitle')); q('.hero-sub', T('heroSub'));
+      q('#s0 .step-title', T('step1Title')); q('#s0 .step-sub', T('step1Sub'));
+      q('#s1 .step-title', T('step2Title')); q('#s1 .step-sub', T('step2Sub'));
+      q('#s2 .step-title', T('step3Title')); q('#s2 .step-sub', T('step3Sub'));
+      
+      const sBox = document.getElementById('searchBox'); if(sBox) sBox.placeholder = T('searchDoc');
+      const pN = document.getElementById('pName'); if(pN) pN.placeholder = T('patNamePh');
+      const pA = document.getElementById('pAge'); if(pA) pA.placeholder = T('patAgePh');
+      const pP = document.getElementById('pPhone'); if(pP) pP.placeholder = T('patPhonePh');
+      const pNo = document.getElementById('pNotes'); if(pNo) pNo.placeholder = T('patNotesPh');
+      
+      const lbls = document.querySelectorAll('#s2 .fg label');
+      if(lbls.length>=4) {
+        lbls[0].textContent = T('patNameLabel');
+        lbls[1].textContent = T('patAgeLabel');
+        lbls[2].textContent = T('patGenderLabel');
+        lbls[3].textContent = T('patPhoneLabel');
+        if(lbls[4]) lbls[4].textContent = T('patNotesLabel');
+      }
+      
+      q('#genM', T('genderM')); q('#genF', T('genderF'));
+      q('#s0Next', T('btnNext')+' <i class="fas fa-chevron-left"></i>');
+      q('#s1Next', T('btnNext')+' <i class="fas fa-chevron-left"></i>');
+      q('#sendBtn', '<i class="fas fa-check-circle" style="margin-left:6px"></i>'+T('btnConfirm'));
+      const backs = document.querySelectorAll('.btn-back');
+      if(backs[0]) backs[0].innerHTML = '<i class="fas fa-chevron-right"></i> '+T('btnBack');
+      if(backs[1]) backs[1].innerHTML = '<i class="fas fa-chevron-right"></i> '+T('btnBack');
+      
+      q('#mybtnText', T('myBookings'));
+      
+      // Re-render dynamic lists
+      if(allDocs.length) renderDocs(allDocs);
+      if(selDate) buildTimes(selDate, true);
+    }
+    
+    // Close lang menu if clicked outside
+    document.addEventListener('click', e => {
+      if(!e.target.closest('.lang-sel')) document.getElementById('langMenu').classList.remove('show');
+    });
+    
+    // Init Language
+    setLang(curLang);
 
     // ── RATE LIMIT (client-side guard) ──
     const RATE_KEY = 'argon_rate_' + CID;
@@ -1909,12 +2076,12 @@
       const bar = document.getElementById('connBar');
       if (isConn) {
         bar.className = 'c-ok'; bar.style.display = 'flex';
-        bar.innerHTML = '<i class="fas fa-wifi" style="margin-left:6px"></i> متصل';
+        bar.innerHTML = curLang === 'ar' ? '<i class="fas fa-wifi"></i> متصل' : '<i class="fas fa-wifi"></i> Connected';
         setTimeout(() => { if (isConn) bar.style.display = 'none'; }, 2000);
-        if (was) toast('✅ تم استعادة الاتصال');
+        if (was) toast(curLang === 'ar' ? '✅ تم استعادة الاتصال' : '✅ Connection Restored', 'ok');
       } else {
         bar.style.display = 'flex'; bar.className = 'c-off';
-        bar.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-left:6px"></i> لا يوجد اتصال، جاري إعادة المحاولة...';
+        bar.innerHTML = curLang === 'ar' ? '<i class="fas fa-exclamation-triangle"></i> لا يوجد اتصال، جاري المحاولة...' : '<i class="fas fa-exclamation-triangle"></i> Reconnecting...';
       }
     });
     window.addEventListener('offline', () => { isConn = false; db.goOffline(); });
@@ -1961,10 +2128,10 @@
       if (s.status === 'suspended' || s.status === 'closed') {
         const waPhone = (s.phone || '').replace(/\D/g, '');
         const waLink  = waPhone ? `https://wa.me/${waPhone}` : null;
-        const mainMsg = s.status === 'suspended' ? '⛔ تم إيقاف الحساب' : '⛔ الحجز متوقف حالياً';
+        const mainMsg = s.status === 'suspended' ? '⛔ ' + T('sysStopMain') : T('sysStopMain');
         const subMsg  = s.status === 'suspended' 
-          ? 'نعتذر منكم، حساب العيادة متوقف مؤقتاً.<br>للاستفسار، يرجى التواصل عبر واتساب.'
-          : 'نعتذر منكم، العيادة لا تستقبل حجوزات إلكترونية في الوقت الحالي.<br>يرجى التواصل معنا عبر واتساب للمساعدة.';
+          ? T('sysStopSub')
+          : T('sysStopSub');
 
         ls.innerHTML = `
           <div style="max-width:440px;margin:auto;text-align:center;padding:20px">
@@ -1974,7 +2141,7 @@
                 : `<div style="font-size:5rem">${s.emoji || '🏥'}</div>`
               }
             </div>
-            <div style="font-size:1.9rem;font-weight:900;margin-bottom:10px;color:#fff">${sanitize(s.name || 'العيادة')}</div>
+            <div style="font-size:1.9rem;font-weight:900;margin-bottom:10px;color:#fff">${sanitize(s.name || 'ARGON CLINIC')}</div>
             <div style="width:60px;height:3px;background:var(--teal);border-radius:3px;margin:0 auto 24px"></div>
             <div style="font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:12px">${mainMsg}</div>
             <div style="color:rgba(255,255,255,0.65);line-height:1.9;font-size:0.95rem;margin-bottom:32px">
@@ -1991,10 +2158,10 @@
               margin-bottom:14px;
             ">
               <i class="fab fa-whatsapp" style="font-size:1.3rem"></i>
-              تواصل معنا عبر واتساب
+              WhatsApp
             </a><br>
             <div style="color:rgba(255,255,255,0.4);font-size:0.8rem;margin-top:8px;font-family:'IBM Plex Mono',monospace">${s.phone}</div>
-            ` : '<div style="color:rgba(255,255,255,0.5);font-size:0.9rem">راجع وسائل التواصل الخاصة بالعيادة</div>'}
+            ` : ''}
           </div>`;
         ls.classList.add('show');
         mc.style.display = 'none';
@@ -2028,19 +2195,26 @@
 
         if (isOutside) {
           const ls = document.getElementById('lockScreen');
-          // Format times for display (AM/PM)
           const formatAMPM = (mins) => {
             let h = Math.floor(mins / 60);
             let m = mins % 60;
-            const ampm = h >= 12 ? 'مساءً' : 'صباحاً';
+            let ampm = '';
+            if (curLang === 'ar') ampm = h >= 12 ? 'مساءً' : 'صباحاً';
+            else if (curLang === 'fr') ampm = h >= 12 ? 'Soir' : 'Matin';
+            else ampm = h >= 12 ? 'PM' : 'AM';
             h = h % 12; h = h ? h : 12;
             return `${h}:${m.toString().padStart(2, '0')} ${ampm}`;
           };
           
+          const outTitle = curLang === 'ar' ? 'خارج أوقات الدوام' : (curLang === 'fr' ? 'Fermé' : 'Outside Working Hours');
+          const outSub = curLang === 'ar' 
+            ? `أوقات استقبال الحجوزات الرسمية للعيادة تبدأ من الساعة <b style="color:var(--teal)">${formatAMPM(stTime)}</b> وحتى <b style="color:var(--teal)">${formatAMPM(enTime)}</b>.<br>نستقبل حجوزاتكم خلال هذه الأوقات فقط.`
+            : (curLang === 'fr' ? `Heures d'ouverture de <b style="color:var(--teal)">${formatAMPM(stTime)}</b> à <b style="color:var(--teal)">${formatAMPM(enTime)}</b>.` : `Working hours are from <b style="color:var(--teal)">${formatAMPM(stTime)}</b> to <b style="color:var(--teal)">${formatAMPM(enTime)}</b>.`);
+
           ls.innerHTML = `<div class="ls-icon" style="font-size:4.5rem;margin-bottom:10px">🌙</div>
-                      <div class="ls-title" style="font-size:2rem;font-weight:900;margin-bottom:12px">خارج أوقات الدوام</div>
-                      <div class="ls-sub" style="color:rgba(255,255,255,0.6);margin-bottom:30px;line-height:1.7">أوقات استقبال الحجوزات الرسمية للعيادة تبدأ من الساعة <b style="color:var(--teal)">${formatAMPM(stTime)}</b> وحتى <b style="color:var(--teal)">${formatAMPM(enTime)}</b>.<br>نستقبل حجوزاتكم خلال هذه الأوقات فقط.</div>
-                      <button onclick="openMyBookings(); document.getElementById('lockScreen').classList.remove('show');" style="background:var(--teal);color:#fff;border:none;padding:14px 30px;border-radius:16px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 8px 24px rgba(13,148,136,0.3);"><i class="fas fa-calendar-check" style="margin-left:6px"></i>مراجعة حجوزاتي السابقة</button>
+                      <div class="ls-title" style="font-size:2rem;font-weight:900;margin-bottom:12px">${outTitle}</div>
+                      <div class="ls-sub" style="color:rgba(255,255,255,0.6);margin-bottom:30px;line-height:1.7">${outSub}</div>
+                      <button onclick="openMyBookings(); document.getElementById('lockScreen').classList.remove('show');" style="background:var(--teal);color:#fff;border:none;padding:14px 30px;border-radius:16px;font-family:inherit;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 8px 24px rgba(13,148,136,0.3);"><i class="fas fa-calendar-check"></i> ${T('myBookings')}</button>
                       <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.3);letter-spacing:4px;margin-top:40px">POWERED BY ARGON SYSTEM</div>`;
           ls.classList.add('show');
           mc.style.display = 'none';
@@ -2051,18 +2225,18 @@
       ls.classList.remove('show');
       mc.style.display = '';
 
-      document.getElementById('hName').textContent = s.name || 'العيادة';
+      document.getElementById('hName').textContent = s.name || 'ARGON';
       if(s.logoUrl) {
         document.getElementById('hLogo').innerHTML = `<img src="${s.logoUrl}" alt="Clinic Logo">`;
       } else {
         document.getElementById('hLogo').textContent = s.emoji || '🏥';
       }
-      document.title = (s.name || 'أرغون') + ' | حجز موعد';
+      document.title = (s.name || 'ARGON') + ' | Booking';
       const sc = document.getElementById('statusChip');
       if (s.status === 'closed') {
-        sc.className = 'chip c-closed'; sc.innerHTML = '<i class="fas fa-circle" style="font-size:.38rem"></i> مغلق مؤقتاً';
+        sc.className = 'chip c-closed'; sc.innerHTML = `<i class="fas fa-circle" style="font-size:.38rem"></i> ${T('hMetaClosed')}`;
       } else {
-        sc.className = 'chip c-open'; sc.innerHTML = '<i class="fas fa-circle" style="font-size:.38rem"></i> مفتوح الآن';
+        sc.className = 'chip c-open'; sc.innerHTML = `<i class="fas fa-circle" style="font-size:.38rem"></i> ${T('hMetaOpen')}`;
       }
       if (s.clinicStart && s.clinicEnd) {
         document.getElementById('hoursChip').style.display = 'inline-flex';
@@ -2132,11 +2306,11 @@
 
     function renderDocs(docs) {
       const g = document.getElementById('docsGrid');
-      if (!docs.length) { g.innerHTML = `<div class="empty" style="grid-column:1/-1"><i class="fas fa-user-md"></i><p>لا يوجد أطباء</p></div>`; return; }
+      if (!docs.length) { g.innerHTML = `<div class="empty" style="grid-column:1/-1"><i class="fas fa-user-md"></i><p>${T('noDocs')}</p></div>`; return; }
       const isClosed = clinicSets.status === 'closed';
       g.innerHTML = docs.map(d => {
         const avail = d.available !== false && !isClosed;
-        const btnLabel = isClosed ? 'الحجز متوقف حالياً' : (d.available !== false ? 'احجز موعد' : 'غير متاح');
+        const btnLabel = isClosed ? T('closedBtn') : (d.available !== false ? T('bookBtn') : T('notAvailBtn'));
         
         // Artistic Rating Display
         const avg = d.avgRating ? Number(d.avgRating).toFixed(1) : '0.0';
@@ -2184,7 +2358,9 @@
     function buildDates() {
       const r = document.getElementById('dateRow');
       const today = new Date(); today.setHours(0, 0, 0, 0);
-      const DAY_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+      let DAY_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+      if(curLang === 'en') DAY_AR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      if(curLang === 'fr') DAY_AR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
       let html = '';
 
       const allowSameDay = clinicSets.sameDayBooking !== false;
@@ -2198,12 +2374,12 @@
         const dn = DAY_AR[d.getDay()];
         const isToday = (startOff + i) === 0;
         html += `<div class="d-chip" id="dc-${ds}" onclick="pickDate('${ds}',this)">
-      <div class="d-day">${isToday ? 'اليوم' : dn}</div>
+      <div class="d-day">${isToday ? T('today') : dn}</div>
       <div class="d-num">${d.getDate()}</div>
     </div>`;
       }
       r.innerHTML = html;
-      document.getElementById('timeGrid').innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:0.82rem;padding:12px">اختر تاريخاً أولاً</div>`;
+      document.getElementById('timeGrid').innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:0.82rem;padding:12px">${T('selectDateFirst')}</div>`;
     }
 
     async function pickDate(ds, el) {
@@ -2251,7 +2427,11 @@
         slots.push(`${hh}:${mm}`);
         cur += sm;
       }
-      if (!slots.length) { tg.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:0.82rem;padding:12px">لا توجد أوقات متاحة</div>`; return; }
+      if (!slots.length) { 
+        const noTimes = curLang === 'ar' ? 'لا توجد أوقات متاحة' : (curLang === 'fr' ? 'Aucun créneau disponible' : 'No available times');
+        tg.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:0.82rem;padding:12px">${noTimes}</div>`; 
+        return; 
+      }
 
       tg.innerHTML = slots.map(t => {
         const [th, tm] = t.split(':').map(Number); const tMins = th * 60 + tm;
@@ -2259,8 +2439,9 @@
         const isPast = isToday && tMins <= nowMins;
         const cls = isBooked ? 'bkd' : isPast ? 'past' : '';
         const clickable = !isBooked && !isPast;
+        const bookedLbl = curLang === 'ar' ? 'محجوز' : (curLang === 'fr' ? 'Réservé' : 'Booked');
         return `<div class="t-chip ${cls}" id="tc-${t}" ${clickable ? `onclick="pickTime('${t}',this)"` : ''}>
-      ${t}${isBooked ? '<br><small>محجوز</small>' : ''}
+      ${t}${isBooked ? `<br><small>${bookedLbl}</small>` : ''}
     </div>`;
       }).join('');
     }
@@ -2324,19 +2505,19 @@
     function sendBooking() {
       if (sending) return;
       if (!checkRateLimit()) {
-        toast('⚠️ تجاوزت الحد المسموح من الحجوزات. انتظر ساعة ثم حاول مجدداً.', 'err');
+        toast(T('errLimit'), 'err');
         return;
       }
-      if (clinicSets && clinicSets.status !== 'open') { toast('⛔ استقبال الحجوزات متوقف حالياً', 'err'); return; }
-      if (!selDoc || !selDate || !selTime) { toast('⚠️ يرجى اختيار الطبيب والموعد', 'err'); return; }
+      if (clinicSets && clinicSets.status !== 'open') { toast(T('errClosed'), 'err'); return; }
+      if (!selDoc || !selDate || !selTime) { toast(T('errSelectDT'), 'err'); return; }
 
       const name = sanitize(document.getElementById('pName').value);
       const phone = sanitize(toEngNum(document.getElementById('pPhone').value));
-      if (!isName(name) || !isPhone(phone)) { toast('⚠️ تحقق من البيانات', 'err'); return; }
+      if (!isName(name) || !isPhone(phone)) { toast(T('errData'), 'err'); return; }
 
       sending = true;
       const btn = document.getElementById('sendBtn');
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحقق...';
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ...';
       btn.disabled = true;
 
       // ══════════════════════════════════════════════════════════
@@ -2355,16 +2536,16 @@
       }).then(result => {
         if (!result.committed) {
           // ✋ Someone else booked this slot a split second before us
-          toast('⚠️ عذراً! تم حجز هذا الموعد للتو. الرجاء اختيار موعد آخر.', 'err');
+          toast(T('errSlot'), 'err');
           sending = false;
-          btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
+          btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> ' + T('btnConfirm');
           btn.disabled = false;
           // Refresh slots so the taken slot shows as booked
           buildTimes(selDate);
           return Promise.reject('SLOT_TAKEN');
         }
 
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحجز...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ...';
 
         // ══════════════════════════════════════════════════════
         // STEP 2: Get unique daily booking number (atomic)
@@ -2401,11 +2582,15 @@
       }).then(({ ref, bno, booking }) => {
         currentKey = ref.key;
         document.getElementById('sno').textContent = bno;
+        const dL = curLang === 'ar' ? 'الطبيب' : (curLang === 'fr' ? 'Médecin' : 'Doctor');
+        const dtL = curLang === 'ar' ? 'التاريخ' : (curLang === 'fr' ? 'Date' : 'Date');
+        const tL = curLang === 'ar' ? 'الوقت' : (curLang === 'fr' ? 'Heure' : 'Time');
+        const fL = curLang === 'ar' ? 'الرسوم' : (curLang === 'fr' ? 'Frais' : 'Fee');
         document.getElementById('sinfo').innerHTML = `
-          <div class="sinfo-row"><span class="lbl">👨‍⚕️ الطبيب</span><span style="font-weight:800">د. ${sanitize(selDoc.name)}</span></div>
-          <div class="sinfo-row"><span class="lbl">📅 التاريخ</span><span style="font-weight:800">${selDate}</span></div>
-          <div class="sinfo-row"><span class="lbl">🕐 الوقت</span><span style="font-weight:800">${selTime}</span></div>
-          <div class="sinfo-row"><span class="lbl">💰 الرسوم</span><span>${booking.fee} د.أ</span></div>`;
+          <div class="sinfo-row"><span class="lbl">👨‍⚕️ ${dL}</span><span style="font-weight:800">د. ${sanitize(selDoc.name)}</span></div>
+          <div class="sinfo-row"><span class="lbl">📅 ${dtL}</span><span style="font-weight:800">${selDate}</span></div>
+          <div class="sinfo-row"><span class="lbl">🕐 ${tL}</span><span style="font-weight:800">${selTime}</span></div>
+          <div class="sinfo-row"><span class="lbl">💰 ${fL}</span><span>${booking.fee}</span></div>`;
         startTracking(ref.key);
         saveLocal(ref.key, bno);
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#0d9488', '#0ea5e9', '#ffffff'] });
@@ -2424,9 +2609,9 @@
         // so the slot doesn't stay locked forever
         // ════════════════════════════════════════════
         slotRef.remove().catch(() => {});
-        toast('❌ حدث خطأ: ' + (err.message || err), 'err');
+        toast('❌ Error: ' + (err.message || err), 'err');
         sending = false;
-        btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> تأكيد الحجز';
+        btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> ' + T('btnConfirm');
         btn.disabled = false;
       });
     }
@@ -2435,7 +2620,7 @@
     function startTracking(key) {
       if (trkListener && currentKey) db.ref(BASE + '/bookings/' + currentKey).off('value', trkListener);
       const statusMap = { new: 0, confirmed: 1, waiting: 2, done: 3, completed: 3 };
-      const labelMap = { new: 'وصل الطلب ✓', confirmed: 'تم التأكيد ✓', waiting: 'بالانتظار 🕐', done: 'مكتمل 🎉', completed: 'مكتمل 🎉', cancelled: 'ملغي ❌' };
+      const labelMap = { new: T('statusNew'), confirmed: T('statusConf'), waiting: T('statusWait'), done: T('statusDone'), completed: T('statusDone'), cancelled: T('statusCancel') };
       trkListener = db.ref(BASE + '/bookings/' + key).on('value', snap => {
         const v = snap.val();
         if (!v) { // moved to completed
@@ -2453,7 +2638,7 @@
       function updateTrack(st) {
         const idx = statusMap[st] || 0;
         document.getElementById('trkProg').style.width = (idx / 3 * 100) + '%';
-        document.getElementById('trkTxt').textContent = labelMap[st] || 'قيد المعالجة';
+        document.getElementById('trkTxt').textContent = labelMap[st] || '...';
         [0, 1, 2, 3].forEach(i => {
           const el = document.getElementById('ts' + i);
           el.classList.toggle('on', i <= idx);
