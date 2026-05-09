@@ -1953,7 +1953,12 @@
         const waLink  = waPhone ? `https://wa.me/${waPhone}` : null;
         ls.innerHTML = `
           <div style="max-width:440px;margin:auto;text-align:center;padding:20px">
-            <div style="font-size:5rem;margin-bottom:18px">🏥</div>
+            <div style="margin-bottom:18px">
+              ${s.logoUrl
+                ? `<img src="${s.logoUrl}" alt="logo" style="width:100px;height:100px;object-fit:contain;border-radius:20px;box-shadow:0 8px 30px rgba(0,0,0,0.4)">`
+                : `<div style="font-size:5rem">${s.emoji || '🏥'}</div>`
+              }
+            </div>
             <div style="font-size:1.9rem;font-weight:900;margin-bottom:10px;color:#fff">${sanitize(s.name || 'العيادة')}</div>
             <div style="width:60px;height:3px;background:var(--teal);border-radius:3px;margin:0 auto 24px"></div>
             <div style="font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:12px">⛔ تم إيقاف الحجز مؤقتاً</div>
