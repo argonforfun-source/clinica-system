@@ -671,34 +671,132 @@ function ring() {
 
 function renderLive(keys) {
   const g = document.getElementById('liveGrid');
-  if (!keys.length) { g.innerHTML=`<div class="empty-g"><i class="fas fa-calendar-check"></i><p>لا توجد حجوزات نشطة حالياً</p></div>`; return; }
-  const stMap={new:'جديد 🔔',confirmed:'مؤكد ✅',waiting:'بالانتظار ⏳'};
-  const stColor={new:'var(--amber)',confirmed:'var(--green)',waiting:'var(--sky)'};
-  g.innerHTML = keys.sort((a,b)=>(_bks[b].createdAt||'')<(_bks[a].createdAt||'')?1:-1).map(k=>{
-    const b=_bks[k];
-    return `<div class="bc">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <span class="bno" dir="ltr">${b.bookNo||'#----'}</span>
-        <span style="font-size:.72rem;font-weight:700;color:${stColor[b.status||'new']}">${stMap[b.status||'new']}</span>
-      </div>
-      <div class="bname">${sanitize(b.patName)}</div>
-      <div class="binfo">📞 ${sanitize(b.patPhone)}</div>
-      <div class="binfo">👨‍⚕️ د. ${sanitize(b.docName)} · ${sanitize(b.docSpec||'')}</div>
-      <div class="binfo" style="font-family:'IBM Plex Mono',monospace">📅 ${b.date} 🕐 ${b.time}</div>
-      ${b.patAge?`<div class="binfo">العمر: ${b.patAge} | ${b.patGender||'—'}</div>`:''}
-      ${b.notes?`<div class="bnote">📝 ${sanitize(b.notes)}</div>`:''}
-      <div class="bfooter">
-        <span class="bprice">${b.fee||'0.00'} <small>د.أ</small></span>
-        <div class="acts">
-          ${b.status==='new'?`<button class="ab a-ok" onclick="updSt('${k}','confirmed')">تأكيد</button>`:''}
-          ${b.status==='confirmed'?`<button class="ab a-wait" onclick="updSt('${k}','waiting')">انتظار</button>`:''}
-          ${b.status==='waiting'?`<button class="ab a-done" onclick="cmpBook('${k}')">إنهاء</button>`:''}
-          ${b.status!=='cancelled'?`<button class="ab a-cancel" onclick="updSt('${k}','cancelled')">إلغاء</button>`:''}
-          ${b.patPhone?`<button class="ab a-wa" onclick="sendWA('${sanitize(b.patPhone)}','${b.status||'new'}','${b.bookNo}','${sanitize(b.patName)}')"><i class="fab fa-whatsapp"></i></button>`:''}
+  if (!keys.length) {
+    g.innerHTML = `<div class="empty-g"><i class="fas fa-calendar-check"></i><p>لا توجد حجوزات نشطة حالياً</p></div>`;
+    return;
+  }
+
+  const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+  const DAY_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+  const stMap   = { new:'جديد',      confirmed:'مؤكد ✅',   waiting:'بالانتظار ⏳' };
+  const stColor = { new:'var(--amber)', confirmed:'var(--green)', waiting:'var(--sky)' };
+  const stBg    = { new:'rgba(245,158,11,.12)', confirmed:'rgba(16,185,129,.12)', waiting:'rgba(14,165,233,.12)' };
+
+  // ── Group bookings by date ──
+  const groups = {};
+  keys.forEach(k => {
+    const b = _bks[k];
+    const d = b.date || 'unknown';
+    if (!groups[d]) groups[d] = [];
+    groups[d].push(k);
+  });
+
+  // ── Sort: today first, then ascending by date ──
+  const sortedDates = Object.keys(groups).sort((a, b) => {
+    if (a === todayStr) return -1;
+    if (b === todayStr) return 1;
+    return a < b ? -1 : 1;
+  });
+
+  let html = '';
+
+  sortedDates.forEach(date => {
+    const isToday = date === todayStr;
+    const dateKeys = groups[date].sort((a, b) => {
+      // Sort within day: by time ascending
+      return (_bks[a].time || '') < (_bks[b].time || '') ? -1 : 1;
+    });
+
+    // ── Date header ──
+    let dateLabel = '';
+    if (isToday) {
+      dateLabel = `<div style="
+        display:flex;align-items:center;gap:10px;
+        margin:0 0 14px 0;padding:10px 16px;
+        background:linear-gradient(135deg,rgba(13,148,136,.15),rgba(14,165,233,.08));
+        border:1px solid rgba(13,148,136,.3);
+        border-radius:12px;
+        ">
+        <div style="width:10px;height:10px;background:var(--green);border-radius:50%;box-shadow:0 0 8px var(--green);animation:pulseAnim 1.5s infinite"></div>
+        <span style="font-weight:900;font-size:1rem;color:var(--green)">حجوزات اليوم</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--muted);margin-right:auto">${date}</span>
+        <span style="background:var(--green);color:#fff;font-size:.7rem;font-weight:800;padding:3px 10px;border-radius:20px">${dateKeys.length} حجز</span>
+      </div>`;
+    } else {
+      const d = new Date(date + 'T12:00:00');
+      const dayName = DAY_AR[d.getDay()];
+      const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+      const isNext = date === tomorrow.toLocaleDateString('en-CA');
+      dateLabel = `<div style="
+        display:flex;align-items:center;gap:10px;
+        margin:24px 0 14px 0;padding:10px 16px;
+        background:var(--surf);
+        border:1px solid var(--border);
+        border-radius:12px;
+        ">
+        <i class="fas fa-calendar-day" style="color:var(--sky);font-size:.85rem"></i>
+        <span style="font-weight:800;font-size:.95rem;color:var(--text)">${isNext ? 'غداً — ' : ''}${dayName}</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--muted);margin-right:auto">${date}</span>
+        <span style="background:var(--surf);border:1px solid var(--border);color:var(--muted);font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px">${dateKeys.length} حجز</span>
+      </div>`;
+    }
+
+    html += `<div style="margin-bottom:8px">${dateLabel}</div>`;
+    html += `<div class="bg" style="margin-bottom:4px">`;
+
+    dateKeys.forEach(k => {
+      const b = _bks[k];
+      const st = b.status || 'new';
+      const borderLeft = isToday
+        ? (st === 'new' ? 'var(--amber)' : st === 'confirmed' ? 'var(--green)' : 'var(--sky)')
+        : 'var(--border)';
+
+      // Unique visual ID: date-scoped booking number
+      const dateTag = isToday ? `<span style="
+          font-size:.6rem;font-weight:700;color:var(--green);
+          background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);
+          padding:1px 6px;border-radius:6px;margin-right:5px
+        ">اليوم</span>` : `<span style="
+          font-size:.6rem;font-weight:700;color:var(--muted);
+          background:var(--surf);border:1px solid var(--border);
+          padding:1px 6px;border-radius:6px;margin-right:5px;
+          font-family:'IBM Plex Mono',monospace
+        ">${date.slice(5)}</span>`;
+
+      html += `<div class="bc${st === 'cancelled' ? ' cancel' : ''}" style="border-right-color:${borderLeft}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:6px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+            ${dateTag}
+            <span class="bno" dir="ltr">${b.bookNo || '#----'}</span>
+          </div>
+          <span style="font-size:.72rem;font-weight:800;color:${stColor[st]};background:${stBg[st]};padding:3px 10px;border-radius:20px">${stMap[st] || st}</span>
         </div>
-      </div>
-    </div>`;
-  }).join('');
+        <div class="bname">${sanitize(b.patName)}</div>
+        <div class="binfo">📞 ${sanitize(b.patPhone)}</div>
+        <div class="binfo">👨‍⚕️ د. ${sanitize(b.docName)} · <span style="color:var(--teal)">${sanitize(b.docSpec || '')}</span></div>
+        <div class="binfo" style="display:flex;align-items:center;gap:10px">
+          <span style="font-family:'IBM Plex Mono',monospace;background:var(--surf);border:1px solid var(--border);padding:2px 8px;border-radius:7px;font-size:.78rem">🕐 ${b.time || '—'}</span>
+          ${b.patAge ? `<span style="font-size:.75rem;color:var(--muted)">${b.patAge} سنة · ${b.patGender || '—'}</span>` : ''}
+        </div>
+        ${b.notes ? `<div class="bnote">📝 ${sanitize(b.notes)}</div>` : ''}
+        <div class="bfooter">
+          <span class="bprice">${b.fee || '0.00'} <small>د.أ</small></span>
+          <div class="acts">
+            ${st === 'new' ? `<button class="ab a-ok" onclick="updSt('${k}','confirmed')"><i class="fas fa-check"></i> تأكيد</button>` : ''}
+            ${st === 'confirmed' ? `<button class="ab a-wait" onclick="updSt('${k}','waiting')"><i class="fas fa-clock"></i> انتظار</button>` : ''}
+            ${st === 'waiting' ? `<button class="ab a-done" onclick="cmpBook('${k}')"><i class="fas fa-flag-checkered"></i> إنهاء</button>` : ''}
+            ${st !== 'cancelled' ? `<button class="ab a-cancel" onclick="updSt('${k}','cancelled')"><i class="fas fa-times"></i> إلغاء</button>` : ''}
+            ${b.patPhone ? `<button class="ab a-wa" onclick="sendWA('${sanitize(b.patPhone)}','${st}','${b.bookNo}','${sanitize(b.patName)}')"><i class="fab fa-whatsapp"></i></button>` : ''}
+          </div>
+        </div>
+      </div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  g.innerHTML = html;
 }
 
 // ── COMPLETED LISTENER ──
