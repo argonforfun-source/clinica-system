@@ -162,20 +162,48 @@
     th{color:var(--muted);font-weight:700;font-size:.72rem;text-transform:uppercase}
     tbody tr:hover{background:rgba(255,255,255,.01)}
     
-    /* ── PRINTING ── */
+    /* ── PRINTING (Ultra Professional) ── */
     @media print {
-      body{background:#fff;color:#000;height:auto;overflow:auto;}
-      .topbar, .sidebar, #connBar, .acts, .addpanel, .setp, .tbtn, .tbadge{display:none !important;}
-      .layout{display:block;height:auto;}
-      .main{padding:0;}
-      .scard{border-color:#ccc;color:#000;}
-      .sci{background:none !important;color:#000 !important;}
-      .sv, .slb, .sh{color:#000 !important;}
-      .bc{page-break-inside:avoid;border:1px solid #ccc;color:#000;}
-      .bfooter{border-top:1px dashed #ccc;padding-top:5px;}
-      .bname{color:#000;}
-      *{box-shadow:none !important;animation:none !important;transition:none !important;}
+      @page { size: A4; margin: 15mm; }
+      body { background: #fff !important; color: #000 !important; height: auto !important; overflow: visible !important; font-size: 10pt; }
+      .topbar, .sidebar, #connBar, .acts, .addpanel, .setp, .tbtn, .tbadge, #toast, .ab, #dashLogin { display: none !important; }
+      .layout { display: block !important; height: auto !important; }
+      .main { padding: 0 !important; overflow: visible !important; width: 100% !important; }
+      .sec { display: none !important; opacity: 1 !important; transform: none !important; }
+      .sec.on, .sec.print-all { display: block !important; }
+      
+      /* Report Header */
+      .print-header { display: flex !important; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 25px; }
+      .ph-info { text-align: right; }
+      .ph-title { font-size: 1.8rem; font-weight: 900; color: #000; margin-bottom: 4px; }
+      .ph-sub { font-size: 0.9rem; color: #444; }
+      .ph-logo { width: 80px; height: 80px; object-fit: contain; }
+
+      /* Stats in Print */
+      .sgrid { grid-template-columns: repeat(4, 1fr) !important; gap: 10px !important; border: 1px solid #eee; padding: 10px; border-radius: 8px; margin-bottom: 20px !important; }
+      .scard { border: none !important; border-right: 1px solid #eee !important; border-radius: 0 !important; padding: 5px !important; box-shadow: none !important; }
+      .scard:last-child { border-right: none !important; }
+      .scard::after { display: none !important; }
+      .slb { font-size: 8pt !important; color: #555 !important; }
+      .sv { font-size: 14pt !important; color: #000 !important; }
+      .sci { display: none !important; }
+
+      /* Table in Print */
+      table { width: 100% !important; border: 1px solid #000 !important; font-size: 9pt !important; }
+      th { background: #f0f0f0 !important; color: #000 !important; border: 1px solid #000 !important; padding: 8px !important; }
+      td { border: 1px solid #000 !important; padding: 8px !important; color: #000 !important; }
+      
+      /* Section Titles */
+      .ph { border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 20px; }
+      .pt { font-size: 1.2rem !important; color: #000 !important; }
+      .ps { display: none !important; }
+
+      .htw { overflow: visible !important; }
+      .bc { page-break-inside: avoid; border: 1px solid #ccc !important; margin-bottom: 10px !important; }
+      
+      .print-footer { display: block !important; position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 8pt; border-top: 1px solid #eee; padding-top: 5px; color: #888; }
     }
+    .print-header, .print-footer { display: none; }
 
     /* ── TOAST ── */
     #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--surf);border:1px solid rgba(13,148,136,.3);color:var(--teal);padding:10px 20px;border-radius:12px;font-size:.85rem;font-weight:600;opacity:0;transition:.3s;z-index:9999;pointer-events:none;max-width:90vw;text-align:center}
@@ -262,6 +290,17 @@
 </div>
 
 <!-- LAYOUT -->
+<div id="printArea">
+  <div class="print-header">
+    <div id="phLogoCont" class="ph-logo"></div>
+    <div class="ph-info">
+      <div id="phName" class="ph-title">اسم العيادة</div>
+      <div id="phMeta" class="ph-sub">تقرير دوري للحجوزات والعمليات</div>
+    </div>
+  </div>
+  <div class="print-footer">تقرير صادر عن نظام أرغون لإدارة العيادات - تاريخ الطباعة: <span id="printDate"></span></div>
+</div>
+
 <div class="layout">
   <div class="sidebar">
     <div style="padding:0 8px">
@@ -482,7 +521,7 @@ if (uP.get('id')) localStorage.setItem('argon_id', CID);
 const BASE = 'clinics/' + CID;
 
 let _pass = '1122', _logins = 0, _lockUntil = 0;
-let _bks = {}, _cmp = {}, _docs = {}, isConn = true;
+let _bks = {}, _cmp = {}, _docs = {}, _sets = {}, isConn = true;
 let prevCount = 0, firstLoad = true, audioCtx = null, _anonUid = null;
 
 // ── AUTH & PRESENCE ──
@@ -574,6 +613,7 @@ function onColor(c) {
 // ── SETTINGS LISTENER ──
 db.ref(BASE+'/settings').on('value', snap => {
   const s = snap.val()||{};
+  _sets = s;
   
   // Only 'suspended' locks the dashboard (Super Admin only)
   if (s.status === 'suspended') {
@@ -1054,12 +1094,23 @@ function sw(id,el){
 function openPreview(){document.getElementById('prevFrame').src=`index.html?id=${CID}`;document.getElementById('prevModal').style.display='flex';}
 function closePrev(){document.getElementById('prevModal').style.display='none';document.getElementById('prevFrame').src='';}
 function printReport() {
-  document.querySelectorAll('.sec').forEach(s=>s.classList.add('on'));
+  const s = _sets || {};
+  document.getElementById('phName').textContent = s.name || 'العيادة';
+  if(s.logoUrl) {
+    document.getElementById('phLogoCont').innerHTML = `<img src="${s.logoUrl}" style="width:100%;height:100%;object-fit:contain">`;
+  } else {
+    document.getElementById('phLogoCont').innerHTML = `<span style="font-size:3rem">${s.emoji || '🏥'}</span>`;
+  }
+  document.getElementById('printDate').textContent = new Date().toLocaleString('ar-JO');
+  
+  // Show stats and history for printing
+  document.getElementById('stats').classList.add('print-all');
+  document.getElementById('hist').classList.add('print-all');
+  
   window.print();
-  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
-  const activeID = document.querySelector('.ni.on') ? 
-    document.querySelector('.ni.on').getAttribute('onclick').match(/'([^']+)'/)[1] : 'stats';
-  document.getElementById(activeID).classList.add('on');
+  
+  document.getElementById('stats').classList.remove('print-all');
+  document.getElementById('hist').classList.remove('print-all');
 }
 
 function upLogo(inp) {
