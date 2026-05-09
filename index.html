@@ -2005,18 +2005,41 @@
       ls.classList.remove('show');
       mc.style.display = 'block';
 
-      if (s.status === 'open' && s.clinicStart && s.clinicEnd) {
+      if (s.status === 'open' && !s.is24Hours && s.clinicStart && s.clinicEnd) {
         const now = new Date();
         const curTime = now.getHours() * 60 + now.getMinutes();
         const [sh, sm] = s.clinicStart.split(':').map(Number);
         const [eh, em] = s.clinicEnd.split(':').map(Number);
         const stTime = sh * 60 + sm;
         const enTime = eh * 60 + em;
-        if (curTime < stTime || curTime >= enTime) {
+        
+        let isOutside = false;
+        if (stTime < enTime) {
+          // Normal day shift (e.g., 08:00 to 17:00)
+          if (curTime < stTime || curTime >= enTime) isOutside = true;
+        } else if (stTime > enTime) {
+          // Overnight shift (e.g., 18:00 to 02:00)
+          // Outside if current time is between end and start
+          if (curTime >= enTime && curTime < stTime) isOutside = true;
+        } else {
+          // stTime == enTime (24 hours fallback, but handled by is24Hours anyway)
+          isOutside = false;
+        }
+
+        if (isOutside) {
           const ls = document.getElementById('lockScreen');
+          // Format times for display (AM/PM)
+          const formatAMPM = (mins) => {
+            let h = Math.floor(mins / 60);
+            let m = mins % 60;
+            const ampm = h >= 12 ? 'مساءً' : 'صباحاً';
+            h = h % 12; h = h ? h : 12;
+            return `${h}:${m.toString().padStart(2, '0')} ${ampm}`;
+          };
+          
           ls.innerHTML = `<div class="ls-icon" style="font-size:4.5rem;margin-bottom:10px">🌙</div>
                       <div class="ls-title" style="font-size:2rem;font-weight:900;margin-bottom:12px">خارج أوقات الدوام</div>
-                      <div class="ls-sub" style="color:rgba(255,255,255,0.6);margin-bottom:30px;line-height:1.7">أوقات استقبال الحجوزات الرسمية للعيادة تبدأ من الساعة <b style="color:var(--teal)">${s.clinicStart}</b> وحتى <b style="color:var(--teal)">${s.clinicEnd}</b>.<br>نستقبل حجوزاتكم خلال هذه الأوقات فقط.</div>
+                      <div class="ls-sub" style="color:rgba(255,255,255,0.6);margin-bottom:30px;line-height:1.7">أوقات استقبال الحجوزات الرسمية للعيادة تبدأ من الساعة <b style="color:var(--teal)">${formatAMPM(stTime)}</b> وحتى <b style="color:var(--teal)">${formatAMPM(enTime)}</b>.<br>نستقبل حجوزاتكم خلال هذه الأوقات فقط.</div>
                       <button onclick="openMyBookings(); document.getElementById('lockScreen').classList.remove('show');" style="background:var(--teal);color:#fff;border:none;padding:14px 30px;border-radius:16px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 8px 24px rgba(13,148,136,0.3);"><i class="fas fa-calendar-check" style="margin-left:6px"></i>مراجعة حجوزاتي السابقة</button>
                       <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.3);letter-spacing:4px;margin-top:40px">POWERED BY ARGON SYSTEM</div>`;
           ls.classList.add('show');
