@@ -1415,6 +1415,34 @@
       background: rgba(239, 68, 68, 0.92)
     }
 
+    /* ── ERROR MODAL (Critical Errors) ── */
+    #errModal {
+      position: fixed; inset: 0; z-index: 99999;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(12px);
+      display: none; justify-content: center; align-items: center;
+      padding: 20px;
+    }
+    #errModal.show { display: flex; animation: fadeIn .25s ease; }
+    .err-box {
+      background: #0f172a;
+      border: 1px solid rgba(239,68,68,0.35);
+      border-radius: 20px;
+      padding: 32px 28px;
+      max-width: 360px; width: 100%;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(239,68,68,0.2);
+    }
+    .err-icon { font-size: 3rem; margin-bottom: 14px; }
+    .err-title { font-size: 1.15rem; font-weight: 900; color: #fff; margin-bottom: 10px; }
+    .err-body  { font-size: 0.92rem; color: rgba(255,255,255,0.65); line-height: 1.8; margin-bottom: 24px; }
+    .err-close {
+      background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.35);
+      color: #f87171; border-radius: 12px; padding: 11px 30px;
+      font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 0.95rem;
+      cursor: pointer; width: 100%; transition: .2s;
+    }
+    .err-close:hover { background: rgba(239,68,68,0.3); }
+
     /* ── FOOTER ── */
     .foot {
       padding: 40px 0 20px;
@@ -1520,6 +1548,16 @@
 
   <!-- TOAST -->
   <div id="toastWrap"></div>
+
+  <!-- ERROR MODAL -->
+  <div id="errModal">
+    <div class="err-box">
+      <div class="err-icon" id="errIcon">⚠️</div>
+      <div class="err-title" id="errTitle">تنبيه</div>
+      <div class="err-body"  id="errBody">حدث خطأ غير متوقع.</div>
+      <button class="err-close" onclick="document.getElementById('errModal').classList.remove('show')">حسناً، فهمت</button>
+    </div>
+  </div>
 
   <!-- INSTALL BANNER (PWA) -->
   <div id="installBanner">
@@ -1909,12 +1947,36 @@
       const ls = document.getElementById('lockScreen');
       const mc = document.getElementById('mainContent');
 
-      // Only 'suspended' (from Super Admin) shows the full Shield lock
+      // Suspended by Super Admin → Patient sees professional clinic stop screen
       if (s.status === 'suspended') {
-        ls.innerHTML = `<div class="ls-icon"><i class="fas fa-shield-alt"></i></div>
-                    <div class="ls-title">تم إيقاف حساب العيادة</div>
-                    <div class="ls-sub">نعتذر، تم إيقاف هذه العيادة من قِبل إدارة شركة أرغون.<br>يرجى التواصل مع الدعم الفني لتفعيل الحساب.</div>
-                    <a href="https://argonforfun.com" target="_blank" class="ls-btn">زيارة موقع الشركة: argonforfun.com</a>`;
+        const waPhone = (s.phone || '').replace(/\D/g, '');
+        const waLink  = waPhone ? `https://wa.me/${waPhone}` : null;
+        ls.innerHTML = `
+          <div style="max-width:440px;margin:auto;text-align:center;padding:20px">
+            <div style="font-size:5rem;margin-bottom:18px">🏥</div>
+            <div style="font-size:1.9rem;font-weight:900;margin-bottom:10px;color:#fff">${sanitize(s.name || 'العيادة')}</div>
+            <div style="width:60px;height:3px;background:var(--teal);border-radius:3px;margin:0 auto 24px"></div>
+            <div style="font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:12px">⛔ تم إيقاف الحجز مؤقتاً</div>
+            <div style="color:rgba(255,255,255,0.65);line-height:1.9;font-size:0.95rem;margin-bottom:32px">
+              نعتذر منكم، خدمة الحجز الإلكتروني متوقفة مؤقتاً.<br>
+              للاستفسار أو الحجز المباشر، يرجى التواصل معنا عبر واتساب.
+            </div>
+            ${waLink ? `
+            <a href="${waLink}" target="_blank" style="
+              display:inline-flex;align-items:center;gap:10px;
+              background:#25d366;color:#fff;
+              padding:15px 32px;border-radius:16px;
+              font-size:1.05rem;font-weight:800;
+              text-decoration:none;
+              box-shadow:0 8px 28px rgba(37,211,102,0.35);
+              margin-bottom:14px;
+            ">
+              <i class="fab fa-whatsapp" style="font-size:1.3rem"></i>
+              تواصل معنا عبر واتساب
+            </a><br>
+            <div style="color:rgba(255,255,255,0.4);font-size:0.8rem;margin-top:8px;font-family:'IBM Plex Mono',monospace">${s.phone}</div>
+            ` : '<div style="color:rgba(255,255,255,0.5);font-size:0.9rem">راجع وسائل التواصل الخاصة بالعيادة</div>'}
+          </div>`;
         ls.classList.add('show');
         mc.style.display = 'none';
         return;
@@ -2564,13 +2626,38 @@
     const savedTheme = localStorage.getItem('clinica_theme');
     if (savedTheme) { document.body.setAttribute('data-theme', savedTheme); document.getElementById('themeBtn').textContent = savedTheme === 'dark' ? '☀️' : '🌙'; }
 
-    // ── TOAST ──
+    // ── TOAST / ERROR MODAL ──
+    // Critical errors (rate limit, slot taken, closed) → full modal
+    // Info/success → small toast pill
+    const CRITICAL_CODES = ['RATE', 'SLOT', 'STOP', 'ERR'];
+    function showErrModal(icon, title, body) {
+      document.getElementById('errIcon').textContent  = icon;
+      document.getElementById('errTitle').textContent = title;
+      document.getElementById('errBody').textContent  = body;
+      document.getElementById('errModal').classList.add('show');
+    }
     function toast(msg, type = '') {
+      // Route critical errors to the full modal
+      if (type === 'err') {
+        if (msg.includes('تجاوزت الحد')) {
+          showErrModal('🚫', 'تجاوزت عدد الحجوزات المسموح بها', 'لقد وصلت للحد الأقصى المسموح به (5 حجوزات في الساعة).\nيرجى الانتظار قليلاً ثم المحاولة مجدداً.');
+          return;
+        }
+        if (msg.includes('تم حجز هذا الموعد للتو')) {
+          showErrModal('⏱️', 'الموعد محجوز للتو!', 'قام شخص آخر بحجز هذا الموعد في نفس اللحظة.\nيرجى اختيار موعد آخر من القائمة المتاحة.');
+          return;
+        }
+        if (msg.includes('متوقف')) {
+          showErrModal('⛔', 'الحجز متوقف حالياً', 'استقبال الحجوزات الإلكترونية متوقف مؤقتاً.\nيرجى المحاولة لاحقاً أو التواصل مع العيادة مباشرة.');
+          return;
+        }
+      }
+      // Default: small pill toast
       const w = document.getElementById('toastWrap');
       const t = document.createElement('div');
       t.className = 'toast' + (type ? ' ' + type : ''); t.textContent = msg; w.appendChild(t);
       setTimeout(() => t.classList.add('show'), 10);
-      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3000);
+      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3500);
     }
 
     // ── PWA INSTALL ──
