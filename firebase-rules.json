@@ -38,6 +38,14 @@
         "completedBookings": {
           ".read": "auth != null && auth.uid === $clinicId",
           ".write": "auth != null && auth.uid === $clinicId"
+        },
+        "patients": {
+          ".read": "auth != null && auth.uid === $clinicId",
+          ".write": "auth != null && auth.uid === $clinicId"
+        },
+        "invoices": {
+          ".read": "auth != null && auth.uid === $clinicId",
+          ".write": "auth != null && auth.uid === $clinicId"
         }
       }
     },

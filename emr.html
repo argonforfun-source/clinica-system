@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#030b0a">
+  <link rel="icon" type="image/png" href="icons/favicon.png">
+  <title>ARGON | السجلات الطبية</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="emr-styles.css">
+</head>
+<body data-theme="dark">
+
+<!-- LOGIN -->
+<div id="emrLogin">
+  <div class="lcard">
+    <span class="ic">🏥</span>
+    <h2>السجلات الطبية</h2>
+    <p id="lClinicName">جاري التحقق...</p>
+    <input type="password" id="lPass" class="linp" placeholder="كلمة المرور" onkeyup="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()" class="lbtn">دخول</button>
+    <div class="lerr" id="lErr">كلمة المرور غير صحيحة ❌</div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="tlogo" id="tlogo">ARGON EMR</span>
+    <span style="width:1px;height:20px;background:var(--border)"></span>
+    <span id="topName" style="font-size:.9rem;font-weight:700">...</span>
+  </div>
+  <div class="tr">
+    <button class="tbtn" onclick="toggleTheme()" id="themeBtn"><i class="fas fa-moon"></i></button>
+    <button class="tbtn" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
+    <a class="tbtn" id="dashLink" href="dashboard.html"><i class="fas fa-arrow-right"></i> لوحة التحكم</a>
+    <button class="tbtn" onclick="location.reload()" style="color:#fca5a5"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+  <div class="sidebar">
+    <div style="padding:0 8px">
+      <div class="sl">السجلات الطبية</div>
+      <div class="ni on" onclick="sw('patList',this)"><i class="fas fa-users"></i>قائمة المرضى</div>
+      <div class="ni" onclick="sw('patFile',this)"><i class="fas fa-file-medical"></i>ملف المريض</div>
+      <div class="ni" onclick="sw('newVisit',this)"><i class="fas fa-stethoscope"></i>زيارة جديدة</div>
+    </div>
+    <div class="royal-foot">
+      <div class="argon-sig"><div style="width:40px;height:1px;background:linear-gradient(to right,transparent,var(--teal),transparent);margin-bottom:8px"></div>POWERED BY<span>ARGON EMR</span></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- PATIENT LIST SECTION -->
+    <div id="patList" class="sec on">
+      <div class="ph">
+        <div><div class="pt">👥 قائمة المرضى</div><div class="ps">جميع المرضى المسجلين في النظام</div></div>
+        <button class="btn-primary btn-sm" onclick="openNewPatient()"><i class="fas fa-user-plus"></i> مريض جديد</button>
+      </div>
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="patSearch" placeholder="ابحث بالاسم أو رقم الهاتف أو MRN..." oninput="filterPatients()">
+      </div>
+      <div id="patGrid" class="plist">
+        <div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--muted)">
+          <i class="fas fa-spinner fa-spin" style="font-size:2rem;display:block;margin-bottom:12px"></i>
+          جاري تحميل المرضى...
+        </div>
+      </div>
+    </div>
+
+    <!-- PATIENT FILE SECTION -->
+    <div id="patFile" class="sec">
+      <div id="patFileContent">
+        <div style="text-align:center;padding:80px;color:var(--muted)">
+          <i class="fas fa-file-medical" style="font-size:3rem;display:block;margin-bottom:14px;opacity:.2"></i>
+          <p>اختر مريضاً من القائمة لعرض ملفه الطبي</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEW VISIT SECTION -->
+    <div id="newVisit" class="sec">
+      <div class="ph">
+        <div><div class="pt">🩺 زيارة جديدة</div><div class="ps">تسجيل زيارة طبية جديدة</div></div>
+      </div>
+      <div id="visitFormArea">
+        <div style="text-align:center;padding:80px;color:var(--muted)">
+          <i class="fas fa-user-md" style="font-size:3rem;display:block;margin-bottom:14px;opacity:.2"></i>
+          <p>اختر مريضاً أولاً من قائمة المرضى</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NEW PATIENT MODAL -->
+<div id="newPatModal" style="position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:10000;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:22px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
+    <div style="font-size:1.1rem;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:8px;color:var(--teal)"><i class="fas fa-user-plus"></i> تسجيل مريض جديد</div>
+    <div class="fi-row" style="margin-bottom:12px">
+      <div class="fg"><label>الاسم الكامل *</label><input class="fi" id="npName" placeholder="محمد أحمد"></div>
+      <div class="fg"><label>رقم الهاتف *</label><input class="fi" id="npPhone" placeholder="07XXXXXXXX" dir="ltr"></div>
+    </div>
+    <div class="fi-row3" style="margin-bottom:12px">
+      <div class="fg"><label>العمر</label><input class="fi" id="npAge" type="number" placeholder="30"></div>
+      <div class="fg"><label>الجنس</label><select class="fi" id="npGender"><option value="">—</option><option value="ذكر">ذكر</option><option value="أنثى">أنثى</option></select></div>
+      <div class="fg"><label>فصيلة الدم</label><select class="fi" id="npBlood"><option value="">—</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div>
+    </div>
+    <div class="fg"><label>الحساسية (افصل بفاصلة)</label><input class="fi" id="npAllergies" placeholder="بنسلين، أسبرين..."></div>
+    <div class="fg"><label>الأمراض المزمنة (افصل بفاصلة)</label><input class="fi" id="npChronic" placeholder="سكري، ضغط..."></div>
+    <div class="fg"><label>ملاحظات</label><textarea class="fi" id="npNotes" rows="2" style="resize:none" placeholder="ملاحظات إضافية..."></textarea></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn-primary" style="flex:1" onclick="saveNewPatient()"><i class="fas fa-save"></i> حفظ</button>
+      <button class="btn-secondary" onclick="closeModal('newPatModal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- SCRIPTS -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+<script src="emr-app.js"></script>
+</body>
+</html>

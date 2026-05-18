@@ -318,6 +318,7 @@
         <span class="nbdg z" id="liveC">0</span>
       </div>
       <div class="ni" onclick="sw('hist',this)"><i class="fas fa-clock-rotate-left"></i>سجل الحجوزات</div>
+      <div class="ni" onclick="window.open('emr.html?id='+CID,'_blank')" style="border-right:2px dashed var(--teal);background:rgba(13,148,136,.03)"><i class="fas fa-file-medical" style="color:var(--teal)"></i>السجلات الطبية EMR <span style="margin-right:auto;font-size:0.6rem;background:var(--teal);color:#000;padding:2px 6px;border-radius:4px;font-weight:900">PRO</span></div>
       <div class="ni" onclick="sw('docs',this)"><i class="fas fa-user-md"></i>إدارة الأطباء</div>
       <div class="ni" onclick="sw('settings',this)"><i class="fas fa-gear"></i>الإعدادات</div>
     </div>
@@ -396,6 +397,9 @@
     <!-- LIVE BOOKINGS -->
     <div id="live" class="sec">
       <div class="ph"><div><div class="pt">🔔 الحجوزات الحية</div><div class="ps">يتحدث تلقائياً</div></div></div>
+      <div id="dashDeptFilterWrap" style="display:none;gap:8px;overflow-x:auto;padding:0 0 14px 0;margin:0 14px 14px 14px;border-bottom:1px solid var(--border)">
+        <!-- Dynamic department filter chips -->
+      </div>
       <div class="bg" id="liveGrid"></div>
     </div>
 
@@ -429,6 +433,11 @@
             </div>
           </div>
           <div><label class="mfl">إيموجي</label><input type="text" id="dEm" class="mfi" value="👨‍⚕️"></div>
+          <div id="docDeptWrapper" style="display:none;min-width:140px"><label class="mfl">القسم التابع له</label>
+            <select id="dDept" class="mfi" style="background:var(--surf);color:var(--text);border:1px solid var(--border);height:38px;padding:0 8px;border-radius:9px;width:100%">
+              <option value="">— عام —</option>
+            </select>
+          </div>
           <button class="badd" id="btnCancelEdit" onclick="cancelDocEdit()" style="display:none;background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)"><i class="fas fa-times" style="margin-left:4px"></i>تراجع</button>
         </div>
       </div>
@@ -441,13 +450,22 @@
       <div class="setp">
         <div class="setg"><label class="setl">اسم العيادة</label><input type="text" id="sN" class="seti"></div>
         <div class="setg"><label class="setl">رقم الواتساب</label><input type="text" id="sP" class="seti" placeholder="+962..."></div>
-        <div class="setg">
-          <label class="setl">لغة لوحة التحكم (Dashboard Language)</label>
-          <select id="sLang" class="setsel" onchange="setDashLang(this.value)">
-            <option value="ar">العربية (Arabic)</option>
-            <option value="en">English (الإنجليزية)</option>
-            <option value="fr">Français (الفرنسية)</option>
-          </select>
+        <div class="setg" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="setl">نظام التشغيل (Operational Mode) *</label>
+            <select id="sMode" class="setsel" onchange="toggleComplexView(this.value)">
+              <option value="single_clinic">عيادة منفردة (Single Clinic) 🏥</option>
+              <option value="medical_complex">مجمع طبي متكامل (Medical Complex) 🏢</option>
+            </select>
+          </div>
+          <div>
+            <label class="setl">لغة لوحة التحكم (Language)</label>
+            <select id="sLang" class="setsel" onchange="setDashLang(this.value)">
+              <option value="ar">العربية (Arabic)</option>
+              <option value="en">English (الإنجليزية)</option>
+              <option value="fr">Français (الفرنسية)</option>
+            </select>
+          </div>
         </div>
         <div class="setg" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div><label class="setl">الحالة</label>
@@ -500,6 +518,53 @@
         </div>
         <div class="setg"><label class="setl">إيموجي العيادة (بديل اللوغو)</label><input type="text" id="sEm" class="seti" placeholder="🏥"></div>
         <div class="setg"><label class="setl">كلمة المرور الجديدة</label><input type="password" id="sPw" class="seti" placeholder="اتركها فارغة للإبقاء على الحالية"></div>
+        
+        <!-- PATIENT PORTAL LINK COPIER -->
+        <div class="setg" style="margin-top:14px;border-top:1px dashed var(--border);padding-top:14px">
+          <label class="setl" style="color:var(--teal);font-weight:800"><i class="fas fa-link"></i> رابط بوابة المريض الرقمية (Patient Portal)</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="patPortalLinkUrl" class="seti" readonly style="text-align:left;direction:ltr" value="...">
+            <button class="tbtn" onclick="copyPatPortalUrl()" type="button" style="background:var(--teal);color:#fff;border:none"><i class="fas fa-copy"></i> نسخ الرابط</button>
+          </div>
+        </div>
+        
+        <!-- DEPARTMENTS PANEL -->
+        <div id="deptsPanel" style="display:none;margin:20px 0 14px 0;border-top:1px dashed var(--border);padding-top:16px">
+          <label class="setl" style="color:var(--teal);font-weight:800"><i class="fas fa-network-wired"></i> إدارة أقسام المجمع الطبي</label>
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin-bottom:12px;align-items:end">
+            <div><label class="mfl">اسم القسم *</label><input type="text" id="depN" class="mfi" placeholder="مثال: قسم الأسنان"></div>
+            <div><label class="mfl">إيموجي القسم *</label><input type="text" id="depI" class="mfi" placeholder="🦷"></div>
+            <div><label class="mfl">لون القسم</label><input type="color" id="depC" style="width:100%;height:38px;border-radius:9px;border:1px solid var(--border);cursor:pointer;padding:0;background:none" value="#0d9488"></div>
+            <button class="badd" type="button" onclick="addDept()" style="padding:9px 12px"><i class="fas fa-plus"></i></button>
+          </div>
+          <div id="deptsGrid" style="display:grid;grid-template-columns:1fr;gap:6px;max-height:220px;overflow-y:auto;background:rgba(255,255,255,0.01);border:1px solid var(--border);border-radius:10px;padding:8px">
+            <!-- Rendered Dynamically -->
+          </div>
+        </div>
+        
+        <!-- RBAC PASSWORDS PANEL -->
+        <div style="margin:20px 0 14px 0;border-top:1px dashed var(--border);padding-top:16px">
+          <label class="setl" style="color:var(--sky);font-weight:800"><i class="fas fa-user-shield"></i> كلمات مرور الطاقم الطبي وصلاحيات الوصول (RBAC)</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+            <div>
+              <label class="mfl">كلمة مرور الأطباء (EMR)</label>
+              <input type="password" id="sPassDoc" class="mfi" placeholder="الافتراضية: نفس كلمة مرور العيادة">
+            </div>
+            <div>
+              <label class="mfl">كلمة مرور الصيدلي (Pharmacy)</label>
+              <input type="password" id="sPassPhar" class="mfi" placeholder="الافتراضية: 1122">
+            </div>
+            <div>
+              <label class="mfl">كلمة مرور المختبر (Lab)</label>
+              <input type="password" id="sPassLab" class="mfi" placeholder="الافتراضية: 1122">
+            </div>
+            <div>
+              <label class="mfl">كلمة مرور الأشعة (Radiology)</label>
+              <input type="password" id="sPassRad" class="mfi" placeholder="الافتراضية: 1122">
+            </div>
+          </div>
+        </div>
+
         <button class="bsave" onclick="saveSettings()"><i class="fas fa-floppy-disk" style="margin-left:8px"></i>حفظ جميع التغييرات</button>
       </div>
     </div>
@@ -710,6 +775,129 @@ function onColor(c) {
   document.getElementById('colorHex').textContent=c;
 }
 
+// ── DEPARTMENTS AND COMPLEX MODE ENGINE ──
+let _depts = {};
+let activeDashboardDeptFilter = 'all';
+
+function toggleComplexView(mode) {
+  const isComplex = mode === 'medical_complex';
+  const dp = document.getElementById('deptsPanel');
+  if (dp) dp.style.display = isComplex ? 'block' : 'none';
+  const dw = document.getElementById('docDeptWrapper');
+  if (dw) dw.style.display = isComplex ? 'block' : 'none';
+  
+  // Render live views
+  renderDashboardDeptFilters();
+  if (typeof renderLive === 'function') {
+    const actKeys = Object.keys(_bks).filter(k=>{
+      const s=_bks[k].status;
+      return s!=='done'&&s!=='completed'&&s!=='cancelled';
+    });
+    renderLive(actKeys);
+  }
+}
+
+function renderDashboardDeptFilters() {
+  const wrap = document.getElementById('dashDeptFilterWrap');
+  if (!wrap) return;
+  if (!_sets || _sets.mode !== 'medical_complex') {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'flex';
+  const keys = Object.keys(_depts);
+  
+  let html = `
+    <button class="spec-chip ${activeDashboardDeptFilter === 'all' ? 'act' : ''}" onclick="setDashboardDeptFilter('all')" style="padding:6px 14px;border-radius:20px;font-family:inherit;font-weight:700;font-size:0.75rem;cursor:pointer;border:1.5px solid var(--border);background:var(--card)">
+      🩺 الكل
+    </button>
+  `;
+  keys.forEach(k => {
+    const d = _depts[k];
+    const actClass = activeDashboardDeptFilter === k ? 'act' : '';
+    html += `
+      <button class="spec-chip ${actClass}" onclick="setDashboardDeptFilter('${k}')" style="padding:6px 14px;border-radius:20px;font-family:inherit;font-weight:700;font-size:0.75rem;cursor:pointer;color:${d.color || 'var(--teal)'};border-color:${d.color || 'var(--teal)'};background:var(--card)">
+        <span>${d.emoji || '🏢'}</span> ${sanitize(d.name)}
+      </button>
+    `;
+  });
+  wrap.innerHTML = html;
+}
+
+function setDashboardDeptFilter(deptId) {
+  activeDashboardDeptFilter = deptId;
+  renderDashboardDeptFilters();
+  const actKeys = Object.keys(_bks).filter(k=>{
+    const s=_bks[k].status;
+    return s!=='done'&&s!=='completed'&&s!=='cancelled';
+  });
+  renderLive(actKeys);
+}
+
+db.ref(BASE+'/departments').on('value', snap => {
+  _depts = snap.val() || {};
+  renderDepts();
+  updateDocDeptDropdown();
+  renderDashboardDeptFilters();
+  if (typeof renderDocs === 'function') renderDocs();
+});
+
+function renderDepts() {
+  const dg = document.getElementById('deptsGrid');
+  if (!dg) return;
+  const keys = Object.keys(_depts);
+  if (!keys.length) {
+    dg.innerHTML = '<div style="color:var(--muted);font-size:.78rem;text-align:center;padding:12px">لا توجد أقسام مضافة بعد</div>';
+    return;
+  }
+  dg.innerHTML = keys.map(k => {
+    const d = _depts[k];
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px">
+        <span style="font-size:1.1rem">${d.emoji || '🏥'}</span>
+        <div style="flex:1;margin-right:8px">
+          <span style="font-weight:700;font-size:.85rem;color:var(--text)">${sanitize(d.name)}</span>
+          <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${d.color || '#0d9488'};vertical-align:middle;margin-right:6px"></span>
+        </div>
+        <button type="button" onclick="deleteDept('${k}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.88rem;padding:4px"><i class="fas fa-trash"></i></button>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateDocDeptDropdown() {
+  const select = document.getElementById('dDept');
+  if (!select) return;
+  const keys = Object.keys(_depts);
+  let html = '<option value="">— عام —</option>';
+  keys.forEach(k => {
+    const d = _depts[k];
+    html += `<option value="${k}">${d.emoji || '🏥'} ${sanitize(d.name)}</option>`;
+  });
+  select.innerHTML = html;
+}
+
+function addDept() {
+  const name = document.getElementById('depN').value.trim();
+  const emoji = document.getElementById('depI').value.trim() || '🏥';
+  const color = document.getElementById('depC').value || '#0d9488';
+  if (!name) { toast('⚠️ الرجاء إدخال اسم القسم', 'err'); return; }
+  
+  const deptObj = { name: sanitize(name), emoji: sanitize(emoji), color: color };
+  db.ref(BASE + '/departments').push(deptObj).then(() => {
+    toast('✅ تم إضافة القسم بنجاح', 'ok');
+    document.getElementById('depN').value = '';
+    document.getElementById('depI').value = '';
+  }).catch(() => toast('❌ فشل إضافة القسم', 'err'));
+}
+
+function deleteDept(key) {
+  if (!confirm('هل أنت متأكد من حذف هذا القسم؟ لن يتم حذف الأطباء، لكن سيتم إلغاء ربطهم بالقسم.')) return;
+  db.ref(BASE + '/departments/' + key).remove().then(() => {
+    toast('✅ تم حذف القسم', 'ok');
+  });
+}
+
 // ── SETTINGS LISTENER ──
 db.ref(BASE+'/settings').on('value', snap => {
   const s = snap.val()||{};
@@ -742,6 +930,12 @@ db.ref(BASE+'/settings').on('value', snap => {
   document.getElementById('sSameDay').value = s.sameDayBooking!==false ? 'true' : 'false';
   document.getElementById('sBookingDays').value = s.bookingDays||10;
   
+  const sMode = document.getElementById('sMode');
+  if (sMode) {
+    sMode.value = s.mode || 'single_clinic';
+    toggleComplexView(s.mode || 'single_clinic');
+  }
+  
   const is24h = !!s.is24Hours;
   document.getElementById('s24h').checked = is24h;
   document.getElementById('timeInputs').style.opacity = is24h ? '0.3' : '1';
@@ -754,6 +948,16 @@ db.ref(BASE+'/settings').on('value', snap => {
     document.getElementById('logoPrev').textContent = s.emoji || '🏥';
   }
   if(s.color){onColor(s.color);const cp=document.getElementById('sC');if(cp)cp.value=s.color;}
+  const passcodes = s.passcodes || {};
+  document.getElementById('sPassDoc').value = passcodes.doctor || '';
+  document.getElementById('sPassPhar').value = passcodes.pharmacist || '';
+  document.getElementById('sPassLab').value = passcodes.lab || '';
+  document.getElementById('sPassRad').value = passcodes.radiology || '';
+
+  const portalUrl = window.location.origin + window.location.pathname.replace('dashboard.html', 'patient.html') + '?id=' + CID;
+  const pLinkInput = document.getElementById('patPortalLinkUrl');
+  if (pLinkInput) pLinkInput.value = portalUrl;
+
   const F={sN:'name',sP:'phone',sSpec:'specialty',sEm:'emoji',sBookingDays:'bookingDays',sWs:'clinicStart',sWe:'clinicEnd'};
   for(let id in F){const el=document.getElementById(id);if(el&&!el.matches(':focus'))el.value=s[F[id]]||'';}
   const st=document.getElementById('sSt');if(st&&s.status!=='suspended')st.value=s.status||'open';
@@ -819,8 +1023,17 @@ function ring() {
 }
 
 function renderLive(keys) {
+  let filteredKeys = keys || [];
+  if (_sets.mode === 'medical_complex' && activeDashboardDeptFilter !== 'all') {
+    filteredKeys = keys.filter(k => {
+      const b = _bks[k];
+      const doc = b.docKey && _docs[b.docKey] ? _docs[b.docKey] : null;
+      return doc && doc.departmentId === activeDashboardDeptFilter;
+    });
+  }
+
   const g = document.getElementById('liveGrid');
-  if (!keys.length) {
+  if (!filteredKeys.length) {
     g.innerHTML = `<div class="empty-g"><i class="fas fa-calendar-check"></i><p>لا توجد حجوزات نشطة حالياً</p></div>`;
     return;
   }
@@ -834,7 +1047,7 @@ function renderLive(keys) {
 
   // ── Group bookings by date ──
   const groups = {};
-  keys.forEach(k => {
+  filteredKeys.forEach(k => {
     const b = _bks[k];
     const d = b.date || 'unknown';
     if (!groups[d]) groups[d] = [];
@@ -938,6 +1151,7 @@ function renderLive(keys) {
         <div class="bfooter">
           <span class="bprice">${b.fee || '0.00'} <small>د.أ</small></span>
           <div class="acts">
+            ${b.patPhone ? `<button class="ab" onclick="window.open('emr.html?id='+CID+'&phone='+sanitize('${b.patPhone}'),'_blank')" style="background:rgba(13,148,136,.1);color:var(--teal);border-color:rgba(13,148,136,.25)"><i class="fas fa-file-medical"></i> الملف</button>` : ''}
             ${st === 'new' ? `<button class="ab a-ok" onclick="updSt('${k}','confirmed')"><i class="fas fa-check"></i> تأكيد</button>` : ''}
             ${st === 'confirmed' ? `<button class="ab a-wait" onclick="updSt('${k}','waiting')"><i class="fas fa-clock"></i> انتظار</button>` : ''}
             ${st === 'waiting' ? `<button class="ab a-done" onclick="cmpBook('${k}')"><i class="fas fa-flag-checkered"></i> إنهاء</button>` : ''}
@@ -1026,11 +1240,14 @@ db.ref(BASE+'/doctors').on('value', snap => {
     const d=_docs[k];
     const avail=d.available!==false;
     const avg=d.avgRating?`★${d.avgRating.toFixed(1)} (${d.ratingCount||0})`:'';
+    const dept = d.departmentId && _depts[d.departmentId] ? _depts[d.departmentId] : null;
+    const deptTag = dept && (_sets.mode === 'medical_complex') ? `<div style="font-size:0.75rem;margin:3px 0;font-weight:700;color:${dept.color || 'var(--teal)'}"><span style="font-size:0.85rem">${dept.emoji || '🏢'}</span> ${sanitize(dept.name)}</div>` : '';
     return `<div class="dc">
       <div class="dc-top">${d.img?`<img src="${d.img}" alt="${d.name}">`:d.emoji||'👨‍⚕️'}</div>
       <div class="dc-body">
         <div class="dc-name">د. ${sanitize(d.name)}</div>
         <div class="dc-spec">${sanitize(d.specialty||'')}</div>
+        ${deptTag}
         <div class="dc-fee">${parseFloat(d.fee||0).toFixed(2)} د.أ · ${d.slotDuration||30}د</div>
         <div class="dc-fee" style="font-size:.71rem;color:var(--muted)">${d.workStart||'09:00'} — ${d.workEnd||'17:00'}</div>
         ${avg?`<div class="drate">${avg}</div>`:''}
@@ -1062,6 +1279,24 @@ function updSt(k, s) {
 
 function cmpBook(k) {
   const b = _bks[k]; if (!b) return;
+
+  // Auto-create/update basic EMR profile for patient on completion
+  if (b.patPhone) {
+    const patPhone = b.patPhone.replace(/\D/g,'');
+    db.ref(`${BASE}/patients/${patPhone}/info`).once('value', snap => {
+      if (!snap.exists()) {
+        db.ref(`${BASE}/patients/${patPhone}/info`).set({
+          name: b.patName,
+          phone: patPhone,
+          age: b.patAge ? parseInt(b.patAge) : null,
+          gender: b.patGender || '',
+          mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
+          createdAt: new Date().toISOString()
+        });
+      }
+    });
+  }
+
   db.ref(`${BASE}/completedBookings/${k}`)
     .set({ ...b, status: 'done', completedAt: new Date().toISOString() })
     .then(() => db.ref(`${BASE}/bookings/${k}`).remove()
@@ -1083,6 +1318,7 @@ function addDoc() {
     workEnd:document.getElementById('dWe').value||'17:00',
     img:document.getElementById('dImg').value.trim()||'',
     emoji:document.getElementById('dEm').value.trim()||'👨‍⚕️',
+    departmentId:document.getElementById('dDept').value||''
   };
   
   if (editingDocKey) {
@@ -1110,6 +1346,7 @@ function editDoc(k) {
   document.getElementById('dWe').value = d.workEnd || '17:00';
   document.getElementById('dImg').value = d.img || '';
   document.getElementById('dEm').value = d.emoji || '👨‍⚕️';
+  document.getElementById('dDept').value = d.departmentId || '';
   
   const b = document.querySelector('.badd');
   b.innerHTML = '<i class="fas fa-save" style="margin-left:4px"></i>تحديث معلومات الطبيب';
@@ -1125,6 +1362,7 @@ function cancelDocEdit() {
   document.getElementById('dWs').value = '09:00';
   document.getElementById('dWe').value = '17:00';
   document.getElementById('dEm').value = '👨‍⚕️';
+  document.getElementById('dDept').value = '';
   
   const b = document.querySelector('.badd');
   b.innerHTML = '<i class="fas fa-plus" style="margin-left:4px"></i>إضافة';
@@ -1177,6 +1415,13 @@ function saveSettings() {
     emoji:sanitize(document.getElementById('sEm').value),
     sameDayBooking: document.getElementById('sSameDay').value === 'true',
     bookingDays: parseInt(document.getElementById('sBookingDays').value) || 10,
+    mode: document.getElementById('sMode').value || 'single_clinic',
+    passcodes: {
+      doctor: document.getElementById('sPassDoc').value.trim(),
+      pharmacist: document.getElementById('sPassPhar').value.trim(),
+      lab: document.getElementById('sPassLab').value.trim(),
+      radiology: document.getElementById('sPassRad').value.trim()
+    },
     color
   };
   if(newPass.length>=4) update.password=newPass;
@@ -1184,6 +1429,17 @@ function saveSettings() {
     toast('✅ تم حفظ الإعدادات بنجاح','ok');
     document.getElementById('sPw').value='';
   }).catch(e => toast('❌ فشل الحفظ','err'));
+}
+
+function copyPatPortalUrl() {
+  const el = document.getElementById('patPortalLinkUrl');
+  if (el) {
+    el.select();
+    el.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(el.value).then(() => {
+      toast('📋 تم نسخ رابط بوابة المريض الرقمية بنجاح!');
+    });
+  }
 }
 
 function sendWA(phone,status,no,name) {

@@ -11,6 +11,8 @@ const STATIC_ASSETS = [
   '/index.html',
   '/dashboard.html',
   '/super.html',
+  '/emr.html',
+  '/emr-styles.css',
   '/offline.html',
   '/manifest.json',
   '/icons/icon-192.png',

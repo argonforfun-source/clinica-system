@@ -2254,12 +2254,23 @@
       document.getElementById('manifest-color')?.setAttribute('content', s.color || '#0d9488');
     });
 
+    let allDepts = [];
+    let curDept = 'all';
+    let curSpec = 'all';
+
+    // ── LOAD DEPARTMENTS ──
+    db.ref(BASE + '/departments').on('value', snap => {
+      const depts = snap.val() || {};
+      allDepts = Object.entries(depts).map(([k, v]) => ({ key: k, ...v }));
+      buildFilters();
+    });
+
     // ── LOAD DOCTORS ──
     db.ref(BASE + '/doctors').on('value', snap => {
       const d = snap.val() || {};
       allDocs = Object.entries(d).map(([k, v]) => ({ key: k, ...v }));
       renderDocs(allDocs);
-      buildSpecFilter();
+      buildFilters();
       // Update local count
       const myB = JSON.parse(localStorage.getItem('clinica_bks_' + CID) || '[]');
       document.getElementById('mybtnCnt').textContent = myB.length;
@@ -2276,31 +2287,87 @@
       }
     });
 
-    function buildSpecFilter() {
-      const specs = ['all', ...new Set(allDocs.map(d => d.specialty).filter(Boolean))];
+    function buildFilters() {
       const bar = document.getElementById('specBar');
-      bar.innerHTML = specs.map((s, i) => `
-    <div class="spec-chip${i === 0 ? ' act' : ''}" onclick="filterBySpec('${sanitize(s)}',this)">
-      ${i === 0 ? '🩺 ' : ''} ${s === 'all' ? 'الكل' : s}
-    </div>`).join('');
+      if (!bar) return;
+      if (clinicSets && clinicSets.mode === 'medical_complex') {
+        const deptChips = allDepts.map((d) => {
+          const isAct = curDept === d.key;
+          return `
+            <div class="spec-chip${isAct ? ' act' : ''}" style="${isAct ? `background:${d.color || 'var(--teal)'};border-color:${d.color || 'var(--teal)'};color:#fff` : `border-color:rgba(13,148,136,0.15)`}" onclick="filterByDept('${d.key}',this)">
+              <span style="margin-left:4px">${d.emoji || '🏢'}</span> ${sanitize(d.name)}
+            </div>
+          `;
+        }).join('');
+        
+        bar.innerHTML = `
+          <div class="spec-chip${curDept === 'all' ? ' act' : ''}" onclick="filterByDept('all',this)">🩺 الكل</div>
+          ${deptChips}
+        `;
+      } else {
+        const specs = ['all', ...new Set(allDocs.map(d => d.specialty).filter(Boolean))];
+        bar.innerHTML = specs.map((s) => `
+          <div class="spec-chip${curSpec === s ? ' act' : ''}" onclick="filterBySpec('${sanitize(s)}',this)">
+            ${s === 'all' ? '🩺 الكل' : s}
+          </div>`).join('');
+      }
     }
 
-    let curSpec = 'all';
+    function filterByDept(deptId, el) {
+      curDept = deptId;
+      document.querySelectorAll('.spec-chip').forEach(c => {
+        c.classList.remove('act');
+        c.style.background = '';
+        c.style.borderColor = '';
+        c.style.color = '';
+      });
+      el.classList.add('act');
+      
+      // Apply department color if active
+      if (deptId !== 'all') {
+        const dept = allDepts.find(d => d.key === deptId);
+        if (dept && dept.color) {
+          el.style.background = dept.color;
+          el.style.borderColor = dept.color;
+          el.style.color = '#fff';
+        }
+      }
+      
+      applyComplexFilter();
+    }
+
     function filterBySpec(spec, el) {
       curSpec = spec;
       document.querySelectorAll('.spec-chip').forEach(c => c.classList.remove('act'));
       el.classList.add('act');
-      const q = document.getElementById('searchBox').value.toLowerCase().trim();
-      applyFilter(spec, q);
+      applyComplexFilter();
     }
+
     function filterDocs() {
-      const q = document.getElementById('searchBox').value.toLowerCase().trim();
-      applyFilter(curSpec, q);
+      applyComplexFilter();
     }
-    function applyFilter(spec, q) {
+
+    function applyComplexFilter() {
+      const q = document.getElementById('searchBox').value.toLowerCase().trim();
       let f = allDocs;
-      if (spec !== 'all') f = f.filter(d => d.specialty === spec);
-      if (q) f = f.filter(d => (d.name || '').toLowerCase().includes(q) || (d.specialty || '').toLowerCase().includes(q));
+      
+      if (clinicSets && clinicSets.mode === 'medical_complex') {
+        if (curDept !== 'all') {
+          f = f.filter(d => d.departmentId === curDept);
+        }
+      } else {
+        if (curSpec !== 'all') {
+          f = f.filter(d => d.specialty === curSpec);
+        }
+      }
+      
+      if (q) {
+        f = f.filter(d => 
+          (d.name || '').toLowerCase().includes(q) || 
+          (d.specialty || '').toLowerCase().includes(q)
+        );
+      }
+      
       renderDocs(f);
     }
 
