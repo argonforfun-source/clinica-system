@@ -207,9 +207,12 @@ function genMRN() {
   return 'MRN-' + Math.floor(100000 + Math.random() * 900000);
 }
 
-// Hash phone number to use as path key (or sanitize it)
+// Normalize phone number to use as a consistent database key (prevents duplicates)
 function cleanPhone(p) {
-  return p.trim().replace(/\D/g, '');
+  let clean = String(p || '').trim().replace(/\D/g, '');
+  if (clean.startsWith('962')) clean = clean.substring(3);
+  if (clean.startsWith('0')) clean = clean.substring(1);
+  return clean;
 }
 
 // Save New Patient

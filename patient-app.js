@@ -60,14 +60,18 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // Passwordless Login Step 1: Send OTP Simulation
 function sendOtp() {
-  const phone = document.getElementById('patPhone').value.trim();
+  const rawPhone = document.getElementById('patPhone').value.trim();
   const err = document.getElementById('lErr');
   err.style.display = 'none';
 
-  if (!phone || phone.length < 8) {
+  if (!rawPhone || rawPhone.length < 8) {
     toast('⚠️ الرجاء إدخال رقم هاتف صحيح أولاً', 'err');
     return;
   }
+
+  let phone = rawPhone.replace(/\D/g, '');
+  if (phone.startsWith('962')) phone = phone.substring(3);
+  if (phone.startsWith('0')) phone = phone.substring(1);
 
   toast('⏳ جاري البحث عن ملفك الطبي...', 'ok');
 
@@ -105,10 +109,14 @@ function backToPhone() {
 // Passwordless Login Step 2: Verify OTP
 function verifyOtp() {
   const otpVal = document.getElementById('patOtp').value.trim();
-  const phone = document.getElementById('patPhone').value.trim();
+  const rawPhone = document.getElementById('patPhone').value.trim();
   const err = document.getElementById('lErr');
   
   if (otpVal === sentOtpCode) {
+    let phone = rawPhone.replace(/\D/g, '');
+    if (phone.startsWith('962')) phone = phone.substring(3);
+    if (phone.startsWith('0')) phone = phone.substring(1);
+    
     loggedPhone = phone;
     localStorage.setItem('argon_pat_phone_' + CID, phone);
     

@@ -1284,7 +1284,9 @@ function cmpBook(k) {
 
   // Auto-create/update basic EMR profile for patient on completion
   if (b.patPhone) {
-    const patPhone = b.patPhone.replace(/\D/g,'');
+    let patPhone = b.patPhone.replace(/\D/g,'');
+    if (patPhone.startsWith('962')) patPhone = patPhone.substring(3);
+    if (patPhone.startsWith('0')) patPhone = patPhone.substring(1);
     db.ref(`${BASE}/patients/${patPhone}/info`).once('value', snap => {
       if (!snap.exists()) {
         db.ref(`${BASE}/patients/${patPhone}/info`).set({
