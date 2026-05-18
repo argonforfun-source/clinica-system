@@ -903,6 +903,7 @@ function deleteDept(key) {
 db.ref(BASE+'/settings').on('value', snap => {
   const s = snap.val()||{};
   _sets = s;
+  checkAndSeedDefaultDepartments();
   
   // Only 'suspended' locks the dashboard (Super Admin only)
   if (s.status === 'suspended') {
@@ -1530,6 +1531,24 @@ function delLogo() {
 }
 
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className=type?'show '+type:'show';setTimeout(()=>t.className='',3000);}
+
+// Seeding default departments automatically for Medical Complex tier
+function checkAndSeedDefaultDepartments() {
+  if (_sets && _sets.mode === 'medical_complex') {
+    db.ref(BASE + '/departments').once('value', snap => {
+      if (!snap.exists() || !snap.val()) {
+        const defaultDepts = {
+          general: { name: 'الطب العام', emoji: '🩺', color: '#0d9488' },
+          dental: { name: 'طب الأسنان', emoji: '🦷', color: '#8b5cf6' },
+          pediatrics: { name: 'طب الأطفال', emoji: '👶', color: '#10b981' },
+          cardio: { name: 'أمراض القلب', emoji: '🫀', color: '#ef4444' },
+          ortho: { name: 'جراحة العظام', emoji: '🦴', color: '#f59e0b' }
+        };
+        db.ref(BASE + '/departments').set(defaultDepts);
+      }
+    });
+  }
+}
 
 // PWA
 if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});

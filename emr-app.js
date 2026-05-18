@@ -43,6 +43,7 @@ window.addEventListener('DOMContentLoaded', () => {
   db.ref(BASE + '/settings').on('value', snap => {
     _sets = snap.val();
     if (_sets) {
+      checkAndSeedDefaultDepartments();
       document.getElementById('lClinicName').textContent = _sets.name || 'العيادة الطبية';
       document.getElementById('topName').textContent = _sets.name || 'العيادة الطبية';
       document.getElementById('tlogo').textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON EMR';
@@ -1010,3 +1011,21 @@ function renderRadOrderChips() {
 
 // Sanitization
 const sanitize = s => String(s || '').replace(/[<>"']/g, '').trim().substring(0, 250);
+
+// Seeding default departments automatically for Medical Complex tier
+function checkAndSeedDefaultDepartments() {
+  if (_sets && _sets.mode === 'medical_complex') {
+    db.ref(BASE + '/departments').once('value', snap => {
+      if (!snap.exists() || !snap.val()) {
+        const defaultDepts = {
+          general: { name: 'الطب العام', emoji: '🩺', color: '#0d9488' },
+          dental: { name: 'طب الأسنان', emoji: '🦷', color: '#8b5cf6' },
+          pediatrics: { name: 'طب الأطفال', emoji: '👶', color: '#10b981' },
+          cardio: { name: 'أمراض القلب', emoji: '🫀', color: '#ef4444' },
+          ortho: { name: 'جراحة العظام', emoji: '🦴', color: '#f59e0b' }
+        };
+        db.ref(BASE + '/departments').set(defaultDepts);
+      }
+    });
+  }
+}
