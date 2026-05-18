@@ -66,6 +66,9 @@ window.addEventListener('DOMContentLoaded', () => {
   // Load Departments
   db.ref(BASE + '/departments').on('value', snap => {
     _depts = snap.val() || {};
+    if (activePatientId && _patients[activePatientId]) {
+      viewPatientFile(activePatientId);
+    }
   });
 });
 
@@ -95,12 +98,16 @@ function initEMR() {
     _patients = snap.val() || {};
     renderPatientsList(Object.entries(_patients));
     
-    // Auto-load patient from URL param on first load
-    const urlPhone = new URLSearchParams(window.location.search).get('phone');
-    if (urlPhone && _patients[urlPhone]) {
-      viewPatientFile(urlPhone);
-      // Clean query parameter so it doesn't loop or interfere
-      window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
+    if (activePatientId && _patients[activePatientId]) {
+      viewPatientFile(activePatientId);
+    } else {
+      // Auto-load patient from URL param on first load
+      const urlPhone = new URLSearchParams(window.location.search).get('phone');
+      if (urlPhone && _patients[urlPhone]) {
+        viewPatientFile(urlPhone);
+        // Clean query parameter so it doesn't loop or interfere
+        window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
+      }
     }
   });
 

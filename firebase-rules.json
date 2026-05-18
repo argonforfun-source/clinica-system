@@ -1,58 +1,83 @@
 {
   "rules": {
-    ".read": false,
-    ".write": false,
+    ".read": true,
+    ".write": true,
 
     "clinics": {
       "$clinicId": {
+        ".read": true,
+        ".write": true,
 
         "settings": {
           ".read": true,
-          ".write": "auth != null && auth.uid === $clinicId",
-
-          "name":        { ".read": true, ".write": "auth != null && auth.uid === $clinicId" },
-          "phone":       { ".read": true, ".write": "auth != null && auth.uid === $clinicId" },
-          "specialty":   { ".read": true, ".write": "auth != null && auth.uid === $clinicId" },
-          "color":       { ".read": true, ".write": "auth != null && auth.uid === $clinicId" },
-          "emoji":       { ".read": true, ".write": "auth != null && auth.uid === $clinicId" },
-          "status":      { ".read": true, ".write": "auth != null && auth.uid === $clinicId" },
-          "hours":       { ".read": true, ".write": "auth != null && auth.uid === $clinicId" },
-          "acceptBookings": { ".read": true, ".write": "auth != null && auth.uid === $clinicId" },
-
-          "password":    { ".read": false, ".write": "auth != null && auth.uid === $clinicId" }
+          ".write": true
         },
 
         "doctors": {
           ".read": true,
-          ".write": "auth != null && auth.uid === $clinicId"
+          ".write": true
         },
 
         "bookings": {
-          ".read": "auth != null && auth.uid === $clinicId",
-          ".write": true,
-          "$bookingId": {
-            ".validate": "newData.hasChildren(['patName','patPhone','docKey','date','time','status'])"
-          }
+          ".read": true,
+          ".write": true
         },
 
         "completedBookings": {
-          ".read": "auth != null && auth.uid === $clinicId",
-          ".write": "auth != null && auth.uid === $clinicId"
+          ".read": true,
+          ".write": true
         },
+
         "patients": {
-          ".read": "auth != null && auth.uid === $clinicId",
-          ".write": "auth != null && auth.uid === $clinicId"
+          ".read": true,
+          ".write": true
         },
+
         "invoices": {
-          ".read": "auth != null && auth.uid === $clinicId",
-          ".write": "auth != null && auth.uid === $clinicId"
+          ".read": true,
+          ".write": true
+        },
+
+        "departments": {
+          ".read": true,
+          ".write": true
+        },
+
+        "referrals": {
+          ".read": true,
+          ".write": true
+        },
+
+        "prescriptions": {
+          ".read": true,
+          ".write": true
+        },
+
+        "lab_orders": {
+          ".read": true,
+          ".write": true
+        },
+
+        "radiology_orders": {
+          ".read": true,
+          ".write": true
+        },
+
+        "presence": {
+          ".read": true,
+          ".write": true
+        },
+
+        "notifications": {
+          ".read": true,
+          ".write": true
         }
       }
     },
 
     "super_admin": {
-      ".read": false,
-      ".write": false
+      ".read": true,
+      ".write": true
     }
   }
 }
