@@ -317,6 +317,9 @@ function saveLabResults() {
   // Apply updates atomically
   db.ref(BASE).update(updates).then(() => {
     isSubmitting = false;
+    if (typeof ArgonCore !== 'undefined') {
+      ArgonCore.logAudit('SUBMIT_LAB', `تم رفع وتأكيد نتائج المختبر للمريض: ${o.patientName}`, 'LABORATORY');
+    }
     toast('✅ تم تسجيل وتأكيد النتائج وإضافتها لملف المريض', 'ok');
     closeModal('labModal');
   }).catch(() => {

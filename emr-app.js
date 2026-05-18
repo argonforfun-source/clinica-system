@@ -712,6 +712,29 @@ function loadVisitForm(phone) {
   `;
 
   document.getElementById('visitFormArea').innerHTML = formHTML;
+
+  // Restore Auto-Saved Draft if exists
+  setTimeout(() => {
+    if (typeof ArgonCore !== 'undefined') {
+      const draft = ArgonCore.AutoSave.loadDraft(phone);
+      if (draft && draft.data) {
+        const d = draft.data;
+        if(document.getElementById('vDoc') && d.docKey) document.getElementById('vDoc').value = d.docKey;
+        if(document.getElementById('vDiag') && d.diagnosis) document.getElementById('vDiag').value = d.diagnosis;
+        if(document.getElementById('vComp') && d.complaint) document.getElementById('vComp').value = d.complaint;
+        if(document.getElementById('vtTemp') && d.temp) document.getElementById('vtTemp').value = d.temp;
+        if(document.getElementById('vtBP') && d.bp) document.getElementById('vtBP').value = d.bp;
+        if(document.getElementById('vtPulse') && d.pulse) document.getElementById('vtPulse').value = d.pulse;
+        if(document.getElementById('vNotes') && d.notes) document.getElementById('vNotes').value = d.notes;
+        
+        if(d.rxItems && d.rxItems.length) { rxItems = d.rxItems; renderRxTable(); }
+        if(d.labTestsList && d.labTestsList.length) { labTestsList = d.labTestsList; renderLabOrderList(); }
+        if(d.radScansList && d.radScansList.length) { radScansList = d.radScansList; renderRadOrderList(); }
+        
+        toast('🔄 تم استعادة البيانات غير المكتملة تلقائياً', 'ok');
+      }
+    }
+  }, 150);
 }
 
 // Prescription actions
@@ -1023,10 +1046,38 @@ function saveVisit() {
       createdAt: new Date().toISOString()
     });
 
+    if (typeof ArgonCore !== 'undefined') {
+      ArgonCore.AutoSave.clearDraft(activePatientId);
+      ArgonCore.logAudit('CREATE_VISIT', `تم حفظ زيارة جديدة للمريض ${activePatientId}`, 'EMR');
+    }
+
     toast('✅ تم حفظ الزيارة الطبية وإرسال الطلبات بنجاح', 'ok');
     viewPatientFile(activePatientId);
   }).catch(() => toast('❌ فشل حفظ الزيارة الطبية', 'err'));
 }
+
+// ── AUTO SAVE ENGINE (EVERY 3 SECONDS) ──
+setInterval(() => {
+  if (!activePatientId || !document.getElementById('vDiag')) return;
+  if (typeof ArgonCore === 'undefined') return;
+  
+  const data = {
+    docKey: document.getElementById('vDoc') ? document.getElementById('vDoc').value : '',
+    diagnosis: document.getElementById('vDiag') ? document.getElementById('vDiag').value : '',
+    complaint: document.getElementById('vComp') ? document.getElementById('vComp').value : '',
+    temp: document.getElementById('vtTemp') ? document.getElementById('vtTemp').value : '',
+    bp: document.getElementById('vtBP') ? document.getElementById('vtBP').value : '',
+    pulse: document.getElementById('vtPulse') ? document.getElementById('vtPulse').value : '',
+    notes: document.getElementById('vNotes') ? document.getElementById('vNotes').value : '',
+    rxItems: rxItems || [],
+    labTestsList: labTestsList || [],
+    radScansList: radScansList || []
+  };
+  
+  if (data.diagnosis || data.complaint || data.rxItems.length || data.labTestsList.length || data.radScansList.length) {
+    ArgonCore.AutoSave.saveDraft(activePatientId, data);
+  }
+}, 3000);
 
 // Print Visit Summary
 function printVisitSummary(vk) {

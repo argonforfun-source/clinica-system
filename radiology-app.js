@@ -307,6 +307,9 @@ function saveRadReport() {
   // Apply updates atomically
   db.ref(BASE).update(updates).then(() => {
     isSubmitting = false;
+    if (typeof ArgonCore !== 'undefined') {
+      ArgonCore.logAudit('SUBMIT_RADIOLOGY', `تم رفع تقرير وصور الأشعة للمريض: ${o.patientName}`, 'RADIOLOGY');
+    }
     toast('✅ تم تسجيل وتأكيد تقرير الأشعة وإضافتها للـ EMR', 'ok');
     closeModal('radModal');
   }).catch(() => {

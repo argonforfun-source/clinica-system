@@ -336,6 +336,9 @@ function dispensePrescription() {
 
   // Apply all updates atomically
   db.ref(BASE).update(updates).then(() => {
+    if (typeof ArgonCore !== 'undefined') {
+      ArgonCore.logAudit('DISPENSE_MEDS', `تم صرف وصفة للمريض: ${p.patientName} بتكلفة ${totalCost} د.أ`, 'PHARMACY');
+    }
     toast('✅ تم صرف وتأكيد الوصفة وتحديث الحسابات بنجاح', 'ok');
     closeModal('prescModal');
   }).catch(() => toast('❌ فشل إتمام عملية الصرف', 'err'));
@@ -370,6 +373,9 @@ function cancelPrescription() {
   }
   
   db.ref(BASE).update(updates).then(() => {
+    if (typeof ArgonCore !== 'undefined') {
+      ArgonCore.logAudit('CANCEL_PRESCRIPTION', `تم إلغاء وصفة المريض: ${p.patientName} لعدم التوفر`, 'PHARMACY');
+    }
     toast('❌ تم إلغاء الوصفة ونقلها إلى قسم الملغاة', 'ok');
     closeModal('prescModal');
   }).catch(e => {
