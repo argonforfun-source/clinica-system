@@ -646,7 +646,7 @@ if (uP.get('id')) localStorage.setItem('argon_id', CID);
 const BASE = 'clinics/' + CID;
 
 let _pass = '1122', _logins = 0, _lockUntil = 0;
-let _bks = {}, _cmp = {}, _docs = {}, _sets = {}, isConn = true;
+let _bks = {}, _cmp = {}, _docs = {}, _sets = {}, _referrals = {}, isConn = true;
 let prevCount = 0, firstLoad = true, audioCtx = null, _anonUid = null;
 
 // ── DASHBOARD MULTI-LANGUAGE (i18n) ENGINE ──
@@ -1024,6 +1024,11 @@ db.ref(BASE+'/presence').on('value', snap => {
 });
 
 // ── LIVE BOOKINGS LISTENER ──
+// ── REFERRALS LISTENER (for department filtering & referral card rendering) ──
+db.ref(BASE+'/referrals').on('value', snap => {
+  _referrals = snap.val()||{};
+});
+
 db.ref(BASE+'/bookings').on('value', snap => {
   _bks = snap.val()||{};
   const actKeys = Object.keys(_bks).filter(k=>{const s=_bks[k].status;return s!=='done'&&s!=='completed'&&s!=='cancelled';});
@@ -1064,6 +1069,11 @@ function renderLive(keys) {
   if (_sets.mode === 'medical_complex' && activeDashboardDeptFilter !== 'all') {
     filteredKeys = keys.filter(k => {
       const b = _bks[k];
+      // Referral bookings: match by target department from referral data
+      if (b.docKey === 'referral' && b.referralId) {
+        const ref = _referrals && _referrals[b.referralId];
+        return ref && ref.toDept === activeDashboardDeptFilter;
+      }
       const doc = b.docKey && _docs[b.docKey] ? _docs[b.docKey] : null;
       return doc && doc.departmentId === activeDashboardDeptFilter;
     });
@@ -1153,9 +1163,12 @@ function renderLive(keys) {
     dateKeys.forEach(k => {
       const b = _bks[k];
       const st = b.status || 'new';
-      const borderLeft = isToday
-        ? (st === 'new' ? 'var(--amber)' : st === 'confirmed' ? 'var(--green)' : 'var(--sky)')
-        : 'var(--border)';
+      const isRef = b.docKey === 'referral';
+      const borderLeft = isRef
+        ? '#a855f7'
+        : isToday
+          ? (st === 'new' ? 'var(--amber)' : st === 'confirmed' ? 'var(--green)' : 'var(--sky)')
+          : 'var(--border)';
 
       // Unique visual ID: date-scoped booking number
       const dateTag = isToday ? `<span style="
@@ -1169,24 +1182,49 @@ function renderLive(keys) {
           font-family:'IBM Plex Mono',monospace
         ">${date.slice(5)}</span>`;
 
-      html += `<div class="bc${st === 'cancelled' ? ' cancel' : ''}" style="border-right-color:${borderLeft}">
+      // ── Referral-specific visual elements ──
+      const refBadge = isRef ? `<span style="
+          font-size:.68rem;font-weight:800;color:#a855f7;
+          background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);
+          padding:2px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px
+        "><i class='fas fa-exchange-alt' style='font-size:.6rem'></i> تحويل داخلي</span>` : '';
+
+      const refBanner = isRef ? `<div style="
+          margin:6px 0 8px;padding:7px 12px;border-radius:8px;
+          background:linear-gradient(135deg,rgba(168,85,247,.08),rgba(124,58,237,.04));
+          border:1px solid rgba(168,85,247,.18);
+          display:flex;align-items:center;gap:8px;font-size:.78rem
+        ">
+          <span style="font-size:1.1rem">${sanitize(b.docName).replace('تحويل إلى ','')?.split(' ')[0] || '🏢'}</span>
+          <div>
+            <div style="font-weight:800;color:#a855f7">${sanitize(b.docName)}</div>
+            <div style="font-size:.7rem;color:var(--muted);margin-top:1px">محال من الطبيب المعالج · رسوم الكشف: مجاني</div>
+          </div>
+        </div>` : '';
+
+      const cardBg = isRef
+        ? 'background:linear-gradient(135deg,rgba(168,85,247,.03),rgba(124,58,237,.01));border:1px solid rgba(168,85,247,.15);'
+        : '';
+
+      html += `<div class="bc${st === 'cancelled' ? ' cancel' : ''}" style="border-right-color:${borderLeft};${cardBg}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:6px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
             ${dateTag}
             <span class="bno" dir="ltr">${b.bookNo || '#----'}</span>
+            ${refBadge}
           </div>
           <span style="font-size:.72rem;font-weight:800;color:${stColor[st]};background:${stBg[st]};padding:3px 10px;border-radius:20px">${stMap[st] || st}</span>
         </div>
         <div class="bname">${sanitize(b.patName)}</div>
         <div class="binfo">📞 ${sanitize(b.patPhone)}</div>
-        <div class="binfo">👨‍⚕️ د. ${sanitize(b.docName)} · <span style="color:var(--teal)">${sanitize(b.docSpec || '')}</span></div>
+        ${isRef ? refBanner : `<div class="binfo">👨‍⚕️ د. ${sanitize(b.docName)} · <span style="color:var(--teal)">${sanitize(b.docSpec || '')}</span></div>`}
         <div class="binfo" style="display:flex;align-items:center;gap:10px">
-          <span style="font-family:'IBM Plex Mono',monospace;background:var(--surf);border:1px solid var(--border);padding:2px 8px;border-radius:7px;font-size:.78rem">🕐 ${b.time || '—'}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;background:var(--surf);border:1px solid var(--border);padding:2px 8px;border-radius:7px;font-size:.78rem">${isRef ? '🔀 تحويل داخلي' : '🕐 ' + (b.time || '—')}</span>
           ${b.patAge ? `<span style="font-size:.75rem;color:var(--muted)">${b.patAge} سنة · ${b.patGender || '—'}</span>` : ''}
         </div>
-        ${b.notes ? `<div class="bnote">📝 ${sanitize(b.notes)}</div>` : ''}
+        ${b.notes ? `<div class="bnote">${isRef ? '🔖' : '📝'} ${sanitize(b.notes)}</div>` : ''}
         <div class="bfooter">
-          <span class="bprice">${b.fee || '0.00'} <small>د.أ</small></span>
+          <span class="bprice">${isRef ? '<span style="color:#a855f7;font-weight:700">مجاني</span>' : (b.fee || '0.00') + ' <small>د.أ</small>'}</span>
           <div class="acts">
             ${b.patPhone ? `<button class="ab" onclick="window.open('emr.html?id='+CID+'&phone='+sanitize('${b.patPhone}'),'_blank')" style="background:rgba(13,148,136,.1);color:var(--teal);border-color:rgba(13,148,136,.25)"><i class="fas fa-file-medical"></i> الملف</button>` : ''}
             ${st === 'new' ? `<button class="ab a-ok" onclick="updSt('${k}','confirmed')"><i class="fas fa-check"></i> تأكيد</button>` : ''}
