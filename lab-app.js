@@ -22,6 +22,7 @@ let _orders = {};
 let activeOrderId = null;
 let currentLabFilter = 'waiting';
 let uploadedAttachment = null; // Stores Base64 PDF / image
+let isSubmitting = false;
 
 window.addEventListener('DOMContentLoaded', () => {
   if (!CID) {
@@ -221,8 +222,10 @@ function handleAttachment(e) {
 
 // Save Lab Results
 function saveLabResults() {
+  if (isSubmitting) return;
   const o = _orders[activeOrderId];
   if (!o) return;
+  isSubmitting = true;
 
   const notes = document.getElementById('mlNotes').value.trim();
   const completedTests = [];
@@ -262,7 +265,7 @@ function saveLabResults() {
   const visitId = o.visitId;
   if (visitId) {
     const resultsSummary = completedTests.map(t => `• ${t.name}: <b>${t.result}</b> ${t.unit}`).join('<br>');
-    const timelineKey = db.ref().child('visits').push().key;
+    const timelineKey = 'lab_' + activeOrderId;
     const timelineObj = {
       date: new Date().toLocaleDateString('en-CA'),
       time: new Date().toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' }),
@@ -313,9 +316,13 @@ function saveLabResults() {
 
   // Apply updates atomically
   db.ref(BASE).update(updates).then(() => {
+    isSubmitting = false;
     toast('✅ تم تسجيل وتأكيد النتائج وإضافتها لملف المريض', 'ok');
     closeModal('labModal');
-  }).catch(() => toast('❌ فشل حفظ نتائج التحليل', 'err'));
+  }).catch(() => {
+    isSubmitting = false;
+    toast('❌ فشل حفظ نتائج التحليل', 'err');
+  });
 }
 
 // Open attached PDF / Document

@@ -22,6 +22,7 @@ let _orders = {};
 let activeOrderId = null;
 let currentRadFilter = 'waiting';
 let uploadedImage = null; // Base64 of radiology scan
+let isSubmitting = false;
 
 window.addEventListener('DOMContentLoaded', () => {
   if (!CID) {
@@ -228,8 +229,10 @@ function handleImageUpload(e) {
 
 // Save Radiology Report
 function saveRadReport() {
+  if (isSubmitting) return;
   const o = _orders[activeOrderId];
   if (!o) return;
+  isSubmitting = true;
 
   const report = document.getElementById('mrReport').value.trim();
   if (!report) {
@@ -252,7 +255,7 @@ function saveRadReport() {
   const visitId = o.visitId;
   if (visitId) {
     const scansSummary = (o.requestedScans || []).map(s => `• ${s.name}`).join('<br>');
-    const timelineKey = db.ref().child('visits').push().key;
+    const timelineKey = 'rad_' + activeOrderId;
     const timelineObj = {
       date: new Date().toLocaleDateString('en-CA'),
       time: new Date().toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' }),
@@ -303,9 +306,13 @@ function saveRadReport() {
 
   // Apply updates atomically
   db.ref(BASE).update(updates).then(() => {
+    isSubmitting = false;
     toast('✅ تم تسجيل وتأكيد تقرير الأشعة وإضافتها للـ EMR', 'ok');
     closeModal('radModal');
-  }).catch(() => toast('❌ فشل إتمام تسجيل صور الأشعة والتقرير', 'err'));
+  }).catch(() => {
+    isSubmitting = false;
+    toast('❌ فشل إتمام تسجيل صور الأشعة والتقرير', 'err');
+  });
 }
 
 // Lightbox full-size viewer

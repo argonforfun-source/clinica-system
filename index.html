@@ -2644,6 +2644,23 @@
         // Increment lifetime stats counter
         db.ref(BASE + '/stats/totalBookings').transaction(c => (c || 0) + 1).catch(() => {});
 
+        // Auto-create EMR patient profile immediately upon booking to guarantee a ready record
+        let patPhone = phone.replace(/\D/g,'');
+        if (patPhone.startsWith('962')) patPhone = patPhone.substring(3);
+        if (patPhone.startsWith('0')) patPhone = patPhone.substring(1);
+        db.ref(`${BASE}/patients/${patPhone}/info`).once('value', snap => {
+          if (!snap.exists()) {
+            db.ref(`${BASE}/patients/${patPhone}/info`).set({
+              name: name,
+              phone: patPhone,
+              age: booking.patAge ? parseInt(booking.patAge) : null,
+              gender: booking.patGender || '',
+              mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
+              createdAt: new Date().toISOString()
+            });
+          }
+        });
+
         return db.ref(BASE + '/bookings').push(booking).then(ref => ({ ref, bno, booking }));
 
       }).then(({ ref, bno, booking }) => {

@@ -152,3 +152,75 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .royal-foot{margin-top:auto;padding:20px 10px;text-align:center;border-top:1px solid var(--border)}
 .argon-sig{font-family:'IBM Plex Mono',monospace;font-size:.6rem;letter-spacing:4px;color:var(--muted);text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:4px}
 .argon-sig span{background:linear-gradient(135deg,var(--teal),var(--sky));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:900}
+
+/* EMR TAB SYSTEM & CHRONO TIMELINE Badges */
+.emr-tab-btn {
+  background: var(--surf) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--muted) !important;
+  padding: 8px 16px !important;
+  border-radius: 10px !important;
+  font-family: 'Tajawal', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 0.85rem !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: all 0.25s ease !important;
+  outline: none !important;
+}
+.emr-tab-btn:hover {
+  border-color: var(--teal) !important;
+  color: var(--text) !important;
+  background: rgba(13, 148, 136, 0.05) !important;
+}
+.emr-tab-btn.active {
+  background: rgba(13, 148, 136, 0.12) !important;
+  color: var(--teal) !important;
+  border-color: var(--teal) !important;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.08) !important;
+}
+.emr-tab-content {
+  animation: fu 0.28s ease;
+}
+.timeline-date-group {
+  margin: 24px 0 14px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.timeline-date-group::before {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border), transparent);
+}
+.timeline-date-group span {
+  background: linear-gradient(135deg, var(--teal), var(--sky));
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 13px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.15);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tl-dot.amber { background: var(--amber) !important; }
+.tl-dot.teal { background: var(--teal) !important; }
+.tl-dot.sky { background: var(--sky) !important; }
+.tl-dot.purple { background: var(--purple) !important; }
+.glass-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+.glass-panel:hover {
+  border-color: rgba(13, 148, 136, 0.2);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}

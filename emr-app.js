@@ -25,6 +25,9 @@ let _depts = {};
 let activePatientId = null;
 let rxItems = [];
 let uploadAttachments = [];
+let _labOrders = {};
+let _radOrders = {};
+let activeEmrTab = 'timeline-tab';
 
 // DOM Loaded
 window.addEventListener('DOMContentLoaded', () => {
@@ -66,6 +69,22 @@ window.addEventListener('DOMContentLoaded', () => {
   // Load Departments
   db.ref(BASE + '/departments').on('value', snap => {
     _depts = snap.val() || {};
+    if (activePatientId && _patients[activePatientId]) {
+      viewPatientFile(activePatientId);
+    }
+  });
+
+  // Load Lab Orders in EMR
+  db.ref(BASE + '/lab_orders').on('value', snap => {
+    _labOrders = snap.val() || {};
+    if (activePatientId && _patients[activePatientId]) {
+      viewPatientFile(activePatientId);
+    }
+  });
+
+  // Load Radiology Orders in EMR
+  db.ref(BASE + '/radiology_orders').on('value', snap => {
+    _radOrders = snap.val() || {};
     if (activePatientId && _patients[activePatientId]) {
       viewPatientFile(activePatientId);
     }
@@ -120,6 +139,7 @@ function initEMR() {
     }
     const n = snap.val();
     if (n && n.role === 'doctor') {
+      playNotificationSound();
       toast(`🔔 ${n.title}: ${n.message}`, 'ok');
       if (activePatientId) {
         viewPatientFile(activePatientId);
@@ -231,6 +251,14 @@ function saveNewPatient() {
     return;
   }
 
+  // Prevent overwriting existing patient profiles (Critical Data Loss Safeguard)
+  if (_patients && _patients[phone]) {
+    toast('⚠️ هذا المريض مسجل مسبقاً في النظام بهذا الهاتف!', 'err');
+    closeModal('newPatModal');
+    viewPatientFile(phone);
+    return;
+  }
+
   const mrn = genMRN();
   const patObj = {
     info: {
@@ -265,7 +293,13 @@ function viewPatientFile(phone) {
   if (!p) return;
 
   const info = p.info || {};
-  const visits = Object.entries(p.visits || {}).sort((a,b) => b[1].date.localeCompare(a[1].date));
+  
+  // Sort visits descending chronologically down to the minute using parseArabicTime
+  const visits = Object.entries(p.visits || {}).sort((a,b) => {
+    const dateTimeA = (a[1].date || '') + 'T' + parseArabicTime(a[1].time || '');
+    const dateTimeB = (b[1].date || '') + 'T' + parseArabicTime(b[1].time || '');
+    return dateTimeB.localeCompare(dateTimeA);
+  });
   
   // Demographics HTML
   const allergiesHTML = (info.allergies || []).map(a => `<span class="tag">${sanitize(a)}</span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
@@ -273,7 +307,17 @@ function viewPatientFile(phone) {
 
   let visitsTimelineHTML = `<div style="color:var(--muted);text-align:center;padding:20px;">لا يوجد زيارات سابقة</div>`;
   if (visits.length) {
+    let lastDate = null;
     visitsTimelineHTML = visits.map(([vk, v]) => {
+      let dateGroupDivider = '';
+      if (v.date !== lastDate) {
+        lastDate = v.date;
+        dateGroupDivider = `
+          <div class="timeline-date-group">
+            <span><i class="far fa-calendar-alt"></i> ${formatArabicDate(v.date)}</span>
+          </div>`;
+      }
+
       const rxList = (v.prescriptions || []).map(r => `• ${sanitize(r.name)} (${sanitize(r.dose || '—')}) - ${sanitize(r.freq || '—')}`).join('<br>');
       const attList = (v.attachments || []).map(a => `
         <div class="att-item" onclick="openAttachment('${a.data}', '${sanitize(a.type)}')">
@@ -325,35 +369,96 @@ function viewPatientFile(phone) {
 
       const notesHTML = (isPharmacist || isLab || isRad || isReferral) ? v.notes : sanitize(v.notes || 'لا يوجد ملاحظات إضافية');
 
-      return `<div class="tl-item">
-        <div class="tl-dot ${dotColor}"></div>
-        <div class="tl-card" style="${cardStyle}" onclick="this.classList.toggle('open')">
-          <div class="tl-head">
-            <span class="tl-date">${v.date} · ${v.time}</span>
-            <span class="tl-doc"><i class="fas ${cardIcon}"></i> ${sanitize(v.docName)}</span>
-          </div>
-          <div class="tl-diag">${sanitize(v.diagnosis || 'زيارة طبية')}</div>
-          <div style="font-size:.8rem;color:var(--muted);display:flex;justify-content:space-between">
-            <span>🔍 الشكوى / الموضوع: ${sanitize(v.complaint || 'مراجعة')}</span>
-            <span style="color:var(--teal);font-weight:700"><i class="fas fa-chevron-down"></i> تفاصيل</span>
-          </div>
-          <div class="tl-body">
-            ${vitalsSummary}
-            <div style="margin-top:10px"><b>📝 التفاصيل والتقرير:</b><p style="font-size:.82rem;margin-top:4px;line-height:1.6">${notesHTML}</p></div>
-            
-            ${rxList ? `<div style="margin-top:10px"><b>💊 الوصفة الدوائية:</b><p style="font-size:.82rem;margin-top:4px;color:var(--amber);line-height:1.6">${rxList}</p></div>` : ''}
-            
-            ${labReqsStr ? `<div style="margin-top:10px"><b>🔬 الفحوصات المخبرية المطلوبة:</b> <span class="tag" style="background:rgba(13,148,136,0.12);border:1px solid var(--teal);color:var(--teal);font-size:0.75rem">${sanitize(labReqsStr)}</span></div>` : ''}
-            ${radReqsStr ? `<div style="margin-top:10px"><b>🩻 صور الأشعة المطلوبة:</b> <span class="tag blue" style="background:rgba(14,165,233,0.12);border:1px solid var(--sky);color:var(--sky);font-size:0.75rem">${sanitize(radReqsStr)}</span></div>` : ''}
-            
-            ${attList ? `<div style="margin-top:12px"><b>📁 المرفقات الطبية وصور الأشعة:</b><div class="att-grid" style="margin-top:6px">${attList}</div></div>` : ''}
-            
-            <div style="margin-top:14px;display:flex;justify-content:flex-end">
-              <button class="btn-secondary btn-sm" onclick="event.stopPropagation();printVisitSummary('${vk}')"><i class="fas fa-print"></i> طباعة الملخص</button>
+      return `
+        ${dateGroupDivider}
+        <div class="tl-item">
+          <div class="tl-dot ${dotColor}"></div>
+          <div class="tl-card" style="${cardStyle}" onclick="this.classList.toggle('open')">
+            <div class="tl-head">
+              <span class="tl-date">${v.date} · ${v.time}</span>
+              <span class="tl-doc"><i class="fas ${cardIcon}"></i> ${sanitize(v.docName)}</span>
+            </div>
+            <div class="tl-diag">${sanitize(v.diagnosis || 'زيارة طبية')}</div>
+            <div style="font-size:.8rem;color:var(--muted);display:flex;justify-content:space-between">
+              <span>🔍 الشكوى / الموضوع: ${sanitize(v.complaint || 'مراجعة')}</span>
+              <span style="color:var(--teal);font-weight:700"><i class="fas fa-chevron-down"></i> تفاصيل</span>
+            </div>
+            <div class="tl-body">
+              ${vitalsSummary}
+              <div style="margin-top:10px"><b>📝 التفاصيل والتقرير:</b><p style="font-size:.82rem;margin-top:4px;line-height:1.6">${notesHTML}</p></div>
+              
+              ${rxList ? `<div style="margin-top:10px"><b>💊 الوصفة الدوائية:</b><p style="font-size:.82rem;margin-top:4px;color:var(--amber);line-height:1.6">${rxList}</p></div>` : ''}
+              
+              ${labReqsStr ? `<div style="margin-top:10px"><b>🔬 الفحوصات المخبرية المطلوبة:</b> <span class="tag" style="background:rgba(13,148,136,0.12);border:1px solid var(--teal);color:var(--teal);font-size:0.75rem">${sanitize(labReqsStr)}</span></div>` : ''}
+              ${radReqsStr ? `<div style="margin-top:10px"><b>🩻 صور الأشعة المطلوبة:</b> <span class="tag blue" style="background:rgba(14,165,233,0.12);border:1px solid var(--sky);color:var(--sky);font-size:0.75rem">${sanitize(radReqsStr)}</span></div>` : ''}
+              
+              ${attList ? `<div style="margin-top:12px"><b>📁 المرفقات الطبية وصور الأشعة:</b><div class="att-grid" style="margin-top:6px">${attList}</div></div>` : ''}
+              
+              <div style="margin-top:14px;display:flex;justify-content:flex-end">
+                <button class="btn-secondary btn-sm" onclick="event.stopPropagation();printVisitSummary('${vk}')"><i class="fas fa-print"></i> طباعة الملخص</button>
+              </div>
             </div>
           </div>
-        </div>
-      </div>`;
+        </div>`;
+    }).join('');
+  }
+
+  // Get department specific order lists for this patient
+  const patientLabOrders = Object.entries(_labOrders).filter(([k, o]) => cleanPhone(o.patientPhone) === cleanPhone(phone));
+  const patientRadOrders = Object.entries(_radOrders).filter(([k, o]) => cleanPhone(o.patientPhone) === cleanPhone(phone));
+
+  let labOrdersHTML = `
+    <div style="text-align:center;padding:30px;color:var(--muted)" class="glass-panel">لا يوجد طلبات فحوصات مخبرية مسجلة لهذا المريض</div>`;
+  if (patientLabOrders.length) {
+    labOrdersHTML = patientLabOrders.map(([k, o]) => {
+      const tests = (o.requestedTests || []).map(t => {
+        let resStr = '';
+        if (t.status === 'completed') {
+          resStr = `: <b style="color:var(--teal)">${sanitize(t.result)}</b> ${sanitize(t.unit)}`;
+        }
+        return `• ${sanitize(t.name)}${resStr}`;
+      }).join('<br>');
+      const statusText = o.status === 'completed' ? 'جاهزة ومكتملة ✅' : 'قيد الفحص والتحليل ⏳';
+      const statusColor = o.status === 'completed' ? 'var(--green)' : 'var(--amber)';
+      
+      return `
+        <div class="glass-panel" style="padding:14px;margin-bottom:10px;border-right:4px solid ${statusColor}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:0.75rem;color:var(--muted)">تاريخ الطلب: ${(o.createdAt || '').substring(0,10)}</span>
+            <span style="font-size:0.75rem;color:${statusColor};font-weight:800">${statusText}</span>
+          </div>
+          <div style="font-size:0.82rem;margin-bottom:6px"><b>🔬 الفحوصات:</b><br>${tests}</div>
+          ${o.notes ? `<div style="font-size:0.78rem;color:var(--muted);background:rgba(255,255,255,0.02);padding:6px;border-radius:6px;margin-top:4px"><b>ملاحظات الفني:</b> ${sanitize(o.notes)}</div>` : ''}
+          ${o.attachment ? `
+            <div style="margin-top:8px;text-align:left">
+              <button class="btn-secondary btn-sm" onclick="openAttachment('${o.attachment}','pdf')"><i class="fas fa-file-pdf"></i> عرض تقرير الـ PDF المرفق</button>
+            </div>` : ''}
+        </div>`;
+    }).join('');
+  }
+
+  let radOrdersHTML = `
+    <div style="text-align:center;padding:30px;color:var(--muted)" class="glass-panel">لا يوجد طلبات تصوير أشعة مسجلة لهذا المريض</div>`;
+  if (patientRadOrders.length) {
+    radOrdersHTML = patientRadOrders.map(([k, o]) => {
+      const scans = (o.requestedScans || []).map(s => `• ${sanitize(s.name)}`).join('<br>');
+      const statusText = o.status === 'completed' ? 'جاهزة ومكتملة ✅' : 'بانتظار التصوير ⏳';
+      const statusColor = o.status === 'completed' ? 'var(--green)' : 'var(--amber)';
+      
+      return `
+        <div class="glass-panel" style="padding:14px;margin-bottom:10px;border-right:4px solid ${statusColor}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:0.75rem;color:var(--muted)">تاريخ الطلب: ${(o.createdAt || '').substring(0,10)}</span>
+            <span style="font-size:0.75rem;color:${statusColor};font-weight:800">${statusText}</span>
+          </div>
+          <div style="font-size:0.82rem;margin-bottom:6px"><b>🩻 صور الأشعة المطلوبة:</b><br>${scans}</div>
+          ${o.report ? `<div style="font-size:0.8rem;background:rgba(255,255,255,0.02);padding:8px;border-radius:6px;margin-top:4px;color:var(--text)"><b>📝 التقرير الطبي للأشعة:</b><br>${o.report.replace(/\n/g,'<br>')}</div>` : ''}
+          ${o.image ? `
+            <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:0.7rem;color:var(--sky);cursor:pointer" onclick="openAttachment('${o.image}','image')"><i class="fas fa-expand-arrows-alt"></i> اضغط لتكبير الصورة التشخيصية</span>
+              <button class="btn-secondary btn-sm" onclick="openAttachment('${o.image}','image')"><i class="fas fa-eye"></i> عرض صورة الأشعة</button>
+            </div>` : ''}
+        </div>`;
     }).join('');
   }
 
@@ -378,32 +483,69 @@ function viewPatientFile(phone) {
         <div class="pat-field" style="grid-column:span 1"><div class="pfl">الأمراض المزمنة</div><div>${chronicHTML}</div></div>
       </div>
       ${info.notes ? `<div class="pat-field" style="margin-top:14px"><div class="pfl">ملاحظات عامة</div><div class="pfv" style="font-weight:normal;font-size:.82rem">${sanitize(info.notes)}</div></div>` : ''}
-      
-      <!-- Internal Referral Section -->
-      ${_sets && _sets.mode === 'medical_complex' ? `
-        <div class="pat-field" style="margin-top:14px;border-top:1px dashed var(--border);padding-top:14px">
-          <div class="pfl" style="color:var(--amber);font-weight:800"><i class="fas fa-random"></i> تحويل داخلي للمريض (Internal Referral)</div>
-          <div style="display:grid;grid-template-columns:1.5fr 2.5fr auto;gap:10px;margin-top:8px;align-items:end">
-            <div>
-              <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:4px">القسم المستهدف</label>
-              <select id="refTargetDept" class="fi" style="background:var(--surf);color:var(--text);border:1px solid var(--border);height:36px;border-radius:8px;padding:0 8px;width:100%">
-                ${Object.entries(_depts || {}).map(([k, d]) => `<option value="${k}">${d.emoji || '🏢'} ${sanitize(d.name)}</option>`).join('')}
-              </select>
-            </div>
-            <div>
-              <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:4px">سبب التحويل الطبي / ملاحظات إضافية</label>
-              <input type="text" id="refReason" class="fi" style="background:var(--surf);color:var(--text);border:1px solid var(--border);height:36px;border-radius:8px;padding:0 8px;width:100%" placeholder="مثال: بحاجة لتخفيف آلام عصب الأسنان">
-            </div>
-            <button class="btn-primary" onclick="createInternalReferral()" style="height:36px;padding:0 16px;border-radius:8px;background:linear-gradient(135deg,var(--amber),#d97706);font-size:0.82rem;border:none"><i class="fas fa-share-square"></i> إرسال التحويل</button>
-          </div>
-        </div>
-      ` : ''}
     </div>
 
-    <div class="ph">
-      <div><div class="pt">⏳ السجل الزمني للعلاجات والزيارات</div><div class="ps">تاريخ المريض الصحي بالكامل</div></div>
+    <!-- Spectacular Tabbed Workspace Bar -->
+    <div class="emr-tabs" style="display:flex;gap:8px;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:20px;overflow-x:auto">
+      <button class="emr-tab-btn ${activeEmrTab === 'timeline-tab' ? 'active' : ''}" onclick="switchEmrTab('timeline-tab')" style="background:var(--surf);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s">
+        <i class="fas fa-history" style="color:var(--teal)"></i> السجل الطبي الزمني
+      </button>
+      <button class="emr-tab-btn ${activeEmrTab === 'lab-tab' ? 'active' : ''}" onclick="switchEmrTab('lab-tab')" style="background:var(--surf);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s">
+        <i class="fas fa-vials" style="color:var(--sky)"></i> الفحوصات والأشعة
+      </button>
+      ${_sets && _sets.mode === 'medical_complex' ? `
+      <button class="emr-tab-btn ${activeEmrTab === 'referral-tab' ? 'active' : ''}" onclick="switchEmrTab('referral-tab')" style="background:var(--surf);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s">
+        <i class="fas fa-exchange-alt" style="color:#a855f7"></i> التحويلات الداخلية
+      </button>` : ''}
     </div>
-    <div class="timeline">${visitsTimelineHTML}</div>
+
+    <!-- Dynamic Tab Contents -->
+    <div id="emr-tab-timeline" class="emr-tab-content ${activeEmrTab === 'timeline-tab' ? 'active-content' : ''}" style="display:${activeEmrTab === 'timeline-tab' ? 'block' : 'none'}">
+      <div class="ph" style="margin-bottom:12px">
+        <div><div class="pt" style="font-size:1.15rem">⏳ السجل الطبي الموحد</div><div class="ps">تاريخ المريض الصحي والزيارات مصنفة زمنياً بالأحدث</div></div>
+      </div>
+      <div class="timeline">${visitsTimelineHTML}</div>
+    </div>
+
+    <div id="emr-tab-lab" class="emr-tab-content ${activeEmrTab === 'lab-tab' ? 'active-content' : ''}" style="display:${activeEmrTab === 'lab-tab' ? 'block' : 'none'}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div>
+          <div class="ph" style="margin-bottom:12px">
+            <div><div class="pt" style="font-size:1.15rem;color:var(--teal)">🧪 المختبر الطبي المركزي</div><div class="ps">تتبع حالة التحاليل المخبرية ونتائج القيم</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">${labOrdersHTML}</div>
+        </div>
+        <div>
+          <div class="ph" style="margin-bottom:12px">
+            <div><div class="pt" style="font-size:1.15rem;color:var(--sky)">🩻 قسم التصوير التشخيصي بالأشعة</div><div class="ps">تقارير الأشعة الرقمية وصور السين والتقرير التشخيصي المرفق</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">${radOrdersHTML}</div>
+        </div>
+      </div>
+    </div>
+
+    ${_sets && _sets.mode === 'medical_complex' ? `
+    <div id="emr-tab-referral" class="emr-tab-content ${activeEmrTab === 'referral-tab' ? 'active-content' : ''}" style="display:${activeEmrTab === 'referral-tab' ? 'block' : 'none'}">
+      <div class="ph" style="margin-bottom:12px">
+        <div><div class="pt" style="font-size:1.15rem;color:#a855f7">🔄 مكتب التحويلات الطبية الداخلية</div><div class="ps">توجيه المرضى لحظياً بين أقسام المجمع الطبي</div></div>
+      </div>
+      <div class="vform" style="padding:20px;border-radius:14px;background:rgba(255,255,255,0.01)">
+        <div class="pfl" style="color:var(--purple);font-weight:800;font-size:0.85rem;margin-bottom:12px"><i class="fas fa-random"></i> إنشاء بطاقة تحويل داخلي جديدة</div>
+        <div style="display:grid;grid-template-columns:1.5fr 2.5fr auto;gap:12px;align-items:end">
+          <div>
+            <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:6px">القسم المستهدف</label>
+            <select id="refTargetDept" class="fi" style="height:38px;border-radius:8px;padding:0 8px;width:100%">
+              ${Object.entries(_depts || {}).map(([k, d]) => `<option value="${k}">${d.emoji || '🏢'} ${sanitize(d.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:6px">سبب التحويل الطبي / ملاحظات إضافية</label>
+            <input type="text" id="refReason" class="fi" style="height:38px;border-radius:8px;padding:0 8px;width:100%" placeholder="مثال: بحاجة لاستشارة عاجلة بخصوص ضغط الدم الشرياني">
+          </div>
+          <button class="btn-primary" onclick="createInternalReferral()" style="height:38px;padding:0 20px;border-radius:8px;background:linear-gradient(135deg,var(--purple),#7c3aed);font-size:0.82rem;border:none;box-shadow:0 4px 12px rgba(139,92,246,0.3)"><i class="fas fa-share-square"></i> إرسال التحويل</button>
+        </div>
+      </div>
+    </div>` : ''}
   `;
 
   document.getElementById('patFileContent').innerHTML = fileHTML;
@@ -1040,5 +1182,89 @@ function checkAndSeedDefaultDepartments() {
   }
 }
 
-// Redeploy trigger: 2026-05-18T21:08:12
+// Tab switcher helper
+function switchEmrTab(tabId) {
+  activeEmrTab = tabId;
+  document.querySelectorAll('.emr-tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.emr-tab-content').forEach(content => {
+    content.style.display = 'none';
+    content.classList.remove('active-content');
+  });
+  
+  if (tabId === 'timeline-tab') {
+    document.querySelector('.emr-tab-btn:nth-child(1)').classList.add('active');
+    const el = document.getElementById('emr-tab-timeline');
+    if (el) { el.style.display = 'block'; el.classList.add('active-content'); }
+  } else if (tabId === 'lab-tab') {
+    document.querySelector('.emr-tab-btn:nth-child(2)').classList.add('active');
+    const el = document.getElementById('emr-tab-lab');
+    if (el) { el.style.display = 'block'; el.classList.add('active-content'); }
+  } else if (tabId === 'referral-tab') {
+    const btn = document.querySelector('.emr-tab-btn:nth-child(3)');
+    if (btn) btn.classList.add('active');
+    const el = document.getElementById('emr-tab-referral');
+    if (el) { el.style.display = 'block'; el.classList.add('active-content'); }
+  }
+}
+
+// Format date into luxurious Arabic style
+function formatArabicDate(dateStr) {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('ar-JO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  } catch(e) {
+    return dateStr;
+  }
+}
+
+// Convert 12h Arabic/English time into comparable 24h format
+function parseArabicTime(t) {
+  let clean = String(t || '').trim();
+  const isPM = clean.includes('م') || clean.includes('PM');
+  const isAM = clean.includes('ص') || clean.includes('AM');
+  const match = clean.match(/(\d+):(\d+)/);
+  if (!match) return '00:00';
+  let hours = parseInt(match[1]);
+  let minutes = match[2];
+  if (isPM && hours < 12) hours += 12;
+  if (isAM && hours === 12) hours = 0;
+  return String(hours).padStart(2, '0') + ':' + minutes;
+}
+
+// Premium Web Audio Synthesizer Double-Chime Sound
+function playNotificationSound() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+    
+    // First high chime
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(880, now); // A5 note
+    gain1.gain.setValueAtTime(0.15, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.3);
+    
+    // Second premium chime with a minor third delay for high elegance
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1320, now + 0.12); // E6 note
+    gain2.gain.setValueAtTime(0.15, now + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.12);
+    osc2.stop(now + 0.45);
+  } catch (e) {
+    console.warn("Audio Context playback failed or blocked by browser gesture", e);
+  }
+}
 
