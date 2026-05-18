@@ -47,6 +47,7 @@
       <div class="ni on" onclick="sw('patList',this)"><i class="fas fa-users"></i>قائمة المرضى</div>
       <div class="ni" onclick="sw('patFile',this)"><i class="fas fa-file-medical"></i>ملف المريض</div>
       <div class="ni" onclick="sw('newVisit',this)"><i class="fas fa-stethoscope"></i>زيارة جديدة</div>
+      <div class="ni" id="referralsMenuBtn" onclick="sw('referralList',this)" style="display:none"><i class="fas fa-exchange-alt" style="color:var(--purple)"></i>التحويلات الداخلية</div>
     </div>
     <div class="royal-foot">
       <div class="argon-sig"><div style="width:40px;height:1px;background:linear-gradient(to right,transparent,var(--teal),transparent);margin-bottom:8px"></div>POWERED BY<span>ARGON EMR</span></div>
@@ -92,6 +93,23 @@
           <i class="fas fa-user-md" style="font-size:3rem;display:block;margin-bottom:14px;opacity:.2"></i>
           <p>اختر مريضاً أولاً من قائمة المرضى</p>
         </div>
+    </div>
+
+    <!-- INTERNAL REFERRALS LIST SECTION -->
+    <div id="referralList" class="sec">
+      <div class="ph">
+        <div><div class="pt" style="color:var(--purple)"><i class="fas fa-exchange-alt"></i> التحويلات الطبية الداخلية</div><div class="ps">جميع طلبات تحويل المرضى المستلمة والمرسلة عبر أقسام المجمع الطبي</div></div>
+      </div>
+      <div class="glass-panel" style="padding:16px;margin-bottom:20px">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:0.85rem;color:var(--muted)">تصفية حسب الحالة:</span>
+          <button class="btn-secondary btn-sm filter-ref-btn active" onclick="filterReferrals('all', this)" style="border-radius:8px;padding:4px 12px;font-size:0.75rem">الكل</button>
+          <button class="btn-secondary btn-sm filter-ref-btn" onclick="filterReferrals('pending', this)" style="border-radius:8px;padding:4px 12px;font-size:0.75rem;color:var(--amber)">بانتظار المعاينة ⏳</button>
+          <button class="btn-secondary btn-sm filter-ref-btn" onclick="filterReferrals('completed', this)" style="border-radius:8px;padding:4px 12px;font-size:0.75rem;color:var(--green)">مكتملة ✅</button>
+        </div>
+      </div>
+      <div id="referralsGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(340px, 1fr));gap:16px">
+        <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">لا يوجد تحويلات طبية مسجلة حالياً</div>
       </div>
     </div>
   </div>

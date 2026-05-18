@@ -28,6 +28,8 @@ let uploadAttachments = [];
 let _labOrders = {};
 let _radOrders = {};
 let activeEmrTab = 'timeline-tab';
+let _referrals = {};
+let currentReferralsFilter = 'all';
 
 // DOM Loaded
 window.addEventListener('DOMContentLoaded', () => {
@@ -145,6 +147,18 @@ function initEMR() {
         viewPatientFile(activePatientId);
       }
     }
+  });
+
+  // Show referrals sidebar button if license is Medical Complex
+  if (_sets && _sets.mode === 'medical_complex') {
+    const btn = document.getElementById('referralsMenuBtn');
+    if (btn) btn.style.display = 'flex';
+  }
+
+  // Real-time listener for internal referrals
+  db.ref(BASE + '/referrals').on('value', snap => {
+    _referrals = snap.val() || {};
+    renderReferralsList();
   });
 }
 
@@ -1266,5 +1280,65 @@ function playNotificationSound() {
   } catch (e) {
     console.warn("Audio Context playback failed or blocked by browser gesture", e);
   }
+}
+
+// 🔄 Internal Referrals Dashboard Logic
+function filterReferrals(status, btn) {
+  currentReferralsFilter = status;
+  document.querySelectorAll('.filter-ref-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderReferralsList();
+}
+
+function renderReferralsList() {
+  const grid = document.getElementById('referralsGrid');
+  if (!grid) return;
+
+  const list = Object.entries(_referrals).reverse(); // Newest first
+  const filtered = list.filter(([k, r]) => {
+    if (currentReferralsFilter === 'all') return true;
+    return r.status === currentReferralsFilter;
+  });
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:50px;color:var(--muted)" class="glass-panel">
+      <i class="fas fa-exchange-alt" style="font-size:2.5rem;display:block;margin-bottom:12px;opacity:0.15"></i>
+      لا يوجد طلبات تحويل طبي تطابق الحالة المحددة حالياً
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(([k, r]) => {
+    const isCompleted = r.status === 'completed';
+    const statusLabel = isCompleted ? 'مكتملة ✅' : 'بانتظار المعاينة ⏳';
+    const statusColor = isCompleted ? 'var(--green)' : 'var(--amber)';
+    const statusBg = isCompleted ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)';
+
+    return `
+      <div class="glass-panel" style="padding:18px;border-right:5px solid ${statusColor};position:relative;display:flex;flex-direction:column;gap:10px;animation:fu 0.25s ease">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:0.75rem;color:var(--muted)">${(r.createdAt || '').substring(0,10)} · ${(r.createdAt || '').substring(11,16)}</span>
+          <span style="font-size:0.72rem;font-weight:800;padding:4px 8px;border-radius:6px;background:${statusBg};color:${statusColor}">${statusLabel}</span>
+        </div>
+        <div style="font-size:1.05rem;font-weight:800;color:var(--text)">👤 ${sanitize(r.patientName)}</div>
+        <div style="font-size:0.82rem;color:var(--muted)">رقم الهاتف: <span dir="ltr">${sanitize(r.patientId)}</span></div>
+        <div style="font-size:0.85rem;background:rgba(255,255,255,0.01);padding:10px;border-radius:8px;border:1px solid var(--border)">
+          <b>🎯 القسم المحال إليه:</b> ${r.toDeptEmoji || '🏢'} <span style="color:var(--purple);font-weight:700">${sanitize(r.toDeptName)}</span>
+          <br>
+          <div style="margin-top:6px;line-height:1.4"><b>📝 السبب الطبي للتحويل:</b><br>${sanitize(r.reason || 'استشارة عامة')}</div>
+        </div>
+        <div style="margin-top:auto;display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn-secondary btn-sm" onclick="viewPatientFile('${r.patientId}')" style="height:32px;border-radius:6px;font-size:0.75rem"><i class="fas fa-file-medical"></i> فتح الملف الطبي</button>
+          ${!isCompleted ? `<button class="btn-primary btn-sm" onclick="completeReferral('${k}')" style="height:32px;border-radius:6px;font-size:0.75rem;background:var(--green);border:none;box-shadow:0 4px 10px rgba(16,185,129,0.2)"><i class="fas fa-check"></i> اكتمال المعاينة</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function completeReferral(refId) {
+  db.ref(`${BASE}/referrals/${refId}/status`).set('completed').then(() => {
+    toast('✅ تم تحديث حالة التحويل إلى مكتمل', 'ok');
+  });
 }
 
