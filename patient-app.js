@@ -357,7 +357,11 @@ function renderBillingLedger() {
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div>إجمالي الفاتورة: <b style="color:var(--teal);font-size:1.1rem">${parseFloat(inv.total || 0).toFixed(2)} JOD</b></div>
-          ${isPaid ? '' : `<button class="btn-primary" onclick="simulatePayment('${k}')" style="padding:8px 12px;font-size:0.78rem"><i class="fas fa-credit-card"></i> إتمام الدفع الآن</button>`}
+          ${isPaid ? '' : `
+            <span style="font-size:0.75rem;color:var(--muted);background:rgba(255,255,255,0.02);border:1px dashed var(--border);padding:6px 12px;border-radius:8px;display:inline-flex;align-items:center;gap:4px">
+              <i class="fas fa-info-circle" style="color:var(--teal)"></i> الدفع يتم خارجياً لدى موظف الاستقبال
+            </span>
+          `}
         </div>
       </div>
     `;
@@ -397,27 +401,9 @@ function renderNotifications(allNotifs) {
   `).join('');
 }
 
-// Simulate Online Payment Checkout
+// Online Payment Checkout disabled - redirect to Reception Desk
 function simulatePayment(invoiceKey) {
-  toast('⏳ جاري الاتصال بالبوابة المالية الآمنة...', 'ok');
-  
-  setTimeout(() => {
-    const isConfirmed = confirm("💳 بوابة الدفع الآمنة (محاكاة):\nهل ترغب بتأكيد عملية الدفع فواتير المجمع الطبي بقيمة " + parseFloat(invoicesData[invoiceKey].total || 0).toFixed(2) + " د.أ؟");
-    
-    if (isConfirmed) {
-      db.ref(`${BASE}/invoices/${invoiceKey}`).update({ status: 'paid' }).then(() => {
-        toast('✅ تم الدفع الإلكتروني بنجاح وتسوية الفاتورة!', 'ok');
-        
-        // Dispatch instant alert to receptionist dashboard
-        db.ref(`${BASE}/notifications`).push({
-          title: 'دفعة مالية إلكترونية 💳',
-          message: `قام المريض ${sanitize(patientData.info.name)} بسداد الفاتورة إلكترونياً بقيمة ${parseFloat(invoicesData[invoiceKey].total || 0).toFixed(2)} د.أ`,
-          role: 'reception',
-          createdAt: new Date().toISOString()
-        });
-      });
-    }
-  }, 800);
+  alert("💵 سداد الفاتورة:\nيرجى العلم أن الدفع يتم خارجياً (نقداً أو بالبطاقة) لدى موظف الاستقبال أو محاسب المجمع الطبي.");
 }
 
 // Show printable EMR sheet modal

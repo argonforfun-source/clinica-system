@@ -2434,17 +2434,31 @@
       const daysToShow = clinicSets.bookingDays || 14;
       const startOff = allowSameDay ? 0 : 1;
 
-      for (let i = 0; i < daysToShow; i++) {
-        const d = new Date(today); d.setDate(today.getDate() + startOff + i);
+      const docWorkDays = (selDoc && selDoc.workDays) || [0, 1, 2, 3, 4, 6];
+      let renderedDays = 0;
+      let checkOffset = 0;
+      
+      while (renderedDays < daysToShow && checkOffset < 60) {
+        const d = new Date(today); d.setDate(today.getDate() + startOff + checkOffset);
+        checkOffset++;
+        
+        // Skip days the doctor is not on duty
+        if (!docWorkDays.includes(d.getDay())) {
+          continue;
+        }
+        
         const localD = new Date(d.getTime() - (d.getTimezoneOffset() * 60000));
         const ds = localD.toISOString().split('T')[0];
         const dn = DAY_AR[d.getDay()];
-        const isToday = (startOff + i) === 0;
+        const isToday = ds === new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        
         html += `<div class="d-chip" id="dc-${ds}" onclick="pickDate('${ds}',this)">
-      <div class="d-day">${isToday ? T('today') : dn}</div>
-      <div class="d-num">${d.getDate()}</div>
-    </div>`;
+          <div class="d-day">${isToday ? T('today') : dn}</div>
+          <div class="d-num">${d.getDate()}</div>
+        </div>`;
+        renderedDays++;
       }
+      
       r.innerHTML = html;
       document.getElementById('timeGrid').innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:0.82rem;padding:12px">${T('selectDateFirst')}</div>`;
     }

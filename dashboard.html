@@ -440,6 +440,41 @@
           </div>
           <button class="badd" id="btnCancelEdit" onclick="cancelDocEdit()" style="display:none;background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)"><i class="fas fa-times" style="margin-left:4px"></i>تراجع</button>
         </div>
+        
+        <!-- Scoped Doctor Workdays Selection -->
+        <style>
+          .day-btn {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 0.72rem;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--muted);
+            transition: 0.25s;
+          }
+          .day-btn.active {
+            background: var(--teal);
+            color: #000;
+            font-weight: 800;
+            border-color: var(--teal);
+            box-shadow: 0 0 10px rgba(13, 148, 136, 0.3);
+          }
+        </style>
+        <div style="margin-top: 12px; display:flex; flex-direction:column; gap:6px; border-top: 1px dashed var(--border); padding-top: 12px">
+          <label class="mfl" style="font-weight: 800; color:var(--teal)">📅 أيام عمل الطبيب المتاحة للمرضى (اضغط لتحديد أيام الدوام):</label>
+          <div style="display:flex; gap:6px; flex-wrap:wrap">
+            <button type="button" class="day-btn active" data-day="6" onclick="this.classList.toggle('active')">السبت</button>
+            <button type="button" class="day-btn active" data-day="0" onclick="this.classList.toggle('active')">الأحد</button>
+            <button type="button" class="day-btn active" data-day="1" onclick="this.classList.toggle('active')">الاثنين</button>
+            <button type="button" class="day-btn active" data-day="2" onclick="this.classList.toggle('active')">الثلاثاء</button>
+            <button type="button" class="day-btn active" data-day="3" onclick="this.classList.toggle('active')">الأربعاء</button>
+            <button type="button" class="day-btn active" data-day="4" onclick="this.classList.toggle('active')">الخميس</button>
+            <button type="button" class="day-btn" data-day="5" onclick="this.classList.toggle('active')">الجمعة</button>
+          </div>
+        </div>
       </div>
       <div class="dgrid2" id="docGrid"></div>
     </div>
@@ -1244,6 +1279,12 @@ db.ref(BASE+'/doctors').on('value', snap => {
     const avg=d.avgRating?`★${d.avgRating.toFixed(1)} (${d.ratingCount||0})`:'';
     const dept = d.departmentId && _depts[d.departmentId] ? _depts[d.departmentId] : null;
     const deptTag = dept && (_sets.mode === 'medical_complex') ? `<div style="font-size:0.75rem;margin:3px 0;font-weight:700;color:${dept.color || 'var(--teal)'}"><span style="font-size:0.85rem">${dept.emoji || '🏢'}</span> ${sanitize(dept.name)}</div>` : '';
+    
+    // Map workdays list to Arabic string
+    const dayNamesAr = { 6:'السبت', 0:'الأحد', 1:'الاثنين', 2:'الثلاثاء', 3:'الأربعاء', 4:'الخميس', 5:'الجمعة' };
+    const wDays = d.workDays || [0, 1, 2, 3, 4, 6];
+    const wDaysLabels = wDays.map(day => dayNamesAr[day] || '').filter(Boolean).join(' · ');
+
     return `<div class="dc">
       <div class="dc-top">${d.img?`<img src="${d.img}" alt="${d.name}">`:d.emoji||'👨‍⚕️'}</div>
       <div class="dc-body">
@@ -1252,6 +1293,7 @@ db.ref(BASE+'/doctors').on('value', snap => {
         ${deptTag}
         <div class="dc-fee">${parseFloat(d.fee||0).toFixed(2)} د.أ · ${d.slotDuration||30}د</div>
         <div class="dc-fee" style="font-size:.71rem;color:var(--muted)">${d.workStart||'09:00'} — ${d.workEnd||'17:00'}</div>
+        <div style="font-size:0.68rem;color:var(--teal);margin-top:2px;font-weight:700">🗓️ الدوام: ${wDaysLabels}</div>
         ${avg?`<div class="drate">${avg}</div>`:''}
         <div class="avl-tog" onclick="togAvail('${k}',${avail})">
           <input type="checkbox" ${avail?'checked':''} onclick="event.stopPropagation()">
@@ -1315,6 +1357,13 @@ function addDoc() {
   const spec=document.getElementById('dS').value.trim();
   const fee=document.getElementById('dF').value.trim();
   if(!name||!spec||!fee){toast('⚠️ أدخل الاسم والتخصص والرسوم','err');return;}
+  
+  // Extract selected doctor workdays
+  const workDays = [];
+  document.querySelectorAll('.day-btn.active').forEach(btn => {
+    workDays.push(parseInt(btn.getAttribute('data-day')));
+  });
+
   const docObj = {
     name,specialty:spec,fee:parseFloat(fee),
     slotDuration:parseInt(document.getElementById('dSlot').value)||30,
@@ -1322,7 +1371,8 @@ function addDoc() {
     workEnd:document.getElementById('dWe').value||'17:00',
     img:document.getElementById('dImg').value.trim()||'',
     emoji:document.getElementById('dEm').value.trim()||'👨‍⚕️',
-    departmentId:document.getElementById('dDept').value||''
+    departmentId:document.getElementById('dDept').value||'',
+    workDays: workDays.length ? workDays : [0, 1, 2, 3, 4, 6] // Default Sat-Thu if none selected
   };
   
   if (editingDocKey) {
@@ -1352,6 +1402,17 @@ function editDoc(k) {
   document.getElementById('dEm').value = d.emoji || '👨‍⚕️';
   document.getElementById('dDept').value = d.departmentId || '';
   
+  // Set workday buttons based on doctor's schedule
+  const wDays = d.workDays || [0, 1, 2, 3, 4, 6];
+  document.querySelectorAll('.day-btn').forEach(btn => {
+    const day = parseInt(btn.getAttribute('data-day'));
+    if (wDays.includes(day)) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
   const b = document.querySelector('.badd');
   b.innerHTML = '<i class="fas fa-save" style="margin-left:4px"></i>تحديث معلومات الطبيب';
   b.style.background = 'linear-gradient(135deg, var(--amber), #d97706)';
@@ -1368,6 +1429,17 @@ function cancelDocEdit() {
   document.getElementById('dEm').value = '👨‍⚕️';
   document.getElementById('dDept').value = '';
   
+  // Reset workday buttons (default to Sat-Thu active)
+  const defaultDays = [0, 1, 2, 3, 4, 6];
+  document.querySelectorAll('.day-btn').forEach(btn => {
+    const day = parseInt(btn.getAttribute('data-day'));
+    if (defaultDays.includes(day)) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
   const b = document.querySelector('.badd');
   b.innerHTML = '<i class="fas fa-plus" style="margin-left:4px"></i>إضافة';
   b.style.background = 'linear-gradient(135deg,var(--teal),var(--sky))';

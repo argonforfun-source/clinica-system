@@ -102,13 +102,15 @@ function filterPresc(status) {
   document.getElementById('btnFilterWaiting').style.color = status === 'waiting' ? 'var(--amber)' : 'var(--text)';
   document.getElementById('btnFilterCompleted').style.borderColor = status === 'completed' ? 'var(--green)' : 'var(--border)';
   document.getElementById('btnFilterCompleted').style.color = status === 'completed' ? 'var(--green)' : 'var(--text)';
+  document.getElementById('btnFilterCancelled').style.borderColor = status === 'cancelled' ? 'var(--red)' : 'var(--border)';
+  document.getElementById('btnFilterCancelled').style.color = status === 'cancelled' ? 'var(--red)' : 'var(--text)';
   renderPrescriptions();
 }
 
 // Render Prescriptions Inbox List
 function renderPrescriptions() {
   const grid = document.getElementById('prescGrid');
-  const items = Object.entries(_prescriptions).filter(([k, v]) => v.status === currentPrescFilter);
+  const items = Object.entries(_prescriptions).filter(([k, v]) => (v.status || 'waiting') === currentPrescFilter);
   
   if (!items.length) {
     grid.innerHTML = `
@@ -122,14 +124,25 @@ function renderPrescriptions() {
   grid.innerHTML = items.map(([k, p]) => {
     const medNames = (p.medications || []).map(m => m.name).join(' ، ');
     const dateStr = p.createdAt ? p.createdAt.substring(0, 16).replace('T', ' ') : 'فوري';
-    const badgeClass = p.status === 'completed' ? 'completed' : 'waiting';
-    const badgeText = p.status === 'completed' ? 'تم الصرف ✅' : 'بانتظار الصرف ⏳';
+    
+    let badgeStyle = '';
+    let badgeText = '';
+    if (p.status === 'completed') {
+      badgeStyle = 'background:rgba(16,185,129,0.12);color:var(--green);border:1px solid rgba(16,185,129,0.3)';
+      badgeText = 'تم الصرف ✅';
+    } else if (p.status === 'cancelled') {
+      badgeStyle = 'background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.3)';
+      badgeText = 'ملغاة لعدم التوفر ❌';
+    } else {
+      badgeStyle = 'background:rgba(245,158,11,0.12);color:var(--amber);border:1px solid rgba(245,158,11,0.3)';
+      badgeText = 'بانتظار الصرف ⏳';
+    }
     
     return `
       <div class="item-card glass-panel" onclick="openPrescDetails('${k}')">
         <div style="display:flex;justify-content:space-between;align-items:start">
           <div class="card-title">${sanitize(p.patientName)}</div>
-          <span class="badge ${badgeClass}">${badgeText}</span>
+          <span class="badge" style="${badgeStyle}">${badgeText}</span>
         </div>
         <div style="font-size:0.8rem;color:var(--muted)">
           <div><b>الطبيب:</b> د. ${sanitize(p.docName)}</div>
@@ -172,7 +185,7 @@ function openPrescDetails(key) {
         <td style="font-size:0.8rem;color:var(--muted)">${sanitize(m.dose || '—')} · ${sanitize(m.freq || '—')}</td>
         <td style="font-size:0.8rem;color:var(--muted)">${sanitize(m.dur || '—')}</td>
         <td style="font-size:0.82rem">${availabilityHTML}</td>
-        <td>${p.status === 'completed' ? `<b>${m.qty || 1}</b>` : qtyInput}</td>
+        <td>${p.status === 'completed' || p.status === 'cancelled' ? `<b>${m.qty || 1}</b>` : qtyInput}</td>
       </tr>
     `;
   }).join('');
@@ -182,10 +195,13 @@ function openPrescDetails(key) {
   const actions = document.getElementById('dispenseActions');
   if (p.status === 'completed') {
     actions.innerHTML = `<span style="color:var(--green);font-weight:bold"><i class="fas fa-check-double"></i> تم صرف هذه الوصفة مسبقاً</span>`;
+  } else if (p.status === 'cancelled') {
+    actions.innerHTML = `<span style="color:var(--red);font-weight:bold"><i class="fas fa-times-circle"></i> تم إلغاء هذه الوصفة لعدم توفر الأدوية بالمخزون</span>`;
   } else {
     actions.innerHTML = `
       <button class="btn-primary" onclick="dispensePrescription()"><i class="fas fa-pills"></i> صرف وتأكيد الوصفة</button>
-      <button class="btn-secondary" onclick="closeModal('prescModal')">إلغاء</button>
+      <button class="btn-secondary" style="border-color:var(--red);color:var(--red);background:rgba(239,68,68,0.05)" onclick="cancelPrescription()"><i class="fas fa-times"></i> إلغاء لعدم التوفر</button>
+      <button class="btn-secondary" onclick="closeModal('prescModal')">إغلاق</button>
     `;
   }
 
@@ -320,6 +336,42 @@ function dispensePrescription() {
     toast('✅ تم صرف وتأكيد الوصفة وتحديث الحسابات بنجاح', 'ok');
     closeModal('prescModal');
   }).catch(() => toast('❌ فشل إتمام عملية الصرف', 'err'));
+}
+
+// Cancel Prescription for Out-of-Stock
+function cancelPrescription() {
+  const p = _prescriptions[activePrescId];
+  if (!p) return;
+  
+  if (!confirm('هل أنت متأكد من إلغاء هذه الوصفة ونقلها إلى قسم الوصفات الملغاة لعدم توفر الأدوية؟')) return;
+  
+  const updates = {};
+  updates[`prescriptions/${activePrescId}/status`] = 'cancelled';
+  
+  const visitId = p.visitId;
+  if (visitId && p.patientId) {
+    const timelineKey = db.ref().child('visits').push().key;
+    const timelineObj = {
+      date: new Date().toLocaleDateString('en-CA'),
+      time: new Date().toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' }),
+      docKey: 'pharmacist',
+      docName: 'نظام الصيدلية المركزي',
+      diagnosis: '❌ إلغاء وصفة لعدم توفر الأدوية',
+      complaint: 'صيدلية المركز الموحدة',
+      notes: `تم إلغاء صرف الوصفة الطبية لعدم توفر الأدوية المطلوبة بالمخزون ونقلها إلى قسم الوصفات الملغاة لعدم التوفر.`,
+      vitals: { temp: null, bp: null, pulse: null },
+      prescriptions: [],
+      attachments: []
+    };
+    updates[`patients/${p.patientId}/visits/${timelineKey}`] = timelineObj;
+  }
+  
+  db.ref(BASE).update(updates).then(() => {
+    toast('❌ تم إلغاء الوصفة ونقلها إلى قسم الملغاة', 'ok');
+    closeModal('prescModal');
+  }).catch(e => {
+    toast('❌ فشل إلغاء الوصفة', 'err');
+  });
 }
 
 // Render Drug Inventory Table
