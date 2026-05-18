@@ -237,6 +237,13 @@
               <option value="#ec4899">🌸 وردي</option>
             </select>
           </div>
+          <div class="fg">
+            <label><i class="fas fa-network-wired"></i> نوع رخصة المنشأة الطبية</label>
+            <select class="fi" id="nMode">
+              <option value="single_clinic">🏥 عيادة منفردة (Single Clinic)</option>
+              <option value="medical_complex">🏢 مجمع طبي متكامل (Medical Complex)</option>
+            </select>
+          </div>
         </div>
         <div class="factions">
           <button class="btn btn-cyan" id="addBtn" onclick="addClinic()"><i class="fas fa-plus"></i> إنشاء وتفعيل</button>
@@ -520,6 +527,12 @@ function renderCards(d) {
       const doctorCount = Object.keys(c.doctors||{}).length;
       const sid = String(c.id||'').replace(/'/g,"\\'");
       const sname = String(s.name||'').replace(/'/g,"\\'").replace(/"/g,'\\"');
+
+      const isComplex = s.mode === 'medical_complex';
+      const tierBadge = isComplex 
+        ? `<span style="font-size:0.68rem;padding:2px 8px;border-radius:6px;background:rgba(20,184,166,0.1);color:#2dd4bf;border:1px solid rgba(20,184,166,0.25);font-weight:bold;margin-top:4px;display:inline-block"><i class="fas fa-network-wired"></i> مجمع طبي (Enterprise)</span>`
+        : `<span style="font-size:0.68rem;padding:2px 8px;border-radius:6px;background:rgba(14,165,233,0.1);color:#38bdf8;border:1px solid rgba(14,165,233,0.25);font-weight:bold;margin-top:4px;display:inline-block"><i class="fas fa-stethoscope"></i> عيادة منفردة (Standard)</span>`;
+
       return `<div class="res-card">
         <div class="rc-accent" style="background:linear-gradient(90deg,${col},${col}44,transparent)"></div>
         <div class="rc-header">
@@ -527,6 +540,7 @@ function renderCards(d) {
           <div style="flex:1;min-width:0">
             <div class="rc-name">${s.name||'—'}</div>
             <div class="rc-id">${c.id}</div>
+            ${tierBadge}
           </div>
           <span class="rc-badge ${isOff?'off':'on'}"><span class="dot"></span>${isOff?'موقوف':'نشط'}</span>
         </div>
@@ -595,7 +609,8 @@ async function addClinic() {
         phone:sanitizeHTML(document.getElementById('nPhone').value.trim()),
         specialty:sanitizeHTML(document.getElementById('nSpec').value.trim()),
         color:sanitizeHTML(document.getElementById('nColor').value),
-        status:'open', acceptBookings:true, emoji:'🏥',
+        mode:sanitizeHTML(document.getElementById('nMode').value),
+        status:'open', acceptBookings:true, emoji:sanitizeHTML(document.getElementById('nMode').value) === 'medical_complex' ? '🏢' : '🏥',
         createdAt: new Date().toISOString()
       },
       doctors: {
@@ -662,18 +677,40 @@ function showLinks(id, name) {
   const base = getBase();
   const dash = `${base}dashboard.html?id=${id}`;
   const book = `${base}index.html?id=${id}`;
+  const portal = `${base}patient.html?id=${id}`;
+
+  const clin = _dataMap[id] || {};
+  const isComplex = clin.settings?.mode === 'medical_complex';
+
+  let complexLinks = '';
+  if (isComplex) {
+    const emr = `${base}emr.html?id=${id}`;
+    const phar = `${base}pharmacy.html?id=${id}`;
+    const lab = `${base}lab.html?id=${id}`;
+    const rad = `${base}radiology.html?id=${id}`;
+    complexLinks = `
+      <div style="font-size:11px;color:var(--teal);font-weight:800;margin-top:14px;margin-bottom:6px;text-transform:uppercase"><i class="fas fa-network-wired"></i> رخصة المجمع الطبي النشطة:</div>
+      <div class="lbox"><div class="ll">🩺 كشفية الطبيب والملف الطبي EMR</div><div class="lv"><span>${emr}</span><button class="cpb" onclick="cp('${emr}')">نسخ</button></div></div>
+      <div class="lbox"><div class="ll">💊 قسم الصيدلية وصرف الأدوية</div><div class="lv"><span>${phar}</span><button class="cpb" onclick="cp('${phar}')">نسخ</button></div></div>
+      <div class="lbox"><div class="ll">🔬 المختبر والتحاليل الرقمية</div><div class="lv"><span>${lab}</span><button class="cpb" onclick="cp('${lab}')">نسخ</button></div></div>
+      <div class="lbox"><div class="ll">🩻 قسم الأشعة والتشخيص البصري</div><div class="lv"><span>${rad}</span><button class="cpb" onclick="cp('${rad}')">نسخ</button></div></div>
+    `;
+  }
+
   const qid = 'qr'+Date.now();
   document.getElementById('lContent').innerHTML = `
     <div style="font-size:16px;font-weight:800;color:var(--g2);margin-bottom:18px">🏥 ${nm}</div>
-    <div class="lbox"><div class="ll">📊 لوحة التحكم</div><div class="lv"><span>${dash}</span><button class="cpb" onclick="cp('${dash}')">نسخ</button></div></div>
+    <div class="lbox"><div class="ll">📊 لوحة التحكم والمدير المالي</div><div class="lv"><span>${dash}</span><button class="cpb" onclick="cp('${dash}')">نسخ</button></div></div>
+    <div class="lbox"><div class="ll">📲 بوابة المريض الرقمية (Patient Portal)</div><div class="lv"><span>${portal}</span><button class="cpb" onclick="cp('${portal}')">نسخ</button></div></div>
+    ${complexLinks}
     <div class="lbox">
-      <div class="ll">📱 رابط حجز المرضى</div>
+      <div class="ll">📱 رابط حجز المرضى العام</div>
       <div class="lv"><span>${book}</span><button class="cpb" onclick="cp('${book}')">نسخ</button></div>
       <div style="text-align:center;margin-top:12px">
         <div style="background:#fff;border-radius:12px;padding:12px;display:inline-block" id="${qid}"></div>
         <div style="margin-top:10px;display:flex;gap:8px;justify-content:center">
-          <button class="cpb" onclick="printQR('${qid}','${nm.replace(/'/g,"\\'")}','${book}')"><i class="fas fa-print"></i> طباعة</button>
-          <button class="cpb" onclick="cp('${book}')"><i class="fas fa-copy"></i> نسخ</button>
+          <button class="cpb" onclick="printQR('${qid}','${nm.replace(/'/g,"\\'")}','${book}')"><i class="fas fa-print"></i> طباعة ملصق العيادة</button>
+          <button class="cpb" onclick="cp('${book}')"><i class="fas fa-copy"></i> نسخ الرابط</button>
         </div>
       </div>
     </div>`;

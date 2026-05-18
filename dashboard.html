@@ -453,10 +453,11 @@
         <div class="setg" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
             <label class="setl">نظام التشغيل (Operational Mode) *</label>
-            <select id="sMode" class="setsel" onchange="toggleComplexView(this.value)">
+            <select id="sMode" class="setsel" disabled style="opacity: 0.7; cursor: not-allowed; background: rgba(0,0,0,0.15);">
               <option value="single_clinic">عيادة منفردة (Single Clinic) 🏥</option>
               <option value="medical_complex">مجمع طبي متكامل (Medical Complex) 🏢</option>
             </select>
+            <span style="font-size:0.75rem;color:var(--muted);margin-top:4px;display:block;"><i class="fas fa-lock" style="color:var(--teal)"></i> يتم التحكم بنوع رخصة التشغيل حصرياً من شاشة السوبر أدمن.</span>
           </div>
           <div>
             <label class="setl">لغة لوحة التحكم (Language)</label>
