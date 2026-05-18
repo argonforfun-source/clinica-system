@@ -181,7 +181,10 @@ function openPrescDetails(key) {
 
     return `
       <tr>
-        <td><b>${sanitize(m.name)}</b></td>
+        <td>
+          <b>${sanitize(m.name)}</b>
+          ${m.note ? `<div style="font-size:0.75rem;color:#ef4444;margin-top:4px;background:rgba(239,68,68,0.1);padding:4px 8px;border-radius:6px;display:inline-block;border:1px solid rgba(239,68,68,0.2)"><i class="fas fa-exclamation-triangle"></i> ملاحظة للطبيب: ${sanitize(m.note)}</div>` : ''}
+        </td>
         <td style="font-size:0.8rem;color:var(--muted)">${sanitize(m.dose || '—')} · ${sanitize(m.freq || '—')}</td>
         <td style="font-size:0.8rem;color:var(--muted)">${sanitize(m.dur || '—')}</td>
         <td style="font-size:0.82rem">${availabilityHTML}</td>

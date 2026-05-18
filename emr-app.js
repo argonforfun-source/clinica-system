@@ -30,6 +30,7 @@ let _radOrders = {};
 let activeEmrTab = 'timeline-tab';
 let _referrals = {};
 let currentReferralsFilter = 'all';
+let _pharmacyInventory = {};
 
 // DOM Loaded
 window.addEventListener('DOMContentLoaded', () => {
@@ -159,6 +160,11 @@ function initEMR() {
   db.ref(BASE + '/referrals').on('value', snap => {
     _referrals = snap.val() || {};
     renderReferralsList();
+  });
+
+  // Real-time listener for pharmacy inventory
+  db.ref(BASE + '/pharmacy_inventory').on('value', snap => {
+    _pharmacyInventory = snap.val() || {};
   });
 }
 
@@ -659,13 +665,19 @@ function loadVisitForm(phone) {
       <!-- Prescription Builder -->
       <div style="margin-top:20px;border-top:1px dashed var(--border);padding-top:14px">
         <div class="vform-title" style="margin-bottom:8px"><i class="fas fa-prescription-bottle-alt"></i> الوصفة الطبية الإلكترونية</div>
-        <div class="fi-row4">
-          <input id="rxName" class="fi" placeholder="اسم الدواء">
-          <input id="rxDose" class="fi" placeholder="الجرعة (مثال: 500mg)">
-          <input id="rxFreq" class="fi" placeholder="التكرار (مثال: 3 مرات يومياً)">
-          <input id="rxDur" class="fi" placeholder="المدة (مثال: 5 أيام)">
+        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          <div style="position:relative;flex:2;min-width:200px">
+            <input id="rxName" class="fi" placeholder="اسم الدواء (ابحث في مخزون الصيدلية أو أدخل يدوياً)" onkeyup="searchDrug()" onfocus="searchDrug()" autocomplete="off" style="width:100%">
+            <div id="rxDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:220px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
+          </div>
+          <input id="rxDose" class="fi" placeholder="الجرعة (مثال: 500mg)" style="flex:1;min-width:100px">
+          <input id="rxFreq" class="fi" placeholder="التكرار (مثال: 3 مرات)" style="flex:1;min-width:100px">
+          <input id="rxDur" class="fi" placeholder="المدة (مثال: 5 أيام)" style="flex:1;min-width:100px">
         </div>
-        <button type="button" class="rx-add" onclick="addRxItem()" style="margin-top:8px"><i class="fas fa-plus"></i> إضافة الدواء للوصفة</button>
+        <div style="margin-bottom:8px">
+          <input id="rxNote" class="fi" placeholder="ملاحظات للصيدلاني (اختياري - مثال: حساسية، أو تحذير دوائي...)" style="width:100%;border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.02)">
+        </div>
+        <button type="button" class="rx-add" onclick="addRxItem()" style="margin-top:4px"><i class="fas fa-plus"></i> إضافة الدواء للوصفة</button>
         
         <table class="rx-table" id="rxTable" style="display:none">
           <thead>
@@ -708,16 +720,21 @@ function addRxItem() {
   const dose = document.getElementById('rxDose').value.trim();
   const freq = document.getElementById('rxFreq').value.trim();
   const dur = document.getElementById('rxDur').value.trim();
+  const noteInp = document.getElementById('rxNote');
+  const note = noteInp ? noteInp.value.trim() : '';
 
   if (!name) {
     toast('⚠️ يرجى إدخال اسم الدواء على الأقل', 'err');
     return;
   }
 
-  rxItems.push({ name, dose, freq, dur });
+  rxItems.push({ name, dose, freq, dur, note });
   
   // Clean inputs
-  ['rxName', 'rxDose', 'rxFreq', 'rxDur'].forEach(id => document.getElementById(id).value = '');
+  ['rxName', 'rxDose', 'rxFreq', 'rxDur', 'rxNote'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
   renderRxTable();
 }
 
@@ -733,7 +750,10 @@ function renderRxTable() {
   table.style.display = 'table';
   tbody.innerHTML = rxItems.map((item, idx) => `
     <tr>
-      <td><b>${sanitize(item.name)}</b></td>
+      <td>
+        <b>${sanitize(item.name)}</b>
+        ${item.note ? `<div style="font-size:0.7rem;color:#ef4444;margin-top:2px;background:rgba(239,68,68,0.1);padding:2px 6px;border-radius:4px;display:inline-block"><i class="fas fa-exclamation-triangle"></i> ${sanitize(item.note)}</div>` : ''}
+      </td>
       <td>${sanitize(item.dose || '—')}</td>
       <td>${sanitize(item.freq || '—')}</td>
       <td>${sanitize(item.dur || '—')}</td>
@@ -746,6 +766,71 @@ function removeRxItem(idx) {
   rxItems.splice(idx, 1);
   renderRxTable();
 }
+
+// ── SMART DRUG AUTOCOMPLETE ENGINE ──
+function searchDrug() {
+  const inp = document.getElementById('rxName');
+  const dd = document.getElementById('rxDropdown');
+  if (!inp || !dd) return;
+  
+  const q = inp.value.trim().toLowerCase();
+  
+  if (!q) {
+    dd.style.display = 'none';
+    return;
+  }
+
+  const items = Object.values(_pharmacyInventory || {});
+  // Hybrid match: scientific name, trade name, or barcode
+  const matched = items.filter(item => 
+    (item.name && item.name.toLowerCase().includes(q)) ||
+    (item.scientificName && item.scientificName.toLowerCase().includes(q)) ||
+    (item.barcode && item.barcode.includes(q))
+  );
+
+  if (!matched.length) {
+    dd.innerHTML = `<div style="padding:10px;font-size:0.8rem;color:var(--muted);text-align:center">لم يتم العثور على الدواء في الصيدلية.<br>سيتم إضافته كدواء خارجي (غير متوفر) ✅</div>`;
+    dd.style.display = 'block';
+    return;
+  }
+
+  dd.innerHTML = matched.map(m => {
+    const isOut = m.stock <= 0;
+    const stockBadge = isOut 
+      ? `<span style="font-size:0.65rem;color:#ef4444;background:rgba(239,68,68,0.1);padding:2px 6px;border-radius:4px">نفد من المستودع ❌</span>`
+      : `<span style="font-size:0.65rem;color:var(--green);background:rgba(16,185,129,0.1);padding:2px 6px;border-radius:4px">متوفر: ${m.stock} عبوة ✅</span>`;
+      
+    return `<div onclick="selectDrug('${m.name.replace(/'/g, "\\'")}')" style="padding:10px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:0.2s" onmouseover="this.style.background='rgba(13,148,136,0.1)'" onmouseout="this.style.background='transparent'">
+      <div>
+        <div style="font-weight:700;font-size:0.85rem;color:var(--text)">${sanitize(m.name)}</div>
+        ${m.scientificName ? `<div style="font-size:0.7rem;color:var(--muted);font-family:'IBM Plex Mono',monospace">${sanitize(m.scientificName)}</div>` : ''}
+      </div>
+      <div style="text-align:left">
+        ${stockBadge}
+        ${m.price ? `<div style="font-size:0.7rem;color:var(--teal);margin-top:4px;font-weight:700">${m.price} د.أ</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  
+  dd.style.display = 'block';
+}
+
+function selectDrug(name) {
+  const inp = document.getElementById('rxName');
+  const dd = document.getElementById('rxDropdown');
+  if (inp) inp.value = name;
+  if (dd) dd.style.display = 'none';
+  document.getElementById('rxDose').focus();
+}
+
+// Hide dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  const dd = document.getElementById('rxDropdown');
+  const inp = document.getElementById('rxName');
+  if (dd && inp && e.target !== dd && e.target !== inp && !dd.contains(e.target)) {
+    dd.style.display = 'none';
+  }
+});
 
 // Attachments Handling
 function handleAttachment(e) {
