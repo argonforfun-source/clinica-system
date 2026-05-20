@@ -23,6 +23,7 @@ let sentOtpCode = '';
 let patientData = null;
 let invoicesData = {};
 let bookingsData = {};
+let prescriptionsData = {};
 let activeSection = 'homeSec';
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -158,9 +159,16 @@ function initPortal() {
   db.ref(`${BASE}/invoices`).orderByChild('patientId').equalTo(loggedPhone).on('value', snap => {
     invoicesData = snap.val() || {};
     renderBillingLedger();
+    renderUpcomingAppointments();
   });
 
-  // 4. Live Notifications
+  // 4. Live Prescriptions (For Tracking)
+  db.ref(`${BASE}/prescriptions`).orderByChild('patientId').equalTo(loggedPhone).on('value', snap => {
+    prescriptionsData = snap.val() || {};
+    renderUpcomingAppointments();
+  });
+
+  // 5. Live Notifications
   db.ref(`${BASE}/notifications`).on('value', snap => {
     const notifs = snap.val() || {};
     renderNotifications(notifs);
@@ -198,7 +206,7 @@ function renderDemographics() {
 // Render Upcoming Bookings
 function renderUpcomingAppointments() {
   const grid = document.getElementById('upcomingGrid');
-  const activeBookings = Object.values(bookingsData).filter(b => b.status === 'waiting' || b.status === 'processing');
+  const activeBookings = Object.values(bookingsData).filter(b => b.status === 'new' || b.status === 'confirmed' || b.status === 'waiting' || b.status === 'with_doctor' || b.status === 'processing');
 
   if (!activeBookings.length) {
     grid.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted)" class="glass-panel">لا توجد مواعيد نشطة مجدولة حالياً</div>`;
@@ -208,22 +216,96 @@ function renderUpcomingAppointments() {
   activeBookings.sort((a,b) => a.date.localeCompare(b.date));
 
   grid.innerHTML = activeBookings.map(b => {
-    const statusText = b.status === 'processing' ? 'قيد المعاينة حالياً 🩺' : 'مؤكد - بانتظار دورك ⏳';
-    const statusColor = b.status === 'processing' ? 'var(--teal)' : 'var(--amber)';
+    let statusText = 'تم الحجز - بانتظار التأكيد ⏳';
+    let statusColor = 'var(--amber)';
+    let currentStep = 1;
+
+    if (b.status === 'confirmed') {
+      statusText = 'مؤكد - يرجى الحضور في الموعد';
+      statusColor = 'var(--blue)';
+    } else if (b.status === 'waiting') {
+      statusText = 'أنت الآن في قاعة الانتظار 🕒';
+      statusColor = 'var(--amber)';
+      currentStep = 2;
+    } else if (b.status === 'with_doctor' || b.status === 'processing') {
+      statusText = 'عند الطبيب الآن 👨‍⚕️';
+      statusColor = 'var(--teal)';
+      currentStep = 3;
+    }
+
+    // Check for pending prescriptions
+    const hasPendingRx = Object.values(prescriptionsData || {}).some(rx => rx.status === 'pending' && rx.date === b.date);
+    if (hasPendingRx && currentStep >= 3) {
+      statusText = 'يرجى التوجه للصيدلية 💊';
+      statusColor = 'var(--amber)';
+      currentStep = 4;
+    }
+
+    // Check for unpaid invoices
+    const hasUnpaidInvoice = Object.values(invoicesData || {}).some(inv => inv.status === 'unpaid' && inv.date === b.date);
+    if (hasUnpaidInvoice && currentStep >= 3 && !hasPendingRx) {
+      statusText = 'بانتظار الدفع 💳';
+      statusColor = 'var(--red)';
+      currentStep = 5;
+    }
+
+    const trackingHTML = `
+      <div style="margin-top:15px; background:rgba(0,0,0,0.15); border-radius:12px; padding:15px; overflow-x:auto;">
+        <div style="font-size:0.8rem; font-weight:800; margin-bottom:15px; color:var(--text); min-width:400px;"><i class="fas fa-route" style="color:var(--teal)"></i> مسار الزيارة المباشر (Live Tracking)</div>
+        <div style="display:flex; justify-content:space-between; position:relative; min-width:400px; padding-bottom:5px;">
+          <!-- Background Line -->
+          <div style="position:absolute; top:12px; left:10%; right:10%; height:3px; background:var(--border); z-index:0;"></div>
+          <!-- Active Line -->
+          <div style="position:absolute; top:12px; right:10%; width:${currentStep === 1 ? '0' : currentStep === 2 ? '20%' : currentStep === 3 ? '40%' : currentStep === 4 ? '60%' : '80%'}; height:3px; background:var(--teal); z-index:1; transition:all 0.6s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+          
+          <!-- Step 1: Reserved -->
+          <div style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:6px; width:20%;">
+            <div style="width:28px; height:28px; border-radius:50%; background:${currentStep >= 1 ? 'var(--teal)' : 'var(--surf)'}; border:2px solid ${currentStep >= 1 ? 'var(--teal)' : 'var(--border)'}; display:flex; align-items:center; justify-content:center; color:${currentStep >= 1 ? '#fff' : 'var(--muted)'}; font-size:0.8rem; transition:0.3s; box-shadow:${currentStep >= 1 ? '0 0 10px rgba(13,148,136,0.5)' : 'none'}"><i class="fas fa-calendar-check"></i></div>
+            <div style="font-size:0.65rem; font-weight:700; color:${currentStep >= 1 ? 'var(--text)' : 'var(--muted)'}; text-align:center;">الحجز</div>
+          </div>
+          
+          <!-- Step 2: Waiting -->
+          <div style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:6px; width:20%;">
+            <div style="width:28px; height:28px; border-radius:50%; background:${currentStep >= 2 ? 'var(--teal)' : 'var(--surf)'}; border:2px solid ${currentStep >= 2 ? 'var(--teal)' : 'var(--border)'}; display:flex; align-items:center; justify-content:center; color:${currentStep >= 2 ? '#fff' : 'var(--muted)'}; font-size:0.8rem; transition:0.3s; box-shadow:${currentStep >= 2 ? '0 0 10px rgba(13,148,136,0.5)' : 'none'}"><i class="fas fa-clock"></i></div>
+            <div style="font-size:0.65rem; font-weight:700; color:${currentStep >= 2 ? 'var(--text)' : 'var(--muted)'}; text-align:center;">الانتظار</div>
+          </div>
+
+          <!-- Step 3: Clinic -->
+          <div style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:6px; width:20%;">
+            <div style="width:28px; height:28px; border-radius:50%; background:${currentStep >= 3 ? 'var(--teal)' : 'var(--surf)'}; border:2px solid ${currentStep >= 3 ? 'var(--teal)' : 'var(--border)'}; display:flex; align-items:center; justify-content:center; color:${currentStep >= 3 ? '#fff' : 'var(--muted)'}; font-size:0.8rem; transition:0.3s; box-shadow:${currentStep >= 3 ? '0 0 10px rgba(13,148,136,0.5)' : 'none'}"><i class="fas fa-user-md"></i></div>
+            <div style="font-size:0.65rem; font-weight:700; color:${currentStep >= 3 ? 'var(--text)' : 'var(--muted)'}; text-align:center;">العيادة</div>
+          </div>
+
+          <!-- Step 4: Pharmacy -->
+          <div style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:6px; width:20%;">
+            <div style="width:28px; height:28px; border-radius:50%; background:${currentStep >= 4 ? 'var(--amber)' : 'var(--surf)'}; border:2px solid ${currentStep >= 4 ? 'var(--amber)' : 'var(--border)'}; display:flex; align-items:center; justify-content:center; color:${currentStep >= 4 ? '#fff' : 'var(--muted)'}; font-size:0.8rem; transition:0.3s; box-shadow:${currentStep >= 4 ? '0 0 10px rgba(245,158,11,0.5)' : 'none'}"><i class="fas fa-pills"></i></div>
+            <div style="font-size:0.65rem; font-weight:700; color:${currentStep >= 4 ? 'var(--text)' : 'var(--muted)'}; text-align:center;">الصيدلية</div>
+          </div>
+
+          <!-- Step 5: Billing -->
+          <div style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:6px; width:20%;">
+            <div style="width:28px; height:28px; border-radius:50%; background:${currentStep >= 5 ? 'var(--red)' : 'var(--surf)'}; border:2px solid ${currentStep >= 5 ? 'var(--red)' : 'var(--border)'}; display:flex; align-items:center; justify-content:center; color:${currentStep >= 5 ? '#fff' : 'var(--muted)'}; font-size:0.8rem; transition:0.3s; box-shadow:${currentStep >= 5 ? '0 0 10px rgba(239,68,68,0.5)' : 'none'}"><i class="fas fa-wallet"></i></div>
+            <div style="font-size:0.65rem; font-weight:700; color:${currentStep >= 5 ? 'var(--text)' : 'var(--muted)'}; text-align:center;">الدفع</div>
+          </div>
+        </div>
+      </div>
+    `;
+
     return `
       <div class="glass-panel" style="padding:16px;display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <b style="font-size:0.95rem;color:var(--teal)">د. ${sanitize(b.docName)}</b>
-          <span style="font-size:0.75rem;color:${statusColor};font-weight:700">${statusText}</span>
+          <span style="font-size:0.75rem;color:${statusColor};font-weight:700;background:rgba(255,255,255,0.05);padding:4px 8px;border-radius:6px;">${statusText}</span>
         </div>
         <div style="font-size:0.8rem;color:var(--muted)">
           <div>التخصص: <b>${sanitize(b.docSpec)}</b></div>
-          <div>رقم الحجز اليومي: <b style="font-family:'IBM Plex Mono';color:var(--teal)">#${b.bookNo}</b></div>
+          <div>رقم الحجز: <b style="font-family:'IBM Plex Mono';color:var(--teal)">#${b.bookNo}</b></div>
         </div>
         <div style="font-size:0.78rem;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;display:flex;justify-content:space-between">
           <span><i class="far fa-calendar"></i> ${b.date}</span>
           <span><i class="far fa-clock"></i> ${b.time}</span>
         </div>
+        ${trackingHTML}
       </div>
     `;
   }).join('');
