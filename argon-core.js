@@ -72,10 +72,86 @@ window.ArgonCore = {
         if(typeof toast === 'function') toast('⚠️ انقطع الاتصال! النظام يحفظ بياناتك محلياً بشكل آمن.', 'err');
       });
     }
+  },
+
+  // ── 4. SMART NOTIFICATION CENTER ──
+  // مركز الإشعارات الطبية الذكية مع صوت وميض بصري
+  NotificationCenter: {
+    init: function() {
+      if (typeof db === 'undefined' || typeof firebase === 'undefined') return;
+      
+      const CID = localStorage.getItem('argon_id') || new URLSearchParams(window.location.search).get('id') || 'UNKNOWN_CLINIC';
+      const notificationsRef = db.ref(`clinics/${CID}/notifications`);
+      
+      // نستمع للإشعارات الجديدة فقط بدءاً من وقت فتح الصفحة
+      const now = new Date().toISOString();
+      notificationsRef.orderByChild('createdAt').startAt(now).on('child_added', snap => {
+        const notif = snap.val();
+        if (notif) {
+          ArgonCore.NotificationCenter.playMedicalBeep();
+          ArgonCore.NotificationCenter.flashScreen();
+          if(typeof toast === 'function') {
+            toast(`🔔 إشعار: ${notif.title}\n${notif.message}`, 'ok');
+          }
+        }
+      });
+    },
+
+    playMedicalBeep: function() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        
+        // توليد نغمتين متتاليتين (Beep-Beep)
+        const playTone = (freq, startTime, duration) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
+          
+          gain.gain.setValueAtTime(0, ctx.currentTime + startTime);
+          gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + startTime + 0.05);
+          gain.gain.setValueAtTime(0.5, ctx.currentTime + startTime + duration - 0.05);
+          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + startTime + duration);
+          
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + startTime);
+          osc.stop(ctx.currentTime + startTime + duration);
+        };
+
+        // الترددات الطبية (مثل أجهزة المراقبة)
+        playTone(880, 0, 0.15);     // High A
+        playTone(1046.5, 0.2, 0.2); // High C
+      } catch(e) {
+        console.log("Audio play blocked by browser. User interaction needed first.");
+      }
+    },
+
+    flashScreen: function() {
+      const flash = document.createElement('div');
+      flash.style.position = 'fixed';
+      flash.style.top = '0';
+      flash.style.left = '0';
+      flash.style.width = '100vw';
+      flash.style.height = '100vh';
+      flash.style.backgroundColor = 'rgba(59, 130, 246, 0.15)'; // Blue tint
+      flash.style.pointerEvents = 'none';
+      flash.style.zIndex = '999999';
+      flash.style.transition = 'opacity 0.5s ease-out';
+      document.body.appendChild(flash);
+      
+      setTimeout(() => {
+        flash.style.opacity = '0';
+        setTimeout(() => document.body.removeChild(flash), 500);
+      }, 300);
+    }
   }
 };
 
 // Initialize Core Systems
 document.addEventListener('DOMContentLoaded', () => {
   ArgonCore.SyncManager.init();
+  ArgonCore.NotificationCenter.init();
 });
