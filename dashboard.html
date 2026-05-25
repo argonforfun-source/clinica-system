@@ -978,7 +978,19 @@ function deleteDept(key) {
 
 // ── SETTINGS LISTENER ──
 db.ref(BASE+'/settings').on('value', snap => {
-  const s = snap.val()||{};
+  const s = snap.val();
+  
+  // If clinic does not exist in DB (e.g. failed creation)
+  if (!s) {
+    document.getElementById('topName').textContent = '⚠️ عيادة غير موجودة';
+    document.getElementById('lClinicName').textContent = 'هذه العيادة غير موجودة أو تم حذفها';
+    document.getElementById('lPass').disabled = true;
+    document.getElementById('lPass').placeholder = 'العيادة غير متوفرة';
+    const lbtn = document.querySelector('.lbtn');
+    if (lbtn) { lbtn.disabled = true; lbtn.innerHTML = '❌ غير متوفرة'; lbtn.style.background = 'var(--red)'; }
+    return;
+  }
+  
   _sets = s;
   checkAndSeedDefaultDepartments();
   
