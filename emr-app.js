@@ -413,7 +413,7 @@ function saveEditPatient() {
     closeModal('editPatModal');
     // Refresh UI if the edited patient is currently active
     if (activePatientId === phone) {
-      loadPatientFile(phone);
+      viewPatientFile(phone);
     }
   }).catch(e => {
     toast('❌ خطأ أثناء التحديث: ' + e.message, 'err');
