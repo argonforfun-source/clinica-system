@@ -365,6 +365,61 @@ function cleanPhone(p) {
   return clean;
 }
 
+// Edit Patient
+function openEditPatient(phone) {
+  const p = _patients[phone];
+  if (!p) return;
+  document.getElementById('epOldPhone').value = phone;
+  document.getElementById('epName').value = p.info.name || '';
+  document.getElementById('epPhone').value = phone;
+  document.getElementById('epAge').value = p.info.age || '';
+  document.getElementById('epGender').value = p.info.gender || '';
+  document.getElementById('epBlood').value = p.info.bloodType || '';
+  document.getElementById('epAllergies').value = (p.info.allergies || []).join('، ');
+  document.getElementById('epChronic').value = (p.info.chronic || []).join('، ');
+  document.getElementById('epNotes').value = p.info.notes || '';
+  document.getElementById('editPatModal').style.display = 'flex';
+}
+
+function saveEditPatient() {
+  const phone = document.getElementById('epOldPhone').value;
+  if (!phone || !_patients[phone]) return;
+
+  const name = document.getElementById('epName').value.trim();
+  const age = document.getElementById('epAge').value.trim();
+  const gender = document.getElementById('epGender').value;
+  const blood = document.getElementById('epBlood').value;
+  const allergies = document.getElementById('epAllergies').value.trim().split('،').map(s => s.trim().replace(/,/g, '')).filter(Boolean);
+  const chronic = document.getElementById('epChronic').value.trim().split('،').map(s => s.trim().replace(/,/g, '')).filter(Boolean);
+  const notes = document.getElementById('epNotes').value.trim();
+
+  if (!name) {
+    toast('⚠️ يرجى إدخال الاسم الكامل', 'err');
+    return;
+  }
+
+  const updates = {
+    name: sanitize(name),
+    age: sanitize(age),
+    gender: sanitize(gender),
+    bloodType: sanitize(blood),
+    allergies: allergies.length ? allergies : null,
+    chronic: chronic.length ? chronic : null,
+    notes: sanitize(notes)
+  };
+
+  db.ref(`${BASE}/patients/${phone}/info`).update(updates).then(() => {
+    toast('✅ تم تحديث بيانات المريض بنجاح', 'ok');
+    closeModal('editPatModal');
+    // Refresh UI if the edited patient is currently active
+    if (activePatientId === phone) {
+      loadPatientFile(phone);
+    }
+  }).catch(e => {
+    toast('❌ خطأ أثناء التحديث: ' + e.message, 'err');
+  });
+}
+
 // Save New Patient
 function saveNewPatient() {
   const name = document.getElementById('npName').value.trim();
@@ -600,7 +655,10 @@ function viewPatientFile(phone) {
           <div class="pat-name">${sanitize(info.name)}</div>
           <div class="pat-mrn">الملف الطبي: ${info.mrn || 'MRN-NEW'}</div>
         </div>
-        <button class="btn-primary btn-sm" onclick="sw('newVisit');loadVisitForm('${phone}')"><i class="fas fa-stethoscope"></i> بدء زيارة طبية</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary btn-sm" onclick="openEditPatient('${phone}')"><i class="fas fa-edit"></i> تعديل</button>
+          <button class="btn-primary btn-sm" onclick="sw('newVisit');loadVisitForm('${phone}')"><i class="fas fa-stethoscope"></i> بدء زيارة طبية</button>
+        </div>
       </div>
       <div class="pat-grid">
         <div class="pat-field"><div class="pfl">الهاتف</div><div class="pfv">${sanitize(phone)}</div></div>
