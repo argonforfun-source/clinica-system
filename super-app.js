@@ -242,6 +242,16 @@ async function addClinic(){
         const base=getBase();
         document.getElementById('linkDash').textContent=`${base}dashboard.html?id=${id}`;
         document.getElementById('linkBooking').textContent=`${base}booking.html?id=${id}`;
+        
+        if (selectedType === 'complex') {
+            document.getElementById('linkPhar').textContent=`${base}pharmacy.html?id=${id}`;
+            document.getElementById('linkLab').textContent=`${base}lab.html?id=${id}`;
+            document.getElementById('linkRad').textContent=`${base}radiology.html?id=${id}`;
+            document.getElementById('complexLinks').style.display='block';
+        } else {
+            document.getElementById('complexLinks').style.display='none';
+        }
+        
         document.getElementById('rc-name').textContent=name;
         document.getElementById('rc-id').textContent='ID: '+id;
         document.getElementById('rc-type').textContent=selectedType==='single'?'🩺 عيادة منفردة':'🏢 مجمع طبي';

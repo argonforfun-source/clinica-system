@@ -598,17 +598,20 @@
               <label class="mfl">كلمة مرور الأطباء (EMR)</label>
               <input type="password" id="sPassDoc" class="mfi" placeholder="الافتراضية: نفس كلمة مرور العيادة">
             </div>
-            <div>
-              <label class="mfl">كلمة مرور الصيدلي (Pharmacy)</label>
-              <input type="password" id="sPassPhar" class="mfi" placeholder="الافتراضية: 1122">
-            </div>
-            <div>
-              <label class="mfl">كلمة مرور المختبر (Lab)</label>
-              <input type="password" id="sPassLab" class="mfi" placeholder="الافتراضية: 1122">
-            </div>
-            <div>
-              <label class="mfl">كلمة مرور الأشعة (Radiology)</label>
-              <input type="password" id="sPassRad" class="mfi" placeholder="الافتراضية: 1122">
+            <!-- Complex Only Passwords -->
+            <div id="complexPasscodes" style="display:none; grid-column: 1 / -1; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+              <div>
+                <label class="mfl">كلمة مرور الصيدلي (Pharmacy)</label>
+                <input type="password" id="sPassPhar" class="mfi" placeholder="الافتراضية: 1122">
+              </div>
+              <div>
+                <label class="mfl">كلمة مرور المختبر (Lab)</label>
+                <input type="password" id="sPassLab" class="mfi" placeholder="الافتراضية: 1122">
+              </div>
+              <div>
+                <label class="mfl">كلمة مرور الأشعة (Radiology)</label>
+                <input type="password" id="sPassRad" class="mfi" placeholder="الافتراضية: 1122">
+              </div>
             </div>
           </div>
         </div>
@@ -863,6 +866,12 @@ function toggleComplexView(mode) {
   if (dw) dw.style.display = isComplex ? 'block' : 'none';
   const cn = document.getElementById('complexNav');
   if (cn) cn.style.display = isComplex ? 'block' : 'none';
+  const cp = document.getElementById('complexPasscodes');
+  if (cp) cp.style.display = isComplex ? 'grid' : 'none';
+  const modeSel = document.getElementById('sMode');
+  if (modeSel && modeSel.parentElement) {
+    modeSel.parentElement.style.display = isComplex ? 'block' : 'none';
+  }
   
   // Render live views
   renderDashboardDeptFilters();
