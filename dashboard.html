@@ -1034,35 +1034,40 @@ db.ref(BASE+'/referrals').on('value', snap => {
   _referrals = snap.val()||{};
 });
 
-db.ref(BASE+'/bookings').on('value', snap => {
-  _bks = snap.val()||{};
-  const actKeys = Object.keys(_bks).filter(k=>{const s=_bks[k].status;return s!=='done'&&s!=='completed'&&s!=='cancelled';});
-  
-  const lc = document.getElementById('liveC');
-  lc.textContent = actKeys.length; lc.className='nbdg'+(actKeys.length===0?' z':'');
-  // Notify
-  if (!firstLoad && actKeys.length > prevCount) { beep(); ring(); }
-  prevCount = actKeys.length;
+// ── Enterprise Event-Driven Bookings (Incremental) ──
+let _bksRenderTimer = null;
+function recalcBookings() {
+  clearTimeout(_bksRenderTimer);
+  _bksRenderTimer = setTimeout(() => {
+    const actKeys = Object.keys(_bks).filter(k=>{const s=_bks[k].status;return s!=='done'&&s!=='completed'&&s!=='cancelled';});
+    
+    const lc = document.getElementById('liveC');
+    lc.textContent = actKeys.length; lc.className='nbdg'+(actKeys.length===0?' z':'');
+    if (!firstLoad && actKeys.length > prevCount) { beep(); ring(); }
+    prevCount = actKeys.length;
 
-  // Monthly stats
-  const now = new Date();
-  const curMonth = now.toISOString().substring(0, 7); // "YYYY-MM"
-  const prevMonthDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
-  const prevMonth = prevMonthDate.toISOString().substring(0, 7);
+    const now = new Date();
+    const curMonth = now.toISOString().substring(0, 7);
+    const prevMonthDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    const prevMonth = prevMonthDate.toISOString().substring(0, 7);
 
-  const bksArr = Object.values(_bks);
-  const curMonthBks = bksArr.filter(b => (b.date||'').startsWith(curMonth)).length;
-  const prevMonthBks = bksArr.filter(b => (b.date||'').startsWith(prevMonth)).length;
-  
-  document.getElementById('stMonth').textContent = curMonthBks;
-  const growth = prevMonthBks ? Math.round(((curMonthBks - prevMonthBks) / prevMonthBks) * 100) : 100;
-  const gt = document.getElementById('stGrowthTrend');
-  gt.textContent = (growth >= 0 ? '+' : '') + growth + '%';
-  gt.className = 'scard-trend ' + (growth >= 0 ? 'trend-up' : 'trend-down');
+    const bksArr = Object.values(_bks);
+    const curMonthBks = bksArr.filter(b => (b.date||'').startsWith(curMonth)).length;
+    const prevMonthBks = bksArr.filter(b => (b.date||'').startsWith(prevMonth)).length;
+    
+    document.getElementById('stMonth').textContent = curMonthBks;
+    const growth = prevMonthBks ? Math.round(((curMonthBks - prevMonthBks) / prevMonthBks) * 100) : 100;
+    const gt = document.getElementById('stGrowthTrend');
+    gt.textContent = (growth >= 0 ? '+' : '') + growth + '%';
+    gt.className = 'scard-trend ' + (growth >= 0 ? 'trend-up' : 'trend-down');
 
-  renderLive(actKeys);
-  firstLoad = false;
-});
+    renderLive(actKeys);
+    firstLoad = false;
+  }, 80);
+}
+db.ref(BASE+'/bookings').on('child_added', snap => { _bks[snap.key] = snap.val(); recalcBookings(); });
+db.ref(BASE+'/bookings').on('child_changed', snap => { _bks[snap.key] = snap.val(); recalcBookings(); });
+db.ref(BASE+'/bookings').on('child_removed', snap => { delete _bks[snap.key]; recalcBookings(); });
 
 function ring() {
   const b=document.getElementById('bellI'); b.classList.add('ringing');
@@ -1249,85 +1254,83 @@ function renderLive(keys) {
   g.innerHTML = html;
 }
 
-// ── COMPLETED LISTENER ──
-db.ref(BASE+'/completedBookings').orderByKey().limitToLast(200).on('value', snap => {
-  _cmp = snap.val()||{};
-  const keys = Object.keys(_cmp);
-  let rev=0, rSum=0, rCnt=0;
-  const docSt = {};
-  keys.forEach(k=>{
-    const b=_cmp[k];
-    rev+=parseFloat(b.fee||0);
-    if(b.rating){rSum+=b.rating;rCnt++;}
-    const dn=b.docName||'—';
-    if(!docSt[dn])docSt[dn]={cnt:0,rev:0,ratings:[]};
-    docSt[dn].cnt++;docSt[dn].rev+=parseFloat(b.fee||0);
-    if(b.rating)docSt[dn].ratings.push(b.rating);
-  });
-  document.getElementById('stRev').textContent=rev.toFixed(2);
-  
-  // Success Rate Logic
-  const cancelledCount = Object.values(_bks).filter(b => b.status === 'cancelled').length;
-  const totalClosed = keys.length + cancelledCount;
-  const successRate = totalClosed ? Math.round((keys.length / totalClosed) * 100) : 100;
-  document.getElementById('stSuccess').textContent = successRate + '%';
-  document.getElementById('stSuccessTrend').textContent = successRate + '%';
-
-  // Satisfaction Index
-  const avgRating = rCnt ? (rSum / rCnt) : 0;
-  const satIndex = Math.round((avgRating / 5) * 100);
-  document.getElementById('stSatIndex').textContent = satIndex + '%';
-  document.getElementById('stRate').textContent = (avgRating ? avgRating.toFixed(1) : '--') + ' من 5 نجوم';
-  // Doc performance
-  const dp=document.getElementById('docPerf');
-  const sorted=Object.entries(docSt).sort((a,b)=>b[1].cnt-a[1].cnt).slice(0,6);
-  dp.innerHTML=sorted.length?sorted.map(([name,st])=>{
-    const avg=st.ratings.length?'★'+(st.ratings.reduce((a,b)=>a+b,0)/st.ratings.length).toFixed(1):'';
-    return `<div style="background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:15px">
-      <div style="font-size:.9rem;font-weight:800;margin-bottom:6px">د. ${sanitize(name)}</div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:.8rem;color:var(--teal)">${st.cnt} حجز</div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:.77rem;color:var(--green)">${st.rev.toFixed(2)} د.أ</div>
-      ${avg?`<div style="font-size:.75rem;color:var(--amber)">${avg}</div>`:''}
-    </div>`;
-  }).join(''):`<div style="color:var(--muted);font-size:.84rem">لا توجد بيانات بعد</div>`;
-  window.renderHist = function() {
-    const hg=document.getElementById('histGrid');
-    const sq = (document.getElementById('histSearch') ? document.getElementById('histSearch').value : '').toLowerCase().trim();
-    
-    let filteredKeys = Object.keys(_cmp);
-    if(sq) {
-      filteredKeys = filteredKeys.filter(k => {
-        const b = _cmp[k];
-        if(!b) return false;
-        return (b.patName && b.patName.toLowerCase().includes(sq)) || 
-               (b.patPhone && b.patPhone.includes(sq)) || 
-               (b.bookNo && b.bookNo.toLowerCase().includes(sq)) ||
-               (b.docName && b.docName.toLowerCase().includes(sq));
-      });
-    }
-
-    const noHistMsg = curLang === 'ar' ? 'لا يوجد سجل يطابق البحث' : (curLang === 'fr' ? 'Aucun historique' : 'No History');
-    if(!filteredKeys.length){hg.innerHTML=`<div style="text-align:center;padding:50px;color:var(--muted)">${noHistMsg}</div>`;return;}
-    const th1 = curLang === 'ar' ? 'التاريخ' : (curLang === 'fr' ? 'Date' : 'Date');
-    const th2 = curLang === 'ar' ? 'المريض' : (curLang === 'fr' ? 'Patient' : 'Patient');
-    const th3 = curLang === 'ar' ? 'الطبيب' : (curLang === 'fr' ? 'Médecin' : 'Doctor');
-    const th4 = curLang === 'ar' ? 'الوقت' : (curLang === 'fr' ? 'Heure' : 'Time');
-    const th5 = curLang === 'ar' ? 'الرسوم' : (curLang === 'fr' ? 'Frais' : 'Fee');
-    const th6 = curLang === 'ar' ? 'التقييم' : (curLang === 'fr' ? 'Évaluation' : 'Rating');
-    hg.innerHTML=`<div class="htw"><table><thead><tr><th>${th1}</th><th>${th2}</th><th>${th3}</th><th>${th4}</th><th>${th5}</th><th>${th6}</th></tr></thead>
-      <tbody>${filteredKeys.reverse().slice(0,60).map(k=>{const b=_cmp[k];if(!b)return'';
-        return`<tr><td><div style="font-weight:700">${b.date||'—'}</div></td>
-          <td><b>${sanitize(b.patName||'—')}</b><br><small>${sanitize(b.patPhone||'')}</small></td>
-          <td>د. ${sanitize(b.docName||'—')}<br><small style="color:var(--teal)">${sanitize(b.docSpec||'')}</small></td>
-          <td style="font-family:'IBM Plex Mono',monospace">${b.time||'—'}</td>
-          <td style="color:var(--green);font-weight:800">${b.fee||'0.00'}</td>
-          <td style="color:var(--amber)">${b.rating?'★'.repeat(b.rating):'—'}</td>
-        </tr>`;}).join('')}</tbody></table></div>`;
-  };
-  
-  // Call initially to render
-  window.renderHist();
-});
+// ── COMPLETED LISTENER (Enterprise Incremental) ──
+let _cmpTimer = null;
+function recalcCmp() {
+  clearTimeout(_cmpTimer);
+  _cmpTimer = setTimeout(() => {
+    const keys = Object.keys(_cmp);
+    let rev=0, rSum=0, rCnt=0;
+    const docSt = {};
+    keys.forEach(k=>{
+      const b=_cmp[k];
+      if(!b) return;
+      rev+=parseFloat(b.fee||0);
+      if(b.rating){rSum+=b.rating;rCnt++;}
+      const dn=b.docName||'—';
+      if(!docSt[dn])docSt[dn]={cnt:0,rev:0,ratings:[]};
+      docSt[dn].cnt++;docSt[dn].rev+=parseFloat(b.fee||0);
+      if(b.rating)docSt[dn].ratings.push(b.rating);
+    });
+    document.getElementById('stRev').textContent=rev.toFixed(2);
+    const cancelledCount = Object.values(_bks).filter(b => b.status === 'cancelled').length;
+    const totalClosed = keys.length + cancelledCount;
+    const successRate = totalClosed ? Math.round((keys.length / totalClosed) * 100) : 100;
+    document.getElementById('stSuccess').textContent = successRate + '%';
+    document.getElementById('stSuccessTrend').textContent = successRate + '%';
+    const avgRating = rCnt ? (rSum / rCnt) : 0;
+    const satIndex = Math.round((avgRating / 5) * 100);
+    document.getElementById('stSatIndex').textContent = satIndex + '%';
+    document.getElementById('stRate').textContent = (avgRating ? avgRating.toFixed(1) : '--') + ' من 5 نجوم';
+    const dp=document.getElementById('docPerf');
+    const sorted=Object.entries(docSt).sort((a,b)=>b[1].cnt-a[1].cnt).slice(0,6);
+    dp.innerHTML=sorted.length?sorted.map(([name,st])=>{
+      const avg=st.ratings.length?'★'+(st.ratings.reduce((a,b)=>a+b,0)/st.ratings.length).toFixed(1):'';
+      return `<div style="background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:15px">
+        <div style="font-size:.9rem;font-weight:800;margin-bottom:6px">د. ${sanitize(name)}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:.8rem;color:var(--teal)">${st.cnt} حجز</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:.77rem;color:var(--green)">${st.rev.toFixed(2)} د.أ</div>
+        ${avg?`<div style="font-size:.75rem;color:var(--amber)">${avg}</div>`:''}
+      </div>`;
+    }).join(''):`<div style="color:var(--muted);font-size:.84rem">لا توجد بيانات بعد</div>`;
+    window.renderHist();
+  }, 100);
+}
+window.renderHist = function() {
+  const hg=document.getElementById('histGrid');
+  if(!hg) return;
+  const sq = (document.getElementById('histSearch') ? document.getElementById('histSearch').value : '').toLowerCase().trim();
+  let filteredKeys = Object.keys(_cmp);
+  if(sq) {
+    filteredKeys = filteredKeys.filter(k => {
+      const b = _cmp[k]; if(!b) return false;
+      return (b.patName && b.patName.toLowerCase().includes(sq)) ||
+             (b.patPhone && b.patPhone.includes(sq)) ||
+             (b.bookNo && b.bookNo.toLowerCase().includes(sq)) ||
+             (b.docName && b.docName.toLowerCase().includes(sq));
+    });
+  }
+  const noHistMsg = curLang === 'ar' ? 'لا يوجد سجل يطابق البحث' : (curLang === 'fr' ? 'Aucun historique' : 'No History');
+  if(!filteredKeys.length){hg.innerHTML=`<div style="text-align:center;padding:50px;color:var(--muted)">${noHistMsg}</div>`;return;}
+  const th1=curLang==='ar'?'التاريخ':(curLang==='fr'?'Date':'Date');
+  const th2=curLang==='ar'?'المريض':(curLang==='fr'?'Patient':'Patient');
+  const th3=curLang==='ar'?'الطبيب':(curLang==='fr'?'Médecin':'Doctor');
+  const th4=curLang==='ar'?'الوقت':(curLang==='fr'?'Heure':'Time');
+  const th5=curLang==='ar'?'الرسوم':(curLang==='fr'?'Frais':'Fee');
+  const th6=curLang==='ar'?'التقييم':(curLang==='fr'?'Évaluation':'Rating');
+  hg.innerHTML=`<div class="htw"><table><thead><tr><th>${th1}</th><th>${th2}</th><th>${th3}</th><th>${th4}</th><th>${th5}</th><th>${th6}</th></tr></thead>
+    <tbody>${filteredKeys.slice().reverse().slice(0,60).map(k=>{const b=_cmp[k];if(!b)return'';
+      return`<tr><td><div style="font-weight:700">${b.date||'—'}</div></td>
+        <td><b>${sanitize(b.patName||'—')}</b><br><small>${sanitize(b.patPhone||'')}</small></td>
+        <td>د. ${sanitize(b.docName||'—')}<br><small style="color:var(--teal)">${sanitize(b.docSpec||'')}</small></td>
+        <td style="font-family:'IBM Plex Mono',monospace">${b.time||'—'}</td>
+        <td style="color:var(--green);font-weight:800">${b.fee||'0.00'}</td>
+        <td style="color:var(--amber)">${b.rating?'★'.repeat(b.rating):'—'}</td>
+      </tr>`;}).join('')}</tbody></table></div>`;
+};
+db.ref(BASE+'/completedBookings').orderByKey().limitToLast(200).on('child_added', snap => { _cmp[snap.key]=snap.val(); recalcCmp(); });
+db.ref(BASE+'/completedBookings').on('child_changed', snap => { _cmp[snap.key]=snap.val(); recalcCmp(); });
+db.ref(BASE+'/completedBookings').on('child_removed', snap => { delete _cmp[snap.key]; recalcCmp(); });
 
 // ── DOCTORS LISTENER ──
 db.ref(BASE+'/doctors').on('value', snap => {

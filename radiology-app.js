@@ -75,11 +75,12 @@ function doLogin() {
 function initRad() {
   toast('مرحباً بك في قسم الأشعة الذكي ☢️', 'ok');
 
-  // Live Radiology Orders Listener
-  db.ref(BASE + '/radiology_orders').on('value', snap => {
-    _orders = snap.val() || {};
-    renderRadOrders();
-  });
+  // Enterprise Incremental Radiology Orders (child events only)
+  let _radRenderTimer = null;
+  const debounceRad = () => { clearTimeout(_radRenderTimer); _radRenderTimer = setTimeout(renderRadOrders, 80); };
+  db.ref(BASE + '/radiology_orders').on('child_added',   snap => { _orders[snap.key] = snap.val(); debounceRad(); });
+  db.ref(BASE + '/radiology_orders').on('child_changed', snap => { _orders[snap.key] = snap.val(); debounceRad(); });
+  db.ref(BASE + '/radiology_orders').on('child_removed', snap => { delete _orders[snap.key]; debounceRad(); });
 }
 
 // Switch Side Menu items

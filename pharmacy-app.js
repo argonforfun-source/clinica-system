@@ -74,17 +74,19 @@ function doLogin() {
 function initPharmacy() {
   toast('مرحباً بك في الصيدلية الذكية 💊', 'ok');
 
-  // 1. Live Drug Inventory Listener
-  db.ref(BASE + '/pharmacy_inventory').on('value', snap => {
-    _inventory = snap.val() || {};
-    renderInventory();
-  });
+  // 1. Enterprise Incremental Drug Inventory
+  let _invTimer = null;
+  const debounceInv = () => { clearTimeout(_invTimer); _invTimer = setTimeout(renderInventory, 80); };
+  db.ref(BASE + '/pharmacy_inventory').on('child_added',   snap => { _inventory[snap.key] = snap.val(); debounceInv(); });
+  db.ref(BASE + '/pharmacy_inventory').on('child_changed', snap => { _inventory[snap.key] = snap.val(); debounceInv(); });
+  db.ref(BASE + '/pharmacy_inventory').on('child_removed', snap => { delete _inventory[snap.key]; debounceInv(); });
 
-  // 2. Live Prescriptions Inbox Listener
-  db.ref(BASE + '/prescriptions').on('value', snap => {
-    _prescriptions = snap.val() || {};
-    renderPrescriptions();
-  });
+  // 2. Enterprise Incremental Prescriptions Inbox
+  let _prescTimer = null;
+  const debouncePresc = () => { clearTimeout(_prescTimer); _prescTimer = setTimeout(renderPrescriptions, 80); };
+  db.ref(BASE + '/prescriptions').on('child_added',   snap => { _prescriptions[snap.key] = snap.val(); debouncePresc(); });
+  db.ref(BASE + '/prescriptions').on('child_changed', snap => { _prescriptions[snap.key] = snap.val(); debouncePresc(); });
+  db.ref(BASE + '/prescriptions').on('child_removed', snap => { delete _prescriptions[snap.key]; debouncePresc(); });
 }
 
 // Sidebar switcher

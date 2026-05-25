@@ -115,22 +115,37 @@ function doLogin() {
 // EMR Initialization
 function initEMR() {
   toast('مرحباً بك في نظام السجلات الطبية', 'ok');
-  // Load Patients list
-  db.ref(BASE + '/patients').on('value', snap => {
-    _patients = snap.val() || {};
-    renderPatientsList(Object.entries(_patients));
-    
-    if (activePatientId && _patients[activePatientId]) {
-      viewPatientFile(activePatientId);
-    } else {
+  // Load Patients list with incremental real-time event-driven queue
+  let renderTimeout = null;
+  const debouncedRenderPatients = () => {
+    clearTimeout(renderTimeout);
+    renderTimeout = setTimeout(() => {
       // Auto-load patient from URL param on first load
-      const urlPhone = new URLSearchParams(window.location.search).get('phone');
-      if (urlPhone && _patients[urlPhone]) {
-        viewPatientFile(urlPhone);
-        // Clean query parameter so it doesn't loop or interfere
-        window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
+      if (!activePatientId) {
+        const urlPhone = new URLSearchParams(window.location.search).get('phone');
+        if (urlPhone && _patients[urlPhone]) {
+          viewPatientFile(urlPhone);
+          window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
+        }
       }
+      filterPatients();
+    }, 100);
+  };
+
+  db.ref(BASE + '/patients').on('child_added', snap => {
+    _patients[snap.key] = snap.val();
+    debouncedRenderPatients();
+  });
+  db.ref(BASE + '/patients').on('child_changed', snap => {
+    _patients[snap.key] = snap.val();
+    debouncedRenderPatients();
+    if (activePatientId === snap.key) {
+      viewPatientFile(snap.key);
     }
+  });
+  db.ref(BASE + '/patients').on('child_removed', snap => {
+    delete _patients[snap.key];
+    debouncedRenderPatients();
   });
 
   // Real-time Notification Engine for Doctors
@@ -156,16 +171,19 @@ function initEMR() {
     if (btn) btn.style.display = 'flex';
   }
 
-  // Real-time listener for internal referrals
-  db.ref(BASE + '/referrals').on('value', snap => {
-    _referrals = snap.val() || {};
-    renderReferralsList();
-  });
+  // Enterprise Incremental Referrals Listener
+  let _refTimer = null;
+  const debounceRef = () => { clearTimeout(_refTimer); _refTimer = setTimeout(renderReferralsList, 80); };
+  db.ref(BASE + '/referrals').on('child_added', snap => { _referrals[snap.key] = snap.val(); debounceRef(); });
+  db.ref(BASE + '/referrals').on('child_changed', snap => { _referrals[snap.key] = snap.val(); debounceRef(); });
+  db.ref(BASE + '/referrals').on('child_removed', snap => { delete _referrals[snap.key]; debounceRef(); });
 
-  // Real-time listener for pharmacy inventory
-  db.ref(BASE + '/pharmacy_inventory').on('value', snap => {
-    _pharmacyInventory = snap.val() || {};
-  });
+  // Enterprise Incremental Pharmacy Inventory Listener
+  let _invTimer = null;
+  const debounceInv = () => { clearTimeout(_invTimer); _invTimer = setTimeout(() => { /* inventory UI update placeholder */ }, 80); };
+  db.ref(BASE + '/pharmacy_inventory').on('child_added', snap => { _pharmacyInventory[snap.key] = snap.val(); debounceInv(); });
+  db.ref(BASE + '/pharmacy_inventory').on('child_changed', snap => { _pharmacyInventory[snap.key] = snap.val(); debounceInv(); });
+  db.ref(BASE + '/pharmacy_inventory').on('child_removed', snap => { delete _pharmacyInventory[snap.key]; debounceInv(); });
 }
 
 // Sidebar Navigation
@@ -198,6 +216,9 @@ function updateThemeIcon(theme) {
 }
 
 // Render Patients List
+let patPageLimit = 15;
+let lastQuery = '';
+
 function renderPatientsList(entries) {
   const grid = document.getElementById('patGrid');
   if (!entries.length) {
@@ -208,7 +229,8 @@ function renderPatientsList(entries) {
     return;
   }
 
-  grid.innerHTML = entries.map(([phone, p]) => {
+  const sliced = entries.slice(0, patPageLimit);
+  let html = sliced.map(([phone, p]) => {
     const info = p.info || {};
     const ageGender = [info.age ? `${info.age} سنة` : '', info.gender || ''].filter(Boolean).join(' · ');
     return `<div class="plist-card" onclick="viewPatientFile('${phone}')">
@@ -220,11 +242,31 @@ function renderPatientsList(entries) {
       </div>
     </div>`;
   }).join('');
+
+  if (entries.length > patPageLimit) {
+    html += `
+      <div id="patLoadMoreContainer" style="grid-column:1/-1; text-align:center; padding:15px 0;">
+        <button class="btn-secondary" onclick="loadMorePatients()" style="width:100%; justify-content:center; padding:12px; border-radius:8px;">
+          <i class="fas fa-chevron-down"></i> عرض المزيد (${entries.length - patPageLimit} مرضى إضافيين)
+        </button>
+      </div>
+    `;
+  }
+  grid.innerHTML = html;
+}
+
+function loadMorePatients() {
+  patPageLimit += 15;
+  filterPatients();
 }
 
 // Filter Patients
 function filterPatients() {
   const q = document.getElementById('patSearch').value.toLowerCase().trim();
+  if (q !== lastQuery) {
+    patPageLimit = 15;
+    lastQuery = q;
+  }
   const entries = Object.entries(_patients).filter(([phone, p]) => {
     const info = p.info || {};
     return phone.includes(q) || 

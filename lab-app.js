@@ -75,11 +75,12 @@ function doLogin() {
 function initLab() {
   toast('مرحباً بك في المختبر الطبي المركزي 🧪', 'ok');
 
-  // Live Lab Orders Listener
-  db.ref(BASE + '/lab_orders').on('value', snap => {
-    _orders = snap.val() || {};
-    renderLabOrders();
-  });
+  // Enterprise Incremental Lab Orders (child events only)
+  let _labRenderTimer = null;
+  const debounceLabRender = () => { clearTimeout(_labRenderTimer); _labRenderTimer = setTimeout(renderLabOrders, 80); };
+  db.ref(BASE + '/lab_orders').on('child_added',   snap => { _orders[snap.key] = snap.val(); debounceLabRender(); });
+  db.ref(BASE + '/lab_orders').on('child_changed', snap => { _orders[snap.key] = snap.val(); debounceLabRender(); });
+  db.ref(BASE + '/lab_orders').on('child_removed', snap => { delete _orders[snap.key];      debounceLabRender(); });
 }
 
 // Switch Side menu tabs
