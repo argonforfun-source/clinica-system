@@ -199,7 +199,7 @@ function renderCards(d){
     </div>
   </div>
   <div class="rc-actions">
-    <button class="act-btn teal" onclick="showLinks('${safeId}','${encodeURIComponent(s.name||'')}')"><i class="fas fa-link"></i> روابط</button>
+    <button class="act-btn teal" onclick="showLinks('${safeId}','${encodeURIComponent(s.name||'')}','${type}')"><i class="fas fa-link"></i> روابط</button>
     <button class="act-btn blue" onclick="window.open('${base}dashboard.html?id=${r.id}','_blank')"><i class="fas fa-tachometer-alt"></i> لوحة</button>
     <button class="act-btn" onclick="openEdit('${safeId}')"><i class="fas fa-edit"></i> تعديل</button>
     <button class="act-btn" onclick="opPass('${safeId}')"><i class="fas fa-key"></i> كلمة مرور</button>
@@ -326,15 +326,30 @@ async function doPass(){
 }
 
 // ══ LINKS ══
-function showLinks(id,name){
-    const nm=decodeURIComponent(name),base=getBase();
-    const dash=`${base}dashboard.html?id=${id}`,book=`${base}booking.html?id=${id}`,portal=`${base}patient-portal.html?id=${id}`,emr=`${base}emr.html?id=${id}`;
-    document.getElementById('lContent').innerHTML=`
+function showLinks(id, name, type) {
+    const nm = decodeURIComponent(name), base = getBase();
+    const dash = `${base}dashboard.html?id=${id}`, book = `${base}booking.html?id=${id}`, portal = `${base}patient-portal.html?id=${id}`, emr = `${base}emr.html?id=${id}`;
+    
+    let html = `
     <div style="font-size:15px;font-weight:800;color:var(--teal);margin-bottom:14px">🏥 ${nm}</div>
     <div class="lbox"><div class="ll">📊 لوحة الإدارة</div><div class="lv"><span>${dash}</span><button class="cpb" onclick="cp('${dash}')">نسخ</button></div></div>
     <div class="lbox"><div class="ll">🩺 شاشة الطبيب EMR</div><div class="lv"><span>${emr}</span><button class="cpb" onclick="cp('${emr}')">نسخ</button></div></div>
     <div class="lbox"><div class="ll">📱 بوابة الحجز</div><div class="lv"><span>${book}</span><button class="cpb" onclick="cp('${book}')">نسخ</button></div></div>
     <div class="lbox"><div class="ll">📋 بوابة المريض</div><div class="lv"><span>${portal}</span><button class="cpb" onclick="cp('${portal}')">نسخ</button></div></div>`;
+
+    if (type === 'complex') {
+        const phar = `${base}pharmacy.html?id=${id}`;
+        const lab = `${base}lab.html?id=${id}`;
+        const rad = `${base}radiology.html?id=${id}`;
+        html += `
+        <div style="margin-top:12px;border-top:1px dashed var(--border);padding-top:12px">
+            <div class="lbox" style="background:rgba(14,165,233,0.05)"><div class="ll" style="color:var(--sky)"><i class="fas fa-capsules"></i> الصيدلية المركزية</div><div class="lv"><span>${phar}</span><button class="cpb" style="color:var(--sky)" onclick="cp('${phar}')">نسخ</button></div></div>
+            <div class="lbox" style="background:rgba(245,158,11,0.05)"><div class="ll" style="color:var(--amber)"><i class="fas fa-vial"></i> المختبرات</div><div class="lv"><span>${lab}</span><button class="cpb" style="color:var(--amber)" onclick="cp('${lab}')">نسخ</button></div></div>
+            <div class="lbox" style="background:rgba(139,92,246,0.05)"><div class="ll" style="color:var(--purple)"><i class="fas fa-x-ray"></i> قسم الأشعة</div><div class="lv"><span>${rad}</span><button class="cpb" style="color:var(--purple)" onclick="cp('${rad}')">نسخ</button></div></div>
+        </div>`;
+    }
+
+    document.getElementById('lContent').innerHTML = html;
     document.getElementById('lModal').classList.add('open');
 }
 
