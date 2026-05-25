@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ARGON MEDICAL OS — Super Admin Engine v4.0
  * Manages clinics, licenses, status, security
  */
@@ -11,7 +11,7 @@ const db=firebase.database();
 // ══ SECURITY ══
 const _sec={
     sanitize:s=>String(s||'').replace(/[<>"'`\\]/g,'').trim().substring(0,300),
-    isId:id=>/^[a-zA-Z0-9_\-\.]{1,50}$/.test(String(id).trim()),
+    isId:id=>!/[\s\.\$\#\[\]\/]/.test(String(id).trim()) && String(id).trim().length > 0,
     isName:n=>{const t=String(n).trim();return t.length>=2&&t.length<=150},
     isPass:p=>{const t=String(p).trim();return t.length>=4&&t.length<=100},
     BF_KEY:'argon_super_bf',attempts:0,lockedUntil:0,
@@ -216,7 +216,7 @@ async function addClinic(){
     const id=_sec.sanitize(document.getElementById('nId').value.trim().toLowerCase().replace(/\s+/g,'-'));
     const name=_sec.sanitize(document.getElementById('nName').value.trim());
     const pass=document.getElementById('nPass').value.trim();
-    if(!_sec.isId(id)){toast('المعرف (ID): يجب أن يكون باللغة الإنجليزية فقط (أحرف وأرقام)','err');return}
+    if(!_sec.isId(id)){toast('المعرف (ID): يحتوي على رموز غير مسموحة','err');return}
     if(!_sec.isName(name)){toast('يرجى إدخال اسم العيادة','err');return}
     if(!_sec.isPass(pass)){toast('كلمة المرور: 4 أحرف على الأقل','err');return}
     const btn=document.getElementById('addBtn'),orig=btn.innerHTML;
