@@ -52,6 +52,7 @@ window.addEventListener('DOMContentLoaded', () => {
   db.ref(BASE + '/settings').on('value', snap => {
     _sets = snap.val();
     if (_sets) {
+      _sets.mode = (_sets.type === 'complex' || _sets.mode === 'medical_complex') ? 'medical_complex' : 'single_clinic';
       checkAndSeedDefaultDepartments();
       document.getElementById('lClinicName').textContent = _sets.name || 'العيادة الطبية';
       document.getElementById('topName').textContent = _sets.name || 'العيادة الطبية';
@@ -619,9 +620,10 @@ function viewPatientFile(phone) {
       <button class="emr-tab-btn ${activeEmrTab === 'timeline-tab' ? 'active' : ''}" onclick="switchEmrTab('timeline-tab')" style="background:var(--surf);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s">
         <i class="fas fa-history" style="color:var(--teal)"></i> السجل الطبي الزمني
       </button>
+      ${_sets && _sets.mode === 'medical_complex' ? `
       <button class="emr-tab-btn ${activeEmrTab === 'lab-tab' ? 'active' : ''}" onclick="switchEmrTab('lab-tab')" style="background:var(--surf);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s">
         <i class="fas fa-vials" style="color:var(--sky)"></i> الفحوصات والأشعة
-      </button>
+      </button>` : ''}
       ${_sets && _sets.mode === 'medical_complex' ? `
       <button class="emr-tab-btn ${activeEmrTab === 'referral-tab' ? 'active' : ''}" onclick="switchEmrTab('referral-tab')" style="background:var(--surf);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s">
         <i class="fas fa-exchange-alt" style="color:#a855f7"></i> التحويلات الداخلية
@@ -636,6 +638,7 @@ function viewPatientFile(phone) {
       <div class="timeline">${visitsTimelineHTML}</div>
     </div>
 
+    ${_sets && _sets.mode === 'medical_complex' ? `
     <div id="emr-tab-lab" class="emr-tab-content ${activeEmrTab === 'lab-tab' ? 'active-content' : ''}" style="display:${activeEmrTab === 'lab-tab' ? 'block' : 'none'}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
         <div>
@@ -651,7 +654,7 @@ function viewPatientFile(phone) {
           <div style="display:flex;flex-direction:column;gap:10px">${radOrdersHTML}</div>
         </div>
       </div>
-    </div>
+    </div>` : ''}
 
     ${_sets && _sets.mode === 'medical_complex' ? `
     <div id="emr-tab-referral" class="emr-tab-content ${activeEmrTab === 'referral-tab' ? 'active-content' : ''}" style="display:${activeEmrTab === 'referral-tab' ? 'block' : 'none'}">
@@ -732,7 +735,8 @@ function loadVisitForm(phone) {
         <textarea id="vNotes" rows="3" class="fi" style="resize:none" placeholder="اكتب تفاصيل الفحص الطبي والتوجيهات..."></textarea>
       </div>
 
-      <!-- Laboratory & Radiology Orders Builder -->
+      <!-- Laboratory & Radiology Orders Builder (Complex Only) -->
+      ${(_sets && _sets.mode === 'medical_complex') ? `
       <div style="margin-top:20px;border-top:1px dashed var(--border);padding-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:20px">
         <!-- Lab Section -->
         <div style="border-left:1px dashed var(--border);padding-left:14px">
@@ -770,14 +774,15 @@ function loadVisitForm(phone) {
           </div>
         </div>
       </div>
+      ` : ''}
 
       <!-- Prescription Builder -->
       <div style="margin-top:20px;border-top:1px dashed var(--border);padding-top:14px">
         <div class="vform-title" style="margin-bottom:8px"><i class="fas fa-prescription-bottle-alt"></i> الوصفة الطبية الإلكترونية</div>
         <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
           <div style="position:relative;flex:2;min-width:200px">
-            <input id="rxName" class="fi" placeholder="اسم الدواء (ابحث في مخزون الصيدلية أو أدخل يدوياً)" onkeyup="searchDrug()" onfocus="searchDrug()" autocomplete="off" style="width:100%">
-            <div id="rxDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:220px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
+            <input id="rxName" class="fi" placeholder="${_sets && _sets.mode === 'medical_complex' ? 'اسم الدواء (ابحث في مخزون الصيدلية أو أدخل يدوياً)' : 'اسم الدواء (الاسم العلمي أو التجاري)'}" onkeyup="${_sets && _sets.mode === 'medical_complex' ? 'searchDrug()' : ''}" onfocus="${_sets && _sets.mode === 'medical_complex' ? 'searchDrug()' : ''}" autocomplete="off" style="width:100%">
+            ${_sets && _sets.mode === 'medical_complex' ? `<div id="rxDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:220px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>` : ''}
           </div>
           <input id="rxDose" class="fi" placeholder="الجرعة (مثال: 500mg)" style="flex:1;min-width:100px">
           <input id="rxFreq" class="fi" placeholder="التكرار (مثال: 3 مرات)" style="flex:1;min-width:100px">
