@@ -10,6 +10,8 @@
     },
 
     "clinics": {
+      ".read": true,
+      ".write": true,
       "$clinicId": {
         "settings": {
           ".read": true,
