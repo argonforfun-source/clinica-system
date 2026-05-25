@@ -678,7 +678,9 @@ const FB = {
   messagingSenderId: "833103541884",
   appId: "1:833103541884:web:f8ee6ca4b3d8400cf0fbf9"
 };
-firebase.initializeApp(FB);
+if (!firebase.apps.length) {
+  firebase.initializeApp(FB);
+}
 const db = firebase.database();
 const auth = firebase.auth();
 const storage = firebase.storage();
