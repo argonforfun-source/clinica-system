@@ -497,8 +497,8 @@
       <div class="setp">
         <div class="setg"><label class="setl">اسم العيادة</label><input type="text" id="sN" class="seti"></div>
         <div class="setg"><label class="setl">رقم الواتساب</label><input type="text" id="sP" class="seti" placeholder="+962..."></div>
-        <div class="setg" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div>
+        <div class="setg" style="display:grid;grid-template-columns:1fr;gap:12px">
+          <div style="display:none;">
             <label class="setl">نظام التشغيل (Operational Mode) *</label>
             <select id="sMode" class="setsel" disabled style="opacity: 0.7; cursor: not-allowed; background: rgba(0,0,0,0.15);">
               <option value="single_clinic">عيادة منفردة (Single Clinic) 🏥</option>
@@ -870,10 +870,6 @@ function toggleComplexView(mode) {
   if (cn) cn.style.display = isComplex ? 'block' : 'none';
   const cp = document.getElementById('complexPasscodes');
   if (cp) cp.style.display = isComplex ? 'grid' : 'none';
-  const modeSel = document.getElementById('sMode');
-  if (modeSel && modeSel.parentElement) {
-    modeSel.parentElement.style.display = isComplex ? 'block' : 'none';
-  }
   
   // Render live views
   renderDashboardDeptFilters();
