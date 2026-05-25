@@ -1003,6 +1003,7 @@ db.ref(BASE+'/settings').on('value', snap => {
   }
   
   _sets = s;
+  _sets.mode = (s.type === 'complex' || s.mode === 'medical_complex') ? 'medical_complex' : 'single_clinic';
   checkAndSeedDefaultDepartments();
   
   // Only 'suspended' locks the dashboard (Super Admin only)
@@ -1045,8 +1046,9 @@ db.ref(BASE+'/settings').on('value', snap => {
   
   const sMode = document.getElementById('sMode');
   if (sMode) {
-    sMode.value = s.mode || 'single_clinic';
-    toggleComplexView(s.mode || 'single_clinic');
+    const actualMode = (s.type === 'complex' || s.mode === 'medical_complex') ? 'medical_complex' : 'single_clinic';
+    sMode.value = actualMode;
+    toggleComplexView(actualMode);
   }
   
   const is24h = !!s.is24Hours;
