@@ -319,6 +319,14 @@
       </div>
       <div class="ni" onclick="sw('hist',this)"><i class="fas fa-clock-rotate-left"></i>سجل الحجوزات</div>
       <div class="ni" onclick="window.open('emr.html?id='+CID,'_blank')" style="border-right:2px dashed var(--teal);background:rgba(13,148,136,.03)"><i class="fas fa-file-medical" style="color:var(--teal)"></i>السجلات الطبية EMR <span style="margin-right:auto;font-size:0.6rem;background:var(--teal);color:#000;padding:2px 6px;border-radius:4px;font-weight:900">PRO</span></div>
+      
+      <!-- COMPLEX MODE MODULES (Hidden by default) -->
+      <div id="complexNav" style="display:none; margin: 4px 0; border-right: 2px solid rgba(255,255,255,0.05); padding-right: 4px;">
+        <div class="ni" onclick="window.open('pharmacy.html?id='+CID,'_blank')"><i class="fas fa-capsules" style="color:var(--sky)"></i>الصيدلية المركزية</div>
+        <div class="ni" onclick="window.open('lab.html?id='+CID,'_blank')"><i class="fas fa-vial" style="color:var(--amber)"></i>المختبرات</div>
+        <div class="ni" onclick="window.open('radiology.html?id='+CID,'_blank')"><i class="fas fa-x-ray" style="color:var(--purple)"></i>قسم الأشعة</div>
+      </div>
+
       <div class="ni" onclick="sw('docs',this)"><i class="fas fa-user-md"></i>إدارة الأطباء</div>
       <div class="ni" onclick="sw('settings',this)"><i class="fas fa-gear"></i>الإعدادات</div>
     </div>
@@ -605,6 +613,33 @@
           </div>
         </div>
 
+        <!-- WHATSAPP AUTOMATION PANEL -->
+        <div style="margin:20px 0 14px 0;border-top:1px dashed var(--border);padding-top:16px">
+          <label class="setl" style="color:#25D366;font-weight:800"><i class="fab fa-whatsapp"></i> مركز أتمتة الواتساب (WhatsApp Automation)</label>
+          <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px;background:rgba(37,211,102,0.03);border:1px solid rgba(37,211,102,0.2);padding:15px;border-radius:12px">
+            
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;font-weight:700;cursor:pointer">
+              <input type="checkbox" id="waEnabled" style="width:16px;height:16px;accent-color:#25D366">
+              تفعيل الإرسال التلقائي للرسائل
+            </label>
+            
+            <div>
+              <label class="mfl">توقيع رسائل الواتساب التلقائي (سيتم إضافته نهاية كل رسالة)</label>
+              <input type="text" id="waSignature" class="mfi" placeholder="مع تحيات، مجمع طبي أرغون 🏥">
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;cursor:pointer"><input type="checkbox" id="waRemind30"> تذكير الموعد (قبل 30 دقيقة)</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;cursor:pointer"><input type="checkbox" id="waRemind10"> تذكير الموعد (قبل 10 دقائق)</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;cursor:pointer"><input type="checkbox" id="waPhar"> إشعار الصيدلية (جاهزية الدواء)</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;cursor:pointer"><input type="checkbox" id="waLab"> إشعار المختبر (ظهور النتائج)</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;cursor:pointer"><input type="checkbox" id="waRad"> إشعار الأشعة (إنجاز التقرير)</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;cursor:pointer"><input type="checkbox" id="waBill"> إشعار الفواتير غير المدفوعة</label>
+            </div>
+            
+          </div>
+        </div>
+
         <button class="bsave" onclick="saveSettings()"><i class="fas fa-floppy-disk" style="margin-left:8px"></i>حفظ جميع التغييرات</button>
       </div>
     </div>
@@ -826,6 +861,8 @@ function toggleComplexView(mode) {
   if (dp) dp.style.display = isComplex ? 'block' : 'none';
   const dw = document.getElementById('docDeptWrapper');
   if (dw) dw.style.display = isComplex ? 'block' : 'none';
+  const cn = document.getElementById('complexNav');
+  if (cn) cn.style.display = isComplex ? 'block' : 'none';
   
   // Render live views
   renderDashboardDeptFilters();
@@ -951,6 +988,17 @@ db.ref(BASE+'/settings').on('value', snap => {
   } else {
     document.getElementById('lockScreen').classList.remove('show');
   }
+
+  // Load WhatsApp Config
+  const wa = s.whatsapp || {};
+  document.getElementById('waEnabled').checked = !!wa.enabled;
+  document.getElementById('waSignature').value = wa.signature || '';
+  document.getElementById('waRemind30').checked = wa.remind30 !== false;
+  document.getElementById('waRemind10').checked = wa.remind10 !== false;
+  document.getElementById('waPhar').checked = wa.phar !== false;
+  document.getElementById('waLab').checked = wa.lab !== false;
+  document.getElementById('waRad').checked = wa.rad !== false;
+  document.getElementById('waBill').checked = wa.bill !== false;
 
   document.getElementById('topName').textContent = s.name||'العيادة';
   document.getElementById('lClinicName').textContent = s.name||'العيادة';
@@ -1545,6 +1593,18 @@ function saveSettings() {
 
   const color=document.getElementById('sC').value||'#0d9488';
   const newPass=document.getElementById('sPw').value.trim();
+  
+  const whatsappConf = {
+    enabled: document.getElementById('waEnabled').checked,
+    signature: document.getElementById('waSignature').value.trim(),
+    remind30: document.getElementById('waRemind30').checked,
+    remind10: document.getElementById('waRemind10').checked,
+    phar: document.getElementById('waPhar').checked,
+    lab: document.getElementById('waLab').checked,
+    rad: document.getElementById('waRad').checked,
+    bill: document.getElementById('waBill').checked
+  };
+
   const update={
     name:sanitize(sN),
     phone:sanitize(sP),
@@ -1563,6 +1623,7 @@ function saveSettings() {
       lab: document.getElementById('sPassLab').value.trim(),
       radiology: document.getElementById('sPassRad').value.trim()
     },
+    whatsapp: whatsappConf,
     color
   };
   if(newPass.length>=4) update.password=newPass;

@@ -31,6 +31,7 @@ let activeEmrTab = 'timeline-tab';
 let _referrals = {};
 let currentReferralsFilter = 'all';
 let _pharmacyInventory = {};
+let _liveBookings = {};
 
 // DOM Loaded
 window.addEventListener('DOMContentLoaded', () => {
@@ -146,6 +147,20 @@ function initEMR() {
   db.ref(BASE + '/patients').on('child_removed', snap => {
     delete _patients[snap.key];
     debouncedRenderPatients();
+  });
+
+  // Load Bookings for Waiting Room
+  db.ref(BASE + '/bookings').on('child_added', snap => {
+    _liveBookings[snap.key] = snap.val();
+    renderWaitingRoom();
+  });
+  db.ref(BASE + '/bookings').on('child_changed', snap => {
+    _liveBookings[snap.key] = snap.val();
+    renderWaitingRoom();
+  });
+  db.ref(BASE + '/bookings').on('child_removed', snap => {
+    delete _liveBookings[snap.key];
+    renderWaitingRoom();
   });
 
   // Real-time Notification Engine for Doctors
@@ -274,6 +289,56 @@ function filterPatients() {
            (info.mrn || '').toLowerCase().includes(q);
   });
   renderPatientsList(entries);
+}
+
+// Render Waiting Room
+function renderWaitingRoom() {
+  const wrList = document.getElementById('wrList');
+  if (!wrList) return;
+
+  const activeBookings = Object.entries(_liveBookings).filter(([k, b]) => {
+    return b.status !== 'done' && b.status !== 'completed' && b.status !== 'cancelled';
+  }).sort((a, b) => {
+    const prio = { 'with_doctor': 1, 'waiting': 2, 'confirmed': 3, 'new': 4 };
+    const pA = prio[a[1].status] || 5;
+    const pB = prio[b[1].status] || 5;
+    if (pA !== pB) return pA - pB;
+    return (a[1].time || '').localeCompare(b[1].time || '');
+  });
+
+  if (!activeBookings.length) {
+    wrList.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">
+      <i class="fas fa-bed" style="font-size:2.5rem;margin-bottom:10px;opacity:.3"></i>
+      <p>غرفة الانتظار فارغة حالياً</p>
+    </div>`;
+    return;
+  }
+
+  const stMap = {
+    'new': 'حجز جديد',
+    'confirmed': 'مؤكد',
+    'waiting': 'في غرفة الانتظار ⏳',
+    'with_doctor': 'عند الطبيب 🩺'
+  };
+  const stColor = {
+    'new': 'var(--sky)',
+    'confirmed': 'var(--teal)',
+    'waiting': 'var(--amber)',
+    'with_doctor': 'var(--purple)'
+  };
+
+  wrList.innerHTML = activeBookings.map(([k, b]) => {
+    const isDoc = b.status === 'with_doctor';
+    return `<div class="glass-panel" style="padding:16px;border-right:4px solid ${stColor[b.status]||'var(--teal)'}; cursor:pointer; transition:all 0.2s" onclick="if('${b.patPhone}') { viewPatientFile('${b.patPhone}'); sw('patFile'); }">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:0.75rem;font-weight:800;color:${stColor[b.status]};background:rgba(255,255,255,0.05);padding:3px 8px;border-radius:12px">${stMap[b.status]||b.status}</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem">${b.time||'—'}</span>
+      </div>
+      <div style="font-weight:800;font-size:1.05rem;margin-bottom:4px">${sanitize(b.patName)}</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px">📞 ${sanitize(b.patPhone)}</div>
+      ${isDoc ? `<button class="btn-primary btn-sm" style="width:100%;background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)" onclick="event.stopPropagation(); sw('newVisit'); loadVisitForm('${b.patPhone}')"><i class="fas fa-stethoscope"></i> فتح الزيارة الطبية</button>` : ''}
+    </div>`;
+  }).join('');
 }
 
 // Modal management

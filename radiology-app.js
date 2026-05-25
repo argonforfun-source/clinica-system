@@ -44,7 +44,7 @@ window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('topName').textContent = _sets.name || 'المجمع الطبي';
       document.getElementById('tlogo').textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON RADIOLOGY';
 
-      if (sessionStorage.getItem('rad_authed_' + CID) === 'true') {
+      if (ArgonSession.isValid('radiology') || ArgonSession.isValid('admin')) {
         document.getElementById('radLogin').style.display = 'none';
         initRad();
       }
@@ -58,7 +58,7 @@ function doLogin() {
   if (!_sets) return;
   const correctPass = (_sets.passcodes && _sets.passcodes.radiology) || _sets.password || '1122';
   if (pass === correctPass) {
-    sessionStorage.setItem('rad_authed_' + CID, 'true');
+    ArgonSession.start('radiology', 'فني الأشعة');
     document.getElementById('radLogin').style.opacity = '0';
     setTimeout(() => {
       document.getElementById('radLogin').style.display = 'none';

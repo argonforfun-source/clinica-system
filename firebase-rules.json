@@ -1,83 +1,90 @@
 {
   "rules": {
-    ".read": true,
-    ".write": true,
+    /* 🛡️ ARGON MEDICAL OS — Security Rules v4.0 */
+    ".read": false,
+    ".write": false,
+
+    "super_admin": {
+      ".read": true,
+      ".write": true
+    },
 
     "clinics": {
       "$clinicId": {
-        ".read": true,
-        ".write": true,
-
         "settings": {
           ".read": true,
-          ".write": true
+          ".write": true,
+          "passwords": {
+            ".read": false,
+            ".write": true
+          }
         },
-
-        "doctors": {
-          ".read": true,
-          ".write": true
-        },
-
-        "bookings": {
-          ".read": true,
-          ".write": true
-        },
-
-        "completedBookings": {
-          ".read": true,
-          ".write": true
-        },
-
         "patients": {
           ".read": true,
-          ".write": true
+          ".write": true,
+          "$patientId": {
+            ".validate": "newData.hasChildren(['name', 'phone'])"
+          }
         },
-
-        "invoices": {
+        "appointments": {
           ".read": true,
-          ".write": true
+          ".write": true,
+          "$appointmentId": {
+            ".validate": "newData.hasChildren(['patientId', 'date', 'status'])"
+          }
         },
-
-        "departments": {
-          ".read": true,
-          ".write": true
-        },
-
-        "referrals": {
-          ".read": true,
-          ".write": true
-        },
-
         "prescriptions": {
           ".read": true,
           ".write": true
         },
-
-        "lab_orders": {
+        "pharmacy_inventory": {
           ".read": true,
           ".write": true
         },
-
-        "radiology_orders": {
+        "lab_requests": {
           ".read": true,
           ".write": true
         },
-
-        "presence": {
+        "lab_results": {
           ".read": true,
           ".write": true
         },
-
-        "notifications": {
+        "radiology_requests": {
+          ".read": true,
+          ".write": true
+        },
+        "radiology_results": {
+          ".read": true,
+          ".write": true
+        },
+        "invoices": {
+          ".read": true,
+          ".write": true
+        },
+        "whatsapp_queue": {
+          ".read": true,
+          ".write": true
+        },
+        "whatsapp_settings": {
+          ".read": true,
+          ".write": true
+        },
+        "audit_logs": {
+          ".read": true,
+          ".write": true
+        },
+        "waiting_room": {
           ".read": true,
           ".write": true
         }
       }
     },
 
-    "super_admin": {
-      ".read": true,
-      ".write": true
+    "restaurants": {
+      "$restaurantId": {
+        ".read": true,
+        ".write": true
+      }
     }
   }
 }

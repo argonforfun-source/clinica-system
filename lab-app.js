@@ -44,7 +44,7 @@ window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('topName').textContent = _sets.name || 'المجمع الطبي';
       document.getElementById('tlogo').textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON LABORATORY';
 
-      if (sessionStorage.getItem('lab_authed_' + CID) === 'true') {
+      if (ArgonSession.isValid('lab') || ArgonSession.isValid('admin')) {
         document.getElementById('labLogin').style.display = 'none';
         initLab();
       }
@@ -58,7 +58,7 @@ function doLogin() {
   if (!_sets) return;
   const correctPass = (_sets.passcodes && _sets.passcodes.lab) || _sets.password || '1122';
   if (pass === correctPass) {
-    sessionStorage.setItem('lab_authed_' + CID, 'true');
+    ArgonSession.start('lab', 'فني المختبر');
     document.getElementById('labLogin').style.opacity = '0';
     setTimeout(() => {
       document.getElementById('labLogin').style.display = 'none';

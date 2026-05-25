@@ -43,7 +43,7 @@ window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('topName').textContent = _sets.name || 'المجمع الطبي';
       document.getElementById('tlogo').textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON PHARMACY';
 
-      if (sessionStorage.getItem('phar_authed_' + CID) === 'true') {
+      if (ArgonSession.isValid('pharmacist') || ArgonSession.isValid('admin')) {
         document.getElementById('pharLogin').style.display = 'none';
         initPharmacy();
       }
@@ -57,7 +57,7 @@ function doLogin() {
   if (!_sets) return;
   const correctPass = (_sets.passcodes && _sets.passcodes.pharmacist) || _sets.password || '1122';
   if (pass === correctPass) {
-    sessionStorage.setItem('phar_authed_' + CID, 'true');
+    ArgonSession.start('pharmacist', 'الصيدلاني المناوب');
     document.getElementById('pharLogin').style.opacity = '0';
     setTimeout(() => {
       document.getElementById('pharLogin').style.display = 'none';
