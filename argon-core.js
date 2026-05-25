@@ -19,7 +19,7 @@ if (typeof firebase !== 'undefined' && !firebase.apps.length) {
     firebase.initializeApp(ARGON_FIREBASE_CONFIG);
 }
 
-const db = typeof firebase !== 'undefined' ? firebase.database() : null;
+const _argonDb = typeof firebase !== 'undefined' ? firebase.database() : null;
 
 // ── Context (Tenant Identification) ──
 const urlParams = new URLSearchParams(window.location.search);
@@ -31,8 +31,8 @@ window.ArgonCore = {
   
   // ── 1. MEDICAL AUDIT LOG ──
   logAudit: function(action, details, moduleName = 'SYSTEM') {
-    if (!db) return;
-    const auditRef = db.ref(`${CLINIC_BASE}/audit_logs`).push();
+    if (!_argonDb) return;
+    const auditRef = _argonDb.ref(`${CLINIC_BASE}/audit_logs`).push();
     const logEntry = {
       action: action,
       details: details,
@@ -84,8 +84,8 @@ window.ArgonCore = {
   // ── 4. SMART NOTIFICATION CENTER ──
   NotificationCenter: {
     init: function() {
-      if (!db) return;
-      const notificationsRef = db.ref(`${CLINIC_BASE}/notifications`);
+      if (!_argonDb) return;
+      const notificationsRef = _argonDb.ref(`${CLINIC_BASE}/notifications`);
       const now = new Date().toISOString();
       notificationsRef.orderByChild('createdAt').startAt(now).on('child_added', snap => {
         const notif = snap.val();
@@ -171,8 +171,8 @@ window.ArgonSession = {
 window.ArgonLicense = {
     type: 'single', // default
     init: function(callback) {
-        if (!db) return;
-        db.ref(`${CLINIC_BASE}/settings/type`).on('value', snap => {
+        if (!_argonDb) return;
+        _argonDb.ref(`${CLINIC_BASE}/settings/type`).on('value', snap => {
             const t = snap.val();
             if (t) {
                 this.type = t;
@@ -188,7 +188,7 @@ window.ArgonLicense = {
 // ── 7. MAINTENANCE LOCKOUT ENGINE ──
 window.ArgonMaintenance = {
     init: function() {
-        if (!db) return;
+        if (!_argonDb) return;
         const isInternalApp = window.location.pathname.includes('dashboard') || 
                               window.location.pathname.includes('emr') || 
                               window.location.pathname.includes('pharmacy') || 
@@ -196,7 +196,7 @@ window.ArgonMaintenance = {
                               window.location.pathname.includes('radiology');
         if (!isInternalApp) return;
 
-        db.ref(`${CLINIC_BASE}/settings/status`).on('value', snap => {
+        _argonDb.ref(`${CLINIC_BASE}/settings/status`).on('value', snap => {
             const status = snap.val() || 'active';
             if (status === 'suspended' || status === 'maintenance') {
                 this.showLockoutScreen(status);
