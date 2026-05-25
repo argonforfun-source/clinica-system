@@ -216,7 +216,7 @@ async function addClinic(){
     const id=_sec.sanitize(document.getElementById('nId').value.trim().toLowerCase().replace(/\s+/g,'-'));
     const name=_sec.sanitize(document.getElementById('nName').value.trim());
     const pass=document.getElementById('nPass').value.trim();
-    if(!_sec.isId(id)){toast('المعرف: أحرف وأرقام فقط','err');return}
+    if(!_sec.isId(id)){toast('المعرف (ID): يجب أن يكون باللغة الإنجليزية فقط (أحرف وأرقام)','err');return}
     if(!_sec.isName(name)){toast('يرجى إدخال اسم العيادة','err');return}
     if(!_sec.isPass(pass)){toast('كلمة المرور: 4 أحرف على الأقل','err');return}
     const btn=document.getElementById('addBtn'),orig=btn.innerHTML;

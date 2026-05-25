@@ -96,7 +96,7 @@
                     </div>
 
                     <div class="form-grid">
-                        <div class="fg"><label><i class="fas fa-hashtag"></i> المعرف (ID) *</label><input class="fi" id="nId" placeholder="my-clinic" dir="ltr" autocomplete="off"></div>
+                        <div class="fg"><label><i class="fas fa-hashtag"></i> المعرف (ID) باللغة الإنجليزية فقط *</label><input class="fi" id="nId" placeholder="مثال: my-clinic" dir="ltr" autocomplete="off" oninput="this.value=this.value.replace(/[^a-zA-Z0-9_\-]/g,'').toLowerCase()"></div>
                         <div class="fg"><label>🏥 اسم العيادة *</label><input class="fi" id="nName" placeholder="عيادة الشفاء"></div>
                         <div class="fg"><label><i class="fas fa-lock"></i> كلمة المرور *</label><input class="fi" id="nPass" type="password" value="123456"></div>
                         <div class="fg"><label><i class="fas fa-phone"></i> الهاتف</label><input class="fi" id="nPhone" placeholder="+96279xxxxxxx" dir="ltr"></div>
