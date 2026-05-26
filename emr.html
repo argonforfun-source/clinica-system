@@ -94,16 +94,109 @@
       </div>
     </div>
 
-    <!-- NEW VISIT SECTION -->
-    <div id="newVisit" class="sec">
-      <div class="ph">
-        <div><div class="pt">🩺 زيارة جديدة</div><div class="ps">تسجيل زيارة طبية جديدة</div></div>
-      </div>
-      <div id="visitFormArea">
-        <div style="text-align:center;padding:80px;color:var(--muted)">
-          <i class="fas fa-user-md" style="font-size:3rem;display:block;margin-bottom:14px;opacity:.2"></i>
-          <p>اختر مريضاً أولاً من قائمة المرضى</p>
+    <!-- NEW VISIT SECTION (ENTERPRISE WORKSPACE) -->
+    <div id="newVisit" class="sec" style="padding: 0; background: var(--bg);">
+      
+      <!-- Workspace Header -->
+      <div class="ws-header">
+        <div style="display:flex;align-items:center;gap:16px;">
+          <button class="ws-back-btn" onclick="cancelVisit()"><i class="fas fa-arrow-right"></i> العودة لغرفة الانتظار</button>
+          <div style="width:1px;height:24px;background:var(--border);"></div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div id="wsAvatar" class="photo-preview-circle" style="width:40px;height:40px;font-size:1rem;">👤</div>
+            <div>
+              <div id="wsName" style="font-weight:900;font-size:1rem;">اسم المريض</div>
+              <div style="font-size:0.75rem;color:var(--muted);">MRN: <span id="wsMrn" style="font-family:'IBM Plex Mono';color:var(--teal);font-weight:700;">—</span> | <span id="wsAgeGender">—</span></div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <!-- Workspace Tabs -->
+      <div class="visit-tabs">
+        <button class="visit-tab active" onclick="switchVisitTab('tabVitals', this)"><i class="fas fa-heartbeat"></i> العلامات الحيوية</button>
+        <button class="visit-tab" onclick="switchVisitTab('tabDiag', this)"><i class="fas fa-notes-medical"></i> التشخيص</button>
+        <button class="visit-tab" onclick="switchVisitTab('tabRx', this)"><i class="fas fa-pills"></i> الوصفة الطبية</button>
+        <button class="visit-tab tab-complex" onclick="switchVisitTab('tabLab', this)"><i class="fas fa-vial"></i> طلب مختبر</button>
+        <button class="visit-tab tab-complex" onclick="switchVisitTab('tabRad', this)"><i class="fas fa-x-ray"></i> صورة أشعة</button>
+      </div>
+
+      <!-- Tab Contents -->
+      <div id="visitFormArea">
+        
+        <!-- Tab 1: Vitals -->
+        <div id="tabVitals" class="tab-content active">
+          <div class="vform">
+            <div class="vform-title"><i class="fas fa-heartbeat"></i> العلامات الحيوية (Vitals)</div>
+            <div class="fi-row4">
+              <div class="fg"><label>الحرارة (°C)</label><input type="number" id="vTemp" class="fi" placeholder="37.0" dir="ltr"></div>
+              <div class="fg"><label>ضغط الدم</label><input type="text" id="vBp" class="fi" placeholder="120/80" dir="ltr"></div>
+              <div class="fg"><label>نبض القلب (bpm)</label><input type="number" id="vHr" class="fi" placeholder="80" dir="ltr"></div>
+              <div class="fg"><label>الأكسجين (%)</label><input type="number" id="vO2" class="fi" placeholder="98" dir="ltr"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Diagnosis -->
+        <div id="tabDiag" class="tab-content">
+          <div class="vform">
+            <div class="vform-title"><i class="fas fa-notes-medical"></i> التشخيص والملاحظات</div>
+            <div class="fg">
+              <label>الشكوى الرئيسية (Chief Complaint)</label>
+              <textarea id="vComplaint" class="fi" rows="2" style="resize:none" placeholder="اكتب شكوى المريض..."></textarea>
+            </div>
+            <div class="fg">
+              <label>التشخيص النهائي (Diagnosis)</label>
+              <textarea id="vDiag" class="fi" rows="3" style="resize:none" placeholder="التشخيص الطبي..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Prescriptions -->
+        <div id="tabRx" class="tab-content">
+          <div class="vform">
+            <div class="vform-title"><i class="fas fa-pills"></i> الوصفة الطبية (Rx)</div>
+            <div class="fi-row" style="margin-bottom:12px;">
+              <input type="text" id="rxDrug" class="fi" placeholder="اسم الدواء...">
+              <input type="text" id="rxDose" class="fi" placeholder="الجرعة (مثال: حبة مرتين يومياً)">
+            </div>
+            <button class="btn-secondary" onclick="addWorkspaceRx()" style="width:100%;justify-content:center;margin-bottom:16px;"><i class="fas fa-plus"></i> إضافة الدواء للوصفة</button>
+            <table class="rx-table">
+              <thead><tr><th>الدواء</th><th>الجرعة</th><th style="width:50px"></th></tr></thead>
+              <tbody id="wsRxTbody">
+                <tr><td colspan="3" style="text-align:center;color:var(--muted)">لا يوجد أدوية مضافة</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 4: Labs (Complex Only) -->
+        <div id="tabLab" class="tab-content tab-complex">
+          <div class="vform">
+            <div class="vform-title"><i class="fas fa-vial"></i> طلب تحاليل مخبرية</div>
+            <div class="fg">
+              <label>التحاليل المطلوبة (مفصولة بفاصلة)</label>
+              <textarea id="vLabReq" class="fi" rows="3" style="resize:none" placeholder="CBC, Lipid Profile..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 5: Radiology (Complex Only) -->
+        <div id="tabRad" class="tab-content tab-complex">
+          <div class="vform">
+            <div class="vform-title"><i class="fas fa-x-ray"></i> طلب صور أشعة</div>
+            <div class="fg">
+              <label>التصوير المطلوب</label>
+              <textarea id="vRadReq" class="fi" rows="3" style="resize:none" placeholder="Chest X-Ray..."></textarea>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Workspace Footer -->
+      <div class="ws-footer">
+        <button class="btn-primary" onclick="completeWorkspaceVisit()" style="padding:12px 24px;font-size:1.05rem;"><i class="fas fa-save"></i> إنهاء الزيارة وحفظ الملف</button>
       </div>
     </div>
 

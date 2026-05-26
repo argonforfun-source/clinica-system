@@ -426,14 +426,15 @@ function renderWaitingRoom() {
 
   wrList.innerHTML = activeBookings.map(([k, b]) => {
     const isDoc = b.status === 'with_doctor';
-    return `<div class="glass-panel" style="padding:16px;border-right:4px solid ${stColor[b.status]||'var(--teal)'}; cursor:pointer; transition:all 0.2s" onclick="if('${b.patPhone}') { viewPatientFile('${b.patPhone}'); sw('patFile'); }">
+    const pUid = b.patientId || b.patPhone; // UUID Fallback
+    return `<div class="glass-panel" style="padding:16px;border-right:4px solid ${stColor[b.status]||'var(--teal)'}; cursor:pointer; transition:all 0.2s" onclick="if('${pUid}') { viewPatientFile('${pUid}'); sw('patFile'); }">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <span style="font-size:0.75rem;font-weight:800;color:${stColor[b.status]};background:rgba(255,255,255,0.05);padding:3px 8px;border-radius:12px">${stMap[b.status]||b.status}</span>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem">${b.time||'—'}</span>
       </div>
       <div style="font-weight:800;font-size:1.05rem;margin-bottom:4px">${sanitize(b.patName)}</div>
       <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px">📞 ${sanitize(b.patPhone)}</div>
-      ${isDoc ? `<button class="btn-primary btn-sm" style="width:100%;background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)" onclick="event.stopPropagation(); sw('newVisit'); loadVisitForm('${b.patPhone}')"><i class="fas fa-stethoscope"></i> فتح الزيارة الطبية</button>` : ''}
+      ${isDoc ? `<button class="btn-primary btn-sm" style="width:100%;background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)" onclick="event.stopPropagation(); loadVisitForm('${pUid}', '${k}')"><i class="fas fa-stethoscope"></i> فتح الزيارة الطبية</button>` : ''}
     </div>`;
   }).join('');
 }
@@ -2004,3 +2005,149 @@ function runCollisionTest() {
   });
 }
 
+// ── ENTERPRISE MEDICAL WORKSPACE CONTROLLER ──
+let activeVisit = { uid: null, bookingId: null, rx: [] };
+
+function loadVisitForm(uid, bookingId) {
+  if (!_patients[uid]) {
+    toast('بيانات المريض غير متوفرة', 'err');
+    return;
+  }
+  activeVisit = { uid, bookingId, rx: [] };
+  
+  const p = _patients[uid].info || {};
+  
+  // Populate Header
+  document.getElementById('wsName').textContent = p.name || 'غير معروف';
+  document.getElementById('wsMrn').textContent = p.mrn || '—';
+  document.getElementById('wsAgeGender').textContent = `${p.age ? p.age + ' سنة' : '—'} | ${p.gender || '—'}`;
+  
+  if (p.photo) {
+    document.getElementById('wsAvatar').innerHTML = `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else {
+    document.getElementById('wsAvatar').innerHTML = '👤';
+  }
+
+  // Clinic Mode Support
+  db.ref(`clinics/${CID}/settings/complexMode`).once('value', snap => {
+    const isComplex = snap.val() === true;
+    document.querySelectorAll('.tab-complex').forEach(el => {
+      el.style.display = isComplex ? 'flex' : 'none';
+    });
+  });
+
+  // Reset Forms
+  ['vTemp','vBp','vHr','vO2','vComplaint','vDiag','rxDrug','rxDose','vLabReq','vRadReq'].forEach(id => {
+    if (document.getElementById(id)) document.getElementById(id).value = '';
+  });
+  
+  renderWorkspaceRx();
+  sw('newVisit');
+  
+  // Reset tabs to Vitals
+  const firstTab = document.querySelector('.visit-tabs .visit-tab');
+  if (firstTab) switchVisitTab('tabVitals', firstTab);
+}
+
+function cancelVisit() {
+  activeVisit = { uid: null, bookingId: null, rx: [] };
+  sw('waitingRoom');
+}
+
+function switchVisitTab(tabId, btn) {
+  // Update Buttons
+  document.querySelectorAll('.visit-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  
+  // Update Contents
+  document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+  const target = document.getElementById(tabId);
+  if (target) target.classList.add('active');
+}
+
+function addWorkspaceRx() {
+  const drug = document.getElementById('rxDrug').value.trim();
+  const dose = document.getElementById('rxDose').value.trim();
+  if (!drug) return toast('يرجى كتابة اسم الدواء', 'err');
+  
+  activeVisit.rx.push({ drug, dose });
+  document.getElementById('rxDrug').value = '';
+  document.getElementById('rxDose').value = '';
+  renderWorkspaceRx();
+}
+
+function renderWorkspaceRx() {
+  const tb = document.getElementById('wsRxTbody');
+  if (!tb) return;
+  if (!activeVisit.rx.length) {
+    tb.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted)">لا يوجد أدوية مضافة</td></tr>';
+    return;
+  }
+  tb.innerHTML = activeVisit.rx.map((r, i) => `
+    <tr>
+      <td style="font-weight:700;color:var(--teal)">${sanitize(r.drug)}</td>
+      <td>${sanitize(r.dose)}</td>
+      <td><button class="rx-rm" onclick="activeVisit.rx.splice(${i}, 1); renderWorkspaceRx()"><i class="fas fa-times-circle"></i></button></td>
+    </tr>
+  `).join('');
+}
+
+function completeWorkspaceVisit() {
+  const { uid, bookingId } = activeVisit;
+  if (!uid || !bookingId) return;
+
+  const diag = document.getElementById('vDiag').value.trim();
+  const comp = document.getElementById('vComplaint').value.trim();
+  if (!diag) return toast('يرجى كتابة التشخيص النهائي لإغلاق الزيارة', 'err');
+
+  const visitObj = {
+    date: new Date().toISOString(),
+    doctor: localStorage.getItem('empName') || 'طبيب',
+    chiefComplaint: comp,
+    diagnosis: diag,
+    vitals: {
+      temp: document.getElementById('vTemp').value.trim(),
+      bp: document.getElementById('vBp').value.trim(),
+      hr: document.getElementById('vHr').value.trim(),
+      o2: document.getElementById('vO2').value.trim()
+    },
+    rx: activeVisit.rx
+  };
+
+  const labReq = document.getElementById('vLabReq')?.value.trim();
+  if (labReq) visitObj.labOrder = labReq;
+  
+  const radReq = document.getElementById('vRadReq')?.value.trim();
+  if (radReq) visitObj.radOrder = radReq;
+
+  const timelineKey = db.ref(`${BASE}/patients/${uid}/visits`).push().key;
+
+  const updates = {};
+  updates[`${BASE}/patients/${uid}/visits/${timelineKey}`] = visitObj;
+  
+  // Remove from live bookings list
+  updates[`${BASE}/live_bookings/${bookingId}/status`] = 'completed';
+  
+  // Update internal referral if lab or rad exists
+  if (labReq || radReq) {
+    const refKey = db.ref(`${BASE}/internal_referrals`).push().key;
+    updates[`${BASE}/internal_referrals/${refKey}`] = {
+      patientId: uid,
+      patName: _patients[uid]?.info?.name || 'مريض',
+      date: new Date().toISOString(),
+      fromDept: 'العيادات',
+      toDept: labReq ? 'المختبر' : 'الأشعة',
+      request: labReq ? labReq : radReq,
+      status: 'pending'
+    };
+  }
+
+  db.ref().update(updates).then(() => {
+    logAudit('END_VISIT', `تم إنهاء زيارة وحفظ الملف. التشخيص: ${diag}`, 'العيادة');
+    toast('✅ تم إنهاء الزيارة الطبية وحفظ الملف بنجاح!', 'ok');
+    sw('waitingRoom');
+    activeVisit = { uid: null, bookingId: null, rx: [] };
+  }).catch(err => {
+    toast('حدث خطأ أثناء الحفظ: ' + err.message, 'err');
+  });
+}

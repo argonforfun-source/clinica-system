@@ -265,3 +265,108 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   overflow: hidden;
   border: 1px solid var(--border);
 }
+
+/* ── ENTERPRISE MEDICAL WORKSPACE (TABS) ── */
+.ws-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+[data-theme="dark"] .ws-header {
+  background: rgba(15, 23, 42, 0.7);
+}
+.ws-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  font-family: 'Tajawal', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ws-back-btn:hover {
+  background: var(--panel);
+  border-color: var(--teal);
+  color: var(--teal);
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.1);
+}
+.visit-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 16px 24px 0 24px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.visit-tabs::-webkit-scrollbar { display: none; }
+.visit-tab {
+  padding: 12px 20px;
+  border-radius: 12px 12px 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: var(--muted);
+  font-family: 'Tajawal', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+.visit-tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.02);
+}
+.visit-tab.active {
+  background: var(--panel);
+  border-color: var(--border);
+  color: var(--teal);
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.02);
+}
+.visit-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--panel);
+}
+.tab-content {
+  display: none;
+  padding: 24px;
+  animation: fu 0.25s ease;
+  margin-bottom: 60px; /* Space for footer */
+}
+.tab-content.active {
+  display: block;
+}
+.ws-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 24px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 60;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.05);
+}
