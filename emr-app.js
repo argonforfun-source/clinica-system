@@ -426,29 +426,78 @@ function renderWaitingRoom() {
 
   wrList.innerHTML = activeBookings.map(([k, b]) => {
     const isDoc = b.status === 'with_doctor';
-    // Resolve the real patient UID from booking data (patientId preferred, phone as fallback)
-    const pUid = b.patientId || b.patPhone;
-    return `<div class="glass-panel" style="padding:16px;border-right:4px solid ${stColor[b.status]||'var(--teal)'}; cursor:pointer; transition:all 0.2s" onclick="openPatientFromBooking('${pUid}')">
+    // Pass booking key so we can resolve by name+phone
+    return `<div class="glass-panel" style="padding:16px;border-right:4px solid ${stColor[b.status]||'var(--teal)'}; cursor:pointer; transition:all 0.2s" onclick="openPatientFromBooking('${k}')">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <span style="font-size:0.75rem;font-weight:800;color:${stColor[b.status]};background:rgba(255,255,255,0.05);padding:3px 8px;border-radius:12px">${stMap[b.status]||b.status}</span>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem">${b.time||'—'}</span>
       </div>
       <div style="font-weight:800;font-size:1.05rem;margin-bottom:4px">${sanitize(b.patName)}</div>
       <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px">📞 ${sanitize(b.patPhone)}</div>
-      ${isDoc ? `<button class="btn-primary btn-sm" style="width:100%;background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)" onclick="event.stopPropagation(); loadVisitForm('${pUid}', '${k}')"><i class="fas fa-stethoscope"></i> فتح الزيارة الطبية</button>` : ''}
+      ${isDoc ? `<button class="btn-primary btn-sm" style="width:100%;background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)" onclick="event.stopPropagation(); loadVisitForm('${b.patientId||b.patPhone}', '${k}')"><i class="fas fa-stethoscope"></i> فتح الزيارة الطبية</button>` : ''}
     </div>`;
   }).join('');
 }
 
-// Open patient file from waiting room with proper UID resolution
-function openPatientFromBooking(rawUid) {
-  const uid = resolvePatientUid(rawUid);
-  if (uid) {
-    viewPatientFile(uid);
-    sw('patFile');
-  } else {
-    toast('⚠️ لم يتم العثور على ملف المريض في النظام', 'err');
+// Open patient file from waiting room — resolves correct patient by phone+name from booking
+function openPatientFromBooking(bookingKey) {
+  const booking = _liveBookings[bookingKey] || {};
+  const rawUid = booking.patientId || booking.patPhone;
+  const bookingName = (booking.patName || '').trim().toLowerCase();
+
+  if (!rawUid) {
+    toast('⚠️ لا توجد بيانات مرتبطة بهذا الحجز', 'err');
+    return;
   }
+
+  // 1️⃣ Direct UUID match
+  if (_patients[rawUid]) {
+    viewPatientFile(rawUid);
+    sw('patFile');
+    return;
+  }
+
+  // 2️⃣ Phone search
+  const phone = cleanPhone(rawUid);
+  const matched = Object.entries(_patients).filter(([k, p]) =>
+    cleanPhone(p.info?.phone || '') === phone
+  );
+
+  if (!matched.length) {
+    toast('⚠️ لم يتم العثور على ملف المريض في النظام', 'err');
+    return;
+  }
+
+  if (matched.length === 1) {
+    viewPatientFile(matched[0][0]);
+    sw('patFile');
+    return;
+  }
+
+  // 3️⃣ Multiple patients share phone — narrow by booking name
+  if (bookingName) {
+    const nameMatch = matched.find(([k, p]) =>
+      (p.info?.name || '').trim().toLowerCase() === bookingName
+    );
+    if (nameMatch) {
+      viewPatientFile(nameMatch[0]);
+      sw('patFile');
+      return;
+    }
+    // Partial name match fallback
+    const partial = matched.find(([k, p]) =>
+      (p.info?.name || '').toLowerCase().includes(bookingName) ||
+      bookingName.includes((p.info?.name || '').toLowerCase())
+    );
+    if (partial) {
+      viewPatientFile(partial[0]);
+      sw('patFile');
+      return;
+    }
+  }
+
+  // 4️⃣ Still ambiguous — show profile selector
+  showDoctorProfileSelector(matched, rawUid);
 }
 
 // Modal management
