@@ -195,6 +195,8 @@ function doLogin() {
 // EMR Initialization
 function initEMR() {
   toast('مرحباً بك في نظام السجلات الطبية', 'ok');
+  // Run legacy phone-key migration silently on first load
+  setTimeout(() => migratePhoneKeyedPatients(), 3000);
   // Load Patients list with incremental real-time event-driven queue
   let renderTimeout = null;
   const debouncedRenderPatients = () => {
@@ -278,6 +280,94 @@ function initEMR() {
   db.ref(BASE + '/pharmacy_inventory').on('child_added', snap => { _pharmacyInventory[snap.key] = snap.val(); debounceInv(); });
   db.ref(BASE + '/pharmacy_inventory').on('child_changed', snap => { _pharmacyInventory[snap.key] = snap.val(); debounceInv(); });
   db.ref(BASE + '/pharmacy_inventory').on('child_removed', snap => { delete _pharmacyInventory[snap.key]; debounceInv(); });
+}
+
+// ── ENTERPRISE LEGACY MIGRATION ──
+// One-time silent migration: converts patients stored with phone-as-key
+// to proper Firebase Push Key (UUID), eliminating the primary collision source.
+async function migratePhoneKeyedPatients() {
+  // Check if migration was already done for this clinic
+  const flagSnap = await db.ref(`${BASE}/_meta/phoneKeyMigrationDone`).once('value');
+  if (flagSnap.val() === true) return; // Already migrated
+
+  const snap = await db.ref(`${BASE}/patients`).once('value');
+  if (!snap.exists()) return;
+
+  const allPatients = snap.val();
+  const phoneKeyedEntries = Object.entries(allPatients).filter(([k]) => /^\d+$/.test(k));
+
+  if (!phoneKeyedEntries.length) {
+    // No legacy records — mark as done and exit
+    await db.ref(`${BASE}/_meta/phoneKeyMigrationDone`).set(true);
+    return;
+  }
+
+  console.log(`%c🔄 ARGON Migration: Found ${phoneKeyedEntries.length} legacy phone-keyed patient(s). Migrating...`, 'color:#0d9488;font-weight:bold');
+
+  const updates = {};
+  const migrated = [];
+
+  for (const [phoneKey, patientData] of phoneKeyedEntries) {
+    const phone = cleanPhone(phoneKey);
+
+    // Check if a UUID-keyed record already exists for this phone
+    const existingUuid = Object.entries(allPatients).find(([k, p]) =>
+      k.startsWith('-') && cleanPhone(p.info?.phone || '') === phone
+    );
+
+    if (existingUuid) {
+      // UUID record already exists — merge visits/data from legacy into it, then delete legacy
+      const [uuidKey, uuidData] = existingUuid;
+      const legacyVisits   = patientData.visits   || {};
+      const legacyInvoices = patientData.invoices  || {};
+
+      // Copy visits not already in UUID record
+      Object.entries(legacyVisits).forEach(([vk, vv]) => {
+        if (!uuidData.visits?.[vk]) {
+          updates[`${BASE}/patients/${uuidKey}/visits/${vk}`] = vv;
+        }
+      });
+      // Copy invoices not already in UUID record
+      Object.entries(legacyInvoices).forEach(([ik, iv]) => {
+        if (!uuidData.invoices?.[ik]) {
+          updates[`${BASE}/patients/${uuidKey}/invoices/${ik}`] = iv;
+        }
+      });
+      // Merge missing info fields
+      const legacyInfo = patientData.info || {};
+      const mergedInfo = { ...legacyInfo, ...uuidData.info }; // UUID info takes priority
+      updates[`${BASE}/patients/${uuidKey}/info`] = mergedInfo;
+
+      // Delete legacy phone-keyed record
+      updates[`${BASE}/patients/${phoneKey}`] = null;
+      migrated.push(`${legacyInfo.name || phoneKey} (دمج في ${uuidKey})`);
+
+    } else {
+      // No UUID record — create a new one with proper Push Key
+      const newRef = db.ref(`${BASE}/patients`).push();
+      const newKey = newRef.key;
+      // Ensure MRN exists
+      if (!patientData.info) patientData.info = {};
+      if (!patientData.info.mrn) patientData.info.mrn = genMRN();
+
+      updates[`${BASE}/patients/${newKey}`] = patientData;
+      updates[`${BASE}/patients/${phoneKey}`] = null;
+      migrated.push(`${patientData.info.name || phoneKey} → ${newKey}`);
+    }
+  }
+
+  // Mark migration as complete
+  updates[`${BASE}/_meta/phoneKeyMigrationDone`] = true;
+  updates[`${BASE}/_meta/phoneKeyMigrationDate`] = new Date().toISOString();
+  updates[`${BASE}/_meta/phoneKeyMigrationCount`] = migrated.length;
+
+  await db.ref().update(updates);
+  console.log(`%c✅ ARGON Migration Complete: ${migrated.length} patient(s) migrated.`, 'color:#10b981;font-weight:bold');
+  migrated.forEach(m => console.log(`   ✔ ${m}`));
+
+  if (migrated.length > 0) {
+    toast(`✅ تم ترحيل ${migrated.length} ملف طبي قديم إلى نظام UUID الحديث`, 'ok');
+  }
 }
 
 // Sidebar Navigation
