@@ -35,7 +35,7 @@
     <button class="tbtn" onclick="toggleTheme()" id="themeBtn"><i class="fas fa-moon"></i></button>
     <button class="tbtn" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
     <a class="tbtn" id="dashLink" href="dashboard.html"><i class="fas fa-arrow-right"></i> لوحة التحكم</a>
-    <button class="tbtn" onclick="location.reload()" style="color:#fca5a5"><i class="fas fa-sign-out-alt"></i></button>
+    <button class="tbtn" onclick="sessionStorage.removeItem('emr_authed_' + new URLSearchParams(window.location.search).get('id')); location.reload();" style="color:#fca5a5"><i class="fas fa-sign-out-alt"></i></button>
   </div>
 </div>
 

@@ -163,7 +163,7 @@ window.ArgonSession = {
     },
     clear: function() {
         sessionStorage.removeItem(this.KEY);
-        window.location.href = `index.html?id=${CLINIC_ID}`;
+        window.location.reload();
     }
 };
 
