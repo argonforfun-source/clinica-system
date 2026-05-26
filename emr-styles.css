@@ -224,3 +224,44 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   border-color: rgba(13, 148, 136, 0.2);
   box-shadow: 0 4px 12px rgba(0,0,0,0.02);
 }
+
+/* ── PATIENT PROFILE & WARNINGS ── */
+#npDupWarning {
+  display: none;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1.5px solid rgba(245, 158, 11, 0.25);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  color: var(--amber);
+  text-align: right;
+  animation: fu 0.25s ease;
+}
+
+.plist-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.pat-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.photo-preview-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}

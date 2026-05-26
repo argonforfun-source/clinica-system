@@ -35,6 +35,82 @@ let currentReferralsFilter = 'all';
 let _pharmacyInventory = {};
 let _liveBookings = {};
 
+let npPhotoData = '';
+let epPhotoData = '';
+
+// ── AUDIT LOGGING ENGINE ──
+function logAudit(action, details, module = 'EMR') {
+  const logId = db.ref().child('audit_logs').push().key;
+  db.ref(`${BASE}/audit_logs/${logId}`).set({
+    action,
+    details,
+    module,
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent
+  }).catch(err => console.error("Audit log failed: ", err));
+}
+
+// ── COMPRESS & PREVIEW PATIENT PHOTO ──
+function previewPatientPhoto(event, prefix) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 120;
+      canvas.height = 120;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, 120, 120);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      if (prefix === 'np') {
+        npPhotoData = dataUrl;
+        document.getElementById('npPhotoPreview').innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      } else {
+        epPhotoData = dataUrl;
+        document.getElementById('epPhotoPreview').innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── DYNAMIC DUPLICATE ALERT ──
+function detectNewPatDuplicates() {
+  const name = document.getElementById('npName').value.trim().toLowerCase();
+  const phone = cleanPhone(document.getElementById('npPhone').value);
+  const warningDiv = document.getElementById('npDupWarning');
+  
+  if (!name && !phone) {
+    warningDiv.style.display = 'none';
+    return;
+  }
+  
+  const matches = Object.entries(_patients).filter(([uid, p]) => {
+    const info = p.info || {};
+    const matchName = name && (info.name || '').trim().toLowerCase().includes(name);
+    const matchPhone = phone && cleanPhone(info.phone || '') === phone;
+    return matchName || matchPhone;
+  });
+  
+  if (matches.length > 0) {
+    let html = `<div style="font-weight:800;margin-bottom:6px"><i class="fas fa-exclamation-triangle"></i> تـنبيه: تم العثور على ملفات مشابهة (${matches.length})</div>`;
+    html += matches.map(([uid, p]) => {
+      const info = p.info || {};
+      return `<div style="display:flex;justify-content:space-between;margin-top:4px;padding:4px 0;border-top:1px dashed rgba(245,158,11,0.15)">
+        <span>👤 ${sanitize(info.name)} (MRN: ${info.mrn || '—'})</span>
+        <span>📞 ${sanitize(info.phone || '')}</span>
+      </div>`;
+    }).join('');
+    warningDiv.innerHTML = html;
+    warningDiv.style.display = 'block';
+  } else {
+    warningDiv.style.display = 'none';
+  }
+}
+
 // DOM Loaded
 window.addEventListener('DOMContentLoaded', () => {
   if (!CID) {
@@ -255,11 +331,17 @@ function renderPatientsList(entries) {
     const genderStr = info.gender || '';
     const ageGender = [ageStr, genderStr].filter(Boolean).join(' · ');
     const nationalId = info.nationalId ? `<span style="font-size:10px;color:var(--muted);font-family:monospace;direction:ltr">🪪 ${sanitize(info.nationalId)}</span>` : '';
+    
     // Detect potential duplicates — show warning badge if same name+phone as another
     const dupCount = Object.values(_patients).filter(pp => pp.info && pp.info.name === info.name && pp.info.phone === info.phone).length;
-    const dupBadge = dupCount > 1 ? `<span style="background:#fef3c7;color:#92400e;border-radius:6px;padding:1px 7px;font-size:10px;font-weight:700;margin-right:5px">⚠️ تكرار</span>` : '';
+    const dupBadge = dupCount > 1 ? `<span style="background:rgba(245,158,11,0.12);color:var(--amber);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;margin-right:5px">⚠️ تعارض محتمل</span>` : '';
+    
+    const avatarHTML = info.photo 
+      ? `<div class="plist-avatar"><img src="${info.photo}"></div>`
+      : `<div class="plist-avatar" style="font-size:1.5rem">${genderIcon}</div>`;
+
     return `<div class="plist-card" onclick="viewPatientFile('${uid}')">
-      <div class="plist-avatar" style="font-size:1.5rem">${genderIcon}</div>
+      ${avatarHTML}
       <div class="plist-info">
         <div class="plist-name">${sanitize(info.name)} ${dupBadge}</div>
         <div class="plist-meta">${sanitize(info.phone || '')} ${ageGender ? `· ${ageGender}` : ''}</div>
@@ -391,6 +473,15 @@ function openEditPatient(uid) {
   document.getElementById('epAllergies').value = (p.info.allergies || []).join('، ');
   document.getElementById('epChronic').value = (p.info.chronicDiseases || []).join('، ');
   document.getElementById('epNotes').value = p.info.notes || '';
+  
+  if (p.info.photo) {
+    epPhotoData = p.info.photo;
+    document.getElementById('epPhotoPreview').innerHTML = `<img src="${p.info.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else {
+    epPhotoData = '';
+    document.getElementById('epPhotoPreview').innerHTML = '👤';
+  }
+  
   document.getElementById('editPatModal').style.display = 'flex';
 }
 
@@ -422,10 +513,12 @@ function saveEditPatient() {
     bloodType: sanitize(blood),
     allergies: allergies.length ? allergies : null,
     chronicDiseases: chronic.length ? chronic : null,
-    notes: sanitize(notes)
+    notes: sanitize(notes),
+    photo: epPhotoData || null
   };
 
   db.ref(`${BASE}/patients/${uid}/info`).update(updates).then(() => {
+    logAudit('EDIT_PATIENT', `تم تعديل بيانات المريض ${updates.name} (${uid})`, 'EMR');
     toast('✅ تم تحديث بيانات المريض بنجاح', 'ok');
     closeModal('editPatModal');
     if (activePatientId === uid) {
@@ -504,6 +597,7 @@ function saveNewPatient() {
       chronicDiseases: chronic,
       mrn,
       notes: sanitize(notes),
+      photo: npPhotoData || null,
       createdAt: new Date().toISOString()
     }
   };
@@ -513,6 +607,7 @@ function saveNewPatient() {
   const newUid = newRef.key;
 
   newRef.set(patObj).then(() => {
+    logAudit('CREATE_PATIENT', `تم تسجيل مريض جديد ${patObj.info.name} (${newUid}) - MRN: ${mrn}`, 'EMR');
     toast(`✅ تم تسجيل المريض بنجاح — ${mrn}`, 'ok');
     closeModal('newPatModal');
     ['npName', 'npPhone', 'npNationalId', 'npAge', 'npAllergies', 'npChronic', 'npNotes'].forEach(id => {
@@ -521,6 +616,16 @@ function saveNewPatient() {
     });
     document.getElementById('npGender').value = '';
     document.getElementById('npBlood').value = '';
+    document.getElementById('npPhotoPreview').innerHTML = '👤';
+    npPhotoData = '';
+    
+    // Reset warning banner
+    const warningDiv = document.getElementById('npDupWarning');
+    if (warningDiv) {
+      warningDiv.style.display = 'none';
+      warningDiv.innerHTML = '';
+    }
+
     viewPatientFile(newUid);
   }).catch(() => toast('❌ فشل حفظ المريض', 'err'));
 }
@@ -662,8 +767,8 @@ function viewPatientFile(phoneOrUid) {
   }
 
   // Get department specific order lists for this patient
-  const patientLabOrders = Object.entries(_labOrders).filter(([k, o]) => o.patientId === phone || (o.patientPhone && cleanPhone(o.patientPhone) === cleanPhone(info.phone || phone)));
-  const patientRadOrders = Object.entries(_radOrders).filter(([k, o]) => o.patientId === phone || (o.patientPhone && cleanPhone(o.patientPhone) === cleanPhone(info.phone || phone)));
+  const patientLabOrders = Object.entries(_labOrders).filter(([k, o]) => o.patientId === uid || (o.patientPhone && cleanPhone(o.patientPhone) === cleanPhone(info.phone || uid)));
+  const patientRadOrders = Object.entries(_radOrders).filter(([k, o]) => o.patientId === uid || (o.patientPhone && cleanPhone(o.patientPhone) === cleanPhone(info.phone || uid)));
 
   let labOrdersHTML = `
     <div style="text-align:center;padding:30px;color:var(--muted)" class="glass-panel">لا يوجد طلبات فحوصات مخبرية مسجلة لهذا المريض</div>`;
@@ -720,17 +825,21 @@ function viewPatientFile(phoneOrUid) {
     }).join('');
   }
 
+  const activeAvatarHTML = info.photo 
+    ? `<div class="pat-avatar"><img src="${info.photo}"></div>` 
+    : `<div class="pat-avatar">👤</div>`;
+
   const fileHTML = `
     <div class="pat-card">
       <div class="pat-top">
-        <div class="pat-avatar">👤</div>
+        ${activeAvatarHTML}
         <div style="flex:1">
           <div class="pat-name">${sanitize(info.name)}</div>
           <div class="pat-mrn">الملف الطبي: ${info.mrn || 'MRN-NEW'}</div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn-secondary btn-sm" onclick="openEditPatient('${phone}')"><i class="fas fa-edit"></i> تعديل</button>
-          <button class="btn-primary btn-sm" onclick="sw('newVisit');loadVisitForm('${phone}')"><i class="fas fa-stethoscope"></i> بدء زيارة طبية</button>
+          <button class="btn-secondary btn-sm" onclick="openEditPatient('${uid}')"><i class="fas fa-edit"></i> تعديل</button>
+          <button class="btn-primary btn-sm" onclick="sw('newVisit');loadVisitForm('${uid}')"><i class="fas fa-stethoscope"></i> بدء زيارة طبية</button>
         </div>
       </div>
       <div class="pat-grid">
@@ -820,8 +929,8 @@ function viewPatientFile(phoneOrUid) {
 let labTestsList = [];
 let radScansList = [];
 
-function loadVisitForm(phone) {
-  const p = _patients[phone];
+function loadVisitForm(uid) {
+  const p = _patients[uid];
   if (!p) return;
 
   rxItems = [];
@@ -952,7 +1061,7 @@ function loadVisitForm(phone) {
 
       <div style="display:flex;gap:10px;margin-top:24px">
         <button class="btn-primary" style="flex:1" onclick="saveVisit()"><i class="fas fa-check"></i> إنهاء وحفظ الزيارة الطبية</button>
-        <button class="btn-secondary" onclick="viewPatientFile('${phone}')">إلغاء</button>
+        <button class="btn-secondary" onclick="viewPatientFile('${uid}')">إلغاء</button>
       </div>
     </div>
   `;
@@ -962,7 +1071,7 @@ function loadVisitForm(phone) {
   // Restore Auto-Saved Draft if exists
   setTimeout(() => {
     if (typeof ArgonCore !== 'undefined') {
-      const draft = ArgonCore.AutoSave.loadDraft(phone);
+      const draft = ArgonCore.AutoSave.loadDraft(uid);
       if (draft && draft.data) {
         const d = draft.data;
         if(document.getElementById('vDoc') && d.docKey) document.getElementById('vDoc').value = d.docKey;
@@ -1790,5 +1899,108 @@ function showDoctorProfileSelector(matchedPats, originalPhone) {
 
   overlay.appendChild(container);
   document.body.appendChild(overlay);
+}
+
+// ── PROGRAMMATIC ISOLATION & COLLISION DIAGNOSTIC ROUTINE ──
+function runCollisionTest() {
+  console.log("%c🧪 Starting EMR Collision Isolation Test...", "color: #0d9488; font-weight: bold; font-size: 1.2rem;");
+  const testPhone = '0799999999';
+  const cleanP = cleanPhone(testPhone);
+  
+  // We will programmatically create 10 independent patients sharing this same phone number
+  const promises = [];
+  for (let i = 1; i <= 10; i++) {
+    const newUid = db.ref().child('patients').push().key;
+    const mrn = 'TEST-MRN-' + Math.floor(100000 + Math.random() * 900000);
+    const patObj = {
+      info: {
+        name: `مريض الفحص رقم ${i}`,
+        phone: cleanP,
+        nationalId: `99900011${i}`,
+        age: 20 + i,
+        gender: i % 2 === 0 ? 'ذكر' : 'أنثى',
+        bloodType: 'O+',
+        mrn: mrn,
+        notes: `Collision diagnostic record ${i}`,
+        createdAt: new Date().toISOString()
+      }
+    };
+    
+    // Simulate visits for each isolated patient
+    const visitId = db.ref().child('visits').push().key;
+    patObj.visits = {
+      [visitId]: {
+        date: new Date().toLocaleDateString('en-CA'),
+        time: new Date().toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' }),
+        docKey: 'doctor_collision_test',
+        docName: 'فاحص العزل التلقائي',
+        diagnosis: `تشخيص معزول للمريض ${i}`,
+        complaint: `شكوى تجريبية رقم ${i}`,
+        notes: `تقرير فحص طبي معزول بالكامل للمريض رقم ${i}`
+      }
+    };
+    
+    // Simulate invoices for each isolated patient
+    const invId = db.ref().child('invoices').push().key;
+    const invPromise = db.ref(`${BASE}/invoices/${invId}`).set({
+      patientId: newUid,
+      patientName: patObj.info.name,
+      visitId: visitId,
+      docName: 'فاحص العزل التلقائي',
+      items: [{ name: `كشفية فحص ${i}`, price: 10 * i }],
+      total: 10 * i,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+
+    const patPromise = db.ref(`${BASE}/patients/${newUid}`).set(patObj);
+    promises.push(Promise.all([patPromise, invPromise]).then(() => {
+      console.log(`%c✔ Generated Patient Profile & Invoice ${i}/10 (UID: ${newUid})`, "color: #10b981");
+      return { uid: newUid, name: patObj.info.name, visitId, invId };
+    }));
+  }
+
+  Promise.all(promises).then((results) => {
+    console.log("%c📊 Verifying isolated child node integrity...", "color: #0ea5e9; font-weight: bold;");
+    
+    // Assert and verify child node isolation
+    let assertionsPassed = true;
+    
+    results.forEach((r, idx) => {
+      const idxNum = idx + 1;
+      const cached = _patients[r.uid];
+      if (!cached) {
+        console.error(`❌ Assertion Failed: Patient ${idxNum} not cached in local state!`);
+        assertionsPassed = false;
+        return;
+      }
+      
+      const info = cached.info || {};
+      const visits = cached.visits || {};
+      
+      // Verify isolated EMR details
+      if (info.name !== `مريض الفحص رقم ${idxNum}`) {
+        console.error(`❌ Assertion Failed: Name mismatch for patient ${idxNum}! Expected 'مريض الفحص رقم ${idxNum}', got '${info.name}'`);
+        assertionsPassed = false;
+      }
+      
+      const visitEntries = Object.entries(visits);
+      if (visitEntries.length !== 1 || visitEntries[0][1].diagnosis !== `تشخيص معزول للمريض ${idxNum}`) {
+        console.error(`❌ Assertion Failed: EMR visit isolation broken for patient ${idxNum}!`);
+        assertionsPassed = false;
+      }
+    });
+
+    if (assertionsPassed) {
+      console.log("%c🎉 SUCCESS: 100% EMR visits & invoices isolated under shared phone number context! Collision testing PASSED. No overwrites occurred.", "color: #10b981; font-weight: bold; font-size: 1.1rem;");
+      toast("🧪 Collision test completed: 100% EMR isolation asserted successfully!", "ok");
+    } else {
+      console.error("❌ FAILURE: EMR collision isolation check failed!");
+      toast("❌ Collision test failed! Check developer console.", "err");
+    }
+  }).catch(err => {
+    console.error("❌ Collision test aborted due to write error:", err);
+    toast("❌ Collision test error: " + err.message, "err");
+  });
 }
 

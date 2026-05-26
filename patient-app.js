@@ -271,6 +271,16 @@ function renderDemographics() {
   document.getElementById('patGender').textContent = info.gender === 'male' ? 'ذكر' : (info.gender === 'female' ? 'أنثى' : '—');
   document.getElementById('patBlood').textContent = info.bloodType || '—';
 
+  // Dynamic Photo Avatar Support
+  const avatarEl = document.querySelector('.patient-info .pat-avatar');
+  if (avatarEl) {
+    if (info.photo) {
+      avatarEl.innerHTML = `<img src="${info.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:12px">`;
+    } else {
+      avatarEl.innerHTML = '👤';
+    }
+  }
+
   // Allergies
   const algs = info.allergies || [];
   const algGrid = document.getElementById('patAllergies');

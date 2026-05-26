@@ -1458,21 +1458,28 @@ function updSt(k, s) {
 function cmpBook(k) {
   const b = _bks[k]; if (!b) return;
 
-  // Auto-create/update basic EMR profile for patient on completion
+  // Auto-create basic EMR profile under a unique Push Key if not exists (EMR Collision Prevention)
   if (b.patPhone) {
     let patPhone = b.patPhone.replace(/\D/g,'');
     if (patPhone.startsWith('962')) patPhone = patPhone.substring(3);
     if (patPhone.startsWith('0')) patPhone = patPhone.substring(1);
-    db.ref(`${BASE}/patients/${patPhone}/info`).once('value', snap => {
-      if (!snap.exists()) {
-        db.ref(`${BASE}/patients/${patPhone}/info`).set({
-          name: b.patName,
-          phone: patPhone,
-          age: b.patAge ? parseInt(b.patAge) : null,
-          gender: b.patGender || '',
-          mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
-          createdAt: new Date().toISOString()
-        });
+    
+    db.ref(`${BASE}/patients`).once('value', snap => {
+      const pats = snap.val() || {};
+      const exists = Object.values(pats).some(p => p.info && p.info.phone === patPhone);
+      
+      if (!exists) {
+        const newRef = db.ref(`${BASE}/patients`).push();
+        newRef.set({
+          info: {
+            name: b.patName,
+            phone: patPhone,
+            age: b.patAge ? parseInt(b.patAge) : null,
+            gender: b.patGender || '',
+            mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
+            createdAt: new Date().toISOString()
+          }
+        }).catch(err => console.error("Auto EMR registration failed: ", err));
       }
     });
   }

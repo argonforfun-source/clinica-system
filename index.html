@@ -1885,8 +1885,22 @@
 
     // ── CLINIC ID ──
     const uP = new URLSearchParams(window.location.search);
-    let CID = uP.get('id') || localStorage.getItem('argon_id') || '1';
-    if (uP.get('id')) localStorage.setItem('argon_id', CID);
+    let CID = uP.get('id');
+    if (!CID) {
+      CID = localStorage.getItem('argon_id');
+    }
+    if (!CID) {
+      try {
+        const globalList = JSON.parse(localStorage.getItem('clinica_all_bookings_global') || '[]');
+        if (globalList.length > 0 && globalList[0].cid) {
+          CID = globalList[0].cid;
+        }
+      } catch (e) {}
+    }
+    if (!CID) {
+      CID = '1';
+    }
+    localStorage.setItem('argon_id', CID);
     const BASE = 'clinics/' + CID;
 
     // ── STATE ──
@@ -2658,20 +2672,27 @@
         // Increment lifetime stats counter
         db.ref(BASE + '/stats/totalBookings').transaction(c => (c || 0) + 1).catch(() => {});
 
-        // Auto-create EMR patient profile immediately upon booking to guarantee a ready record
+        // Auto-create EMR patient profile under a unique Push Key if not exists (EMR Collision Prevention)
         let patPhone = phone.replace(/\D/g,'');
         if (patPhone.startsWith('962')) patPhone = patPhone.substring(3);
         if (patPhone.startsWith('0')) patPhone = patPhone.substring(1);
-        db.ref(`${BASE}/patients/${patPhone}/info`).once('value', snap => {
-          if (!snap.exists()) {
-            db.ref(`${BASE}/patients/${patPhone}/info`).set({
-              name: name,
-              phone: patPhone,
-              age: booking.patAge ? parseInt(booking.patAge) : null,
-              gender: booking.patGender || '',
-              mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
-              createdAt: new Date().toISOString()
-            });
+        
+        db.ref(`${BASE}/patients`).once('value', snap => {
+          const pats = snap.val() || {};
+          const exists = Object.values(pats).some(p => p.info && p.info.phone === patPhone);
+          
+          if (!exists) {
+            const newRef = db.ref(`${BASE}/patients`).push();
+            newRef.set({
+              info: {
+                name: name,
+                phone: patPhone,
+                age: booking.patAge ? parseInt(booking.patAge) : null,
+                gender: booking.patGender || '',
+                mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
+                createdAt: new Date().toISOString()
+              }
+            }).catch(err => console.error("Auto EMR registration failed: ", err));
           }
         });
 
@@ -2797,17 +2818,66 @@
 
     // ── LOCAL STORAGE ──
     function saveLocal(key, no) {
+      const newItem = { key, no, docName: selDoc.name, date: selDate, time: selTime, ts: Date.now(), cid: CID };
+      
+      // Clinic-specific list
       let list = JSON.parse(localStorage.getItem('clinica_bks_' + CID) || '[]');
-      list.unshift({ key, no, docName: selDoc.name, date: selDate, time: selTime, ts: Date.now() });
+      list.unshift(newItem);
       if (list.length > 10) list = list.slice(0, 10);
       localStorage.setItem('clinica_bks_' + CID, JSON.stringify(list));
+      
+      // Global cross-clinic list (keeps up to 30 items)
+      let globalList = JSON.parse(localStorage.getItem('clinica_all_bookings_global') || '[]');
+      globalList.unshift(newItem);
+      if (globalList.length > 30) globalList = globalList.slice(0, 30);
+      localStorage.setItem('clinica_all_bookings_global', JSON.stringify(globalList));
+    }
+
+    // ── SHOW BOOKING DETAILS & LIVE TRACKING ──
+    function showBookingDetails(key, bno, docName, date, time, fee) {
+      closeModal('myModal');
+      currentKey = key;
+      document.getElementById('sno').textContent = bno;
+      
+      const dL = curLang === 'ar' ? 'الطبيب' : (curLang === 'fr' ? 'Médecin' : 'Doctor');
+      const dtL = curLang === 'ar' ? 'التاريخ' : (curLang === 'fr' ? 'Date' : 'Date');
+      const tL = curLang === 'ar' ? 'الوقت' : (curLang === 'fr' ? 'Heure' : 'Time');
+      const fL = curLang === 'ar' ? 'الرسوم' : (curLang === 'fr' ? 'Frais' : 'Fee');
+      
+      let feeHtml = fee ? `<div class="sinfo-row"><span class="lbl">💰 ${fL}</span><span style="font-weight:800">${fee} د.أ</span></div>` : '';
+      
+      document.getElementById('sinfo').innerHTML = `
+        <div class="sinfo-row"><span class="lbl">👨‍⚕️ ${dL}</span><span style="font-weight:800">د. ${docName}</span></div>
+        <div class="sinfo-row"><span class="lbl">📅 ${dtL}</span><span style="font-weight:800">${date}</span></div>
+        <div class="sinfo-row"><span class="lbl">🕐 ${tL}</span><span style="font-weight:800">${time}</span></div>
+        ${feeHtml}`;
+      
+      startTracking(key);
+      goStep(3);
+      openModal('bookModal');
+      document.getElementById('sheetTitle').textContent = curLang === 'ar' ? 'تتبع الحجز والتقييم' : (curLang === 'fr' ? 'Suivi et Évaluation' : 'Tracking & Rating');
     }
 
     // ── MY BOOKINGS ──
     async function openMyBookings() {
       openModal('myModal');
       const el = document.getElementById('myBooksList');
-      const list = JSON.parse(localStorage.getItem('clinica_bks_' + CID) || '[]');
+      
+      // Merge clinic-specific and matching global list items
+      const localKey = 'clinica_bks_' + CID;
+      let list = JSON.parse(localStorage.getItem(localKey) || '[]');
+      try {
+        const globalList = JSON.parse(localStorage.getItem('clinica_all_bookings_global') || '[]');
+        const matches = globalList.filter(b => b.cid === CID);
+        for (const gb of matches) {
+          if (!list.some(mb => mb.key === gb.key)) {
+            list.push(gb);
+          }
+        }
+        list.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+        list = list.slice(0, 10);
+      } catch (e) {}
+
       if (!list.length) {
         el.innerHTML = '<div class="empty"><i class="fas fa-calendar-xmark"></i><p>لا توجد حجوزات سابقة</p></div>';
         return;
@@ -2846,6 +2916,18 @@
           eBtn = `<button onclick="closeModal('myModal'); currentKey='${b.key}'; document.getElementById('sno').textContent='${bno}'; document.getElementById('sinfo').innerHTML='<div class=\\'sinfo-row\\'><span class=\\'lbl\\'>👨‍⚕️ الطبيب</span><span style=\\'font-weight:800\\'>د. ${dN}</span></div><div class=\\'sinfo-row\\'><span class=\\'lbl\\'>📅 التاريخ</span><span style=\\'font-weight:800\\'>${dD}</span></div><div class=\\'sinfo-row\\'><span class=\\'lbl\\'>🕐 الوقت</span><span style=\\'font-weight:800\\'>${dT}</span></div>'; startTracking('${b.key}'); goStep(3); openModal('bookModal'); document.getElementById('sheetTitle').textContent='تتبع الحجز والتقييم';" style="margin-top:10px;width:100%;padding:7px;background:rgba(245,158,11,.1);border:1px dashed var(--amber);color:var(--amber);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.78rem;cursor:pointer;transition:all 0.2s"><i class="fas fa-star"></i> قيم الطبيب الآن</button>`;
         }
 
+        const bno = (b.no || b.bookNo || '').replace(/'/g, "\\'");
+        const dN = (b.docName || '').replace(/'/g, "\\'");
+        const dD = (b.date || '').replace(/'/g, "\\'");
+        const dT = (b.time || '').replace(/'/g, "\\'");
+        const fee = bData ? bData.fee : '';
+
+        // Permanent primary "Show Details" button for every active card (unless cancelled)
+        let trackingBtn = '';
+        if (status !== 'cancelled') {
+          trackingBtn = `<button onclick="showBookingDetails('${b.key}','${bno}','${dN}','${dD}','${dT}','${fee}')" style="width:100%;margin-top:10px;padding:8px;background:rgba(13,148,136,.1);border:1px solid var(--teal);color:var(--teal);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:6px"><i class="fas fa-eye"></i> عرض تفاصيل وتتبع الحجز</button>`;
+        }
+
         html += `<div class="bi-card">
       <div class="bi-head">
         <div>
@@ -2854,7 +2936,8 @@
         </div>
         <span class="bi-st ${stCls[status] || 'st-new'}">${stLabels[status] || status}</span>
       </div>
-      <div class="bi-no" dir="ltr">${b.no}</div>
+      <div class="bi-no" dir="ltr">${b.no || b.bookNo || ''}</div>
+      ${trackingBtn}
       ${eBtn}
     </div>`;
       }

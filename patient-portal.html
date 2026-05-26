@@ -429,9 +429,22 @@
                 
                 // Fetch patient info for MRN and stats
                 if (bk.patPhone) {
-                    db.ref(`clinics/${CID}/patients/${bk.patPhone}/info`).once('value', ps => {
-                        if (ps.val() && ps.val().mrn) {
-                            document.getElementById('pMrn').textContent = ps.val().mrn;
+                    let patPhone = bk.patPhone.replace(/\D/g,'');
+                    if (patPhone.startsWith('962')) patPhone = patPhone.substring(3);
+                    if (patPhone.startsWith('0')) patPhone = patPhone.substring(1);
+                    
+                    db.ref(`clinics/${CID}/patients`).once('value', snap => {
+                        const pats = snap.val() || {};
+                        const matched = Object.values(pats).find(p => p.info && p.info.phone === patPhone);
+                        if (matched && matched.info && matched.info.mrn) {
+                            document.getElementById('pMrn').textContent = matched.info.mrn;
+                        } else {
+                            // Fallback to legacy structure
+                            db.ref(`clinics/${CID}/patients/${patPhone}/info`).once('value', ps => {
+                                if (ps.val() && ps.val().mrn) {
+                                    document.getElementById('pMrn').textContent = ps.val().mrn;
+                                }
+                            });
                         }
                     });
                     
