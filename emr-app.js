@@ -525,10 +525,29 @@ function saveNewPatient() {
   }).catch(() => toast('❌ فشل حفظ المريض', 'err'));
 }
 
-// View Patient File
-function viewPatientFile(phone) {
-  activePatientId = phone;
-  const p = _patients[phone];
+// View Patient File — Smart UUID and Phone Resolver
+function viewPatientFile(phoneOrUid) {
+  let uid = phoneOrUid;
+  
+  if (!_patients[uid]) {
+    const cleanP = cleanPhone(phoneOrUid);
+    const matched = Object.entries(_patients).filter(([k, p]) => {
+      return (p.info && cleanPhone(p.info.phone) === cleanP) || k === cleanP;
+    });
+    
+    if (matched.length === 1) {
+      uid = matched[0][0];
+    } else if (matched.length > 1) {
+      showDoctorProfileSelector(matched, phoneOrUid);
+      return;
+    } else {
+      toast('⚠️ لم يتم العثور على الملف الطبي لهذا المريض', 'err');
+      return;
+    }
+  }
+
+  activePatientId = uid;
+  const p = _patients[uid];
   if (!p) return;
 
   const info = p.info || {};
@@ -1703,5 +1722,73 @@ function completeReferral(refId) {
   db.ref(`${BASE}/referrals/${refId}/status`).set('completed').then(() => {
     toast('✅ تم تحديث حالة التحويل إلى مكتمل', 'ok');
   });
+}
+
+// Beautiful Doctor Profile Selector Modal
+function showDoctorProfileSelector(matchedPats, originalPhone) {
+  const existing = document.getElementById('doctorProfileSelectorOverlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'doctorProfileSelectorOverlay';
+  overlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 7, 6, 0.85);
+    backdrop-filter: blur(10px);
+    z-index: 110000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    font-family: 'Tajawal', sans-serif;
+  `;
+
+  const container = document.createElement('div');
+  container.className = 'glass-panel';
+  container.style.cssText = `
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 28px;
+    width: 100%;
+    max-width: 460px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    text-align: center;
+  `;
+
+  let profilesHTML = matchedPats.map(([uid, p]) => {
+    const info = p.info || {};
+    const genderIcon = info.gender === 'ذكر' ? '👨' : info.gender === 'أنثى' ? '👩' : '👤';
+    const ageGender = [info.age ? `${info.age} سنة` : '', info.gender || ''].filter(Boolean).join(' · ');
+    return `
+      <div class="plist-card" style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; text-align: right; margin-bottom: 10px; transition: all 0.2s;" 
+           onclick="document.getElementById('doctorProfileSelectorOverlay').remove(); viewPatientFile('${uid}'); sw('patFile');">
+        <div style="font-size: 1.8rem;">${genderIcon}</div>
+        <div style="flex: 1;">
+          <div style="font-weight: 800; font-size: 0.95rem; color: var(--text);">${sanitize(info.name)}</div>
+          <div style="font-size: 0.78rem; color: var(--muted); margin-top: 2px;">
+            ${ageGender ? `${ageGender} · ` : ''}الرقم الطبي: <span style="font-family: monospace;">${info.mrn || '—'}</span>
+          </div>
+        </div>
+        <div style="color: var(--teal);"><i class="fas fa-chevron-left"></i></div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="font-size: 3rem; margin-bottom: 12px;">👥</div>
+    <h3 style="font-weight: 900; margin-bottom: 8px; color: var(--teal);">تحديد ملف المريض</h3>
+    <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 20px;">تم العثور على عدة ملفات مسجلة بنفس رقم الهاتف (${originalPhone}). الرجاء تحديد المريض المطلوب للزيارة:</p>
+    
+    <div style="max-height: 280px; overflow-y: auto; margin-bottom: 20px;">
+      ${profilesHTML}
+    </div>
+    
+    <button class="btn-secondary" style="width: 100%; justify-content: center;" onclick="document.getElementById('doctorProfileSelectorOverlay').remove();">إلغاء</button>
+  `;
+
+  overlay.appendChild(container);
+  document.body.appendChild(overlay);
 }
 
