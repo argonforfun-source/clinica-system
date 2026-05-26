@@ -426,8 +426,9 @@ function renderWaitingRoom() {
 
   wrList.innerHTML = activeBookings.map(([k, b]) => {
     const isDoc = b.status === 'with_doctor';
-    const pUid = b.patientId || b.patPhone; // UUID Fallback
-    return `<div class="glass-panel" style="padding:16px;border-right:4px solid ${stColor[b.status]||'var(--teal)'}; cursor:pointer; transition:all 0.2s" onclick="if('${pUid}') { viewPatientFile('${pUid}'); sw('patFile'); }">
+    // Resolve the real patient UID from booking data (patientId preferred, phone as fallback)
+    const pUid = b.patientId || b.patPhone;
+    return `<div class="glass-panel" style="padding:16px;border-right:4px solid ${stColor[b.status]||'var(--teal)'}; cursor:pointer; transition:all 0.2s" onclick="openPatientFromBooking('${pUid}')">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <span style="font-size:0.75rem;font-weight:800;color:${stColor[b.status]};background:rgba(255,255,255,0.05);padding:3px 8px;border-radius:12px">${stMap[b.status]||b.status}</span>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem">${b.time||'—'}</span>
@@ -437,6 +438,17 @@ function renderWaitingRoom() {
       ${isDoc ? `<button class="btn-primary btn-sm" style="width:100%;background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)" onclick="event.stopPropagation(); loadVisitForm('${pUid}', '${k}')"><i class="fas fa-stethoscope"></i> فتح الزيارة الطبية</button>` : ''}
     </div>`;
   }).join('');
+}
+
+// Open patient file from waiting room with proper UID resolution
+function openPatientFromBooking(rawUid) {
+  const uid = resolvePatientUid(rawUid);
+  if (uid) {
+    viewPatientFile(uid);
+    sw('patFile');
+  } else {
+    toast('⚠️ لم يتم العثور على ملف المريض في النظام', 'err');
+  }
 }
 
 // Modal management
@@ -2064,14 +2076,12 @@ function loadVisitForm(rawUid, bookingId) {
   if (firstTab) switchVisitTab('tabVitals', firstTab);
 }
 
-// Helper: apply clinic/complex mode to tab visibility
+// Helper: apply clinic/complex mode to tab visibility using cached _sets
 function _applyComplexMode() {
-  if (typeof db === 'undefined' || !CID) return;
-  db.ref(`clinics/${CID}/settings/complexMode`).once('value', snap => {
-    const isComplex = snap.val() === true;
-    document.querySelectorAll('.tab-complex').forEach(el => {
-      el.style.display = isComplex ? 'flex' : 'none';
-    });
+  // Use already-loaded _sets to avoid a Firebase round-trip
+  const isComplex = _sets && (_sets.mode === 'medical_complex' || _sets.type === 'complex');
+  document.querySelectorAll('.tab-complex').forEach(el => {
+    el.style.display = isComplex ? 'flex' : 'none';
   });
 }
 
