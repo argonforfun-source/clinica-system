@@ -1680,7 +1680,7 @@ function togTheme() {
   document.getElementById('themeTog').innerHTML = next === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
 }
 // Init theme
-const savedTheme = localStorage.getItem('argon_theme') || 'dark';
+const savedTheme = localStorage.getItem('argon_theme') || 'light';
 document.documentElement.setAttribute('data-theme', savedTheme);
 window.addEventListener('DOMContentLoaded', () => {
   if(document.getElementById('themeTog'))

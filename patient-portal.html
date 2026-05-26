@@ -8,12 +8,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         :root {
-            --bg: #061118;
-            --card: #0c1c24;
-            --card-hover: #112631;
-            --border: #16303d;
-            --text: #f8fafc;
-            --muted: #648192;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --card-hover: #f1f5f9;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --muted: #64748b;
             --primary: #0d9488;
             --primary-l: rgba(13,148,136,0.15);
             --sky: #0ea5e9;
@@ -21,6 +21,15 @@
             --amber: #f59e0b;
             --red: #ef4444;
             --purple: #8b5cf6;
+        }
+
+        [data-theme="dark"] {
+            --bg: #061118;
+            --card: #0c1c24;
+            --card-hover: #112631;
+            --border: #16303d;
+            --text: #f8fafc;
+            --muted: #648192;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -31,6 +40,7 @@
             color: var(--text); 
             min-height: 100vh;
             padding-bottom: 50px;
+            transition: background 0.3s, color 0.3s;
         }
 
         /* Top Nav */
@@ -39,7 +49,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 16px 30px;
-            background: rgba(6,17,24,0.8);
+            background: rgba(var(--bg), 0.8);
             backdrop-filter: blur(10px);
             border-bottom: 1px solid var(--border);
             position: sticky;
@@ -199,6 +209,7 @@
     <!-- Top Nav -->
     <nav class="top-nav">
         <div class="nav-right">
+            <button class="icon-btn" onclick="toggleTheme()" title="تغيير المظهر"><i class="fas fa-moon" id="themeIcon"></i></button>
             <button class="icon-btn" onclick="window.close()" title="خروج"><i class="fas fa-sign-out-alt"></i></button>
             <button class="icon-btn" onclick="location.reload()" title="تحديث"><i class="fas fa-sync-alt"></i></button>
         </div>
@@ -338,6 +349,27 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
     <script>
+        // Theme Management
+        function initTheme() {
+            const savedTheme = localStorage.getItem('argon_theme') || 'light';
+            document.body.setAttribute('data-theme', savedTheme);
+            const icon = document.getElementById('themeIcon');
+            if (icon) {
+                icon.className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+            }
+        }
+        function toggleTheme() {
+            const current = document.body.getAttribute('data-theme') || 'light';
+            const newTheme = current === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('argon_theme', newTheme);
+            const icon = document.getElementById('themeIcon');
+            if (icon) {
+                icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+            }
+        }
+        initTheme();
+
         const FC = {
             apiKey: "AIzaSyCDT_H-1klxbtuVR5n5GOVHKlxcmvY_2GA",
             authDomain: "clinica-system-e71b9.firebaseapp.com",

@@ -33,7 +33,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // Load Theme
-  const savedTheme = localStorage.getItem('argon_theme') || 'dark';
+  const savedTheme = localStorage.getItem('argon_theme') || 'light';
   document.body.setAttribute('data-theme', savedTheme);
   updateThemeIcon(savedTheme);
 

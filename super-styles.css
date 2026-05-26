@@ -17,6 +17,11 @@
   --shadow:0 4px 24px rgba(0,0,0,0.06);
   --shadow2:0 16px 48px rgba(0,0,0,0.08);
 }
+[data-theme="dark"] {
+  --bg:#040c14;--bg2:#0a1724;--card:rgba(12,28,44,0.85);--card2:rgba(12,28,44,0.6);
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+  --text:#f8fafc;--muted:#648192;--muted2:#4a6274;
+}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;
   background-image:radial-gradient(circle at 50% 0%,rgba(13,148,136,0.06) 0%,transparent 50%),
   radial-gradient(circle at 100% 100%,rgba(212,168,67,0.04) 0%,transparent 50%)}

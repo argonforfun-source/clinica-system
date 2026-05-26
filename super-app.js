@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ARGON MEDICAL OS — Super Admin Engine v4.0
  * Manages clinics, licenses, status, security
  */
@@ -26,8 +26,25 @@ const _sec={
     clearSess(){sessionStorage.removeItem(this.SESS_KEY)}
 };
 
-// ══ STATE ══
+// ⚡ STATE ⚡
 let data=[],curF='all',_isAdmin=false,_dataMap={},_renderTimer=null;
+
+// 🌓 THEME 🌓
+function initTheme() {
+    const savedTheme = localStorage.getItem('argon_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    const icon = document.getElementById('themeTogIcon');
+    if (icon) icon.className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+}
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const newTheme = current === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('argon_theme', newTheme);
+    const icon = document.getElementById('themeTogIcon');
+    if (icon) icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+}
+document.addEventListener('DOMContentLoaded', initTheme);
 let addOpen=false,secOpen=false,selectedType='single';
 
 // ══ CLOCK ══
