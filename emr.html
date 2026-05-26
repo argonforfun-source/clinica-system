@@ -131,11 +131,12 @@
 <div id="newPatModal" style="position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:10000;display:none;align-items:center;justify-content:center">
   <div style="background:var(--panel);border:1px solid var(--border);border-radius:22px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
     <div style="font-size:1.1rem;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:8px;color:var(--teal)"><i class="fas fa-user-plus"></i> تسجيل مريض جديد</div>
-    <div class="fi-row" style="margin-bottom:12px">
-      <div class="fg"><label>الاسم الكامل *</label><input class="fi" id="npName" placeholder="محمد أحمد"></div>
-      <div class="fg"><label>رقم الهاتف *</label><input class="fi" id="npPhone" placeholder="07XXXXXXXX" dir="ltr"></div>
-    </div>
-    <div class="fi-row3" style="margin-bottom:12px">
+      <div class="fi-row" style="margin-bottom:12px">
+        <div class="fg"><label>اسم المريض *</label><input class="fi" id="npName" placeholder="مثال: أحمد"></div>
+        <div class="fg"><label>رقم الهاتف *</label><input class="fi" id="npPhone" placeholder="07XXXXXXXX" dir="ltr"></div>
+      </div>
+      <div class="fg" style="margin-bottom:12px"><label><i class="fas fa-id-card"></i> الرقم الوطني / الهوية</label><input class="fi" id="npNationalId" placeholder="اختياري - للتمييز بين المرضى" dir="ltr"></div>
+      <div class="fi-row3" style="margin-bottom:12px">
       <div class="fg"><label>العمر</label><input class="fi" id="npAge" type="number" placeholder="30"></div>
       <div class="fg"><label>الجنس</label><select class="fi" id="npGender"><option value="">—</option><option value="ذكر">ذكر</option><option value="أنثى">أنثى</option></select></div>
       <div class="fg"><label>فصيلة الدم</label><select class="fi" id="npBlood"><option value="">—</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div>
@@ -155,11 +156,12 @@
   <div style="background:var(--panel);border:1px solid var(--border);border-radius:22px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
     <div style="font-size:1.1rem;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:8px;color:var(--teal)"><i class="fas fa-user-edit"></i> تعديل بيانات المريض</div>
     <input type="hidden" id="epOldPhone">
-    <div class="fi-row" style="margin-bottom:12px">
-      <div class="fg"><label>الاسم الكامل *</label><input class="fi" id="epName" placeholder="محمد أحمد"></div>
-      <div class="fg"><label>رقم الهاتف *</label><input class="fi" id="epPhone" placeholder="07XXXXXXXX" dir="ltr" disabled style="opacity:0.6;cursor:not-allowed"></div>
-    </div>
-    <div class="fi-row3" style="margin-bottom:12px">
+      <div class="fi-row" style="margin-bottom:12px">
+        <div class="fg"><label>اسم المريض *</label><input class="fi" id="epName" placeholder="مثال: أحمد"></div>
+        <div class="fg"><label>رقم الهاتف *</label><input class="fi" id="epPhone" placeholder="07XXXXXXXX" dir="ltr"></div>
+      </div>
+      <div class="fg" style="margin-bottom:12px"><label><i class="fas fa-id-card"></i> الرقم الوطني / الهوية</label><input class="fi" id="epNationalId" placeholder="اختياري - للتمييز بين المرضى" dir="ltr"></div>
+      <div class="fi-row3" style="margin-bottom:12px">
       <div class="fg"><label>العمر</label><input class="fi" id="epAge" type="number" placeholder="30"></div>
       <div class="fg"><label>الجنس</label><select class="fi" id="epGender"><option value="">—</option><option value="ذكر">ذكر</option><option value="أنثى">أنثى</option></select></div>
       <div class="fg"><label>فصيلة الدم</label><select class="fi" id="epBlood"><option value="">—</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div>

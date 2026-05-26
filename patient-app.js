@@ -76,10 +76,15 @@ function sendOtp() {
 
   toast('⏳ جاري البحث عن ملفك الطبي...', 'ok');
 
-  // Verify patient exists in EMR records
-  db.ref(`${BASE}/patients/${phone}`).once('value', snap => {
-    const pat = snap.val();
-    if (!pat) {
+  // Smart check: Verify if phone exists anywhere in patient list (either info/phone or as node key)
+  db.ref(`${BASE}/patients`).once('value', snap => {
+    const allPats = snap.val() || {};
+    const matched = Object.entries(allPats).filter(([uid, p]) => {
+      const pPhone = p.info && p.info.phone ? p.info.phone.replace(/\D/g, '') : '';
+      return pPhone === phone || uid === phone;
+    });
+
+    if (matched.length === 0) {
       err.textContent = '❌ رقم الهاتف هذا غير مسجل لدينا في السجلات الطبية. يرجى مراجعة الاستقبال أولاً.';
       err.style.display = 'block';
       return;
@@ -132,8 +137,78 @@ function verifyOtp() {
   }
 }
 
-// Portal Initialization (Scoped Data Observers)
+let activePatientUid = ''; // Holds the selected UID (either UUID or phone)
+
+// Portal Initialization with smart multi-profile picker
 function initPortal() {
+  db.ref(`${BASE}/patients`).once('value', snap => {
+    const allPats = snap.val() || {};
+    const matched = Object.entries(allPats).filter(([uid, p]) => {
+      const pPhone = p.info && p.info.phone ? p.info.phone.replace(/\D/g, '') : '';
+      return pPhone === loggedPhone || uid === loggedPhone;
+    });
+
+    if (matched.length === 0) {
+      activePatientUid = loggedPhone;
+      startPortalListeners(loggedPhone);
+    } else if (matched.length === 1) {
+      activePatientUid = matched[0][0];
+      startPortalListeners(activePatientUid);
+    } else {
+      showProfileSelector(matched);
+    }
+  });
+}
+
+function showProfileSelector(profiles) {
+  const modal = document.getElementById('profileSelectorModal');
+  const list = document.getElementById('profileSelectorList');
+  list.innerHTML = '';
+  
+  profiles.forEach(([uid, p]) => {
+    const info = p.info || {};
+    const genderIcon = info.gender === 'ذكر' ? '👨' : info.gender === 'أنثى' ? '👩' : '👤';
+    const ageGender = [info.age ? `${info.age} سنة` : '', info.gender || ''].filter(Boolean).join(' · ');
+    
+    const item = document.createElement('div');
+    item.className = 'glass-panel';
+    item.style.cssText = `
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      text-align: right;
+      transition: all 0.2s ease;
+      background: none;
+    `;
+    item.onmouseover = () => { item.style.borderColor = 'var(--teal)'; item.style.background = 'rgba(20,184,166,0.05)'; };
+    item.onmouseout = () => { item.style.borderColor = 'var(--border)'; item.style.background = 'none'; };
+    item.onclick = () => {
+      activePatientUid = uid;
+      modal.style.display = 'none';
+      startPortalListeners(uid);
+    };
+    
+    item.innerHTML = `
+      <div style="font-size: 1.8rem;">${genderIcon}</div>
+      <div style="flex: 1;">
+        <div style="font-weight: 800; font-size: 0.95rem; color: var(--text);">${sanitize(info.name)}</div>
+        <div style="font-size: 0.78rem; color: var(--muted); margin-top: 2px;">
+          ${ageGender ? `${ageGender} · ` : ''}الرقم الطبي: <span style="font-family: monospace;">${info.mrn || '—'}</span>
+        </div>
+      </div>
+      <div style="color: var(--teal);"><i class="fas fa-chevron-left"></i></div>
+    `;
+    list.appendChild(item);
+  });
+  
+  modal.style.display = 'flex';
+}
+
+function startPortalListeners(uid) {
   toast('مرحباً بك في بوابتك الطبية الرقمية 📲', 'ok');
 
   // Prefill Bookings Shortcut with patient details
@@ -141,7 +216,7 @@ function initPortal() {
   bookingLink.href = `index.html?id=${CID}&phone=${loggedPhone}`;
 
   // 1. Live Patient Details & EMR Timeline
-  db.ref(`${BASE}/patients/${loggedPhone}`).on('value', snap => {
+  db.ref(`${BASE}/patients/${uid}`).on('value', snap => {
     patientData = snap.val();
     if (patientData) {
       renderDemographics();
@@ -156,15 +231,27 @@ function initPortal() {
   });
 
   // 3. Live Invoices
-  db.ref(`${BASE}/invoices`).orderByChild('patientId').equalTo(loggedPhone).on('value', snap => {
-    invoicesData = snap.val() || {};
+  db.ref(`${BASE}/invoices`).on('value', snap => {
+    const allInvoices = snap.val() || {};
+    invoicesData = {};
+    Object.entries(allInvoices).forEach(([k, inv]) => {
+      if (inv.patientId === uid || inv.patientId === loggedPhone) {
+        invoicesData[k] = inv;
+      }
+    });
     renderBillingLedger();
     renderUpcomingAppointments();
   });
 
   // 4. Live Prescriptions (For Tracking)
-  db.ref(`${BASE}/prescriptions`).orderByChild('patientId').equalTo(loggedPhone).on('value', snap => {
-    prescriptionsData = snap.val() || {};
+  db.ref(`${BASE}/prescriptions`).on('value', snap => {
+    const allRx = snap.val() || {};
+    prescriptionsData = {};
+    Object.entries(allRx).forEach(([k, rx]) => {
+      if (rx.patientId === uid || rx.patientId === loggedPhone) {
+        prescriptionsData[k] = rx;
+      }
+    });
     renderUpcomingAppointments();
   });
 

@@ -248,15 +248,25 @@ function renderPatientsList(entries) {
   }
 
   const sliced = entries.slice(0, patPageLimit);
-  let html = sliced.map(([phone, p]) => {
+  let html = sliced.map(([uid, p]) => {
     const info = p.info || {};
-    const ageGender = [info.age ? `${info.age} سنة` : '', info.gender || ''].filter(Boolean).join(' · ');
-    return `<div class="plist-card" onclick="viewPatientFile('${phone}')">
-      <div class="plist-avatar">👤</div>
+    const genderIcon = info.gender === 'ذكر' ? '👨' : info.gender === 'أنثى' ? '👩' : '👤';
+    const ageStr = info.age ? `${info.age} سنة` : '';
+    const genderStr = info.gender || '';
+    const ageGender = [ageStr, genderStr].filter(Boolean).join(' · ');
+    const nationalId = info.nationalId ? `<span style="font-size:10px;color:var(--muted);font-family:monospace;direction:ltr">🪪 ${sanitize(info.nationalId)}</span>` : '';
+    // Detect potential duplicates — show warning badge if same name+phone as another
+    const dupCount = Object.values(_patients).filter(pp => pp.info && pp.info.name === info.name && pp.info.phone === info.phone).length;
+    const dupBadge = dupCount > 1 ? `<span style="background:#fef3c7;color:#92400e;border-radius:6px;padding:1px 7px;font-size:10px;font-weight:700;margin-right:5px">⚠️ تكرار</span>` : '';
+    return `<div class="plist-card" onclick="viewPatientFile('${uid}')">
+      <div class="plist-avatar" style="font-size:1.5rem">${genderIcon}</div>
       <div class="plist-info">
-        <div class="plist-name">${sanitize(info.name)}</div>
-        <div class="plist-meta">${sanitize(phone)} ${ageGender ? `· ${ageGender}` : ''}</div>
-        <div class="plist-mrn">${info.mrn || 'MRN-NEW'}</div>
+        <div class="plist-name">${sanitize(info.name)} ${dupBadge}</div>
+        <div class="plist-meta">${sanitize(info.phone || '')} ${ageGender ? `· ${ageGender}` : ''}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <div class="plist-mrn">${info.mrn || 'MRN-NEW'}</div>
+          ${nationalId}
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -278,18 +288,20 @@ function loadMorePatients() {
   filterPatients();
 }
 
-// Filter Patients
+// Smart Filter — searches name, phone, MRN, National ID
 function filterPatients() {
   const q = document.getElementById('patSearch').value.toLowerCase().trim();
   if (q !== lastQuery) {
     patPageLimit = 15;
     lastQuery = q;
   }
-  const entries = Object.entries(_patients).filter(([phone, p]) => {
+  const entries = Object.entries(_patients).filter(([uid, p]) => {
     const info = p.info || {};
-    return phone.includes(q) || 
-           (info.name || '').toLowerCase().includes(q) || 
-           (info.mrn || '').toLowerCase().includes(q);
+    return (info.phone || '').includes(q) ||
+           (info.name || '').toLowerCase().includes(q) ||
+           (info.mrn || '').toLowerCase().includes(q) ||
+           (info.nationalId || '').toLowerCase().includes(q) ||
+           uid.includes(q);
   });
   renderPatientsList(entries);
 }
@@ -365,13 +377,14 @@ function cleanPhone(p) {
   return clean;
 }
 
-// Edit Patient
-function openEditPatient(phone) {
-  const p = _patients[phone];
+// Edit Patient — uses UID (UUID or phone for legacy records)
+function openEditPatient(uid) {
+  const p = _patients[uid];
   if (!p) return;
-  document.getElementById('epOldPhone').value = phone;
+  document.getElementById('epOldPhone').value = uid;
   document.getElementById('epName').value = p.info.name || '';
-  document.getElementById('epPhone').value = phone;
+  document.getElementById('epPhone').value = p.info.phone || uid;
+  document.getElementById('epNationalId').value = p.info.nationalId || '';
   document.getElementById('epAge').value = p.info.age || '';
   document.getElementById('epGender').value = p.info.gender || '';
   document.getElementById('epBlood').value = p.info.bloodType || '';
@@ -382,10 +395,12 @@ function openEditPatient(phone) {
 }
 
 function saveEditPatient() {
-  const phone = document.getElementById('epOldPhone').value;
-  if (!phone || !_patients[phone]) return;
+  const uid = document.getElementById('epOldPhone').value;
+  if (!uid || !_patients[uid]) return;
 
   const name = document.getElementById('epName').value.trim();
+  const phone = cleanPhone(document.getElementById('epPhone').value);
+  const nationalId = document.getElementById('epNationalId').value.trim();
   const age = document.getElementById('epAge').value.trim();
   const gender = document.getElementById('epGender').value;
   const blood = document.getElementById('epBlood').value;
@@ -400,7 +415,9 @@ function saveEditPatient() {
 
   const updates = {
     name: sanitize(name),
-    age: sanitize(age),
+    phone: sanitize(phone),
+    nationalId: nationalId ? sanitize(nationalId) : null,
+    age: age ? parseInt(age) : null,
     gender: sanitize(gender),
     bloodType: sanitize(blood),
     allergies: allergies.length ? allergies : null,
@@ -408,22 +425,27 @@ function saveEditPatient() {
     notes: sanitize(notes)
   };
 
-  db.ref(`${BASE}/patients/${phone}/info`).update(updates).then(() => {
+  db.ref(`${BASE}/patients/${uid}/info`).update(updates).then(() => {
     toast('✅ تم تحديث بيانات المريض بنجاح', 'ok');
     closeModal('editPatModal');
-    // Refresh UI if the edited patient is currently active
-    if (activePatientId === phone) {
-      viewPatientFile(phone);
+    if (activePatientId === uid) {
+      viewPatientFile(uid);
     }
   }).catch(e => {
     toast('❌ خطأ أثناء التحديث: ' + e.message, 'err');
   });
 }
 
-// Save New Patient
+// ═══════════════════════════════════════════════════════════════════
+// SMART PATIENT SAVE — UUID-Based (No data overwrite possible)
+// Each patient gets a unique Firebase Push Key regardless of duplicate
+// names or phone numbers. Families can share the same phone safely.
+// National ID is used as an optional disambiguation layer.
+// ═══════════════════════════════════════════════════════════════════
 function saveNewPatient() {
   const name = document.getElementById('npName').value.trim();
   const phone = cleanPhone(document.getElementById('npPhone').value);
+  const nationalId = document.getElementById('npNationalId').value.trim();
   const age = document.getElementById('npAge').value.trim();
   const gender = document.getElementById('npGender').value;
   const blood = document.getElementById('npBlood').value;
@@ -432,42 +454,74 @@ function saveNewPatient() {
   const notes = document.getElementById('npNotes').value.trim();
 
   if (!name || !phone) {
-    toast('⚠️ يرجى إدخال الحقول المطلوبة (الاسم ورقم الهاتف)', 'err');
+    toast('⚠️ يرجى إدخال الاسم ورقم الهاتف', 'err');
     return;
   }
 
-  // Prevent overwriting existing patient profiles (Critical Data Loss Safeguard)
-  if (_patients && _patients[phone]) {
-    toast('⚠️ هذا المريض مسجل مسبقاً في النظام بهذا الهاتف!', 'err');
-    closeModal('newPatModal');
-    viewPatientFile(phone);
-    return;
+  // Smart Duplicate Detection — warn doctor if same name + phone + nationalId already exists
+  const duplicateEntry = Object.entries(_patients).find(([uid, p]) => {
+    const info = p.info || {};
+    const samePhone = info.phone && cleanPhone(info.phone) === phone;
+    const sameName = (info.name || '').trim().toLowerCase() === name.toLowerCase();
+    const sameNid = nationalId && info.nationalId && info.nationalId.trim() === nationalId;
+    return samePhone && sameName && (sameNid || nationalId === '');
+  });
+
+  if (duplicateEntry) {
+    const [dupUid, dupData] = duplicateEntry;
+    const info = dupData.info || {};
+    const hasNid = info.nationalId;
+    if (nationalId && hasNid) {
+      // National ID match — definitely the same person
+      toast(`⚠️ هذا المريض موجود مسبقاً (${info.mrn})`, 'err');
+      closeModal('newPatModal');
+      viewPatientFile(dupUid);
+      return;
+    }
+    if (!nationalId) {
+      // Warn but still ask for National ID to confirm distinction
+      const confirm = window.confirm(
+        `⚠️ يوجد مريض بنفس الاسم ورقم الهاتف (${info.mrn}).\n\nهل هذا شخص مختلف؟ (مثلاً: أحد أفراد العائلة)\n\nأدخل الرقم الوطني للتمييز إن كان متوفراً، ثم اضغط موافق للمتابعة.`
+      );
+      if (!confirm) {
+        viewPatientFile(dupUid);
+        closeModal('newPatModal');
+        return;
+      }
+    }
   }
 
   const mrn = genMRN();
   const patObj = {
     info: {
-      name,
-      phone,
+      name: sanitize(name),
+      phone: sanitize(phone),
+      nationalId: nationalId ? sanitize(nationalId) : null,
       age: age ? parseInt(age) : null,
-      gender,
-      bloodType: blood,
+      gender: sanitize(gender),
+      bloodType: sanitize(blood),
       allergies,
       chronicDiseases: chronic,
       mrn,
-      notes,
+      notes: sanitize(notes),
       createdAt: new Date().toISOString()
     }
   };
 
-  db.ref(`${BASE}/patients/${phone}`).set(patObj).then(() => {
-    toast('✅ تم تسجيل المريض بنجاح', 'ok');
+  // Use Firebase push() to generate a guaranteed-unique UUID key
+  const newRef = db.ref(`${BASE}/patients`).push();
+  const newUid = newRef.key;
+
+  newRef.set(patObj).then(() => {
+    toast(`✅ تم تسجيل المريض بنجاح — ${mrn}`, 'ok');
     closeModal('newPatModal');
-    // Clean inputs
-    ['npName', 'npPhone', 'npAge', 'npAllergies', 'npChronic', 'npNotes'].forEach(id => document.getElementById(id).value = '');
+    ['npName', 'npPhone', 'npNationalId', 'npAge', 'npAllergies', 'npChronic', 'npNotes'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
     document.getElementById('npGender').value = '';
     document.getElementById('npBlood').value = '';
-    viewPatientFile(phone);
+    viewPatientFile(newUid);
   }).catch(() => toast('❌ فشل حفظ المريض', 'err'));
 }
 
@@ -589,8 +643,8 @@ function viewPatientFile(phone) {
   }
 
   // Get department specific order lists for this patient
-  const patientLabOrders = Object.entries(_labOrders).filter(([k, o]) => cleanPhone(o.patientPhone) === cleanPhone(phone));
-  const patientRadOrders = Object.entries(_radOrders).filter(([k, o]) => cleanPhone(o.patientPhone) === cleanPhone(phone));
+  const patientLabOrders = Object.entries(_labOrders).filter(([k, o]) => o.patientId === phone || (o.patientPhone && cleanPhone(o.patientPhone) === cleanPhone(info.phone || phone)));
+  const patientRadOrders = Object.entries(_radOrders).filter(([k, o]) => o.patientId === phone || (o.patientPhone && cleanPhone(o.patientPhone) === cleanPhone(info.phone || phone)));
 
   let labOrdersHTML = `
     <div style="text-align:center;padding:30px;color:var(--muted)" class="glass-panel">لا يوجد طلبات فحوصات مخبرية مسجلة لهذا المريض</div>`;
@@ -661,7 +715,8 @@ function viewPatientFile(phone) {
         </div>
       </div>
       <div class="pat-grid">
-        <div class="pat-field"><div class="pfl">الهاتف</div><div class="pfv">${sanitize(phone)}</div></div>
+        <div class="pat-field"><div class="pfl">رقم الهاتف</div><div class="pfv">${sanitize(info.phone || '—')}</div></div>
+        <div class="pat-field"><div class="pfl">الرقم الوطني / الهوية</div><div class="pfv" style="font-weight:700;color:var(--teal)">${sanitize(info.nationalId || '—')}</div></div>
         <div class="pat-field"><div class="pfl">العمر / الجنس</div><div class="pfv">${info.age || 'غير محدد'} سنة · ${info.gender || 'غير محدد'}</div></div>
         <div class="pat-field"><div class="pfl">فصيلة الدم</div><div class="pfv" style="color:var(--red)">${info.bloodType || '—'}</div></div>
         <div class="pat-field"><div class="pfl">تاريخ التسجيل</div><div class="pfv" style="font-size:.78rem;font-family:'IBM Plex Mono',monospace">${(info.createdAt || '').substring(0,10)}</div></div>
