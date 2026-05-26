@@ -2138,24 +2138,39 @@ function completeWorkspaceVisit() {
     return toast('يرجى كتابة التشخيص أو شكوى المريض لإغلاق الزيارة', 'err');
   }
 
+  // Build visit object with field names matching what the Timeline renderer reads
+  const now = new Date();
   const visitObj = {
-    date: new Date().toISOString(),
-    doctor: localStorage.getItem('empName') || 'طبيب',
-    chiefComplaint: comp || '—',
+    // Date/Time — timeline uses v.date and v.time
+    date: now.toISOString().split('T')[0],
+    time: now.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' }),
+    // Doctor identity
+    docName: localStorage.getItem('empName') || 'طبيب',
+    docKey: 'doctor',
+    // Complaint — timeline reads v.complaint
+    complaint: comp || '—',
+    // Diagnosis — timeline reads v.diagnosis
     diagnosis: diag || '—',
+    // Vitals — timeline reads v.vitals.temp, v.vitals.bp, v.vitals.pulse
     vitals: {
       temp: document.getElementById('vTemp').value.trim(),
-      bp: document.getElementById('vBp').value.trim(),
-      hr: document.getElementById('vHr').value.trim(),
-      o2: document.getElementById('vO2').value.trim()
+      bp:   document.getElementById('vBp').value.trim(),
+      pulse: document.getElementById('vHr').value.trim(),  // hr → pulse
+      o2:   document.getElementById('vO2').value.trim()
     },
-    rx: activeVisit.rx
+    // Prescriptions — timeline reads v.prescriptions[].name / .dose / .freq
+    prescriptions: activeVisit.rx.map(r => ({
+      name: r.drug,
+      dose: r.dose,
+      freq: ''
+    }))
   };
 
-  const labReq = document.getElementById('vLabReq')?.value.trim() || '';
-  const radReq = document.getElementById('vRadReq')?.value.trim() || '';
-  if (labReq) visitObj.labOrder = labReq;
-  if (radReq) visitObj.radOrder = radReq;
+  // Lab / Radiology orders — timeline reads v.labOrders[] and v.radOrders[]
+  const labReqRaw = document.getElementById('vLabReq')?.value.trim() || '';
+  const radReqRaw = document.getElementById('vRadReq')?.value.trim() || '';
+  if (labReqRaw) visitObj.labOrders = labReqRaw.split('،').map(s => s.trim()).filter(Boolean);
+  if (radReqRaw) visitObj.radOrders = radReqRaw.split('،').map(s => s.trim()).filter(Boolean);
 
   const updates = {};
 
@@ -2164,15 +2179,15 @@ function completeWorkspaceVisit() {
     const timelineKey = db.ref(`${BASE}/patients/${uid}/visits`).push().key;
     updates[`${BASE}/patients/${uid}/visits/${timelineKey}`] = visitObj;
     if (bookingId) updates[`${BASE}/live_bookings/${bookingId}/status`] = 'completed';
-    if (labReq || radReq) {
+    if (labReqRaw || radReqRaw) {
       const refKey = db.ref(`${BASE}/internal_referrals`).push().key;
       updates[`${BASE}/internal_referrals/${refKey}`] = {
         patientId: uid,
         patName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
         date: new Date().toISOString(),
         fromDept: 'العيادات',
-        toDept: labReq ? 'المختبر' : 'الأشعة',
-        request: labReq || radReq,
+        toDept: labReqRaw ? 'المختبر' : 'الأشعة',
+        request: labReqRaw || radReqRaw,
         status: 'pending'
       };
     }
