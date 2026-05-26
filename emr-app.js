@@ -376,7 +376,7 @@ function openEditPatient(phone) {
   document.getElementById('epGender').value = p.info.gender || '';
   document.getElementById('epBlood').value = p.info.bloodType || '';
   document.getElementById('epAllergies').value = (p.info.allergies || []).join('، ');
-  document.getElementById('epChronic').value = (p.info.chronic || []).join('، ');
+  document.getElementById('epChronic').value = (p.info.chronicDiseases || []).join('، ');
   document.getElementById('epNotes').value = p.info.notes || '';
   document.getElementById('editPatModal').style.display = 'flex';
 }
@@ -389,8 +389,8 @@ function saveEditPatient() {
   const age = document.getElementById('epAge').value.trim();
   const gender = document.getElementById('epGender').value;
   const blood = document.getElementById('epBlood').value;
-  const allergies = document.getElementById('epAllergies').value.trim().split('،').map(s => s.trim().replace(/,/g, '')).filter(Boolean);
-  const chronic = document.getElementById('epChronic').value.trim().split('،').map(s => s.trim().replace(/,/g, '')).filter(Boolean);
+  const allergies = document.getElementById('epAllergies').value.trim().split(/[،,]/).map(s => s.trim()).filter(Boolean);
+  const chronic = document.getElementById('epChronic').value.trim().split(/[،,]/).map(s => s.trim()).filter(Boolean);
   const notes = document.getElementById('epNotes').value.trim();
 
   if (!name) {
@@ -404,7 +404,7 @@ function saveEditPatient() {
     gender: sanitize(gender),
     bloodType: sanitize(blood),
     allergies: allergies.length ? allergies : null,
-    chronic: chronic.length ? chronic : null,
+    chronicDiseases: chronic.length ? chronic : null,
     notes: sanitize(notes)
   };
 
