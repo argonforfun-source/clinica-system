@@ -67,8 +67,9 @@ body {
 /* Header styling */
 .topbar {
   height: 65px;
-  background: rgba(3, 11, 10, 0.8);
-  backdrop-filter: blur(10px);
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -77,6 +78,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 1000;
+  color: var(--text);
 }
 
 .tlogo {
