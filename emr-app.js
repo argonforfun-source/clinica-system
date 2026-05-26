@@ -310,10 +310,19 @@ async function migratePhoneKeyedPatients() {
   for (const [phoneKey, patientData] of phoneKeyedEntries) {
     const phone = cleanPhone(phoneKey);
 
-    // Check if a UUID-keyed record already exists for this phone
-    const existingUuid = Object.entries(allPatients).find(([k, p]) =>
-      k.startsWith('-') && cleanPhone(p.info?.phone || '') === phone
-    );
+    // Check if a UUID-keyed record already exists for this phone AND NAME
+    // This prevents merging different family members who share a phone number.
+    const existingUuid = Object.entries(allPatients).find(([k, p]) => {
+      const isMatchPhone = k.startsWith('-') && cleanPhone(p.info?.phone || '') === phone;
+      if (!isMatchPhone) return false;
+      
+      const legacyName = (patientData.info?.name || '').trim().toLowerCase();
+      const uuidName   = (p.info?.name || '').trim().toLowerCase();
+      
+      // If either name is missing, or they match/substring match, we consider it the same person
+      if (!legacyName || !uuidName) return true;
+      return legacyName === uuidName || legacyName.includes(uuidName) || uuidName.includes(legacyName);
+    });
 
     if (existingUuid) {
       // UUID record already exists — merge visits/data from legacy into it, then delete legacy
