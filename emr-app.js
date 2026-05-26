@@ -450,17 +450,21 @@ function openPatientFromBooking(bookingKey) {
     return;
   }
 
-  // 1️⃣ Direct UUID match
-  if (_patients[rawUid]) {
+  // 1️⃣ Direct Firebase Push Key match only (keys always start with '-')
+  //    If rawUid is a phone number, skip this — it may hit a legacy patient stored
+  //    under their phone number as key, opening the wrong file.
+  const isPushKey = rawUid.startsWith('-');
+  if (isPushKey && _patients[rawUid]) {
     viewPatientFile(rawUid);
     sw('patFile');
     return;
   }
 
-  // 2️⃣ Phone search
+  // 2️⃣ Phone search — also match legacy records stored with phone as key
   const phone = cleanPhone(rawUid);
   const matched = Object.entries(_patients).filter(([k, p]) =>
-    cleanPhone(p.info?.phone || '') === phone
+    cleanPhone(p.info?.phone || '') === phone ||
+    cleanPhone(k) === phone
   );
 
   if (!matched.length) {
