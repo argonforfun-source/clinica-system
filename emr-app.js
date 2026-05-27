@@ -618,9 +618,12 @@ function closeModal(id) {
   document.getElementById(id).style.display = 'none';
 }
 
-// Generate MRN (Medical Record Number)
+// Generate MRN (Medical Record Number) - Enterprise Format
 function genMRN() {
-  return 'MRN-' + Math.floor(100000 + Math.random() * 900000);
+  const year = new Date().getFullYear();
+  const seq = String(Math.floor(1000000 + Math.random() * 9000000)).substring(1); // 6 digit sequence
+  const branchCode = _sets && _sets.branchCode ? _sets.branchCode : 'CLN01';
+  return `JOR-AMM-${branchCode}-${year}-${seq}`;
 }
 
 // Normalize phone number to use as a consistent database key (prevents duplicates)
