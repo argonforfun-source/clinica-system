@@ -447,8 +447,9 @@ function filterPatients() {
     lastQuery = q;
   }
 
-  const loggedInDoctorId = ArgonSession.staffId;
-  const isAdmin = ArgonSession.role === 'admin';
+  const session = ArgonSession.get() || {};
+  const loggedInDoctorId = session.staffId;
+  const isAdmin = session.role === 'admin';
 
   // Build the set of patient IDs/phones that have at least one booking for THIS doctor
   let allowedPatients = null;
@@ -485,8 +486,9 @@ function renderWaitingRoom() {
   const wrList = document.getElementById('wrList');
   if (!wrList) return;
 
-  const loggedInDoctorId = ArgonSession.staffId;
-  const isAdmin = ArgonSession.role === 'admin';
+  const session = ArgonSession.get() || {};
+  const loggedInDoctorId = session.staffId;
+  const isAdmin = session.role === 'admin';
 
   const activeBookings = Object.entries(_liveBookings).filter(([k, b]) => {
     if (b.status === 'done' || b.status === 'completed' || b.status === 'cancelled') return false;
