@@ -380,6 +380,14 @@ async function migratePhoneKeyedPatients() {
 
 // Sidebar Navigation
 function sw(id, el) {
+  // Prevent opening empty clinical workspace if no patient is active
+  if (id === 'newVisit') {
+    if (typeof activeVisit === 'undefined' || !activeVisit || !activeVisit.uid) {
+      if (typeof toast !== 'undefined') toast('⚠️ الرجاء اختيار مريض من غرفة الانتظار أولاً لبدء زيارة', 'warn');
+      return;
+    }
+  }
+
   // Release patient locks when leaving patient-specific contexts
   if (id !== 'patFile' && id !== 'newVisit') {
     if (window.EMRContext && window.EMRContext.sessionLock) {
