@@ -1521,8 +1521,8 @@ db.ref(BASE+'/staff').on('value', snap => {
 function updSt(k, s) {
   const b = _bks[k];
 
-  // When moving to waiting room or clinic, auto-register EMR and link patientId
-  if ((s === 'waiting' || s === 'with_doctor') && b && b.patPhone && !b.patientId) {
+  // When moving to confirmed, waiting room or clinic, auto-register EMR and link patientId
+  if ((s === 'confirmed' || s === 'waiting' || s === 'with_doctor') && b && b.patPhone && !b.patientId) {
     _ensurePatientAndLink(k, b, () => {
       db.ref(`${BASE}/bookings/${k}/status`).set(s);
       toast('✅ تم التحديث وربط ملف المريض', 'ok');
@@ -1547,17 +1547,29 @@ function _ensurePatientAndLink(bookingKey, b, callback) {
 
   db.ref(`${BASE}/patients`).once('value', snap => {
     const pats = snap.val() || {};
-    // Check if patient already exists by phone
+    const bookingName = (b.patName || '').trim().toLowerCase();
+    
+    // Check if patient already exists by phone AND name
     const found = Object.entries(pats).find(([uid, p]) => {
-      const phone = (p.info && p.info.phone || '').replace(/\D/g, '');
-      return phone === cleanPhone || phone.endsWith(cleanPhone);
+      const pPhone = (p.info && p.info.phone || '').replace(/\D/g, '');
+      const phoneMatch = (pPhone === cleanPhone || pPhone.endsWith(cleanPhone));
+      if (!phoneMatch) return false;
+      
+      const patName = (p.info && p.info.name || '').trim().toLowerCase();
+      // Only link if names are somewhat similar to prevent family member crossover
+      if (bookingName && patName) {
+        if (bookingName !== patName && !patName.includes(bookingName) && !bookingName.includes(patName)) {
+           return false; // Name mismatch, do NOT link
+        }
+      }
+      return true; // Phone matched and name is similar or one is empty
     });
 
     if (found) {
       // Link existing patient
       db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(found[0]).then(callback);
     } else {
-      // Create new patient record
+      // Create new patient record (either completely new phone, or same phone but different name)
       const newRef = db.ref(`${BASE}/patients`).push();
       newRef.set({
         info: {
@@ -1597,7 +1609,20 @@ function cmpBook(k) {
     
     db.ref(`${BASE}/patients`).once('value', snap => {
       const pats = snap.val() || {};
-      const exists = Object.values(pats).some(p => p.info && p.info.phone === patPhone);
+      const bookingName = (b.patName || '').trim().toLowerCase();
+      const exists = Object.values(pats).some(p => {
+        const pPhone = (p.info && p.info.phone || '').replace(/\D/g, '');
+        const isPhoneMatch = (pPhone === patPhone || pPhone.endsWith(patPhone));
+        if (!isPhoneMatch) return false;
+        
+        const patName = (p.info && p.info.name || '').trim().toLowerCase();
+        if (bookingName && patName) {
+           if (bookingName !== patName && !patName.includes(bookingName) && !bookingName.includes(patName)) {
+              return false; // Name mismatch, they are different patients
+           }
+        }
+        return true;
+      });
       
       if (!exists) {
         const newRef = db.ref(`${BASE}/patients`).push();
