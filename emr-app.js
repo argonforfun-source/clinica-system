@@ -2149,6 +2149,7 @@ function showDoctorProfileSelector(matchedPats, originalPhone) {
           <div style="font-weight: 800; font-size: 0.95rem; color: var(--text);">${sanitize(info.name)}</div>
           <div style="font-size: 0.78rem; color: var(--muted); margin-top: 2px;">
             ${ageGender ? `${ageGender} · ` : ''}الرقم الطبي: <span style="font-family: monospace;">${info.mrn || '—'}</span>
+            ${info.nationalId ? `<br><span style="color:var(--teal)">الرقم الوطني: ${info.nationalId}</span>` : ''}
           </div>
         </div>
         <div style="color: var(--teal);"><i class="fas fa-chevron-left"></i></div>
