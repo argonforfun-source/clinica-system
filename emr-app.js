@@ -186,9 +186,13 @@ function initEMR() {
     
     // Auto-load patient from URL param on first load
     if (!activePatientId) {
-      const urlPhone = new URLSearchParams(window.location.search).get('phone');
-      if (urlPhone && _patients[urlPhone]) {
-        viewPatientFile(urlPhone);
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlPid = urlParams.get('pid');
+      const urlPhone = urlParams.get('phone');
+      
+      const targetId = urlPid || urlPhone;
+      if (targetId && _patients[targetId]) {
+        viewPatientFile(targetId);
         window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
       }
     }

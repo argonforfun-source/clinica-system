@@ -1347,7 +1347,7 @@ function renderLive(keys) {
         <div class="bfooter">
           <span class="bprice">${isRef ? '<span style="color:#a855f7;font-weight:700">مجاني</span>' : (b.fee || '0.00') + ' <small>د.أ</small>'}</span>
           <div class="acts">
-            ${b.patPhone ? `<button class="ab" onclick="window.open('emr.html?id='+CID+'&phone='+sanitize('${b.patPhone}'),'_blank')" style="background:rgba(13,148,136,.1);color:var(--teal);border-color:rgba(13,148,136,.25)"><i class="fas fa-file-medical"></i> الملف</button>` : ''}
+            ${(b.patientId || b.patPhone) ? `<button class="ab" onclick="openPatientEMR('${k}')" style="background:rgba(13,148,136,.1);color:var(--teal);border-color:rgba(13,148,136,.25)"><i class="fas fa-folder-open"></i> الملف</button>` : ''}
             ${st === 'new' ? `<button class="ab a-ok" onclick="updSt('${k}','confirmed')"><i class="fas fa-check"></i> تأكيد</button>` : ''}
             ${st === 'confirmed' ? `<button class="ab a-wait" onclick="updSt('${k}','waiting')"><i class="fas fa-clock"></i> انتظار</button>` : ''}
             ${st === 'waiting' ? `<button class="ab a-wait" style="background:rgba(59, 130, 246, 0.1);color:#3b82f6;border-color:rgba(59, 130, 246, 0.3)" onclick="updSt('${k}','with_doctor')"><i class="fas fa-user-md"></i> للعيادة</button>` : ''}
@@ -1519,15 +1519,71 @@ db.ref(BASE+'/staff').on('value', snap => {
 
 // ── ACTIONS ──
 function updSt(k, s) {
-  db.ref(`${BASE}/bookings/${k}/status`).set(s);
-  // Release slot lock when booking is cancelled
-  if (s === 'cancelled') {
-    const b = _bks[k];
-    if (b && b.slotKey) {
-      db.ref(`${BASE}/slotLocks/${b.slotKey}`).remove().catch(() => {});
-    }
+  const b = _bks[k];
+
+  // When moving to waiting room or clinic, auto-register EMR and link patientId
+  if ((s === 'waiting' || s === 'with_doctor') && b && b.patPhone && !b.patientId) {
+    _ensurePatientAndLink(k, b, () => {
+      db.ref(`${BASE}/bookings/${k}/status`).set(s);
+      toast('✅ تم التحديث وربط ملف المريض', 'ok');
+    });
+    return;
   }
-  toast('تم التحديث', 'ok');
+
+  db.ref(`${BASE}/bookings/${k}/status`).set(s);
+
+  // Release slot lock when booking is cancelled
+  if (s === 'cancelled' && b && b.slotKey) {
+    db.ref(`${BASE}/slotLocks/${b.slotKey}`).remove().catch(() => {});
+  }
+  toast('✅ تم التحديث', 'ok');
+}
+
+// Auto-register patient in EMR and store patientId back into the booking
+function _ensurePatientAndLink(bookingKey, b, callback) {
+  let cleanPhone = (b.patPhone || '').replace(/\D/g, '');
+  if (cleanPhone.startsWith('962')) cleanPhone = cleanPhone.substring(3);
+  if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
+
+  db.ref(`${BASE}/patients`).once('value', snap => {
+    const pats = snap.val() || {};
+    // Check if patient already exists by phone
+    const found = Object.entries(pats).find(([uid, p]) => {
+      const phone = (p.info && p.info.phone || '').replace(/\D/g, '');
+      return phone === cleanPhone || phone.endsWith(cleanPhone);
+    });
+
+    if (found) {
+      // Link existing patient
+      db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(found[0]).then(callback);
+    } else {
+      // Create new patient record
+      const newRef = db.ref(`${BASE}/patients`).push();
+      newRef.set({
+        info: {
+          name: b.patName || 'مريض',
+          phone: cleanPhone,
+          age: b.patAge ? parseInt(b.patAge) : null,
+          gender: b.patGender || '',
+          mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
+          createdAt: new Date().toISOString()
+        }
+      }).then(() => {
+        db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(newRef.key).then(callback);
+      });
+    }
+  });
+}
+
+// Open patient file in EMR portal — uses patientId if available, otherwise phone
+function openPatientEMR(bookingKey) {
+  const b = _bks[bookingKey];
+  if (!b) return;
+  if (b.patientId) {
+    window.open(`emr.html?id=${CID}&pid=${encodeURIComponent(b.patientId)}`, '_blank');
+  } else if (b.patPhone) {
+    window.open(`emr.html?id=${CID}&phone=${encodeURIComponent(b.patPhone)}`, '_blank');
+  }
 }
 
 function cmpBook(k) {
