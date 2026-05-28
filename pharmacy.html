@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#030b0a">
   <link rel="icon" type="image/png" href="icons/favicon.png">
-  <title>ARGON | الصيدلية الذكية 💊</title>
+  <title>ARGON | ط§ظ„طµظٹط¯ظ„ظٹط© ط§ظ„ط°ظƒظٹط© ًں’ٹ</title>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="pharmacy.css">
@@ -23,7 +23,7 @@
   </div>
   <div style="display:flex;align-items:center;gap:10px">
     <button class="btn-secondary" id="themeBtn" onclick="toggleTheme()" style="padding:8px 12px"><i class="fas fa-moon"></i></button>
-    <a class="btn-secondary" href="dashboard.html" style="padding:8px 12px;text-decoration:none;font-size:0.85rem"><i class="fas fa-arrow-right"></i> لوحة التحكم</a>
+    <a class="btn-secondary" href="dashboard.html" style="padding:8px 12px;text-decoration:none;font-size:0.85rem"><i class="fas fa-arrow-right"></i> ظ„ظˆط­ط© ط§ظ„طھط­ظƒظ…</a>
     <button class="btn-secondary" onclick="ArgonSession.clear()" style="padding:8px 12px;color:var(--red)"><i class="fas fa-sign-out-alt"></i></button>
   </div>
 </div>
@@ -33,9 +33,9 @@
   <!-- SIDEBAR NAVIGATION -->
   <div class="sidebar glass-panel">
     <div style="width:100%">
-      <div style="font-size:0.75rem;color:var(--muted);font-weight:800;padding:8px 16px;text-transform:uppercase;letter-spacing:1px">الأقسام الرئيسية</div>
-      <div class="ni on" onclick="sw('prescBox',this)"><i class="fas fa-prescription-bottle-alt"></i> الوصفات الطبية</div>
-      <div class="ni" onclick="sw('invBox',this)"><i class="fas fa-cubes"></i> مخزون الصيدلية</div>
+      <div style="font-size:0.75rem;color:var(--muted);font-weight:800;padding:8px 16px;text-transform:uppercase;letter-spacing:1px">ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ط±ط¦ظٹط³ظٹط©</div>
+      <div class="ni on" onclick="sw('prescBox',this)"><i class="fas fa-prescription-bottle-alt"></i> ط§ظ„ظˆطµظپط§طھ ط§ظ„ط·ط¨ظٹط©</div>
+      <div class="ni" onclick="sw('invBox',this)"><i class="fas fa-cubes"></i> ظ…ط®ط²ظˆظ† ط§ظ„طµظٹط¯ظ„ظٹط©</div>
     </div>
     <div style="text-align:center;font-size:0.7rem;color:var(--muted)">
       POWERED BY <b>ARGON EMR</b>
@@ -49,20 +49,20 @@
     <div id="prescBox" class="sec on">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
-          <h2 style="font-weight:900">📥 الوصفات الطبية الواردة</h2>
-          <p style="font-size:0.82rem;color:var(--muted)">الوصفات الطبية الصادرة من الأطباء المعالجين بالعيادات</p>
+          <h2 style="font-weight:900">ًں“¥ ط§ظ„ظˆطµظپط§طھ ط§ظ„ط·ط¨ظٹط© ط§ظ„ظˆط§ط±ط¯ط©</h2>
+          <p style="font-size:0.82rem;color:var(--muted)">ط§ظ„ظˆطµظپط§طھ ط§ظ„ط·ط¨ظٹط© ط§ظ„طµط§ط¯ط±ط© ظ…ظ† ط§ظ„ط£ط·ط¨ط§ط، ط§ظ„ظ…ط¹ط§ظ„ط¬ظٹظ† ط¨ط§ظ„ط¹ظٹط§ط¯ط§طھ</p>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn-secondary" id="btnFilterWaiting" onclick="filterPresc('waiting')" style="border-color:var(--amber);color:var(--amber)">⏳ بانتظار الصرف</button>
-          <button class="btn-secondary" id="btnFilterCompleted" onclick="filterPresc('completed')">✅ تم صرفها</button>
-          <button class="btn-secondary" id="btnFilterCancelled" onclick="filterPresc('cancelled')">❌ وصفات ملغاة</button>
+          <button class="btn-secondary" id="btnFilterWaiting" onclick="filterPresc('waiting')" style="border-color:var(--amber);color:var(--amber)">âڈ³ ط¨ط§ظ†طھط¸ط§ط± ط§ظ„طµط±ظپ</button>
+          <button class="btn-secondary" id="btnFilterCompleted" onclick="filterPresc('completed')">âœ… طھظ… طµط±ظپظ‡ط§</button>
+          <button class="btn-secondary" id="btnFilterCancelled" onclick="filterPresc('cancelled')">â‌Œ ظˆطµظپط§طھ ظ…ظ„ط؛ط§ط©</button>
         </div>
       </div>
 
       <div id="prescGrid" class="card-grid">
         <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--muted)">
           <i class="fas fa-spinner fa-spin" style="font-size:2rem;display:block;margin-bottom:12px"></i>
-          جاري تحميل الوصفات الطبية...
+          ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ط§ظ„ظˆطµظپط§طھ ط§ظ„ط·ط¨ظٹط©...
         </div>
       </div>
     </div>
@@ -71,27 +71,27 @@
     <div id="invBox" class="sec">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
-          <h2 style="font-weight:900">📦 مخزون ومستودع الأدوية</h2>
-          <p style="font-size:0.82rem;color:var(--muted)">إدارة الأدوية المتوفرة وتعديل أسعارها ومستوى الإنذار بالانخفاض</p>
+          <h2 style="font-weight:900">ًں“¦ ظ…ط®ط²ظˆظ† ظˆظ…ط³طھظˆط¯ط¹ ط§ظ„ط£ط¯ظˆظٹط©</h2>
+          <p style="font-size:0.82rem;color:var(--muted)">ط¥ط¯ط§ط±ط© ط§ظ„ط£ط¯ظˆظٹط© ط§ظ„ظ…طھظˆظپط±ط© ظˆطھط¹ط¯ظٹظ„ ط£ط³ط¹ط§ط±ظ‡ط§ ظˆظ…ط³طھظˆظ‰ ط§ظ„ط¥ظ†ط°ط§ط± ط¨ط§ظ„ط§ظ†ط®ظپط§ط¶</p>
         </div>
-        <button class="btn-primary" onclick="openAddDrug()"><i class="fas fa-plus"></i> إضافة دواء جديد</button>
+        <button class="btn-primary" onclick="openAddDrug()"><i class="fas fa-plus"></i> ط¥ط¶ط§ظپط© ط¯ظˆط§ط، ط¬ط¯ظٹط¯</button>
       </div>
 
       <div class="glass-panel" style="overflow:hidden">
         <table class="inv-table">
           <thead>
             <tr style="background:rgba(255,255,255,0.02)">
-              <th>اسم الدواء / العلاج</th>
-              <th>المخزون الحالي</th>
-              <th>الوحدة</th>
-              <th>سعر البيع (دينار)</th>
-              <th>الحد الأدنى للإنذار</th>
-              <th style="width:100px;text-align:center">الإجراءات</th>
+              <th>ط§ط³ظ… ط§ظ„ط¯ظˆط§ط، / ط§ظ„ط¹ظ„ط§ط¬</th>
+              <th>ط§ظ„ظ…ط®ط²ظˆظ† ط§ظ„ط­ط§ظ„ظٹ</th>
+              <th>ط§ظ„ظˆط­ط¯ط©</th>
+              <th>ط³ط¹ط± ط§ظ„ط¨ظٹط¹ (ط¯ظٹظ†ط§ط±)</th>
+              <th>ط§ظ„ط­ط¯ ط§ظ„ط£ط¯ظ†ظ‰ ظ„ظ„ط¥ظ†ط°ط§ط±</th>
+              <th style="width:100px;text-align:center">ط§ظ„ط¥ط¬ط±ط§ط،ط§طھ</th>
             </tr>
           </thead>
           <tbody id="invBody">
             <tr>
-              <td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">جاري تحميل المخزون...</td>
+              <td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ط§ظ„ظ…ط®ط²ظˆظ†...</td>
             </tr>
           </tbody>
         </table>
@@ -105,25 +105,25 @@
 <div id="prescModal" class="overlay">
   <div class="modal-card glass-panel">
     <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:12px">
-      <h3 style="font-weight:900;color:var(--teal)" id="mpPatName">اسم المريض...</h3>
-      <span onclick="closeModal('prescModal')" style="cursor:pointer;font-weight:bold;font-size:1.2rem">✕</span>
+      <h3 style="font-weight:900;color:var(--teal)" id="mpPatName">ط§ط³ظ… ط§ظ„ظ…ط±ظٹط¶...</h3>
+      <span onclick="closeModal('prescModal')" style="cursor:pointer;font-weight:bold;font-size:1.2rem">âœ•</span>
     </div>
     
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:0.85rem">
-      <div><b>الطبيب المعالج:</b> <span id="mpDocName">...</span></div>
-      <div><b>تاريخ الزيارة:</b> <span id="mpVisitDate">...</span></div>
+      <div><b>ط§ظ„ط·ط¨ظٹط¨ ط§ظ„ظ…ط¹ط§ظ„ط¬:</b> <span id="mpDocName">...</span></div>
+      <div><b>طھط§ط±ظٹط® ط§ظ„ط²ظٹط§ط±ط©:</b> <span id="mpVisitDate">...</span></div>
     </div>
 
     <div>
-      <h4 style="margin-bottom:8px;font-weight:800"><i class="fas fa-pills"></i> الأدوية والعلاجات المطلوبة:</h4>
+      <h4 style="margin-bottom:8px;font-weight:800"><i class="fas fa-pills"></i> ط§ظ„ط£ط¯ظˆظٹط© ظˆط§ظ„ط¹ظ„ط§ط¬ط§طھ ط§ظ„ظ…ط·ظ„ظˆط¨ط©:</h4>
       <table class="inv-table">
         <thead>
           <tr style="background:rgba(255,255,255,0.01)">
-            <th>اسم الدواء</th>
-            <th>الجرعة والتكرار</th>
-            <th>المدة المطلوبة</th>
-            <th>التوافر الحالي</th>
-            <th style="width:120px">الكمية المصروفة</th>
+            <th>ط§ط³ظ… ط§ظ„ط¯ظˆط§ط،</th>
+            <th>ط§ظ„ط¬ط±ط¹ط© ظˆط§ظ„طھظƒط±ط§ط±</th>
+            <th>ط§ظ„ظ…ط¯ط© ط§ظ„ظ…ط·ظ„ظˆط¨ط©</th>
+            <th>ط§ظ„طھظˆط§ظپط± ط§ظ„ط­ط§ظ„ظٹ</th>
+            <th style="width:120px">ط§ظ„ظƒظ…ظٹط© ط§ظ„ظ…طµط±ظˆظپط©</th>
           </tr>
         </thead>
         <tbody id="mpMedsList">
@@ -134,8 +134,8 @@
 
     <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.02);padding:14px;border-radius:12px;border:1px solid var(--border)">
       <div>
-        <div style="font-size:0.8rem;color:var(--muted)">التكلفة الإجمالية للأدوية المصروفة</div>
-        <div style="font-size:1.4rem;font-weight:900;color:var(--amber)"><span id="mpTotalPrice">0.00</span> دينار</div>
+        <div style="font-size:0.8rem;color:var(--muted)">ط§ظ„طھظƒظ„ظپط© ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹط© ظ„ظ„ط£ط¯ظˆظٹط© ط§ظ„ظ…طµط±ظˆظپط©</div>
+        <div style="font-size:1.4rem;font-weight:900;color:var(--amber)"><span id="mpTotalPrice">0.00</span> ط¯ظٹظ†ط§ط±</div>
       </div>
       <div id="dispenseActions">
         <!-- Rendered based on status -->
@@ -148,42 +148,42 @@
 <div id="drugModal" class="overlay">
   <div class="modal-card glass-panel" style="max-width:450px">
     <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:12px">
-      <h3 style="font-weight:900" id="drugModalTitle">إضافة دواء جديد للمستودع</h3>
-      <span onclick="closeModal('drugModal')" style="cursor:pointer;font-weight:bold">✕</span>
+      <h3 style="font-weight:900" id="drugModalTitle">ط¥ط¶ط§ظپط© ط¯ظˆط§ط، ط¬ط¯ظٹط¯ ظ„ظ„ظ…ط³طھظˆط¯ط¹</h3>
+      <span onclick="closeModal('drugModal')" style="cursor:pointer;font-weight:bold">âœ•</span>
     </div>
     
     <input type="hidden" id="drugEditId">
 
     <div style="display:flex;flex-direction:column;gap:12px">
       <div>
-        <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">اسم الدواء / العلاج العلمي والتجاري *</label>
-        <input type="text" id="drName" class="fi" placeholder="مثال: Panadol Extra 500mg">
+        <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">ط§ط³ظ… ط§ظ„ط¯ظˆط§ط، / ط§ظ„ط¹ظ„ط§ط¬ ط§ظ„ط¹ظ„ظ…ظٹ ظˆط§ظ„طھط¬ط§ط±ظٹ *</label>
+        <input type="text" id="drName" class="fi" placeholder="ظ…ط«ط§ظ„: Panadol Extra 500mg">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
-          <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">المخزون المتوفر *</label>
-          <input type="number" id="drStock" class="fi" placeholder="مثال: 50">
+          <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">ط§ظ„ظ…ط®ط²ظˆظ† ط§ظ„ظ…طھظˆظپط± *</label>
+          <input type="number" id="drStock" class="fi" placeholder="ظ…ط«ط§ظ„: 50">
         </div>
         <div>
-          <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">وحدة الصرف</label>
-          <input type="text" id="drUnit" class="fi" placeholder="علبة / شريط / كبسولة" value="علبة">
+          <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">ظˆط­ط¯ط© ط§ظ„طµط±ظپ</label>
+          <input type="text" id="drUnit" class="fi" placeholder="ط¹ظ„ط¨ط© / ط´ط±ظٹط· / ظƒط¨ط³ظˆظ„ط©" value="ط¹ظ„ط¨ط©">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
-          <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">سعر البيع (دينار) *</label>
-          <input type="number" step="0.01" id="drPrice" class="fi" placeholder="مثال: 3.50">
+          <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">ط³ط¹ط± ط§ظ„ط¨ظٹط¹ (ط¯ظٹظ†ط§ط±) *</label>
+          <input type="number" step="0.01" id="drPrice" class="fi" placeholder="ظ…ط«ط§ظ„: 3.50">
         </div>
         <div>
-          <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">إنذار الحد الأدنى بالانخفاض</label>
-          <input type="number" id="drMin" class="fi" placeholder="مثال: 10" value="5">
+          <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">ط¥ظ†ط°ط§ط± ط§ظ„ط­ط¯ ط§ظ„ط£ط¯ظ†ظ‰ ط¨ط§ظ„ط§ظ†ط®ظپط§ط¶</label>
+          <input type="number" id="drMin" class="fi" placeholder="ظ…ط«ط§ظ„: 10" value="5">
         </div>
       </div>
     </div>
 
     <div style="display:flex;gap:10px;margin-top:10px">
-      <button class="btn-primary" onclick="saveDrug()" style="flex:1;justify-content:center"><i class="fas fa-save"></i> حفظ الدواء</button>
-      <button class="btn-secondary" onclick="closeModal('drugModal')">إلغاء</button>
+      <button class="btn-primary" onclick="saveDrug()" style="flex:1;justify-content:center"><i class="fas fa-save"></i> ط­ظپط¸ ط§ظ„ط¯ظˆط§ط،</button>
+      <button class="btn-secondary" onclick="closeModal('drugModal')">ط¥ظ„ط؛ط§ط،</button>
     </div>
   </div>
 </div>
@@ -194,6 +194,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script src="argon-core.js"></script>
+<script src="argon-enterprise.js"></script>
 <script src="pharmacy-app.js"></script>
 </body>
 </html>
+

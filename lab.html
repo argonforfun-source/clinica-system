@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#030b0a">
   <link rel="icon" type="image/png" href="icons/favicon.png">
-  <title>ARGON | المختبر الطبي الذكي 🧪</title>
+  <title>ARGON | ط§ظ„ظ…ط®طھط¨ط± ط§ظ„ط·ط¨ظٹ ط§ظ„ط°ظƒظٹ ًں§ھ</title>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="pharmacy.css">
@@ -23,7 +23,7 @@
   </div>
   <div style="display:flex;align-items:center;gap:10px">
     <button class="btn-secondary" id="themeBtn" onclick="toggleTheme()" style="padding:8px 12px"><i class="fas fa-moon"></i></button>
-    <a class="btn-secondary" href="dashboard.html" style="padding:8px 12px;text-decoration:none;font-size:0.85rem"><i class="fas fa-arrow-right"></i> لوحة التحكم</a>
+    <a class="btn-secondary" href="dashboard.html" style="padding:8px 12px;text-decoration:none;font-size:0.85rem"><i class="fas fa-arrow-right"></i> ظ„ظˆط­ط© ط§ظ„طھط­ظƒظ…</a>
     <button class="btn-secondary" onclick="ArgonSession.clear()" style="padding:8px 12px;color:var(--red)"><i class="fas fa-sign-out-alt"></i></button>
   </div>
 </div>
@@ -33,8 +33,8 @@
   <!-- SIDEBAR NAVIGATION -->
   <div class="sidebar glass-panel">
     <div style="width:100%">
-      <div style="font-size:0.75rem;color:var(--muted);font-weight:800;padding:8px 16px;text-transform:uppercase;letter-spacing:1px">تحاليل المختبر</div>
-      <div class="ni on" onclick="sw('labBox',this)"><i class="fas fa-microscope"></i> التحاليل الواردة</div>
+      <div style="font-size:0.75rem;color:var(--muted);font-weight:800;padding:8px 16px;text-transform:uppercase;letter-spacing:1px">طھط­ط§ظ„ظٹظ„ ط§ظ„ظ…ط®طھط¨ط±</div>
+      <div class="ni on" onclick="sw('labBox',this)"><i class="fas fa-microscope"></i> ط§ظ„طھط­ط§ظ„ظٹظ„ ط§ظ„ظˆط§ط±ط¯ط©</div>
     </div>
     <div style="text-align:center;font-size:0.7rem;color:var(--muted)">
       POWERED BY <b>ARGON EMR</b>
@@ -48,19 +48,19 @@
     <div id="labBox" class="sec on">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
-          <h2 style="font-weight:900">🔬 طلبات الفحوصات المخبرية</h2>
-          <p style="font-size:0.82rem;color:var(--muted)">طلبات التحاليل والفسلجة المخبرية المحالة من العيادات الطبية</p>
+          <h2 style="font-weight:900">ًں”¬ ط·ظ„ط¨ط§طھ ط§ظ„ظپط­ظˆطµط§طھ ط§ظ„ظ…ط®ط¨ط±ظٹط©</h2>
+          <p style="font-size:0.82rem;color:var(--muted)">ط·ظ„ط¨ط§طھ ط§ظ„طھط­ط§ظ„ظٹظ„ ظˆط§ظ„ظپط³ظ„ط¬ط© ط§ظ„ظ…ط®ط¨ط±ظٹط© ط§ظ„ظ…ط­ط§ظ„ط© ظ…ظ† ط§ظ„ط¹ظٹط§ط¯ط§طھ ط§ظ„ط·ط¨ظٹط©</p>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn-secondary" id="btnFilterWaiting" onclick="filterLab('waiting')" style="border-color:var(--amber);color:var(--amber)">⏳ بانتظار إجراء التحليل</button>
-          <button class="btn-secondary" id="btnFilterCompleted" onclick="filterLab('completed')">✅ تحاليل مكتملة</button>
+          <button class="btn-secondary" id="btnFilterWaiting" onclick="filterLab('waiting')" style="border-color:var(--amber);color:var(--amber)">âڈ³ ط¨ط§ظ†طھط¸ط§ط± ط¥ط¬ط±ط§ط، ط§ظ„طھط­ظ„ظٹظ„</button>
+          <button class="btn-secondary" id="btnFilterCompleted" onclick="filterLab('completed')">âœ… طھط­ط§ظ„ظٹظ„ ظ…ظƒطھظ…ظ„ط©</button>
         </div>
       </div>
 
       <div id="labGrid" class="card-grid">
         <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--muted)">
           <i class="fas fa-spinner fa-spin" style="font-size:2rem;display:block;margin-bottom:12px"></i>
-          جاري تحميل التحاليل المطلوبة...
+          ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ط§ظ„طھط­ط§ظ„ظٹظ„ ط§ظ„ظ…ط·ظ„ظˆط¨ط©...
         </div>
       </div>
     </div>
@@ -72,24 +72,24 @@
 <div id="labModal" class="overlay">
   <div class="modal-card glass-panel" style="max-width:750px">
     <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:12px">
-      <h3 style="font-weight:900;color:var(--teal)" id="mlPatName">اسم المريض...</h3>
-      <span onclick="closeModal('labModal')" style="cursor:pointer;font-weight:bold;font-size:1.2rem">✕</span>
+      <h3 style="font-weight:900;color:var(--teal)" id="mlPatName">ط§ط³ظ… ط§ظ„ظ…ط±ظٹط¶...</h3>
+      <span onclick="closeModal('labModal')" style="cursor:pointer;font-weight:bold;font-size:1.2rem">âœ•</span>
     </div>
     
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:0.85rem">
-      <div><b>الطبيب المعالج:</b> <span id="mlDocName">...</span></div>
-      <div><b>تاريخ الطلب:</b> <span id="mlRequestDate">...</span></div>
+      <div><b>ط§ظ„ط·ط¨ظٹط¨ ط§ظ„ظ…ط¹ط§ظ„ط¬:</b> <span id="mlDocName">...</span></div>
+      <div><b>طھط§ط±ظٹط® ط§ظ„ط·ظ„ط¨:</b> <span id="mlRequestDate">...</span></div>
     </div>
 
     <div>
-      <h4 style="margin-bottom:8px;font-weight:800"><i class="fas fa-flask"></i> تسجيل نتائج الفحوصات المخبرية:</h4>
+      <h4 style="margin-bottom:8px;font-weight:800"><i class="fas fa-flask"></i> طھط³ط¬ظٹظ„ ظ†طھط§ط¦ط¬ ط§ظ„ظپط­ظˆطµط§طھ ط§ظ„ظ…ط®ط¨ط±ظٹط©:</h4>
       <table class="inv-table">
         <thead>
           <tr style="background:rgba(255,255,255,0.01)">
-            <th>الفحص المطلوب</th>
-            <th>النتيجة الرقمية / الوصفية *</th>
-            <th>وحدة القياس</th>
-            <th>المعدل الطبيعي (Reference Range)</th>
+            <th>ط§ظ„ظپط­طµ ط§ظ„ظ…ط·ظ„ظˆط¨</th>
+            <th>ط§ظ„ظ†طھظٹط¬ط© ط§ظ„ط±ظ‚ظ…ظٹط© / ط§ظ„ظˆطµظپظٹط© *</th>
+            <th>ظˆط­ط¯ط© ط§ظ„ظ‚ظٹط§ط³</th>
+            <th>ط§ظ„ظ…ط¹ط¯ظ„ ط§ظ„ط·ط¨ظٹط¹ظٹ (Reference Range)</th>
           </tr>
         </thead>
         <tbody id="mlTestsList">
@@ -100,14 +100,14 @@
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div>
-        <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">ملاحظات المخبري وتوصيات التحليل</label>
-        <textarea id="mlNotes" rows="3" class="fi" style="height:auto;resize:none;padding:8px" placeholder="اكتب التقرير المخبري المالي أو الخلاصة..."></textarea>
+        <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">ظ…ظ„ط§ط­ط¸ط§طھ ط§ظ„ظ…ط®ط¨ط±ظٹ ظˆطھظˆطµظٹط§طھ ط§ظ„طھط­ظ„ظٹظ„</label>
+        <textarea id="mlNotes" rows="3" class="fi" style="height:auto;resize:none;padding:8px" placeholder="ط§ظƒطھط¨ ط§ظ„طھظ‚ط±ظٹط± ط§ظ„ظ…ط®ط¨ط±ظٹ ط§ظ„ظ…ط§ظ„ظٹ ط£ظˆ ط§ظ„ط®ظ„ط§طµط©..."></textarea>
       </div>
       <div>
-        <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">مرفق التقرير المطبوع (تحميل PDF / صورة)</label>
+        <label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:4px">ظ…ط±ظپظ‚ ط§ظ„طھظ‚ط±ظٹط± ط§ظ„ظ…ط·ط¨ظˆط¹ (طھط­ظ…ظٹظ„ PDF / طµظˆط±ط©)</label>
         <div class="fi" style="height:auto;display:flex;align-items:center;justify-content:center;border-style:dashed;cursor:pointer;padding:16px;text-align:center" onclick="document.getElementById('mlFileInp').click()">
           <i class="fas fa-file-pdf" style="font-size:1.5rem;margin-left:8px;color:var(--teal)" id="pdfIcon"></i>
-          <span id="mlFileLbl">اضغط لرفع ملف التقرير المخبري المعتمد</span>
+          <span id="mlFileLbl">ط§ط¶ط؛ط· ظ„ط±ظپط¹ ظ…ظ„ظپ ط§ظ„طھظ‚ط±ظٹط± ط§ظ„ظ…ط®ط¨ط±ظٹ ط§ظ„ظ…ط¹طھظ…ط¯</span>
           <input type="file" id="mlFileInp" style="display:none" onchange="handleAttachment(event)">
         </div>
       </div>
@@ -127,6 +127,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script src="argon-core.js"></script>
+<script src="argon-enterprise.js"></script>
 <script src="lab-app.js"></script>
 </body>
 </html>
+

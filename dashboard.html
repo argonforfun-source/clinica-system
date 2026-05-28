@@ -1461,6 +1461,9 @@ db.ref(BASE+'/doctors').on('value', snap => {
         <div class="dc-fee">${parseFloat(d.fee||0).toFixed(2)} د.أ · ${d.slotDuration||30}د</div>
         <div class="dc-fee" style="font-size:.71rem;color:var(--muted)">${d.workStart||'09:00'} — ${d.workEnd||'17:00'}</div>
         <div style="font-size:0.68rem;color:var(--teal);margin-top:2px;font-weight:700">🗓️ الدوام: ${wDaysLabels}</div>
+        <div style="font-size:0.75rem;margin-top:8px;font-weight:700;color:${d.enterpriseAuth && d.enterpriseAuth.passwordHash ? 'var(--green)' : 'var(--red)'}">
+          <i class="fas ${d.enterpriseAuth && d.enterpriseAuth.passwordHash ? 'fa-lock' : 'fa-lock-open'}"></i> ${d.enterpriseAuth && d.enterpriseAuth.passwordHash ? 'تم تعيين كلمة مرور' : 'كلمة المرور مفقودة'}
+        </div>
         ${avg?`<div class="drate">${avg}</div>`:''}
         <div class="avl-tog" onclick="togAvail('${k}',${avail})">
           <input type="checkbox" ${avail?'checked':''} onclick="event.stopPropagation()">
