@@ -1,11 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#030b0a">
   <link rel="icon" type="image/png" href="icons/favicon.png">
-  <title>ARGON | ط§ظ„ط³ط¬ظ„ط§طھ ط§ظ„ط·ط¨ظٹط©</title>
+  <title>ARGON | السجلات الطبية</title>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="emr-styles.css">
@@ -23,8 +23,8 @@
   </div>
   <div class="tr">
     <button class="tbtn" onclick="toggleTheme()" id="themeBtn"><i class="fas fa-moon"></i></button>
-    <button class="tbtn" onclick="window.print()"><i class="fas fa-print"></i> ط·ط¨ط§ط¹ط©</button>
-    <a class="tbtn" id="dashLink" href="dashboard.html"><i class="fas fa-arrow-right"></i> ظ„ظˆط­ط© ط§ظ„طھط­ظƒظ…</a>
+    <button class="tbtn" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
+    <a class="tbtn" id="dashLink" href="dashboard.html"><i class="fas fa-arrow-right"></i> لوحة التحكم</a>
     <button class="tbtn" onclick="sessionStorage.removeItem('emr_authed_' + new URLSearchParams(window.location.search).get('id')); location.reload();" style="color:#fca5a5"><i class="fas fa-sign-out-alt"></i></button>
   </div>
 </div>
@@ -33,12 +33,12 @@
 <div class="layout">
   <div class="sidebar">
     <div style="padding:0 8px">
-      <div class="sl">ط§ظ„ط³ط¬ظ„ط§طھ ط§ظ„ط·ط¨ظٹط©</div>
-      <div class="ni on" onclick="sw('patList',this)"><i class="fas fa-users"></i>ظ‚ط§ط¦ظ…ط© ط§ظ„ظ…ط±ط¶ظ‰</div>
-      <div class="ni" onclick="sw('patFile',this)"><i class="fas fa-file-medical"></i>ظ…ظ„ظپ ط§ظ„ظ…ط±ظٹط¶</div>
-      <div class="ni" onclick="sw('newVisit',this)"><i class="fas fa-stethoscope"></i>ط²ظٹط§ط±ط© ط¬ط¯ظٹط¯ط©</div>
-      <div class="ni" onclick="sw('waitingRoom',this)"><i class="fas fa-clock" style="color:var(--amber)"></i>ط؛ط±ظپط© ط§ظ„ط§ظ†طھط¸ط§ط±</div>
-      <div class="ni" id="referralsMenuBtn" onclick="sw('referralList',this)" style="display:none"><i class="fas fa-exchange-alt" style="color:var(--purple)"></i>ط§ظ„طھط­ظˆظٹظ„ط§طھ ط§ظ„ط¯ط§ط®ظ„ظٹط©</div>
+      <div class="sl">السجلات الطبية</div>
+      <div class="ni on" onclick="sw('patList',this)"><i class="fas fa-users"></i>قائمة المرضى</div>
+      <div class="ni" onclick="sw('patFile',this)"><i class="fas fa-file-medical"></i>ملف المريض</div>
+      <div class="ni" onclick="sw('newVisit',this)"><i class="fas fa-stethoscope"></i>زيارة جديدة</div>
+      <div class="ni" onclick="sw('waitingRoom',this)"><i class="fas fa-clock" style="color:var(--amber)"></i>غرفة الانتظار</div>
+      <div class="ni" id="referralsMenuBtn" onclick="sw('referralList',this)" style="display:none"><i class="fas fa-exchange-alt" style="color:var(--purple)"></i>التحويلات الداخلية</div>
     </div>
     <div class="royal-foot">
       <div class="argon-sig"><div style="width:40px;height:1px;background:linear-gradient(to right,transparent,var(--teal),transparent);margin-bottom:8px"></div>POWERED BY<span>ARGON EMR</span></div>
@@ -49,17 +49,17 @@
     <!-- PATIENT LIST SECTION -->
     <div id="patList" class="sec on">
       <div class="ph">
-        <div><div class="pt">ًں‘¥ ظ‚ط§ط¦ظ…ط© ط§ظ„ظ…ط±ط¶ظ‰</div><div class="ps">ط¬ظ…ظٹط¹ ط§ظ„ظ…ط±ط¶ظ‰ ط§ظ„ظ…ط³ط¬ظ„ظٹظ† ظپظٹ ط§ظ„ظ†ط¸ط§ظ…</div></div>
-        <button class="btn-primary btn-sm" onclick="openNewPatient()"><i class="fas fa-user-plus"></i> ظ…ط±ظٹط¶ ط¬ط¯ظٹط¯</button>
+        <div><div class="pt">👥 قائمة المرضى</div><div class="ps">جميع المرضى المسجلين في النظام</div></div>
+        <button class="btn-primary btn-sm" onclick="openNewPatient()"><i class="fas fa-user-plus"></i> مريض جديد</button>
       </div>
       <div class="search-box">
         <i class="fas fa-search"></i>
-        <input type="text" id="patSearch" placeholder="ط§ط¨ط­ط« ط¨ط§ظ„ط§ط³ظ… ط£ظˆ ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ ط£ظˆ MRN..." oninput="filterPatients()">
+        <input type="text" id="patSearch" placeholder="ابحث بالاسم أو رقم الهاتف أو MRN..." oninput="filterPatients()">
       </div>
       <div id="patGrid" class="plist">
         <div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--muted)">
           <i class="fas fa-spinner fa-spin" style="font-size:2rem;display:block;margin-bottom:12px"></i>
-          ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ط§ظ„ظ…ط±ط¶ظ‰...
+          جاري تحميل المرضى...
         </div>
       </div>
     </div>
@@ -67,10 +67,10 @@
     <!-- WAITING ROOM SECTION -->
     <div id="waitingRoom" class="sec">
       <div class="ph">
-        <div><div class="pt">âڈ³ ط؛ط±ظپط© ط§ظ„ط§ظ†طھط¸ط§ط± ط§ظ„ظ…ط¨ط§ط´ط±ط©</div><div class="ps">طھط­ط¯ظٹط« ظ„ط­ط¸ظٹ ظ„طھط±طھظٹط¨ ط§ظ„ظ…ط±ط¶ظ‰ ظˆط­ط§ظ„ط© ط§ظ„ط§ظ†طھط¸ط§ط±</div></div>
+        <div><div class="pt">⏳ غرفة الانتظار المباشرة</div><div class="ps">تحديث لحظي لترتيب المرضى وحالة الانتظار</div></div>
       </div>
       <div id="wrList" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:12px">
-        <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ظ‚ط§ط¦ظ…ط© ط§ظ„ط§ظ†طھط¸ط§ط±...</div>
+        <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">جاري تحميل قائمة الانتظار...</div>
       </div>
     </div>
 
@@ -79,7 +79,7 @@
       <div id="patFileContent">
         <div style="text-align:center;padding:80px;color:var(--muted)">
           <i class="fas fa-file-medical" style="font-size:3rem;display:block;margin-bottom:14px;opacity:.2"></i>
-          <p>ط§ط®طھط± ظ…ط±ظٹط¶ط§ظ‹ ظ…ظ† ط§ظ„ظ‚ط§ط¦ظ…ط© ظ„ط¹ط±ط¶ ظ…ظ„ظپظ‡ ط§ظ„ط·ط¨ظٹ</p>
+          <p>اختر مريضاً من القائمة لعرض ملفه الطبي</p>
         </div>
       </div>
     </div>
@@ -90,13 +90,13 @@
       <!-- Workspace Header -->
       <div class="ws-header">
         <div style="display:flex;align-items:center;gap:16px;">
-          <button class="ws-back-btn" onclick="cancelVisit()"><i class="fas fa-arrow-right"></i> ط§ظ„ط¹ظˆط¯ط© ظ„ط؛ط±ظپط© ط§ظ„ط§ظ†طھط¸ط§ط±</button>
+          <button class="ws-back-btn" onclick="cancelVisit()"><i class="fas fa-arrow-right"></i> العودة لغرفة الانتظار</button>
           <div style="width:1px;height:24px;background:var(--border);"></div>
           <div style="display:flex;align-items:center;gap:12px;">
-            <div id="wsAvatar" class="photo-preview-circle" style="width:40px;height:40px;font-size:1rem;">ًں‘¤</div>
+            <div id="wsAvatar" class="photo-preview-circle" style="width:40px;height:40px;font-size:1rem;">👤</div>
             <div>
-              <div id="wsName" style="font-weight:900;font-size:1rem;">ط§ط³ظ… ط§ظ„ظ…ط±ظٹط¶</div>
-              <div style="font-size:0.75rem;color:var(--muted);">MRN: <span id="wsMrn" style="font-family:'IBM Plex Mono';color:var(--teal);font-weight:700;">â€”</span> | <span id="wsAgeGender">â€”</span></div>
+              <div id="wsName" style="font-weight:900;font-size:1rem;">اسم المريض</div>
+              <div style="font-size:0.75rem;color:var(--muted);">MRN: <span id="wsMrn" style="font-family:'IBM Plex Mono';color:var(--teal);font-weight:700;">—</span> | <span id="wsAgeGender">—</span></div>
             </div>
           </div>
         </div>
@@ -104,11 +104,11 @@
 
       <!-- Workspace Tabs -->
       <div class="visit-tabs">
-        <button class="visit-tab active" onclick="switchVisitTab('tabVitals', this)"><i class="fas fa-heartbeat"></i> ط§ظ„ط¹ظ„ط§ظ…ط§طھ ط§ظ„ط­ظٹظˆظٹط©</button>
-        <button class="visit-tab" onclick="switchVisitTab('tabDiag', this)"><i class="fas fa-notes-medical"></i> ط§ظ„طھط´ط®ظٹطµ</button>
-        <button class="visit-tab" onclick="switchVisitTab('tabRx', this)"><i class="fas fa-pills"></i> ط§ظ„ظˆطµظپط© ط§ظ„ط·ط¨ظٹط©</button>
-        <button class="visit-tab tab-complex" onclick="switchVisitTab('tabLab', this)"><i class="fas fa-vial"></i> ط·ظ„ط¨ ظ…ط®طھط¨ط±</button>
-        <button class="visit-tab tab-complex" onclick="switchVisitTab('tabRad', this)"><i class="fas fa-x-ray"></i> طµظˆط±ط© ط£ط´ط¹ط©</button>
+        <button class="visit-tab active" onclick="switchVisitTab('tabVitals', this)"><i class="fas fa-heartbeat"></i> العلامات الحيوية</button>
+        <button class="visit-tab" onclick="switchVisitTab('tabDiag', this)"><i class="fas fa-notes-medical"></i> التشخيص</button>
+        <button class="visit-tab" onclick="switchVisitTab('tabRx', this)"><i class="fas fa-pills"></i> الوصفة الطبية</button>
+        <button class="visit-tab tab-complex" onclick="switchVisitTab('tabLab', this)"><i class="fas fa-vial"></i> طلب مختبر</button>
+        <button class="visit-tab tab-complex" onclick="switchVisitTab('tabRad', this)"><i class="fas fa-x-ray"></i> صورة أشعة</button>
       </div>
 
       <!-- Tab Contents -->
@@ -117,12 +117,12 @@
         <!-- Tab 1: Vitals -->
         <div id="tabVitals" class="tab-content active">
           <div class="vform">
-            <div class="vform-title"><i class="fas fa-heartbeat"></i> ط§ظ„ط¹ظ„ط§ظ…ط§طھ ط§ظ„ط­ظٹظˆظٹط© (Vitals)</div>
+            <div class="vform-title"><i class="fas fa-heartbeat"></i> العلامات الحيوية (Vitals)</div>
             <div class="fi-row4">
-              <div class="fg"><label>ط§ظ„ط­ط±ط§ط±ط© (آ°C)</label><input type="number" id="vTemp" class="fi" placeholder="37.0" dir="ltr"></div>
-              <div class="fg"><label>ط¶ط؛ط· ط§ظ„ط¯ظ…</label><input type="text" id="vBp" class="fi" placeholder="120/80" dir="ltr"></div>
-              <div class="fg"><label>ظ†ط¨ط¶ ط§ظ„ظ‚ظ„ط¨ (bpm)</label><input type="number" id="vHr" class="fi" placeholder="80" dir="ltr"></div>
-              <div class="fg"><label>ط§ظ„ط£ظƒط³ط¬ظٹظ† (%)</label><input type="number" id="vO2" class="fi" placeholder="98" dir="ltr"></div>
+              <div class="fg"><label>الحرارة (°C)</label><input type="number" id="vTemp" class="fi" placeholder="37.0" dir="ltr"></div>
+              <div class="fg"><label>ضغط الدم</label><input type="text" id="vBp" class="fi" placeholder="120/80" dir="ltr"></div>
+              <div class="fg"><label>نبض القلب (bpm)</label><input type="number" id="vHr" class="fi" placeholder="80" dir="ltr"></div>
+              <div class="fg"><label>الأكسجين (%)</label><input type="number" id="vO2" class="fi" placeholder="98" dir="ltr"></div>
             </div>
           </div>
         </div>
@@ -130,14 +130,14 @@
         <!-- Tab 2: Diagnosis -->
         <div id="tabDiag" class="tab-content">
           <div class="vform">
-            <div class="vform-title"><i class="fas fa-notes-medical"></i> ط§ظ„طھط´ط®ظٹطµ ظˆط§ظ„ظ…ظ„ط§ط­ط¸ط§طھ</div>
+            <div class="vform-title"><i class="fas fa-notes-medical"></i> التشخيص والملاحظات</div>
             <div class="fg">
-              <label>ط§ظ„ط´ظƒظˆظ‰ ط§ظ„ط±ط¦ظٹط³ظٹط© (Chief Complaint)</label>
-              <textarea id="vComplaint" class="fi" rows="2" style="resize:none" placeholder="ط§ظƒطھط¨ ط´ظƒظˆظ‰ ط§ظ„ظ…ط±ظٹط¶..."></textarea>
+              <label>الشكوى الرئيسية (Chief Complaint)</label>
+              <textarea id="vComplaint" class="fi" rows="2" style="resize:none" placeholder="اكتب شكوى المريض..."></textarea>
             </div>
             <div class="fg">
-              <label>ط§ظ„طھط´ط®ظٹطµ ط§ظ„ظ†ظ‡ط§ط¦ظٹ (Diagnosis)</label>
-              <textarea id="vDiag" class="fi" rows="3" style="resize:none" placeholder="ط§ظ„طھط´ط®ظٹطµ ط§ظ„ط·ط¨ظٹ..."></textarea>
+              <label>التشخيص النهائي (Diagnosis)</label>
+              <textarea id="vDiag" class="fi" rows="3" style="resize:none" placeholder="التشخيص الطبي..."></textarea>
             </div>
           </div>
         </div>
@@ -145,16 +145,16 @@
         <!-- Tab 3: Prescriptions -->
         <div id="tabRx" class="tab-content">
           <div class="vform">
-            <div class="vform-title"><i class="fas fa-pills"></i> ط§ظ„ظˆطµظپط© ط§ظ„ط·ط¨ظٹط© (Rx)</div>
+            <div class="vform-title"><i class="fas fa-pills"></i> الوصفة الطبية (Rx)</div>
             <div class="fi-row" style="margin-bottom:12px;">
-              <input type="text" id="rxDrug" class="fi" placeholder="ط§ط³ظ… ط§ظ„ط¯ظˆط§ط،...">
-              <input type="text" id="rxDose" class="fi" placeholder="ط§ظ„ط¬ط±ط¹ط© (ظ…ط«ط§ظ„: ط­ط¨ط© ظ…ط±طھظٹظ† ظٹظˆظ…ظٹط§ظ‹)">
+              <input type="text" id="rxDrug" class="fi" placeholder="اسم الدواء...">
+              <input type="text" id="rxDose" class="fi" placeholder="الجرعة (مثال: حبة مرتين يومياً)">
             </div>
-            <button class="btn-secondary" onclick="addWorkspaceRx()" style="width:100%;justify-content:center;margin-bottom:16px;"><i class="fas fa-plus"></i> ط¥ط¶ط§ظپط© ط§ظ„ط¯ظˆط§ط، ظ„ظ„ظˆطµظپط©</button>
+            <button class="btn-secondary" onclick="addWorkspaceRx()" style="width:100%;justify-content:center;margin-bottom:16px;"><i class="fas fa-plus"></i> إضافة الدواء للوصفة</button>
             <table class="rx-table">
-              <thead><tr><th>ط§ظ„ط¯ظˆط§ط،</th><th>ط§ظ„ط¬ط±ط¹ط©</th><th style="width:50px"></th></tr></thead>
+              <thead><tr><th>الدواء</th><th>الجرعة</th><th style="width:50px"></th></tr></thead>
               <tbody id="wsRxTbody">
-                <tr><td colspan="3" style="text-align:center;color:var(--muted)">ظ„ط§ ظٹظˆط¬ط¯ ط£ط¯ظˆظٹط© ظ…ط¶ط§ظپط©</td></tr>
+                <tr><td colspan="3" style="text-align:center;color:var(--muted)">لا يوجد أدوية مضافة</td></tr>
               </tbody>
             </table>
           </div>
@@ -163,9 +163,9 @@
         <!-- Tab 4: Labs (Complex Only) -->
         <div id="tabLab" class="tab-content tab-complex">
           <div class="vform">
-            <div class="vform-title"><i class="fas fa-vial"></i> ط·ظ„ط¨ طھط­ط§ظ„ظٹظ„ ظ…ط®ط¨ط±ظٹط©</div>
+            <div class="vform-title"><i class="fas fa-vial"></i> طلب تحاليل مخبرية</div>
             <div class="fg">
-              <label>ط§ظ„طھط­ط§ظ„ظٹظ„ ط§ظ„ظ…ط·ظ„ظˆط¨ط© (ظ…ظپطµظˆظ„ط© ط¨ظپط§طµظ„ط©)</label>
+              <label>التحاليل المطلوبة (مفصولة بفاصلة)</label>
               <textarea id="vLabReq" class="fi" rows="3" style="resize:none" placeholder="CBC, Lipid Profile..."></textarea>
             </div>
           </div>
@@ -174,9 +174,9 @@
         <!-- Tab 5: Radiology (Complex Only) -->
         <div id="tabRad" class="tab-content tab-complex">
           <div class="vform">
-            <div class="vform-title"><i class="fas fa-x-ray"></i> ط·ظ„ط¨ طµظˆط± ط£ط´ط¹ط©</div>
+            <div class="vform-title"><i class="fas fa-x-ray"></i> طلب صور أشعة</div>
             <div class="fg">
-              <label>ط§ظ„طھطµظˆظٹط± ط§ظ„ظ…ط·ظ„ظˆط¨</label>
+              <label>التصوير المطلوب</label>
               <textarea id="vRadReq" class="fi" rows="3" style="resize:none" placeholder="Chest X-Ray..."></textarea>
             </div>
           </div>
@@ -186,25 +186,25 @@
 
       <!-- Workspace Footer -->
       <div class="ws-footer">
-        <button class="btn-primary" onclick="completeWorkspaceVisit()" style="padding:12px 24px;font-size:1.05rem;"><i class="fas fa-save"></i> ط¥ظ†ظ‡ط§ط، ط§ظ„ط²ظٹط§ط±ط© ظˆط­ظپط¸ ط§ظ„ظ…ظ„ظپ</button>
+        <button class="btn-primary" onclick="completeWorkspaceVisit()" style="padding:12px 24px;font-size:1.05rem;"><i class="fas fa-save"></i> إنهاء الزيارة وحفظ الملف</button>
       </div>
     </div>
 
     <!-- INTERNAL REFERRALS LIST SECTION -->
     <div id="referralList" class="sec">
       <div class="ph">
-        <div><div class="pt" style="color:var(--purple)"><i class="fas fa-exchange-alt"></i> ط§ظ„طھط­ظˆظٹظ„ط§طھ ط§ظ„ط·ط¨ظٹط© ط§ظ„ط¯ط§ط®ظ„ظٹط©</div><div class="ps">ط¬ظ…ظٹط¹ ط·ظ„ط¨ط§طھ طھط­ظˆظٹظ„ ط§ظ„ظ…ط±ط¶ظ‰ ط§ظ„ظ…ط³طھظ„ظ…ط© ظˆط§ظ„ظ…ط±ط³ظ„ط© ط¹ط¨ط± ط£ظ‚ط³ط§ظ… ط§ظ„ظ…ط¬ظ…ط¹ ط§ظ„ط·ط¨ظٹ</div></div>
+        <div><div class="pt" style="color:var(--purple)"><i class="fas fa-exchange-alt"></i> التحويلات الطبية الداخلية</div><div class="ps">جميع طلبات تحويل المرضى المستلمة والمرسلة عبر أقسام المجمع الطبي</div></div>
       </div>
       <div class="glass-panel" style="padding:16px;margin-bottom:20px">
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-          <span style="font-size:0.85rem;color:var(--muted)">طھطµظپظٹط© ط­ط³ط¨ ط§ظ„ط­ط§ظ„ط©:</span>
-          <button class="btn-secondary btn-sm filter-ref-btn active" onclick="filterReferrals('all', this)" style="border-radius:8px;padding:4px 12px;font-size:0.75rem">ط§ظ„ظƒظ„</button>
-          <button class="btn-secondary btn-sm filter-ref-btn" onclick="filterReferrals('pending', this)" style="border-radius:8px;padding:4px 12px;font-size:0.75rem;color:var(--amber)">ط¨ط§ظ†طھط¸ط§ط± ط§ظ„ظ…ط¹ط§ظٹظ†ط© âڈ³</button>
-          <button class="btn-secondary btn-sm filter-ref-btn" onclick="filterReferrals('completed', this)" style="border-radius:8px;padding:4px 12px;font-size:0.75rem;color:var(--green)">ظ…ظƒطھظ…ظ„ط© âœ…</button>
+          <span style="font-size:0.85rem;color:var(--muted)">تصفية حسب الحالة:</span>
+          <button class="btn-secondary btn-sm filter-ref-btn active" onclick="filterReferrals('all', this)" style="border-radius:8px;padding:4px 12px;font-size:0.75rem">الكل</button>
+          <button class="btn-secondary btn-sm filter-ref-btn" onclick="filterReferrals('pending', this)" style="border-radius:8px;padding:4px 12px;font-size:0.75rem;color:var(--amber)">بانتظار المعاينة ⏳</button>
+          <button class="btn-secondary btn-sm filter-ref-btn" onclick="filterReferrals('completed', this)" style="border-radius:8px;padding:4px 12px;font-size:0.75rem;color:var(--green)">مكتملة ✅</button>
         </div>
       </div>
       <div id="referralsGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(340px, 1fr));gap:16px">
-        <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">ظ„ط§ ظٹظˆط¬ط¯ طھط­ظˆظٹظ„ط§طھ ط·ط¨ظٹط© ظ…ط³ط¬ظ„ط© ط­ط§ظ„ظٹط§ظ‹</div>
+        <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">لا يوجد تحويلات طبية مسجلة حالياً</div>
       </div>
     </div>
   </div>
@@ -213,32 +213,32 @@
 <!-- NEW PATIENT MODAL -->
 <div id="newPatModal" style="position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:10000;display:none;align-items:center;justify-content:center">
   <div style="background:var(--panel);border:1px solid var(--border);border-radius:22px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
-    <div style="font-size:1.1rem;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:8px;color:var(--teal)"><i class="fas fa-user-plus"></i> طھط³ط¬ظٹظ„ ظ…ط±ظٹط¶ ط¬ط¯ظٹط¯</div>
+    <div style="font-size:1.1rem;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:8px;color:var(--teal)"><i class="fas fa-user-plus"></i> تسجيل مريض جديد</div>
       <div class="fi-row" style="margin-bottom:12px">
-        <div class="fg"><label>ط§ط³ظ… ط§ظ„ظ…ط±ظٹط¶ *</label><input class="fi" id="npName" placeholder="ظ…ط«ط§ظ„: ط£ط­ظ…ط¯" oninput="detectNewPatDuplicates()"></div>
-        <div class="fg"><label>ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ *</label><input class="fi" id="npPhone" placeholder="07XXXXXXXX" dir="ltr" oninput="detectNewPatDuplicates()"></div>
+        <div class="fg"><label>اسم المريض *</label><input class="fi" id="npName" placeholder="مثال: أحمد" oninput="detectNewPatDuplicates()"></div>
+        <div class="fg"><label>رقم الهاتف *</label><input class="fi" id="npPhone" placeholder="07XXXXXXXX" dir="ltr" oninput="detectNewPatDuplicates()"></div>
       </div>
       <div id="npDupWarning"></div>
-      <div class="fg" style="margin-bottom:12px"><label><i class="fas fa-id-card"></i> ط§ظ„ط±ظ‚ظ… ط§ظ„ظˆط·ظ†ظٹ / ط§ظ„ظ‡ظˆظٹط©</label><input class="fi" id="npNationalId" placeholder="ط§ط®طھظٹط§ط±ظٹ - ظ„ظ„طھظ…ظٹظٹط² ط¨ظٹظ† ط§ظ„ظ…ط±ط¶ظ‰" dir="ltr"></div>
+      <div class="fg" style="margin-bottom:12px"><label><i class="fas fa-id-card"></i> الرقم الوطني / الهوية</label><input class="fi" id="npNationalId" placeholder="اختياري - للتمييز بين المرضى" dir="ltr"></div>
       <div class="fg" style="margin-bottom:12px">
-        <label><i class="fas fa-camera"></i> طµظˆط±ط© ط§ظ„ظ…ط±ظٹط¶ (ط§ط®طھظٹط§ط±ظٹ)</label>
+        <label><i class="fas fa-camera"></i> صورة المريض (اختياري)</label>
         <div style="display:flex;gap:12px;align-items:center">
-          <div id="npPhotoPreview" class="photo-preview-circle">ًں‘¤</div>
+          <div id="npPhotoPreview" class="photo-preview-circle">👤</div>
           <input type="file" id="npPhotoFile" style="display:none" accept="image/*" onchange="previewPatientPhoto(event, 'np')">
-          <button type="button" class="btn-secondary btn-sm" onclick="document.getElementById('npPhotoFile').click()" style="height:35px;border-radius:8px"><i class="fas fa-upload"></i> طھط­ظ…ظٹظ„ طµظˆط±ط©</button>
+          <button type="button" class="btn-secondary btn-sm" onclick="document.getElementById('npPhotoFile').click()" style="height:35px;border-radius:8px"><i class="fas fa-upload"></i> تحميل صورة</button>
         </div>
       </div>
       <div class="fi-row3" style="margin-bottom:12px">
-      <div class="fg"><label>ط§ظ„ط¹ظ…ط±</label><input class="fi" id="npAge" type="number" placeholder="30"></div>
-      <div class="fg"><label>ط§ظ„ط¬ظ†ط³</label><select class="fi" id="npGender"><option value="">â€”</option><option value="ط°ظƒط±">ط°ظƒط±</option><option value="ط£ظ†ط«ظ‰">ط£ظ†ط«ظ‰</option></select></div>
-      <div class="fg"><label>ظپطµظٹظ„ط© ط§ظ„ط¯ظ…</label><select class="fi" id="npBlood"><option value="">â€”</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div>
+      <div class="fg"><label>العمر</label><input class="fi" id="npAge" type="number" placeholder="30"></div>
+      <div class="fg"><label>الجنس</label><select class="fi" id="npGender"><option value="">—</option><option value="ذكر">ذكر</option><option value="أنثى">أنثى</option></select></div>
+      <div class="fg"><label>فصيلة الدم</label><select class="fi" id="npBlood"><option value="">—</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div>
     </div>
-    <div class="fg"><label>ط§ظ„ط­ط³ط§ط³ظٹط© (ط§ظپطµظ„ ط¨ظپط§طµظ„ط©)</label><input class="fi" id="npAllergies" placeholder="ط¨ظ†ط³ظ„ظٹظ†طŒ ط£ط³ط¨ط±ظٹظ†..."></div>
-    <div class="fg"><label>ط§ظ„ط£ظ…ط±ط§ط¶ ط§ظ„ظ…ط²ظ…ظ†ط© (ط§ظپطµظ„ ط¨ظپط§طµظ„ط©)</label><input class="fi" id="npChronic" placeholder="ط³ظƒط±ظٹطŒ ط¶ط؛ط·..."></div>
-    <div class="fg"><label>ظ…ظ„ط§ط­ط¸ط§طھ</label><textarea class="fi" id="npNotes" rows="2" style="resize:none" placeholder="ظ…ظ„ط§ط­ط¸ط§طھ ط¥ط¶ط§ظپظٹط©..."></textarea></div>
+    <div class="fg"><label>الحساسية (افصل بفاصلة)</label><input class="fi" id="npAllergies" placeholder="بنسلين، أسبرين..."></div>
+    <div class="fg"><label>الأمراض المزمنة (افصل بفاصلة)</label><input class="fi" id="npChronic" placeholder="سكري، ضغط..."></div>
+    <div class="fg"><label>ملاحظات</label><textarea class="fi" id="npNotes" rows="2" style="resize:none" placeholder="ملاحظات إضافية..."></textarea></div>
     <div style="display:flex;gap:10px;margin-top:16px">
-      <button class="btn-primary" style="flex:1" onclick="saveNewPatient()"><i class="fas fa-save"></i> ط­ظپط¸</button>
-      <button class="btn-secondary" onclick="closeModal('newPatModal')">ط¥ظ„ط؛ط§ط،</button>
+      <button class="btn-primary" style="flex:1" onclick="saveNewPatient()"><i class="fas fa-save"></i> حفظ</button>
+      <button class="btn-secondary" onclick="closeModal('newPatModal')">إلغاء</button>
     </div>
   </div>
 </div>
@@ -246,32 +246,32 @@
 <!-- EDIT PATIENT MODAL -->
 <div id="editPatModal" style="position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:10000;display:none;align-items:center;justify-content:center">
   <div style="background:var(--panel);border:1px solid var(--border);border-radius:22px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
-    <div style="font-size:1.1rem;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:8px;color:var(--teal)"><i class="fas fa-user-edit"></i> طھط¹ط¯ظٹظ„ ط¨ظٹط§ظ†ط§طھ ط§ظ„ظ…ط±ظٹط¶</div>
+    <div style="font-size:1.1rem;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:8px;color:var(--teal)"><i class="fas fa-user-edit"></i> تعديل بيانات المريض</div>
     <input type="hidden" id="epOldPhone">
       <div class="fi-row" style="margin-bottom:12px">
-        <div class="fg"><label>ط§ط³ظ… ط§ظ„ظ…ط±ظٹط¶ *</label><input class="fi" id="epName" placeholder="ظ…ط«ط§ظ„: ط£ط­ظ…ط¯"></div>
-        <div class="fg"><label>ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ *</label><input class="fi" id="epPhone" placeholder="07XXXXXXXX" dir="ltr"></div>
+        <div class="fg"><label>اسم المريض *</label><input class="fi" id="epName" placeholder="مثال: أحمد"></div>
+        <div class="fg"><label>رقم الهاتف *</label><input class="fi" id="epPhone" placeholder="07XXXXXXXX" dir="ltr"></div>
       </div>
-      <div class="fg" style="margin-bottom:12px"><label><i class="fas fa-id-card"></i> ط§ظ„ط±ظ‚ظ… ط§ظ„ظˆط·ظ†ظٹ / ط§ظ„ظ‡ظˆظٹط©</label><input class="fi" id="epNationalId" placeholder="ط§ط®طھظٹط§ط±ظٹ - ظ„ظ„طھظ…ظٹظٹط² ط¨ظٹظ† ط§ظ„ظ…ط±ط¶ظ‰" dir="ltr"></div>
+      <div class="fg" style="margin-bottom:12px"><label><i class="fas fa-id-card"></i> الرقم الوطني / الهوية</label><input class="fi" id="epNationalId" placeholder="اختياري - للتمييز بين المرضى" dir="ltr"></div>
       <div class="fg" style="margin-bottom:12px">
-        <label><i class="fas fa-camera"></i> طµظˆط±ط© ط§ظ„ظ…ط±ظٹط¶ (ط§ط®طھظٹط§ط±ظٹ)</label>
+        <label><i class="fas fa-camera"></i> صورة المريض (اختياري)</label>
         <div style="display:flex;gap:12px;align-items:center">
-          <div id="epPhotoPreview" class="photo-preview-circle">ًں‘¤</div>
+          <div id="epPhotoPreview" class="photo-preview-circle">👤</div>
           <input type="file" id="epPhotoFile" style="display:none" accept="image/*" onchange="previewPatientPhoto(event, 'ep')">
-          <button type="button" class="btn-secondary btn-sm" onclick="document.getElementById('epPhotoFile').click()" style="height:35px;border-radius:8px"><i class="fas fa-upload"></i> طھط­ظ…ظٹظ„ طµظˆط±ط©</button>
+          <button type="button" class="btn-secondary btn-sm" onclick="document.getElementById('epPhotoFile').click()" style="height:35px;border-radius:8px"><i class="fas fa-upload"></i> تحميل صورة</button>
         </div>
       </div>
       <div class="fi-row3" style="margin-bottom:12px">
-      <div class="fg"><label>ط§ظ„ط¹ظ…ط±</label><input class="fi" id="epAge" type="number" placeholder="30"></div>
-      <div class="fg"><label>ط§ظ„ط¬ظ†ط³</label><select class="fi" id="epGender"><option value="">â€”</option><option value="ط°ظƒط±">ط°ظƒط±</option><option value="ط£ظ†ط«ظ‰">ط£ظ†ط«ظ‰</option></select></div>
-      <div class="fg"><label>ظپطµظٹظ„ط© ط§ظ„ط¯ظ…</label><select class="fi" id="epBlood"><option value="">â€”</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div>
+      <div class="fg"><label>العمر</label><input class="fi" id="epAge" type="number" placeholder="30"></div>
+      <div class="fg"><label>الجنس</label><select class="fi" id="epGender"><option value="">—</option><option value="ذكر">ذكر</option><option value="أنثى">أنثى</option></select></div>
+      <div class="fg"><label>فصيلة الدم</label><select class="fi" id="epBlood"><option value="">—</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div>
     </div>
-    <div class="fg"><label>ط§ظ„ط­ط³ط§ط³ظٹط© (ط§ظپطµظ„ ط¨ظپط§طµظ„ط©)</label><input class="fi" id="epAllergies" placeholder="ط¨ظ†ط³ظ„ظٹظ†طŒ ط£ط³ط¨ط±ظٹظ†..."></div>
-    <div class="fg"><label>ط§ظ„ط£ظ…ط±ط§ط¶ ط§ظ„ظ…ط²ظ…ظ†ط© (ط§ظپطµظ„ ط¨ظپط§طµظ„ط©)</label><input class="fi" id="epChronic" placeholder="ط³ظƒط±ظٹطŒ ط¶ط؛ط·..."></div>
-    <div class="fg"><label>ظ…ظ„ط§ط­ط¸ط§طھ</label><textarea class="fi" id="epNotes" rows="2" style="resize:none" placeholder="ظ…ظ„ط§ط­ط¸ط§طھ ط¥ط¶ط§ظپظٹط©..."></textarea></div>
+    <div class="fg"><label>الحساسية (افصل بفاصلة)</label><input class="fi" id="epAllergies" placeholder="بنسلين، أسبرين..."></div>
+    <div class="fg"><label>الأمراض المزمنة (افصل بفاصلة)</label><input class="fi" id="epChronic" placeholder="سكري، ضغط..."></div>
+    <div class="fg"><label>ملاحظات</label><textarea class="fi" id="epNotes" rows="2" style="resize:none" placeholder="ملاحظات إضافية..."></textarea></div>
     <div style="display:flex;gap:10px;margin-top:16px">
-      <button class="btn-primary" style="flex:1" onclick="saveEditPatient()"><i class="fas fa-save"></i> طھط­ط¯ظٹط« ط§ظ„ط¨ظٹط§ظ†ط§طھ</button>
-      <button class="btn-secondary" onclick="closeModal('editPatModal')">ط¥ظ„ط؛ط§ط،</button>
+      <button class="btn-primary" style="flex:1" onclick="saveEditPatient()"><i class="fas fa-save"></i> تحديث البيانات</button>
+      <button class="btn-secondary" onclick="closeModal('editPatModal')">إلغاء</button>
     </div>
   </div>
 </div>
@@ -288,4 +288,3 @@
 <script src="emr-app.js"></script>
 </body>
 </html>
-
