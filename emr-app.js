@@ -1686,15 +1686,19 @@ function saveVisit() {
     visitObj.radOrders.push(pendingRad);
   }
 
+  const patientName = _patients[activePatientId]?.info?.name || 'مريض';
+  const doctorDisplayName = (window.ArgonSession ? ArgonSession.get()?.displayName : null) || doc.name || 'طبيب';
+
   db.ref(`${BASE}/patients/${activePatientId}/visits/${visitId}`).set(visitObj).then(() => {
     // 1. Electronic Prescription Submission
+    try {
     if (rxItems.length) {
       const prescId = db.ref().child('prescriptions').push().key;
       db.ref(`${BASE}/prescriptions/${prescId}`).set({
         patientId: activePatientId,
-        patientName: _patients[activePatientId].info.name,
+        patientName: patientName,
         doctorId: docKey,
-        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || doc.name || 'طبيب',
+        docName: doctorDisplayName,
         medications: rxItems.map(m => ({ ...m, status: 'waiting' })),
         status: 'waiting',
         visitId,
@@ -1703,20 +1707,22 @@ function saveVisit() {
       });
       db.ref(`${BASE}/notifications`).push({
         title: 'وصفة طبية جديدة 💊',
-        message: `وصفة جديدة للمريض ${sanitize(_patients[activePatientId].info.name)}`,
+        message: `وصفة جديدة للمريض ${sanitize(patientName)}`,
         role: 'pharmacist',
         createdAt: new Date().toISOString()
       });
     }
+    } catch(e) { console.error('Rx submission error:', e); }
 
     // 2. Laboratory Order Submission
+    try {
     if (labTestsList.length) {
       const labOrderId = db.ref().child('lab_orders').push().key;
       db.ref(`${BASE}/lab_orders/${labOrderId}`).set({
         patientId: activePatientId,
-        patientName: _patients[activePatientId].info.name,
+        patientName: patientName,
         doctorId: docKey,
-        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || doc.name || 'طبيب',
+        docName: doctorDisplayName,
         requestedTests: labTestsList.map(t => ({ name: t, result: '', unit: '', status: 'waiting' })),
         status: 'waiting',
         visitId,
@@ -1725,20 +1731,22 @@ function saveVisit() {
       });
       db.ref(`${BASE}/notifications`).push({
         title: 'طلب فحص مخبري جديد 🔬',
-        message: `طلب تحاليل للمريض ${sanitize(_patients[activePatientId].info.name)}`,
+        message: `طلب تحاليل للمريض ${sanitize(patientName)}`,
         role: 'lab',
         createdAt: new Date().toISOString()
       });
     }
+    } catch(e) { console.error('Lab submission error:', e); }
 
     // 3. Radiology Order Submission
+    try {
     if (radScansList.length) {
       const radOrderId = db.ref().child('radiology_orders').push().key;
       db.ref(`${BASE}/radiology_orders/${radOrderId}`).set({
         patientId: activePatientId,
-        patientName: _patients[activePatientId].info.name,
+        patientName: patientName,
         doctorId: docKey,
-        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || doc.name || 'طبيب',
+        docName: doctorDisplayName,
         requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
         status: 'waiting',
         visitId,
@@ -1747,19 +1755,20 @@ function saveVisit() {
       });
       db.ref(`${BASE}/notifications`).push({
         title: 'طلب أشعة جديد 🩻',
-        message: `طلب تصوير أشعة للمريض ${sanitize(_patients[activePatientId].info.name)}`,
+        message: `طلب تصوير أشعة للمريض ${sanitize(patientName)}`,
         role: 'radiology',
         createdAt: new Date().toISOString()
       });
     }
+    } catch(e) { console.error('Rad submission error:', e); }
 
     // Generate Invoice link automatically
     const invId = db.ref().child('invoices').push().key;
     db.ref(`${BASE}/invoices/${invId}`).set({
       patientId: activePatientId,
-      patientName: _patients[activePatientId].info.name,
+      patientName: patientName,
       visitId,
-      docName: doc.name,
+      docName: doctorDisplayName,
       items: [
         { name: 'كشفية الطبيب / تشخيص', price: parseFloat(doc.fee || 0) }
       ],
