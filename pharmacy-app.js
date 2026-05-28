@@ -41,9 +41,12 @@ window.addEventListener('DOMContentLoaded', () => {
   db.ref(BASE + '/settings').on('value', snap => {
     _sets = snap.val();
     if (_sets) {
-      document.getElementById('lClinicName').textContent = _sets.name || 'المجمع الطبي';
-      document.getElementById('topName').textContent = _sets.name || 'المجمع الطبي';
-      document.getElementById('tlogo').textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON PHARMACY';
+      const elClinicName = document.getElementById('lClinicName');
+      const elTopName = document.getElementById('topName');
+      const elTlogo = document.getElementById('tlogo');
+      if (elClinicName) elClinicName.textContent = _sets.name || 'المجمع الطبي';
+      if (elTopName) elTopName.textContent = _sets.name || 'المجمع الطبي';
+      if (elTlogo) elTlogo.textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON PHARMACY';
     }
   });
 
