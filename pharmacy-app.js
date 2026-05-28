@@ -43,13 +43,13 @@ window.addEventListener('DOMContentLoaded', () => {
     if (_sets) {
       document.getElementById('lClinicName').textContent = _sets.name || 'المجمع الطبي';
       document.getElementById('topName').textContent = _sets.name || 'المجمع الطبي';
-      document.getElementById('tlogo').textContent = _sets.emoji ? \`ARGON \${_sets.emoji}\` : 'ARGON PHARMACY';
+      document.getElementById('tlogo').textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON PHARMACY';
     }
   });
 
   // Wait for Enterprise Runtime
   window.waitForArgonReady('pharmacist').then(session => {
-    document.getElementById('topName').textContent = \`مرحباً، \${session.displayName}\`;
+    document.getElementById('topName').textContent = `مرحباً، ${session.displayName}`;
     initPharmacy();
   });
 });

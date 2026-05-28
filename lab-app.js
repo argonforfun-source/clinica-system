@@ -44,13 +44,13 @@ window.addEventListener('DOMContentLoaded', () => {
     if (_sets) {
       document.getElementById('lClinicName').textContent = _sets.name || 'المجمع الطبي';
       document.getElementById('topName').textContent = _sets.name || 'المجمع الطبي';
-      document.getElementById('tlogo').textContent = _sets.emoji ? \`ARGON \${_sets.emoji}\` : 'ARGON LABORATORY';
+      document.getElementById('tlogo').textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON LABORATORY';
     }
   });
 
   // Wait for Enterprise Runtime
   window.waitForArgonReady('lab').then(session => {
-    document.getElementById('topName').textContent = \`مرحباً، \${session.displayName}\`;
+    document.getElementById('topName').textContent = `مرحباً، ${session.displayName}`;
     initLab();
   });
 });

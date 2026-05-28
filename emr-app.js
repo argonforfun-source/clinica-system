@@ -132,7 +132,7 @@ window.addEventListener('DOMContentLoaded', () => {
       checkAndSeedDefaultDepartments();
       document.getElementById('lClinicName').textContent = _sets.name || 'العيادة الطبية';
       document.getElementById('topName').textContent = _sets.name || 'العيادة الطبية';
-      document.getElementById('tlogo').textContent = _sets.emoji ? \`ARGON \${_sets.emoji}\` : 'ARGON EMR';
+      document.getElementById('tlogo').textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON EMR';
     } else {
       document.getElementById('lClinicName').textContent = 'العيادة غير موجودة';
     }
@@ -140,7 +140,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Wait for Enterprise Runtime
   window.waitForArgonReady('emr').then(session => {
-    document.getElementById('topName').textContent = \`مرحباً، \${session.displayName}\`;
+    document.getElementById('topName').textContent = `مرحباً، ${session.displayName}`;
     initEMR();
   });
 
