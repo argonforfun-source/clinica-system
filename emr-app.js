@@ -645,9 +645,27 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
     return;
   }
 
-  // 5️⃣ Ambiguous (e.g. Family members sharing a phone, and name didn't match perfectly)
-  // Show the selector so the doctor can choose the correct family member
-  showDoctorProfileSelector(matched, phone);
+  // 5️⃣ Ambiguous (Family members sharing a phone, and name didn't match perfectly)
+  // Instead of showing a popup with other doctor's patients, auto-register the patient now!
+  toast('⚠️ يتم الآن فتح وتجهيز ملف المريض...', 'ok');
+  
+  // Create a new patient profile since the name didn't match anyone in the family
+  const newRef = db.ref(`${BASE}/patients`).push();
+  const patPhone = cleanPhone(booking.patPhone || '');
+  newRef.set({
+    info: {
+      name: booking.patName || 'مريض',
+      phone: patPhone,
+      age: booking.patAge ? parseInt(booking.patAge) : null,
+      gender: booking.patGender || '',
+      mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
+      createdAt: new Date().toISOString()
+    }
+  }).then(() => {
+    db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(newRef.key).then(() => {
+      if (startVisit) { sw('newVisit'); loadVisitForm(newRef.key); } else { viewPatientFile(newRef.key); sw('patFile'); }
+    });
+  });
 }
 
 // Modal management
