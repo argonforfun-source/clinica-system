@@ -556,65 +556,55 @@ function openPatientFromBooking(bookingKey) {
     return;
   }
 
-  // 1️⃣ Direct Firebase Push Key match only (keys always start with '-')
-  const isPushKey = rawUid.startsWith('-');
-  if (isPushKey && _patients[rawUid]) {
-    viewPatientFile(rawUid);
+  // 1️⃣ Direct Firebase Push Key match (patientId)
+  if (booking.patientId && _patients[booking.patientId]) {
+    viewPatientFile(booking.patientId);
     sw('patFile');
     return;
   }
 
-  // 2️⃣ Search: Prioritize UUID-keyed records, then legacy phone-keyed records
-  const phone = cleanPhone(rawUid);
+  // 2️⃣ Search by Phone
+  const phone = cleanPhone(booking.patPhone || rawUid);
   const matched = Object.entries(_patients).filter(([k, p]) =>
     cleanPhone(p.info?.phone || '') === phone ||
     cleanPhone(k) === phone
-  ).sort((a, b) => {
-    // Put UUID-keyed (non-phone) results first
-    const isAKeyPhone = /^\d+$/.test(a[0]);
-    const isBKeyPhone = /^\d+$/.test(b[0]);
-    return isAKeyPhone - isBKeyPhone;
-  });
+  );
 
   if (!matched.length) {
-    toast('⚠️ لم يتم العثور على ملف المريض في النظام', 'err');
+    toast('⚠️ ملف المريض غير موجود. يرجى تسجيله من لوحة الاستقبال.', 'err');
     return;
   }
 
-  if (matched.length === 1) {
+  // 3️⃣ Try to find an exact or partial name match among the phone matches
+  if (bookingName) {
+    const exact = matched.find(([k, p]) => (p.info?.name || '').trim().toLowerCase() === bookingName);
+    if (exact) {
+      viewPatientFile(exact[0]);
+      sw('patFile');
+      return;
+    }
+
+    const partial = matched.find(([k, p]) => {
+      const pn = (p.info?.name || '').toLowerCase();
+      return pn.includes(bookingName) || bookingName.includes(pn);
+    });
+    if (partial) {
+      viewPatientFile(partial[0]);
+      sw('patFile');
+      return;
+    }
+  }
+
+  // 4️⃣ If we have exactly 1 match and no name conflict was explicitly detected (or name was missing)
+  if (matched.length === 1 && !bookingName) {
     viewPatientFile(matched[0][0]);
     sw('patFile');
     return;
   }
 
-  // 3️⃣ Separate UUID patients from legacy phone-key patients
-  const uuidPatients   = matched.filter(([k]) => k.startsWith('-'));
-  const legacyPatients = matched.filter(([k]) => !k.startsWith('-'));
-
-  // 3a. Exactly ONE UUID patient → that’s always the right modern record
-  if (uuidPatients.length === 1) {
-    viewPatientFile(uuidPatients[0][0]);
-    sw('patFile');
-    return;
-  }
-
-  // 3b. Multiple UUID patients — try name match (case-insensitive)
-  const pool = uuidPatients.length ? uuidPatients : matched;
-  if (bookingName) {
-    const exact = pool.find(([k, p]) =>
-      (p.info?.name || '').trim().toLowerCase() === bookingName
-    );
-    if (exact) { viewPatientFile(exact[0]); sw('patFile'); return; }
-
-    const partial = pool.find(([k, p]) => {
-      const pn = (p.info?.name || '').toLowerCase();
-      return pn.includes(bookingName) || bookingName.includes(pn);
-    });
-    if (partial) { viewPatientFile(partial[0]); sw('patFile'); return; }
-  }
-
-  // 3c. Still ambiguous — show profile selector
-  showDoctorProfileSelector(pool.length ? pool : matched, rawUid);
+  // 5️⃣ Ambiguous (e.g. Family members sharing a phone, and name didn't match perfectly)
+  // Show the selector so the doctor can choose the correct family member
+  showDoctorProfileSelector(matched, phone);
 }
 
 // Modal management
