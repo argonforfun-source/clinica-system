@@ -225,9 +225,14 @@ function initEMR() {
   });
 
   // Load Bookings for Waiting Room
+  let bookingLoadTimer = null;
   db.ref(BASE + '/bookings').on('child_added', snap => {
     _liveBookings[snap.key] = snap.val();
     renderWaitingRoom();
+    
+    // Debounce the patient list filter so it renders correctly after the initial batch of bookings arrives
+    clearTimeout(bookingLoadTimer);
+    bookingLoadTimer = setTimeout(() => filterPatients(), 300);
   });
   db.ref(BASE + '/bookings').on('child_changed', snap => {
     _liveBookings[snap.key] = snap.val();
