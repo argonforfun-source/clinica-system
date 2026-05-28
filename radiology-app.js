@@ -265,6 +265,7 @@ function saveRadReport() {
         message: `تم إنهاء تصوير الأشعة والتقرير للمريض ${sanitize(o.patientName)}`,
         role: 'doctor',
         docKey: o.doctorId || 'doctor',
+        patientId: o.patientId,
         createdAt: new Date().toISOString()
       });
     } catch(e) { console.error('Notification error', e); }

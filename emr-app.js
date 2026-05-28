@@ -58,6 +58,7 @@ let _referrals = {};
 let currentReferralsFilter = 'all';
 let _pharmacyInventory = {};
 let _liveBookings = {};
+let _myNotifications = [];
 
 let npPhotoData = '';
 let epPhotoData = '';
@@ -248,21 +249,100 @@ function initEMR() {
   });
 
   // Real-time Notification Engine for Doctors
+  const sessionUid = window.ArgonSession ? window.ArgonSession.get()?.uid : null;
   let isInitNotify = true;
-  db.ref(BASE + '/notifications').limitToLast(1).on('child_added', snap => {
-    if (isInitNotify) {
-      isInitNotify = false;
-      return;
-    }
+  
+  db.ref(BASE + '/notifications').orderByChild('createdAt').limitToLast(50).on('child_added', snap => {
     const n = snap.val();
-    if (n && n.role === 'doctor') {
-      playNotificationSound();
-      toast(`🔔 ${n.title}: ${n.message}`, 'ok');
-      if (activePatientId) {
-        viewPatientFile(activePatientId);
+    n.key = snap.key;
+    
+    // STRICT ISOLATION: Only process notifications targeting this specific doctor
+    if (n && n.role === 'doctor' && n.docKey === sessionUid) {
+      if (!_myNotifications.find(x => x.key === n.key)) {
+        _myNotifications.unshift(n);
+        _myNotifications.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+        
+        renderDoctorNotifications();
+        
+        if (!isInitNotify) {
+          playNotificationSound();
+          toast(`🔔 ${n.title}`, 'ok');
+        }
       }
     }
   });
+
+  setTimeout(() => { isInitNotify = false; }, 3000);
+
+// --- DOCTOR NOTIFICATIONS SIDEBAR ---
+function renderDoctorNotifications() {
+  const notifBadge = document.getElementById('notifBadge');
+  const notifList = document.getElementById('notifList');
+  
+  if (!notifBadge || !notifList) return;
+
+  if (_myNotifications.length > 0) {
+    notifBadge.textContent = _myNotifications.length;
+    notifBadge.style.display = 'block';
+    
+    notifList.innerHTML = _myNotifications.map(n => `
+      <div style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'" onclick="openNotification('${n.patientId || ''}', '${n.key}')">
+        <div style="font-size:0.8rem;color:var(--amber);margin-bottom:4px;font-weight:bold">${n.title}</div>
+        <div style="font-size:0.85rem;color:var(--text);line-height:1.4">${n.message}</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:6px;text-align:left"><i class="far fa-clock"></i> ${n.createdAt ? new Date(n.createdAt).toLocaleTimeString('ar-JO', {hour: '2-digit', minute:'2-digit'}) : ''}</div>
+      </div>
+    `).join('');
+  } else {
+    notifBadge.style.display = 'none';
+    notifList.innerHTML = `
+      <div style="text-align:center;color:var(--muted);margin-top:40px">
+        <i class="fas fa-inbox" style="font-size:2rem;opacity:0.3"></i><br>لا يوجد إشعارات حالياً
+      </div>
+    `;
+  }
+}
+
+window.toggleNotifications = function() {
+  const sidebar = document.getElementById('notifSidebar');
+  if (sidebar) {
+    if (sidebar.style.left === '0px') {
+      sidebar.style.left = '-400px';
+    } else {
+      sidebar.style.left = '0px';
+    }
+  }
+};
+
+window.openNotification = function(patientId, notifKey) {
+  window.toggleNotifications();
+  
+  if (patientId && patientId !== 'undefined') {
+    // 1. Switch sidebar active menu manually
+    document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
+    const patFileMenu = document.querySelectorAll('.ni')[1]; // 'ملف المريض'
+    if (patFileMenu) patFileMenu.classList.add('on');
+    
+    // 2. Switch main section
+    sw('patFile');
+    
+    // 3. Load Patient Profile
+    viewPatientFile(patientId);
+  } else {
+    toast('⚠️ عذراً، الإشعارات القديمة لا تحتوي على رابط مباشر لملف المريض', 'err');
+  }
+};
+
+// Close sidebar when clicking outside
+document.addEventListener('click', (e) => {
+  const sidebar = document.getElementById('notifSidebar');
+  const btn = document.getElementById('notifBtn');
+  if (sidebar && btn && sidebar.style.left === '0px') {
+    if (!sidebar.contains(e.target) && !btn.contains(e.target)) {
+      sidebar.style.left = '-400px';
+    }
+  }
+});
+// ----------------------------------
 
   // Show referrals sidebar button if license is Medical Complex
   if (_sets && _sets.mode === 'medical_complex') {

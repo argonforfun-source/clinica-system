@@ -275,6 +275,7 @@ function saveLabResults() {
         message: `تم إنهاء نتائج تحاليل المريض ${sanitize(o.patientName)} لمراجعتها بالـ EMR`,
         role: 'doctor',
         docKey: o.doctorId || 'doctor',
+        patientId: o.patientId,
         createdAt: new Date().toISOString()
       });
     } catch(e) { console.error('Notification error', e); }

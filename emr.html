@@ -22,10 +22,27 @@
     <span id="topName" style="font-size:.9rem;font-weight:700">...</span>
   </div>
   <div class="tr">
+    <div style="position:relative;display:inline-block">
+      <button class="tbtn" onclick="toggleNotifications()" id="notifBtn"><i class="fas fa-bell"></i></button>
+      <span id="notifBadge" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--red);color:#fff;font-size:0.6rem;font-weight:bold;padding:2px 5px;border-radius:10px;">0</span>
+    </div>
     <button class="tbtn" onclick="toggleTheme()" id="themeBtn"><i class="fas fa-moon"></i></button>
     <button class="tbtn" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
     <a class="tbtn" id="dashLink" href="dashboard.html"><i class="fas fa-arrow-right"></i> لوحة التحكم</a>
     <button class="tbtn" onclick="ArgonSession.logout()" style="color:#fca5a5"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</div>
+
+<!-- DOCTOR NOTIFICATION SIDEBAR -->
+<div id="notifSidebar" class="glass-panel" style="position:fixed;top:60px;left:-400px;width:350px;bottom:0;z-index:9000;transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);background:var(--panel);border-right:1px solid var(--border);box-shadow:5px 0 25px rgba(0,0,0,0.5);overflow-y:auto;display:flex;flex-direction:column;">
+  <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.2)">
+    <h3 style="margin:0;font-weight:800;font-size:1.1rem"><i class="fas fa-bell" style="color:var(--amber)"></i> إشعارات الطبيب</h3>
+    <button class="tbtn" onclick="toggleNotifications()" style="padding:4px 8px"><i class="fas fa-times"></i></button>
+  </div>
+  <div id="notifList" style="padding:16px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
+    <div style="text-align:center;color:var(--muted);margin-top:40px">
+      <i class="fas fa-inbox" style="font-size:2rem;opacity:0.3"></i><br>لا يوجد إشعارات حالياً
+    </div>
   </div>
 </div>
 
@@ -309,8 +326,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
-<script src="argon-core.js?v=5"></script>
-<script src="argon-enterprise.js?v=5"></script>
-<script src="emr-app.js?v=5"></script>
+<script src="argon-core.js?v=6"></script>
+<script src="argon-enterprise.js?v=6"></script>
+<script src="emr-app.js?v=6"></script>
 </body>
 </html>
