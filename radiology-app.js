@@ -259,13 +259,15 @@ function saveRadReport() {
     updates[`patients/${o.patientId}/visits/${timelineKey}`] = timelineObj;
 
     // 3. Send Doctor Notification
-    db.ref(`${BASE}/notifications`).push({
-      title: 'نتائج تقارير الأشعة جاهزة 🩻',
-      message: `تم إنهاء تصوير الأشعة والتقرير للمريض ${sanitize(o.patientName)}`,
-      role: 'doctor',
-      docKey: o.doctorId,
-      createdAt: new Date().toISOString()
-    });
+    try {
+      db.ref(`${BASE}/notifications`).push({
+        title: 'نتائج تقارير الأشعة جاهزة 🩻',
+        message: `تم إنهاء تصوير الأشعة والتقرير للمريض ${sanitize(o.patientName)}`,
+        role: 'doctor',
+        docKey: o.doctorId || 'doctor',
+        createdAt: new Date().toISOString()
+      });
+    } catch(e) { console.error('Notification error', e); }
 
     // 4. Auto-Billing Link: add standard flat rate of 25.00 JOD per radiology scan
     db.ref(`${BASE}/invoices`).orderByChild('visitId').equalTo(visitId).once('value', invSnap => {

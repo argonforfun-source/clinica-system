@@ -2629,6 +2629,7 @@ function completeWorkspaceVisit() {
         patientId: uid,
         patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
         patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
+        doctorId: (window.ArgonSession ? ArgonSession.get()?.uid : null) || 'doctor',
         docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
         createdAt: new Date().toISOString(),
         requestedTests: labTestsList.map(t => ({ name: t, status: 'waiting' })),
@@ -2643,6 +2644,7 @@ function completeWorkspaceVisit() {
         patientId: uid,
         patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
         patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
+        doctorId: (window.ArgonSession ? ArgonSession.get()?.uid : null) || 'doctor',
         docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
         createdAt: new Date().toISOString(),
         requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
@@ -2657,7 +2659,7 @@ function completeWorkspaceVisit() {
       updates[`${BASE}/prescriptions/${prescKey}`] = {
         patientId: uid,
         patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
-        doctorId: 'doctor',
+        doctorId: (window.ArgonSession ? ArgonSession.get()?.uid : null) || 'doctor',
         docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
         medications: activeVisit.rx.map(m => ({ 
           name: m.drug, 
