@@ -1875,14 +1875,7 @@ function updateStaffPass() {
     toast('✅ تم تعيين كلمة المرور للموظف', 'ok');
   });
 }
-      db.ref(BASE + '/settings/logoUrl').set(compressedBase64)
-        .then(() => toast('✅ تم تحديث الشعار بنجاح', 'ok'))
-        .catch(() => toast('❌ فشل الحفظ', 'err'));
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
+
 
 function delLogo() {
   if(!confirm('هل أنت متأكد من حذف الشعار؟')) return;
