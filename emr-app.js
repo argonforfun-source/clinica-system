@@ -154,11 +154,15 @@ window.addEventListener('DOMContentLoaded', () => {
     if (_sets) {
       _sets.mode = (_sets.type === 'complex' || _sets.mode === 'medical_complex') ? 'medical_complex' : 'single_clinic';
       checkAndSeedDefaultDepartments();
-      document.getElementById('lClinicName').textContent = _sets.name || 'العيادة الطبية';
-      document.getElementById('topName').textContent = _sets.name || 'العيادة الطبية';
-      document.getElementById('tlogo').textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON EMR';
+      const elClinicName = document.getElementById('lClinicName');
+      const elTopName = document.getElementById('topName');
+      const elTlogo = document.getElementById('tlogo');
+      if (elClinicName) elClinicName.textContent = _sets.name || 'العيادة الطبية';
+      if (elTopName) elTopName.textContent = _sets.name || 'العيادة الطبية';
+      if (elTlogo) elTlogo.textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON EMR';
     } else {
-      document.getElementById('lClinicName').textContent = 'العيادة غير موجودة';
+      const elClinicName = document.getElementById('lClinicName');
+      if (elClinicName) elClinicName.textContent = 'العيادة غير موجودة';
     }
   });
 
