@@ -2430,7 +2430,7 @@ function _applyComplexMode() {
   // Use already-loaded _sets to avoid a Firebase round-trip
   const isComplex = _sets && (_sets.mode === 'medical_complex' || _sets.type === 'complex');
   document.querySelectorAll('.tab-complex').forEach(el => {
-    el.style.display = isComplex ? 'flex' : 'none';
+    el.style.display = isComplex ? '' : 'none';
   });
 }
 
