@@ -269,13 +269,15 @@ function saveLabResults() {
     updates[`patients/${o.patientId}/visits/${timelineKey}`] = timelineObj;
 
     // 3. Send Doctor Notification
-    db.ref(`${BASE}/notifications`).push({
-      title: 'نتائج تحاليل جاهزة 🔬',
-      message: `تم إنهاء نتائج تحاليل المريض ${sanitize(o.patientName)} لمراجعتها بالـ EMR`,
-      role: 'doctor',
-      docKey: o.doctorId,
-      createdAt: new Date().toISOString()
-    });
+    try {
+      db.ref(`${BASE}/notifications`).push({
+        title: 'نتائج تحاليل جاهزة 🔬',
+        message: `تم إنهاء نتائج تحاليل المريض ${sanitize(o.patientName)} لمراجعتها بالـ EMR`,
+        role: 'doctor',
+        docKey: o.doctorId || 'doctor',
+        createdAt: new Date().toISOString()
+      });
+    } catch(e) { console.error('Notification error', e); }
 
     // 4. Auto-Billing Link: add standard lab service charge (10.00 dinars flat rate per test)
     db.ref(`${BASE}/invoices`).orderByChild('visitId').equalTo(visitId).once('value', invSnap => {
