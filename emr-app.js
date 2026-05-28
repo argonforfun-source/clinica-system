@@ -1658,11 +1658,33 @@ function saveVisit() {
       bp: bp || null,
       pulse: pulse || null
     },
-    prescriptions: rxItems,
-    labOrders: labTestsList,
-    radOrders: radScansList,
+    prescriptions: [...rxItems],
+    labOrders: [...labTestsList],
+    radOrders: [...radScansList],
     attachments: uploadAttachments
   };
+
+  // Auto-capture pending Rx if user forgot to click +
+  const rxD = document.getElementById('rxName')?.value.trim();
+  const rxO = document.getElementById('rxDose')?.value.trim();
+  if (rxD) {
+    rxItems.push({ name: rxD, dose: rxO || '', freq: '', dur: '', note: '' });
+    visitObj.prescriptions.push({ name: rxD, dose: rxO || '', freq: '' });
+  }
+
+  // Auto-capture pending Lab
+  const pendingLab = document.getElementById('labTestInput')?.value.trim();
+  if (pendingLab && !labTestsList.includes(pendingLab)) {
+    labTestsList.push(pendingLab);
+    visitObj.labOrders.push(pendingLab);
+  }
+
+  // Auto-capture pending Radiology
+  const pendingRad = document.getElementById('radScanInput')?.value.trim();
+  if (pendingRad && !radScansList.includes(pendingRad)) {
+    radScansList.push(pendingRad);
+    visitObj.radOrders.push(pendingRad);
+  }
 
   db.ref(`${BASE}/patients/${activePatientId}/visits/${visitId}`).set(visitObj).then(() => {
     // 1. Electronic Prescription Submission
