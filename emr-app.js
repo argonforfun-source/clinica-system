@@ -540,7 +540,7 @@ function renderWaitingRoom() {
       </div>
       <div style="font-weight:800;font-size:1.05rem;margin-bottom:4px">${sanitize(b.patName)}</div>
       <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px">📞 ${sanitize(b.patPhone)}</div>
-      ${isDoc ? `<button class="btn-primary btn-sm" style="width:100%;background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)" onclick="event.stopPropagation(); loadVisitForm('${b.patientId||b.patPhone}', '${k}')"><i class="fas fa-stethoscope"></i> فتح الزيارة الطبية</button>` : ''}
+      ${isDoc ? `<button class="btn-primary btn-sm" style="width:100%;background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)" onclick="event.stopPropagation(); loadVisitForm('${b.patientId||b.patPhone}', '${k}', '${sanitize(b.patName)}')"><i class="fas fa-stethoscope"></i> بدء زيارة طبية</button>` : ''}
     </div>`;
   }).join('');
 }
@@ -2180,19 +2180,41 @@ function runCollisionTest() {
 let activeVisit = { uid: null, bookingId: null, rx: [] };
 
 // ── Resolve patient UID from push-key OR phone fallback ──
-function resolvePatientUid(rawUid) {
+function resolvePatientUid(rawUid, expectedName = '') {
   // If direct key exists in local cache, use it
   if (_patients[rawUid]) return rawUid;
+  
   // Otherwise search by phone number (legacy bookings)
   const phone = cleanPhone(rawUid);
-  const found = Object.entries(_patients).find(([k, p]) => {
+  const matched = Object.entries(_patients).filter(([k, p]) => {
     return cleanPhone(p.info?.phone || '') === phone;
   });
-  return found ? found[0] : null;
+
+  if (!matched.length) return null;
+
+  expectedName = (expectedName || '').trim().toLowerCase();
+
+  // If there's an expected name, strictly verify it to prevent returning the wrong family member
+  if (expectedName) {
+    const exact = matched.find(([k, p]) => (p.info?.name || '').trim().toLowerCase() === expectedName);
+    if (exact) return exact[0];
+
+    const partial = matched.find(([k, p]) => {
+      const pn = (p.info?.name || '').toLowerCase();
+      return pn.includes(expectedName) || expectedName.includes(pn);
+    });
+    if (partial) return partial[0];
+
+    // If name provided but no match found, do NOT return a random person's ID!
+    return null;
+  }
+
+  // If no expectedName provided, return the first match (legacy behavior fallback)
+  return matched[0][0];
 }
 
-function loadVisitForm(rawUid, bookingId) {
-  const uid = resolvePatientUid(rawUid);
+function loadVisitForm(rawUid, bookingId, expectedName = '') {
+  const uid = resolvePatientUid(rawUid, expectedName);
   if (!uid) {
     // Patient not yet registered — open workspace with booking data only
     const booking = _liveBookings[bookingId] || {};
