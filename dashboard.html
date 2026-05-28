@@ -1486,20 +1486,20 @@ db.ref(BASE+'/staff').on('value', snap => {
     const s=_staff[k];
     const roleMap = { 'pharmacist': 'صيدلي', 'lab': 'فني مختبر', 'radiology': 'فني أشعة', 'reception': 'موظف استقبال', 'admin': 'إدارة' };
     const hasPass = s.enterpriseAuth && s.enterpriseAuth.passwordHash;
-    return \`<div class="dc">
-      <div class="dc-top" style="height:70px; font-size: 2rem;">\${s.emoji||'👤'}</div>
+    return `<div class="dc">
+      <div class="dc-top" style="height:70px; font-size: 2rem;">${s.emoji||'👤'}</div>
       <div class="dc-body">
-        <div class="dc-name">\${sanitize(s.name)}</div>
-        <div class="dc-spec" style="color:var(--sky)">\${roleMap[s.role] || s.role}</div>
-        <div style="font-size:0.75rem;margin-top:8px;font-weight:700;color:\${hasPass?'var(--green)':'var(--red)'}">
-          <i class="fas \${hasPass?'fa-lock':'fa-lock-open'}"></i> \${hasPass?'تم تعيين كلمة مرور':'كلمة المرور مفقودة'}
+        <div class="dc-name">${sanitize(s.name)}</div>
+        <div class="dc-spec" style="color:var(--sky)">${roleMap[s.role] || s.role}</div>
+        <div style="font-size:0.75rem;margin-top:8px;font-weight:700;color:${hasPass?'var(--green)':'var(--red)'}">
+          <i class="fas ${hasPass?'fa-lock':'fa-lock-open'}"></i> ${hasPass?'تم تعيين كلمة مرور':'كلمة المرور مفقودة'}
         </div>
       </div>
       <div style="display:flex;border-top:1px solid rgba(13,148,136,.1)">
-        <button onclick="editStaff('\${k}')" style="flex:1;background:none;border:none;border-left:1px solid rgba(13,148,136,.1);color:var(--sky);padding:8px;font-family:'Tajawal',sans-serif;font-size:.75rem;cursor:pointer;transition:.2s"><i class="fas fa-edit"></i> تعديل</button>
-        <button class="bdel" style="flex:1;border:none" onclick="db.ref(BASE+'/staff/\${k}').remove();toast('تم الحذف','ok')"><i class="fas fa-trash"></i> حذف</button>
+        <button onclick="editStaff('${k}')" style="flex:1;background:none;border:none;border-left:1px solid rgba(13,148,136,.1);color:var(--sky);padding:8px;font-family:'Tajawal',sans-serif;font-size:.75rem;cursor:pointer;transition:.2s"><i class="fas fa-edit"></i> تعديل</button>
+        <button class="bdel" style="flex:1;border:none" onclick="db.ref(BASE+'/staff/${k}').remove();toast('تم الحذف','ok')"><i class="fas fa-trash"></i> حذف</button>
       </div>
-    </div>\`;
+    </div>`;
   }).join('');
 });
 
@@ -1825,12 +1825,12 @@ function addStaff() {
   };
   
   if (editingStaffKey) {
-    db.ref(\`\${BASE}/staff/\${editingStaffKey}\`).update(staffObj).then(() => {
+    db.ref(`${BASE}/staff/${editingStaffKey}`).update(staffObj).then(() => {
       toast('✅ تم تحديث الموظف', 'ok');
       cancelStaffEdit();
     });
   } else {
-    db.ref(\`\${BASE}/staff\`).push(staffObj).then(() => {
+    db.ref(`${BASE}/staff`).push(staffObj).then(() => {
       cancelStaffEdit();
       toast('✅ تم إضافة الموظف', 'ok');
     });
