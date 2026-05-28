@@ -660,7 +660,7 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
   // Create a new patient profile since the name didn't match anyone in the family
   const newRef = db.ref(`${BASE}/patients`).push();
   const patPhone = cleanPhone(booking.patPhone || '');
-  newRef.set({
+  const patObj = {
     info: {
       name: booking.patName || 'مريض',
       phone: patPhone,
@@ -669,7 +669,12 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
       mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
       createdAt: new Date().toISOString()
     }
-  }).then(() => {
+  };
+
+  // Inject into local memory immediately so viewPatientFile doesn't abort due to Firebase latency
+  _patients[newRef.key] = patObj;
+
+  newRef.set(patObj).then(() => {
     db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(newRef.key).then(() => {
       if (startVisit) { sw('newVisit'); loadVisitForm(newRef.key); } else { viewPatientFile(newRef.key); sw('patFile'); }
     });
