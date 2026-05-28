@@ -147,8 +147,11 @@
           <div class="vform">
             <div class="vform-title"><i class="fas fa-pills"></i> الوصفة الطبية (Rx)</div>
             <div class="fi-row" style="margin-bottom:12px;">
-              <input type="text" id="rxDrug" class="fi" placeholder="اسم الدواء...">
-              <input type="text" id="rxDose" class="fi" placeholder="الجرعة (مثال: حبة مرتين يومياً)">
+              <div style="position:relative;flex:1">
+                <input type="text" id="rxDrug" class="fi" placeholder="اسم الدواء (ابحث في مخزون الصيدلية أو أدخل يدوياً)..." onkeyup="searchWorkspaceDrug()" onfocus="searchWorkspaceDrug()" autocomplete="off" style="width:100%">
+                <div id="rxWorkspaceDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:220px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
+              </div>
+              <input type="text" id="rxDose" class="fi" placeholder="الجرعة (مثال: حبة مرتين يومياً)" style="flex:1">
             </div>
             <button class="btn-secondary" onclick="addWorkspaceRx()" style="width:100%;justify-content:center;margin-bottom:16px;"><i class="fas fa-plus"></i> إضافة الدواء للوصفة</button>
             <table class="rx-table">
@@ -306,8 +309,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
-<script src="argon-core.js?v=3"></script>
-<script src="argon-enterprise.js?v=3"></script>
-<script src="emr-app.js?v=3"></script>
+<script src="argon-core.js?v=4"></script>
+<script src="argon-enterprise.js?v=4"></script>
+<script src="emr-app.js?v=4"></script>
 </body>
 </html>

@@ -1367,8 +1367,8 @@ function loadVisitForm(uid) {
         <div class="vform-title" style="margin-bottom:8px"><i class="fas fa-prescription-bottle-alt"></i> الوصفة الطبية الإلكترونية</div>
         <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
           <div style="position:relative;flex:2;min-width:200px">
-            <input id="rxName" class="fi" placeholder="${_sets && _sets.mode === 'medical_complex' ? 'اسم الدواء (ابحث في مخزون الصيدلية أو أدخل يدوياً)' : 'اسم الدواء (الاسم العلمي أو التجاري)'}" onkeyup="${_sets && _sets.mode === 'medical_complex' ? 'searchDrug()' : ''}" onfocus="${_sets && _sets.mode === 'medical_complex' ? 'searchDrug()' : ''}" autocomplete="off" style="width:100%">
-            ${_sets && _sets.mode === 'medical_complex' ? `<div id="rxDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:220px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>` : ''}
+            <input id="rxName" class="fi" placeholder="اسم الدواء (ابحث في مخزون الصيدلية أو أدخل يدوياً)" onkeyup="searchDrug()" onfocus="searchDrug()" autocomplete="off" style="width:100%">
+            <div id="rxDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:220px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
           </div>
           <input id="rxDose" class="fi" placeholder="الجرعة (مثال: 500mg)" style="flex:1;min-width:100px">
           <input id="rxFreq" class="fi" placeholder="التكرار (مثال: 3 مرات)" style="flex:1;min-width:100px">
@@ -1491,39 +1491,18 @@ function removeRxItem(idx) {
 }
 
 // ── SMART DRUG AUTOCOMPLETE ENGINE ──
-function searchDrug() {
-  const inp = document.getElementById('rxName');
-  const dd = document.getElementById('rxDropdown');
-  if (!inp || !dd) return;
-  
-  const q = inp.value.trim().toLowerCase();
-  
-  if (!q) {
-    dd.style.display = 'none';
-    return;
-  }
-
-  const items = Object.values(_pharmacyInventory || {});
-  // Hybrid match: scientific name, trade name, or barcode
-  const matched = items.filter(item => 
-    (item.name && item.name.toLowerCase().includes(q)) ||
-    (item.scientificName && item.scientificName.toLowerCase().includes(q)) ||
-    (item.barcode && item.barcode.includes(q))
-  );
-
+function _buildDrugDropdownHTML(matched, query, selectFuncName) {
   if (!matched.length) {
-    dd.innerHTML = `<div style="padding:10px;font-size:0.8rem;color:var(--muted);text-align:center">لم يتم العثور على الدواء في الصيدلية.<br>سيتم إضافته كدواء خارجي (غير متوفر) ✅</div>`;
-    dd.style.display = 'block';
-    return;
+    return `<div style="padding:10px;font-size:0.8rem;color:var(--muted);text-align:center">لم يتم العثور على "${sanitize(query)}" في المستودع.<br>سيتم إضافته كدواء خارجي (غير متوفر) ✅</div>`;
   }
 
-  dd.innerHTML = matched.map(m => {
+  return matched.map(m => {
     const isOut = m.stock <= 0;
     const stockBadge = isOut 
       ? `<span style="font-size:0.65rem;color:#ef4444;background:rgba(239,68,68,0.1);padding:2px 6px;border-radius:4px">نفد من المستودع ❌</span>`
       : `<span style="font-size:0.65rem;color:var(--green);background:rgba(16,185,129,0.1);padding:2px 6px;border-radius:4px">متوفر: ${m.stock} عبوة ✅</span>`;
       
-    return `<div onclick="selectDrug('${m.name.replace(/'/g, "\\'")}')" style="padding:10px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:0.2s" onmouseover="this.style.background='rgba(13,148,136,0.1)'" onmouseout="this.style.background='transparent'">
+    return `<div onclick="${selectFuncName}('${m.name.replace(/'/g, "\\'")}')" style="padding:10px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:0.2s" onmouseover="this.style.background='rgba(13,148,136,0.1)'" onmouseout="this.style.background='transparent'">
       <div>
         <div style="font-weight:700;font-size:0.85rem;color:var(--text)">${sanitize(m.name)}</div>
         ${m.scientificName ? `<div style="font-size:0.7rem;color:var(--muted);font-family:'IBM Plex Mono',monospace">${sanitize(m.scientificName)}</div>` : ''}
@@ -1534,7 +1513,29 @@ function searchDrug() {
       </div>
     </div>`;
   }).join('');
+}
+
+function _searchInventoryLogic(query) {
+  const items = Object.values(_pharmacyInventory || {});
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
   
+  return items.filter(item => 
+    (item.name && item.name.toLowerCase().includes(q)) ||
+    (item.scientificName && item.scientificName.toLowerCase().includes(q)) ||
+    (item.arabicName && item.arabicName.includes(q)) ||
+    (item.barcode && item.barcode.includes(q))
+  );
+}
+
+// Old UI Search
+function searchDrug() {
+  const inp = document.getElementById('rxName');
+  const dd = document.getElementById('rxDropdown');
+  if (!inp || !dd) return;
+  const q = inp.value.trim();
+  if (!q) { dd.style.display = 'none'; return; }
+  dd.innerHTML = _buildDrugDropdownHTML(_searchInventoryLogic(q), q, 'selectDrug');
   dd.style.display = 'block';
 }
 
@@ -1543,16 +1544,39 @@ function selectDrug(name) {
   const dd = document.getElementById('rxDropdown');
   if (inp) inp.value = name;
   if (dd) dd.style.display = 'none';
-  document.getElementById('rxDose').focus();
+  const doseInp = document.getElementById('rxDose');
+  if (doseInp) doseInp.focus();
+}
+
+// Workspace UI Search
+function searchWorkspaceDrug() {
+  const inp = document.getElementById('rxDrug');
+  const dd = document.getElementById('rxWorkspaceDropdown');
+  if (!inp || !dd) return;
+  const q = inp.value.trim();
+  if (!q) { dd.style.display = 'none'; return; }
+  dd.innerHTML = _buildDrugDropdownHTML(_searchInventoryLogic(q), q, 'selectWorkspaceDrug');
+  dd.style.display = 'block';
+}
+
+function selectWorkspaceDrug(name) {
+  const inp = document.getElementById('rxDrug');
+  const dd = document.getElementById('rxWorkspaceDropdown');
+  if (inp) inp.value = name;
+  if (dd) dd.style.display = 'none';
+  const doseInp = document.getElementById('rxDose');
+  if (doseInp) doseInp.focus();
 }
 
 // Hide dropdown when clicking outside
 document.addEventListener('click', (e) => {
-  const dd = document.getElementById('rxDropdown');
-  const inp = document.getElementById('rxName');
-  if (dd && inp && e.target !== dd && e.target !== inp && !dd.contains(e.target)) {
-    dd.style.display = 'none';
-  }
+  const dd1 = document.getElementById('rxDropdown');
+  const inp1 = document.getElementById('rxName');
+  if (dd1 && inp1 && e.target !== inp1 && !dd1.contains(e.target)) dd1.style.display = 'none';
+  
+  const dd2 = document.getElementById('rxWorkspaceDropdown');
+  const inp2 = document.getElementById('rxDrug');
+  if (dd2 && inp2 && e.target !== inp2 && !dd2.contains(e.target)) dd2.style.display = 'none';
 });
 
 // Attachments Handling
