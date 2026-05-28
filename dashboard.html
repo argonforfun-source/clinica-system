@@ -451,6 +451,7 @@
               <option value="">— عام —</option>
             </select>
           </div>
+          <div><label class="mfl" style="color:var(--teal)">كلمة مرور البوابة 🔒</label><input type="password" id="dPass" class="mfi" placeholder="اكتب لتعيين باسورد جديد"></div>
           <button class="badd" id="btnCancelEdit" onclick="cancelDocEdit()" style="display:none;background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)"><i class="fas fa-times" style="margin-left:4px"></i>تراجع</button>
         </div>
         
@@ -1576,12 +1577,17 @@ function addDoc() {
   
   if (editingDocKey) {
     db.ref(`${BASE}/doctors/${editingDocKey}`).update(docObj).then(() => {
+      const dPass = document.getElementById('dPass');
+      if(dPass && dPass.value) ArgonEnterpriseAuth.setStaffCredentials(editingDocKey, dPass.value, true);
       toast('✅ تم تحديث الطبيب', 'ok');
       cancelDocEdit();
     });
   } else {
     docObj.available = true; docObj.avgRating = 0; docObj.ratingCount = 0;
-    db.ref(`${BASE}/doctors`).push(docObj).then(() => {
+    const docRef = db.ref(`${BASE}/doctors`).push();
+    docRef.set(docObj).then(() => {
+      const dPass = document.getElementById('dPass');
+      if(dPass && dPass.value) ArgonEnterpriseAuth.setStaffCredentials(docRef.key, dPass.value, true);
       cancelDocEdit();
       toast('✅ تم إضافة الطبيب', 'ok');
     });
@@ -1626,6 +1632,7 @@ function cancelDocEdit() {
   document.getElementById('dWs').value = '09:00';
   document.getElementById('dWe').value = '17:00';
   document.getElementById('dEm').value = '👨‍⚕️';
+  const dpEl = document.getElementById('dPass'); if(dpEl) dpEl.value = '';
   document.getElementById('dDept').value = '';
   
   // Reset workday buttons (default to Sat-Thu active)
@@ -1823,11 +1830,16 @@ function addStaff() {
   
   if (editingStaffKey) {
     db.ref(`${BASE}/staff/${editingStaffKey}`).update(staffObj).then(() => {
+      const sPass = document.getElementById('sftPass');
+      if(sPass && sPass.value) ArgonEnterpriseAuth.setStaffCredentials(editingStaffKey, sPass.value, false);
       toast('✅ تم تحديث الموظف', 'ok');
       cancelStaffEdit();
     });
   } else {
-    db.ref(`${BASE}/staff`).push(staffObj).then(() => {
+    const staffRef = db.ref(`${BASE}/staff`).push();
+    staffRef.set(staffObj).then(() => {
+      const sPass = document.getElementById('sftPass');
+      if(sPass && sPass.value) ArgonEnterpriseAuth.setStaffCredentials(staffRef.key, sPass.value, false);
       cancelStaffEdit();
       toast('✅ تم إضافة الموظف', 'ok');
     });
@@ -1845,7 +1857,6 @@ function editStaff(k) {
   b.innerHTML = '<i class="fas fa-save" style="margin-left:4px"></i>تحديث معلومات الموظف';
   b.style.background = 'linear-gradient(135deg, var(--amber), #d97706)';
   document.getElementById('btnCancelStaffEdit').style.display = 'block';
-  document.getElementById('staffAuthPanel').style.display = 'block';
   document.getElementById('sftN').focus();
 }
 
@@ -1860,7 +1871,6 @@ function cancelStaffEdit() {
   b.innerHTML = '<i class="fas fa-plus" style="margin-left:4px"></i>إضافة موظف';
   b.style.background = 'linear-gradient(135deg,var(--teal),var(--sky))';
   document.getElementById('btnCancelStaffEdit').style.display = 'none';
-  document.getElementById('staffAuthPanel').style.display = 'none';
 }
 
 function updateStaffPass() {
