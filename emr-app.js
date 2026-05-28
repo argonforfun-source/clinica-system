@@ -1038,8 +1038,10 @@ async function safeViewPatientFile(phoneOrUid) {
         </div>
       ` : '';
 
-      const labReqsStr = (v.labOrders || []).join(' ، ');
-      const radReqsStr = (v.radOrders || []).join(' ، ');
+      const labArr = Array.isArray(v.labOrders) ? v.labOrders : Object.values(v.labOrders || {});
+      const radArr = Array.isArray(v.radOrders) ? v.radOrders : Object.values(v.radOrders || {});
+      const labReqsStr = labArr.join(' ، ');
+      const radReqsStr = radArr.join(' ، ');
 
       // Upgraded Departmental Card stylings
       const isPharmacist = v.docKey === 'pharmacist';
@@ -2557,8 +2559,8 @@ function completeWorkspaceVisit() {
     }
     
     if (radScansList && radScansList.length > 0) {
-      const radKey = db.ref(`${BASE}/rad_orders`).push().key;
-      updates[`${BASE}/rad_orders/${radKey}`] = {
+      const radKey = db.ref(`${BASE}/radiology_orders`).push().key;
+      updates[`${BASE}/radiology_orders/${radKey}`] = {
         patientId: uid,
         patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
         patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
@@ -2606,8 +2608,8 @@ function completeWorkspaceVisit() {
     }
     
     if (radScansList && radScansList.length > 0) {
-      const radKey = db.ref(`${BASE}/rad_orders`).push().key;
-      updates[`${BASE}/rad_orders/${radKey}`] = {
+      const radKey = db.ref(`${BASE}/radiology_orders`).push().key;
+      updates[`${BASE}/radiology_orders/${radKey}`] = {
         patientId: newUid,
         patientName: booking.patName || activeVisit.name || 'مريض',
         patientPhone: booking.patPhone || activeVisit.phone || '',
