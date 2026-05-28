@@ -587,8 +587,14 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
     
     // Strict Check: If names are radically different, the booking system mistakenly linked them due to a shared phone
     let nameMismatch = false;
-    if (bookingName && patName) {
-      if (bookingName !== patName && !patName.includes(bookingName) && !bookingName.includes(patName)) {
+    if (!bookingName || !patName) {
+      nameMismatch = true; // If one is empty, we can't trust it. It's a mismatch.
+    } else {
+      // Compare first names strictly to avoid family name overlap
+      const bFirstName = bookingName.split(' ')[0];
+      const pFirstName = patName.split(' ')[0];
+      
+      if (bFirstName !== pFirstName) {
         nameMismatch = true;
       }
     }
@@ -630,8 +636,10 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
     }
 
     const partial = matched.find(([k, p]) => {
-      const pn = (p.info?.name || '').toLowerCase();
-      return pn.includes(bookingName) || bookingName.includes(pn);
+      const pn = (p.info?.name || '').toLowerCase().trim();
+      const bFirst = bookingName.split(' ')[0];
+      const pFirst = pn.split(' ')[0];
+      return bFirst && pFirst && bFirst === pFirst;
     });
     if (partial) {
       if (startVisit) { sw('newVisit'); loadVisitForm(partial[0]); } else { viewPatientFile(partial[0]); sw('patFile'); }
