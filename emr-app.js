@@ -564,13 +564,13 @@ function renderWaitingRoom() {
       </div>
       <div style="font-weight:800;font-size:1.05rem;margin-bottom:4px">${sanitize(b.patName)}</div>
       <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px">📞 ${sanitize(b.patPhone)}</div>
-      ${isDoc ? `<button class="btn-primary btn-sm" style="width:100%;background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)" onclick="event.stopPropagation(); loadVisitForm('${b.patientId||b.patPhone}', '${k}', '${sanitize(b.patName)}')"><i class="fas fa-stethoscope"></i> بدء زيارة طبية</button>` : ''}
+      ${isDoc ? `<button class="btn-primary btn-sm" style="width:100%;background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)" onclick="event.stopPropagation(); openPatientFromBooking('${k}', true)"><i class="fas fa-stethoscope"></i> بدء زيارة طبية</button>` : ''}
     </div>`;
   }).join('');
 }
 
 // Open patient file from waiting room — resolves correct patient by phone+name from booking
-function openPatientFromBooking(bookingKey) {
+function openPatientFromBooking(bookingKey, startVisit = false) {
   const booking = _liveBookings[bookingKey] || {};
   const rawUid = booking.patientId || booking.patPhone;
   const bookingName = (booking.patName || '').trim().toLowerCase();
@@ -580,11 +580,33 @@ function openPatientFromBooking(bookingKey) {
     return;
   }
 
-  // 1️⃣ Direct Firebase Push Key match (patientId)
+  // 1️⃣ Direct Firebase Push Key match (patientId) WITH Strict Name Integrity
   if (booking.patientId && _patients[booking.patientId]) {
-    viewPatientFile(booking.patientId);
-    sw('patFile');
-    return;
+    const pInfo = _patients[booking.patientId].info || {};
+    const patName = (pInfo.name || '').trim().toLowerCase();
+    
+    // Strict Check: If names are radically different, the booking system mistakenly linked them due to a shared phone
+    let nameMismatch = false;
+    if (bookingName && patName) {
+      if (bookingName !== patName && !patName.includes(bookingName) && !bookingName.includes(patName)) {
+        nameMismatch = true;
+      }
+    }
+
+    if (!nameMismatch) {
+      if (startVisit) {
+        sw('newVisit');
+        loadVisitForm(booking.patientId);
+      } else {
+        viewPatientFile(booking.patientId);
+        sw('patFile');
+      }
+      return;
+    } else {
+      console.warn('⚠️ EMR Integrity: Booking PatientID mismatch with Name. Falling back to phone resolver.', { bookingName, patName });
+      // Clear the poisoned patientId for this resolution attempt
+      booking.patientId = null; 
+    }
   }
 
   // 2️⃣ Search by Phone
@@ -603,8 +625,7 @@ function openPatientFromBooking(bookingKey) {
   if (bookingName) {
     const exact = matched.find(([k, p]) => (p.info?.name || '').trim().toLowerCase() === bookingName);
     if (exact) {
-      viewPatientFile(exact[0]);
-      sw('patFile');
+      if (startVisit) { sw('newVisit'); loadVisitForm(exact[0]); } else { viewPatientFile(exact[0]); sw('patFile'); }
       return;
     }
 
@@ -613,16 +634,14 @@ function openPatientFromBooking(bookingKey) {
       return pn.includes(bookingName) || bookingName.includes(pn);
     });
     if (partial) {
-      viewPatientFile(partial[0]);
-      sw('patFile');
+      if (startVisit) { sw('newVisit'); loadVisitForm(partial[0]); } else { viewPatientFile(partial[0]); sw('patFile'); }
       return;
     }
   }
 
   // 4️⃣ If we have exactly 1 match and no name conflict was explicitly detected (or name was missing)
   if (matched.length === 1 && !bookingName) {
-    viewPatientFile(matched[0][0]);
-    sw('patFile');
+    if (startVisit) { sw('newVisit'); loadVisitForm(matched[0][0]); } else { viewPatientFile(matched[0][0]); sw('patFile'); }
     return;
   }
 
