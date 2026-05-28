@@ -88,7 +88,10 @@ function filterLab(status) {
 // Render Lab Orders cards list
 function renderLabOrders() {
   const grid = document.getElementById('labGrid');
-  const items = Object.entries(_orders).filter(([k, v]) => v.status === currentLabFilter);
+  const items = Object.entries(_orders).filter(([k, v]) => {
+    if (currentLabFilter === 'waiting') return v.status === 'waiting' || v.status === 'pending';
+    return v.status === currentLabFilter;
+  });
 
   if (!items.length) {
     grid.innerHTML = `

@@ -88,7 +88,10 @@ function filterRad(status) {
 // Render Radiology Orders cards list
 function renderRadOrders() {
   const grid = document.getElementById('radGrid');
-  const items = Object.entries(_orders).filter(([k, v]) => v.status === currentRadFilter);
+  const items = Object.entries(_orders).filter(([k, v]) => {
+    if (currentRadFilter === 'waiting') return v.status === 'waiting' || v.status === 'pending';
+    return v.status === currentRadFilter;
+  });
 
   if (!items.length) {
     grid.innerHTML = `
