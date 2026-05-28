@@ -375,6 +375,17 @@ async function migratePhoneKeyedPatients() {
 
 // Sidebar Navigation
 function sw(id, el) {
+  // Release patient locks when leaving patient-specific contexts
+  if (id !== 'patFile' && id !== 'newVisit') {
+    if (window.EMRContext && window.EMRContext.sessionLock) {
+      if (typeof BASE !== 'undefined' && window.EMRContext.activePatientId) {
+        db.ref(`${BASE}/active_sessions/${window.EMRContext.activePatientId}`).remove();
+      }
+      window.EMRContext.sessionLock = false;
+      window.EMRContext.activePatientId = null;
+    }
+  }
+
   document.querySelectorAll('.sec').forEach(s => s.classList.remove('on'));
   document.getElementById(id).classList.add('on');
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
