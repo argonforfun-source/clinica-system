@@ -25,6 +25,30 @@ let _patients = {};
 let _doctors = {};
 let _depts = {};
 let activePatientId = null;
+
+window.EMRContext = {
+    activePatientId: null,
+    activeBookingId: null,
+    activeDoctorId: null,
+    sessionLock: false,
+    renderToken: null,
+    renderVersion: 0,
+    initialized: false,
+    lastOpenedAt: 0
+};
+
+window.AuditAPI = {
+    log(type, payload={}){
+        console.log('[AUDIT]', type, payload);
+    }
+};
+
+// ── SOFT LOCK CLEANUP ON TAB CLOSE ──
+window.addEventListener('beforeunload', () => {
+    if (window.EMRContext && window.EMRContext.activePatientId && typeof BASE !== 'undefined') {
+        db.ref(`${BASE}/active_sessions/${window.EMRContext.activePatientId}`).remove();
+    }
+});
 let rxItems = [];
 let uploadAttachments = [];
 let _labOrders = {};
@@ -802,8 +826,20 @@ function saveNewPatient() {
   }).catch(() => toast('❌ فشل حفظ المريض', 'err'));
 }
 
-// View Patient File — Smart UUID and Phone Resolver
 function viewPatientFile(phoneOrUid) {
+  return safeViewPatientFile(phoneOrUid);
+}
+
+async function safeViewPatientFile(phoneOrUid) {
+  if (window.EMRContext && window.EMRContext.sessionLock) return;
+  
+  const token = crypto.randomUUID();
+  window.EMRContext.renderToken = token;
+
+  const session = window.ArgonSession ? ArgonSession.get() : {};
+  const loggedInDoctorId = session?.staffId || session?.username || null;
+  const isAdmin = session?.role === 'admin';
+
   let uid = phoneOrUid;
   
   if (!_patients[uid]) {
@@ -823,9 +859,53 @@ function viewPatientFile(phoneOrUid) {
     }
   }
 
+  // Global Soft Lock Check
+  if (typeof BASE !== 'undefined') {
+    const lockRef = db.ref(`${BASE}/active_sessions/${uid}`);
+    const lockSnap = await lockRef.once('value');
+    if (lockSnap.exists()) {
+      const lockData = lockSnap.val();
+      if (!isAdmin && lockData.doctorId !== loggedInDoctorId) {
+        toast(`الملف الطبي مفتوح لتعديله بواسطة ${lockData.doctorName}`, 'err');
+        if (window.AuditAPI) window.AuditAPI.log('PATIENT_FILE_LOCKED_CONFLICT', { patientId: uid, lockedBy: lockData.doctorId });
+        return;
+      }
+    }
+
+    // Acquire Global Soft Lock
+    await lockRef.set({
+      doctorId: loggedInDoctorId,
+      doctorName: session?.displayName || session?.name || 'طبيب',
+      lockedAt: Date.now()
+    });
+    lockRef.onDisconnect().remove();
+  }
+
+  // Lock Context
+  window.EMRContext.sessionLock = true;
+  window.EMRContext.activePatientId = uid;
+  window.EMRContext.activeDoctorId = loggedInDoctorId;
+  window.EMRContext.lastOpenedAt = Date.now();
+  window.EMRContext.renderVersion++;
+  window.EMRContext.initialized = true;
+
+  if (window.AuditAPI) {
+    window.AuditAPI.log('SESSION_LOCK_TRIGGERED', { patientId: uid });
+    window.AuditAPI.log('PATIENT_FILE_OPENED', { patientId: uid });
+  }
+
   activePatientId = uid;
   const p = _patients[uid];
-  if (!p) return;
+  
+  if (window.EMRContext.renderToken !== token) {
+      if (window.AuditAPI) window.AuditAPI.log('STALE_RENDER_ABORTED', { token });
+      return;
+  }
+  
+  if (!p) {
+      window.EMRContext.sessionLock = false;
+      return;
+  }
 
   const info = p.info || {};
   
