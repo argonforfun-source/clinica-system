@@ -2503,6 +2503,26 @@ function completeWorkspaceVisit() {
     return toast('يرجى كتابة التشخيص أو شكوى المريض لإغلاق الزيارة', 'err');
   }
 
+  // Auto-capture any pending inputs that the user typed but forgot to click "Add" for
+  const pendingRxDrug = document.getElementById('rxDrug')?.value.trim();
+  const pendingRxDose = document.getElementById('rxDose')?.value.trim();
+  if (pendingRxDrug) {
+    activeVisit.rx.push({ drug: pendingRxDrug, dose: pendingRxDose || '' });
+    renderWorkspaceRx();
+  }
+
+  const pendingLab = document.getElementById('labTestInput')?.value.trim();
+  if (pendingLab && !labTestsList.includes(pendingLab)) {
+    labTestsList.push(pendingLab);
+    renderLabOrderTags();
+  }
+
+  const pendingRad = document.getElementById('radScanInput')?.value.trim();
+  if (pendingRad && !radScansList.includes(pendingRad)) {
+    radScansList.push(pendingRad);
+    renderRadOrderTags();
+  }
+
   // Build visit object with field names matching what the Timeline renderer reads
   const now = new Date();
   const visitObj = {
