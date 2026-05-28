@@ -64,6 +64,7 @@ function initPharmacy() {
   db.ref(BASE + '/pharmacy_inventory').on('child_added',   snap => { _inventory[snap.key] = snap.val(); debounceInv(); });
   db.ref(BASE + '/pharmacy_inventory').on('child_changed', snap => { _inventory[snap.key] = snap.val(); debounceInv(); });
   db.ref(BASE + '/pharmacy_inventory').on('child_removed', snap => { delete _inventory[snap.key]; debounceInv(); });
+  db.ref(BASE + '/pharmacy_inventory').once('value', snap => { if (!snap.exists()) renderInventory(); });
 
   // 2. Enterprise Incremental Prescriptions Inbox
   let _prescTimer = null;
@@ -71,6 +72,7 @@ function initPharmacy() {
   db.ref(BASE + '/prescriptions').on('child_added',   snap => { _prescriptions[snap.key] = snap.val(); debouncePresc(); });
   db.ref(BASE + '/prescriptions').on('child_changed', snap => { _prescriptions[snap.key] = snap.val(); debouncePresc(); });
   db.ref(BASE + '/prescriptions').on('child_removed', snap => { delete _prescriptions[snap.key]; debouncePresc(); });
+  db.ref(BASE + '/prescriptions').once('value', snap => { if (!snap.exists()) renderPrescriptions(); });
 }
 
 // Sidebar switcher
