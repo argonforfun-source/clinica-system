@@ -2436,12 +2436,16 @@ function _applyComplexMode() {
 
 // Helper: clear all workspace form fields
 function _resetVisitForms() {
-  ['vTemp','vBp','vHr','vO2','vComplaint','vDiag','rxDrug','rxDose','vLabReq','vRadReq'].forEach(id => {
+  ['vTemp','vBp','vHr','vO2','vComplaint','vDiag','rxDrug','rxDose','labTestInput','radScanInput'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
   activeVisit.rx = [];
+  labTestsList = [];
+  radScansList = [];
   renderWorkspaceRx();
+  if (typeof renderLabOrderChips === 'function') renderLabOrderChips();
+  if (typeof renderRadOrderChips === 'function') renderRadOrderChips();
 }
 
 function cancelVisit() {
@@ -2526,10 +2530,8 @@ function completeWorkspaceVisit() {
   };
 
   // Lab / Radiology orders — timeline reads v.labOrders[] and v.radOrders[]
-  const labReqRaw = document.getElementById('vLabReq')?.value.trim() || '';
-  const radReqRaw = document.getElementById('vRadReq')?.value.trim() || '';
-  if (labReqRaw) visitObj.labOrders = labReqRaw.split('،').map(s => s.trim()).filter(Boolean);
-  if (radReqRaw) visitObj.radOrders = radReqRaw.split('،').map(s => s.trim()).filter(Boolean);
+  if (labTestsList && labTestsList.length) visitObj.labOrders = [...labTestsList];
+  if (radScansList && radScansList.length) visitObj.radOrders = [...radScansList];
 
   const updates = {};
 
@@ -2538,18 +2540,36 @@ function completeWorkspaceVisit() {
     const timelineKey = db.ref(`${BASE}/patients/${uid}/visits`).push().key;
     updates[`${BASE}/patients/${uid}/visits/${timelineKey}`] = visitObj;
     if (bookingId) updates[`${BASE}/live_bookings/${bookingId}/status`] = 'completed';
-    if (labReqRaw || radReqRaw) {
-      const refKey = db.ref(`${BASE}/internal_referrals`).push().key;
-      updates[`${BASE}/internal_referrals/${refKey}`] = {
+    
+    // Create actual lab and radiology orders
+    if (labTestsList && labTestsList.length > 0) {
+      const labKey = db.ref(`${BASE}/lab_orders`).push().key;
+      updates[`${BASE}/lab_orders/${labKey}`] = {
         patientId: uid,
-        patName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
-        date: new Date().toISOString(),
-        fromDept: 'العيادات',
-        toDept: labReqRaw ? 'المختبر' : 'الأشعة',
-        request: labReqRaw || radReqRaw,
-        status: 'pending'
+        patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
+        patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
+        docName: localStorage.getItem('empName') || 'طبيب',
+        createdAt: new Date().toISOString(),
+        requestedTests: labTestsList.map(t => ({ name: t, status: 'pending' })),
+        status: 'pending',
+        visitId: timelineKey
       };
     }
+    
+    if (radScansList && radScansList.length > 0) {
+      const radKey = db.ref(`${BASE}/rad_orders`).push().key;
+      updates[`${BASE}/rad_orders/${radKey}`] = {
+        patientId: uid,
+        patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
+        patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
+        docName: localStorage.getItem('empName') || 'طبيب',
+        createdAt: new Date().toISOString(),
+        requestedScans: radScansList.map(s => ({ name: s, status: 'pending' })),
+        status: 'pending',
+        visitId: timelineKey
+      };
+    }
+
     _writeVisitUpdates(updates, diag);
   }
   // --- Case 2: Unregistered patient — auto-register then save ---
@@ -2569,6 +2589,36 @@ function completeWorkspaceVisit() {
     const timelineKey = db.ref(`${BASE}/patients/${newUid}/visits`).push().key;
     updates[`${BASE}/patients/${newUid}/visits/${timelineKey}`] = visitObj;
     if (bookingId) updates[`${BASE}/live_bookings/${bookingId}/status`] = 'completed';
+    
+    // Create actual lab and radiology orders
+    if (labTestsList && labTestsList.length > 0) {
+      const labKey = db.ref(`${BASE}/lab_orders`).push().key;
+      updates[`${BASE}/lab_orders/${labKey}`] = {
+        patientId: newUid,
+        patientName: booking.patName || activeVisit.name || 'مريض',
+        patientPhone: booking.patPhone || activeVisit.phone || '',
+        docName: localStorage.getItem('empName') || 'طبيب',
+        createdAt: new Date().toISOString(),
+        requestedTests: labTestsList.map(t => ({ name: t, status: 'pending' })),
+        status: 'pending',
+        visitId: timelineKey
+      };
+    }
+    
+    if (radScansList && radScansList.length > 0) {
+      const radKey = db.ref(`${BASE}/rad_orders`).push().key;
+      updates[`${BASE}/rad_orders/${radKey}`] = {
+        patientId: newUid,
+        patientName: booking.patName || activeVisit.name || 'مريض',
+        patientPhone: booking.patPhone || activeVisit.phone || '',
+        docName: localStorage.getItem('empName') || 'طبيب',
+        createdAt: new Date().toISOString(),
+        requestedScans: radScansList.map(s => ({ name: s, status: 'pending' })),
+        status: 'pending',
+        visitId: timelineKey
+      };
+    }
+
     activeVisit.uid = newUid;
     _writeVisitUpdates(updates, diag);
     toast('تم تسجيل المريض تلقائياً في النظام', 'ok');

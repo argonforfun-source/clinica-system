@@ -165,8 +165,20 @@
           <div class="vform">
             <div class="vform-title"><i class="fas fa-vial"></i> طلب تحاليل مخبرية</div>
             <div class="fg">
-              <label>التحاليل المطلوبة (مفصولة بفاصلة)</label>
-              <textarea id="vLabReq" class="fi" rows="3" style="resize:none" placeholder="CBC, Lipid Profile..."></textarea>
+                            <div style="display:flex;gap:6px;margin-bottom:8px">
+              <input id="labTestInput" class="fi" style="height:36px;font-size:0.8rem;flex:1" placeholder="فحص مخبري جديد (مثل: CBC, HbA1c)">
+              <button type="button" class="btn-primary" onclick="addLabOrderTest()" style="height:36px;padding:0 12px;background:var(--teal);border:none;border-radius:8px;cursor:pointer"><i class="fas fa-plus"></i></button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px" id="commonLabTests">
+              <span class="tag" style="cursor:pointer;font-size:0.72rem" onclick="addQuickLab('CBC')">CBC 🩸</span>
+              <span class="tag" style="cursor:pointer;font-size:0.72rem" onclick="addQuickLab('HbA1c')">HbA1c 🍬</span>
+              <span class="tag" style="cursor:pointer;font-size:0.72rem" onclick="addQuickLab('Lipid Profile')">Lipid Profile 🧪</span>
+              <span class="tag" style="cursor:pointer;font-size:0.72rem" onclick="addQuickLab('Kidney Functions')">وظائف كلى 🔬</span>
+              <span class="tag" style="cursor:pointer;font-size:0.72rem" onclick="addQuickLab('Liver Functions')">وظائف كبد 🩺</span>
+            </div>
+            <div id="labOrderList" style="display:flex;flex-wrap:wrap;gap:6px;background:rgba(255,255,255,0.02);padding:12px;border-radius:8px;border:1px solid var(--border);min-height:50px;align-items:center">
+              <span style="color:var(--muted);font-size:0.75rem" id="labPlaceholder">لا توجد فحوصات مطلوبة</span>
+            </div>
             </div>
           </div>
         </div>
@@ -176,8 +188,19 @@
           <div class="vform">
             <div class="vform-title"><i class="fas fa-x-ray"></i> طلب صور أشعة</div>
             <div class="fg">
-              <label>التصوير المطلوب</label>
-              <textarea id="vRadReq" class="fi" rows="3" style="resize:none" placeholder="Chest X-Ray..."></textarea>
+                            <div style="display:flex;gap:6px;margin-bottom:8px">
+              <input id="radScanInput" class="fi" style="height:36px;font-size:0.8rem;flex:1" placeholder="صورة أشعة جديدة (مثل: Chest X-Ray)">
+              <button type="button" class="btn-primary" onclick="addRadOrderScan()" style="height:36px;padding:0 12px;background:var(--sky);border:none;border-radius:8px;cursor:pointer"><i class="fas fa-plus"></i></button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px" id="commonRadScans">
+              <span class="tag blue" style="cursor:pointer;font-size:0.72rem" onclick="addQuickRad('Chest X-Ray')">Chest X-Ray 🩻</span>
+              <span class="tag blue" style="cursor:pointer;font-size:0.72rem" onclick="addQuickRad('Brain MRI')">Brain MRI 🧠</span>
+              <span class="tag blue" style="cursor:pointer;font-size:0.72rem" onclick="addQuickRad('Abdominal US')">سونار بطن 🤰</span>
+              <span class="tag blue" style="cursor:pointer;font-size:0.72rem" onclick="addQuickRad('CT Brain')">CT Brain 🌀</span>
+            </div>
+            <div id="radOrderList" style="display:flex;flex-wrap:wrap;gap:6px;background:rgba(255,255,255,0.02);padding:12px;border-radius:8px;border:1px solid var(--border);min-height:50px;align-items:center">
+              <span style="color:var(--muted);font-size:0.75rem" id="radPlaceholder">لا توجد صور أشعة مطلوبة</span>
+            </div>
             </div>
           </div>
         </div>
