@@ -249,7 +249,8 @@ function initEMR() {
   });
 
   // Real-time Notification Engine for Doctors
-  const sessionUid = window.ArgonSession ? window.ArgonSession.get()?.uid : null;
+  const sessionData = window.ArgonSession ? window.ArgonSession.get() : null;
+  const sessionUid = sessionData ? sessionData.staffId : null;
   let isInitNotify = true;
   
   db.ref(BASE + '/notifications').orderByChild('createdAt').limitToLast(50).on('child_added', snap => {
@@ -278,8 +279,14 @@ function initEMR() {
 function renderDoctorNotifications() {
   const notifBadge = document.getElementById('notifBadge');
   const notifList = document.getElementById('notifList');
+  const notifTitle = document.getElementById('notifSidebarTitle');
   
   if (!notifBadge || !notifList) return;
+  
+  if (notifTitle) {
+    const docName = window.ArgonSession ? window.ArgonSession.get()?.displayName : '';
+    notifTitle.innerHTML = `<i class="fas fa-bell" style="color:var(--amber)"></i> إشعارات د. ${docName || 'الطبيب'}`;
+  }
 
   if (_myNotifications.length > 0) {
     notifBadge.textContent = _myNotifications.length;
@@ -2709,8 +2716,8 @@ function completeWorkspaceVisit() {
         patientId: uid,
         patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
         patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
-        doctorId: (window.ArgonSession ? ArgonSession.get()?.uid : null) || 'doctor',
-        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
+        doctorId: (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor',
+        docName: (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب',
         createdAt: new Date().toISOString(),
         requestedTests: labTestsList.map(t => ({ name: t, status: 'waiting' })),
         status: 'waiting',
@@ -2724,8 +2731,8 @@ function completeWorkspaceVisit() {
         patientId: uid,
         patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
         patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
-        doctorId: (window.ArgonSession ? ArgonSession.get()?.uid : null) || 'doctor',
-        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
+        doctorId: (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor',
+        docName: (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب',
         createdAt: new Date().toISOString(),
         requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
         status: 'waiting',
@@ -2739,8 +2746,8 @@ function completeWorkspaceVisit() {
       updates[`${BASE}/prescriptions/${prescKey}`] = {
         patientId: uid,
         patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
-        doctorId: (window.ArgonSession ? ArgonSession.get()?.uid : null) || 'doctor',
-        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
+        doctorId: (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor',
+        docName: (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب',
         medications: activeVisit.rx.map(m => ({ 
           name: m.drug, 
           dose: m.dose, 
