@@ -272,6 +272,20 @@
 <div id="connBar" class="cbar"></div>
 
 <!-- LOCK SCREEN -->
+<!-- ═══ SET PASSWORD MODAL ═══ -->
+<div id="setPassModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(8px);z-index:9999;justify-content:center;align-items:center;" onclick="if(event.target===this)closeSetPass()">
+  <div style="background:var(--surf);border:1px solid var(--border);border-radius:20px;padding:32px 28px;width:340px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.4);text-align:center;position:relative">
+    <div style="width:54px;height:54px;background:linear-gradient(135deg,var(--teal),var(--sky));border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:1.4rem">🔑</div>
+    <div id="setPassTitle" style="font-size:1.1rem;font-weight:800;margin-bottom:4px;color:var(--text)">تعيين كلمة المرور</div>
+    <div id="setPassSub" style="font-size:.8rem;color:var(--muted);margin-bottom:20px">البوابة الطبية</div>
+    <input type="password" id="setPassInput" class="mfi" placeholder="اكتب كلمة المرور الجديدة..." style="width:100%;margin-bottom:12px;font-size:1rem;text-align:center;letter-spacing:2px" autocomplete="new-password">
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button onclick="confirmSetPass()" style="flex:1;background:linear-gradient(135deg,var(--teal),var(--sky));color:#fff;border:none;border-radius:10px;padding:11px;font-family:'Tajawal',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer">✅ حفظ الباسورد</button>
+      <button onclick="closeSetPass()" style="flex:1;background:rgba(239,68,68,.08);color:var(--red);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:11px;font-family:'Tajawal',sans-serif;font-size:.9rem;cursor:pointer">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <div id="lockScreen">
   <div class="ls-icon"><i class="fas fa-shield-alt"></i></div>
   <div class="ls-title">تم إيقاف حساب العيادة</div>
@@ -1467,6 +1481,7 @@ db.ref(BASE+'/doctors').on('value', snap => {
       </div>
       <div style="display:flex;border-top:1px solid rgba(13,148,136,.1)">
         <button onclick="editDoc('${k}')" style="flex:1;background:none;border:none;border-left:1px solid rgba(13,148,136,.1);color:var(--sky);padding:8px;font-family:'Tajawal',sans-serif;font-size:.75rem;cursor:pointer;transition:.2s"><i class="fas fa-edit"></i> تعديل</button>
+        <button onclick="openSetPass('${k}',true)" style="flex:1;background:none;border:none;border-left:1px solid rgba(13,148,136,.1);color:var(--teal);padding:8px;font-family:'Tajawal',sans-serif;font-size:.75rem;cursor:pointer;transition:.2s" title="تعيين كلمة مرور"><i class="fas fa-key"></i> باسورد</button>
         <button class="bdel" style="flex:1;border:none" onclick="db.ref(BASE+'/doctors/${k}').remove();toast('تم الحذف','ok')"><i class="fas fa-trash"></i> حذف</button>
       </div>
     </div>`;
@@ -1495,6 +1510,7 @@ db.ref(BASE+'/staff').on('value', snap => {
       </div>
       <div style="display:flex;border-top:1px solid rgba(13,148,136,.1)">
         <button onclick="editStaff('${k}')" style="flex:1;background:none;border:none;border-left:1px solid rgba(13,148,136,.1);color:var(--sky);padding:8px;font-family:'Tajawal',sans-serif;font-size:.75rem;cursor:pointer;transition:.2s"><i class="fas fa-edit"></i> تعديل</button>
+        <button onclick="openSetPass('${k}',false)" style="flex:1;background:none;border:none;border-left:1px solid rgba(13,148,136,.1);color:var(--teal);padding:8px;font-family:'Tajawal',sans-serif;font-size:.75rem;cursor:pointer;transition:.2s" title="تعيين كلمة مرور"><i class="fas fa-key"></i> باسورد</button>
         <button class="bdel" style="flex:1;border:none" onclick="db.ref(BASE+'/staff/${k}').remove();toast('تم الحذف','ok')"><i class="fas fa-trash"></i> حذف</button>
       </div>
     </div>`;
@@ -1872,6 +1888,34 @@ function cancelStaffEdit() {
   b.style.background = 'linear-gradient(135deg,var(--teal),var(--sky))';
   document.getElementById('btnCancelStaffEdit').style.display = 'none';
 }
+
+// ── SET PASSWORD MODAL ──
+let _setPassUid = null, _setPassIsDoc = false;
+function openSetPass(uid, isDoctor) {
+  _setPassUid = uid;
+  _setPassIsDoc = isDoctor;
+  const person = isDoctor ? (_docs[uid] || {}) : (_staff[uid] || {});
+  const name = person.name || uid;
+  document.getElementById('setPassTitle').textContent = 'تعيين كلمة مرور: ' + name;
+  document.getElementById('setPassSub').textContent = isDoctor ? '🩺 بوابة السجلات الطبية' : '🔐 بوابة الطاقم الإداري';
+  document.getElementById('setPassInput').value = '';
+  const m = document.getElementById('setPassModal');
+  m.style.display = 'flex';
+  setTimeout(() => document.getElementById('setPassInput').focus(), 100);
+}
+function closeSetPass() {
+  document.getElementById('setPassModal').style.display = 'none';
+  _setPassUid = null;
+}
+function confirmSetPass() {
+  const pass = document.getElementById('setPassInput').value.trim();
+  if(!pass || pass.length < 4) { toast('⚠️ كلمة المرور يجب أن تكون 4 أحرف على الأقل', 'err'); return; }
+  ArgonEnterpriseAuth.setStaffCredentials(_setPassUid, pass, _setPassIsDoc).then(() => {
+    toast('✅ تم تعيين كلمة المرور بنجاح 🔒', 'ok');
+    closeSetPass();
+  }).catch(e => { toast('❌ فشل الحفظ: ' + e.message, 'err'); });
+}
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeSetPass(); if(e.key === 'Enter' && _setPassUid) confirmSetPass(); });
 
 function updateStaffPass() {
   if (!editingStaffKey) return;
