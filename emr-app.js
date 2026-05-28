@@ -435,14 +435,37 @@ function loadMorePatients() {
   filterPatients();
 }
 
-// Smart Filter — searches name, phone, MRN, National ID
+// Smart Filter — Doctor-isolated: shows only patients booked with this doctor
 function filterPatients() {
   const q = document.getElementById('patSearch').value.toLowerCase().trim();
   if (q !== lastQuery) {
     patPageLimit = 15;
     lastQuery = q;
   }
+
+  const loggedInDoctorId = ArgonSession.staffId;
+  const isAdmin = ArgonSession.role === 'admin';
+
+  // Build the set of patient IDs/phones that have at least one booking for THIS doctor
+  let allowedPatients = null;
+  if (loggedInDoctorId && !isAdmin) {
+    allowedPatients = new Set();
+    Object.values(_liveBookings).forEach(b => {
+      const assignedDoc = b.doctorId || b.docKey;
+      if (assignedDoc === loggedInDoctorId) {
+        if (b.patientId) allowedPatients.add(b.patientId);
+        if (b.patPhone) allowedPatients.add(b.patPhone);
+      }
+    });
+  }
+
   const entries = Object.entries(_patients).filter(([uid, p]) => {
+    // Enforce doctor isolation on patient list
+    if (allowedPatients !== null) {
+      const phone = (p.info || {}).phone || '';
+      if (!allowedPatients.has(uid) && !allowedPatients.has(phone)) return false;
+    }
+    if (!q) return true;
     const info = p.info || {};
     return (info.phone || '').includes(q) ||
            (info.name || '').toLowerCase().includes(q) ||
@@ -464,11 +487,12 @@ function renderWaitingRoom() {
   const activeBookings = Object.entries(_liveBookings).filter(([k, b]) => {
     if (b.status === 'done' || b.status === 'completed' || b.status === 'cancelled') return false;
     
-    // Doctor Isolation: Only show bookings for this doctor, or unassigned bookings
-    if (loggedInDoctorId && !isAdmin) {
-      // Assuming bookings may store doctorId or docKey. The new system uses doctorId.
-      const assignedDoc = b.doctorId || b.docKey;
-      if (assignedDoc && assignedDoc !== loggedInDoctorId) return false;
+    // ═══ STRICT DOCTOR ISOLATION ═══
+    // Every booking MUST have a doctorId — bookings without one are admin-only
+    const assignedDoc = b.doctorId || b.docKey;
+    if (!isAdmin) {
+      if (!assignedDoc) return false;                          // No doctor assigned → invisible
+      if (assignedDoc !== loggedInDoctorId) return false;     // Wrong doctor → blocked
     }
     return true;
   }).sort((a, b) => {
