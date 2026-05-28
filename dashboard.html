@@ -510,14 +510,8 @@
           <div><label class="mfl">إيموجي</label><input type="text" id="sftE" class="mfi" value="👤"></div>
           <button class="badd" id="btnStaffAdd" onclick="addStaff()"><i class="fas fa-plus" style="margin-left:4px"></i>إضافة موظف</button>
         </div>
-        <div class="addrow2" style="grid-template-columns: 1fr auto; align-items: end;">
-            <div id="staffAuthPanel" style="display:none; padding:10px; background:rgba(13,148,136,0.05); border:1px solid rgba(13,148,136,0.2); border-radius:10px; width: 100%">
-                <label class="mfl" style="color:var(--teal);font-weight:bold;">تعيين كلمة مرور الموظف (للدخول إلى البوابات)</label>
-                <div style="display:flex;gap:8px;">
-                    <input type="password" id="sftPass" class="mfi" placeholder="ادخل كلمة مرور جديدة">
-                    <button class="badd" onclick="updateStaffPass()" style="background:var(--teal)">حفظ كلمة المرور</button>
-                </div>
-            </div>
+        <div class="addrow2" style="grid-template-columns: 1fr auto auto; align-items: end;">
+            <div><label class="mfl" style="color:var(--teal)">كلمة مرور البوابة 🔒</label><input type="password" id="sftPass" class="mfi" placeholder="اكتب لتعيين باسورد (يُشفر)"></div>
             <button class="badd" id="btnCancelStaffEdit" onclick="cancelStaffEdit()" style="display:none;background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)"><i class="fas fa-times" style="margin-left:4px"></i>تراجع</button>
         </div>
       </div>
