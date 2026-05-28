@@ -328,6 +328,7 @@
       </div>
 
       <div class="ni" onclick="sw('docs',this)"><i class="fas fa-user-md"></i>إدارة الأطباء</div>
+      <div class="ni" onclick="sw('staff',this)"><i class="fas fa-users-cog"></i>إدارة الطاقم الإداري</div>
       <div class="ni" onclick="sw('settings',this)"><i class="fas fa-gear"></i>الإعدادات</div>
     </div>
     <div class="royal-foot">
@@ -489,6 +490,38 @@
         </div>
       </div>
       <div class="dgrid2" id="docGrid"></div>
+    </div>
+
+    <!-- STAFF -->
+    <div id="staff" class="sec">
+      <div class="ph"><div><div class="pt">👥 إدارة الطاقم الإداري</div></div></div>
+      <div class="addpanel">
+        <div class="addrow">
+          <div><label class="mfl">اسم الموظف *</label><input type="text" id="sftN" class="mfi" placeholder="الاسم الكامل"></div>
+          <div><label class="mfl">المسمى الوظيفي (Role) *</label>
+            <select id="sftR" class="mfi" style="background:var(--surf);color:var(--text);border:1px solid var(--border);height:38px;padding:0 8px;border-radius:9px;width:100%">
+              <option value="pharmacist">صيدلي (Pharmacist)</option>
+              <option value="lab">فني مختبر (Lab Tech)</option>
+              <option value="radiology">فني أشعة (Radiology Tech)</option>
+              <option value="reception">موظف استقبال (Reception)</option>
+              <option value="admin">إدارة (Admin)</option>
+            </select>
+          </div>
+          <div><label class="mfl">إيموجي</label><input type="text" id="sftE" class="mfi" value="👤"></div>
+          <button class="badd" id="btnStaffAdd" onclick="addStaff()"><i class="fas fa-plus" style="margin-left:4px"></i>إضافة موظف</button>
+        </div>
+        <div class="addrow2" style="grid-template-columns: 1fr auto; align-items: end;">
+            <div id="staffAuthPanel" style="display:none; padding:10px; background:rgba(13,148,136,0.05); border:1px solid rgba(13,148,136,0.2); border-radius:10px; width: 100%">
+                <label class="mfl" style="color:var(--teal);font-weight:bold;">تعيين كلمة مرور الموظف (للدخول إلى البوابات)</label>
+                <div style="display:flex;gap:8px;">
+                    <input type="password" id="sftPass" class="mfi" placeholder="ادخل كلمة مرور جديدة">
+                    <button class="badd" onclick="updateStaffPass()" style="background:var(--teal)">حفظ كلمة المرور</button>
+                </div>
+            </div>
+            <button class="badd" id="btnCancelStaffEdit" onclick="cancelStaffEdit()" style="display:none;background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)"><i class="fas fa-times" style="margin-left:4px"></i>تراجع</button>
+        </div>
+      </div>
+      <div class="dgrid2" id="staffGrid"></div>
     </div>
 
     <!-- SETTINGS -->
@@ -1442,6 +1475,34 @@ db.ref(BASE+'/doctors').on('value', snap => {
   }).join('');
 });
 
+// ── STAFF LISTENER ──
+let _staff = {};
+db.ref(BASE+'/staff').on('value', snap => {
+  _staff = snap.val()||{};
+  const sg=document.getElementById('staffGrid');
+  const keys=Object.keys(_staff);
+  if(!keys.length){sg.innerHTML='<div style="color:var(--muted);font-size:.84rem;grid-column:1/-1">لا يوجد موظفين بعد</div>';return;}
+  sg.innerHTML=keys.map(k=>{
+    const s=_staff[k];
+    const roleMap = { 'pharmacist': 'صيدلي', 'lab': 'فني مختبر', 'radiology': 'فني أشعة', 'reception': 'موظف استقبال', 'admin': 'إدارة' };
+    const hasPass = s.enterpriseAuth && s.enterpriseAuth.passwordHash;
+    return \`<div class="dc">
+      <div class="dc-top" style="height:70px; font-size: 2rem;">\${s.emoji||'👤'}</div>
+      <div class="dc-body">
+        <div class="dc-name">\${sanitize(s.name)}</div>
+        <div class="dc-spec" style="color:var(--sky)">\${roleMap[s.role] || s.role}</div>
+        <div style="font-size:0.75rem;margin-top:8px;font-weight:700;color:\${hasPass?'var(--green)':'var(--red)'}">
+          <i class="fas \${hasPass?'fa-lock':'fa-lock-open'}"></i> \${hasPass?'تم تعيين كلمة مرور':'كلمة المرور مفقودة'}
+        </div>
+      </div>
+      <div style="display:flex;border-top:1px solid rgba(13,148,136,.1)">
+        <button onclick="editStaff('\${k}')" style="flex:1;background:none;border:none;border-left:1px solid rgba(13,148,136,.1);color:var(--sky);padding:8px;font-family:'Tajawal',sans-serif;font-size:.75rem;cursor:pointer;transition:.2s"><i class="fas fa-edit"></i> تعديل</button>
+        <button class="bdel" style="flex:1;border:none" onclick="db.ref(BASE+'/staff/\${k}').remove();toast('تم الحذف','ok')"><i class="fas fa-trash"></i> حذف</button>
+      </div>
+    </div>\`;
+  }).join('');
+});
+
 // ── ACTIONS ──
 function updSt(k, s) {
   db.ref(`${BASE}/bookings/${k}/status`).set(s);
@@ -1742,6 +1803,78 @@ function upLogo(inp) {
       ctx.drawImage(img, 0, 0, w, h);
       
       const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+      db.ref(BASE + '/settings/logoUrl').set(compressedBase64)
+        .then(() => toast('✅ تم تحديث الشعار بنجاح', 'ok'))
+        .catch(() => toast('❌ فشل الحفظ', 'err'));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── STAFF ACTIONS ──
+let editingStaffKey = null;
+function addStaff() {
+  const name=document.getElementById('sftN').value.trim();
+  const role=document.getElementById('sftR').value;
+  if(!name){toast('⚠️ أدخل الاسم','err');return;}
+  
+  const staffObj = {
+    name, role,
+    emoji:document.getElementById('sftE').value.trim()||'👤'
+  };
+  
+  if (editingStaffKey) {
+    db.ref(\`\${BASE}/staff/\${editingStaffKey}\`).update(staffObj).then(() => {
+      toast('✅ تم تحديث الموظف', 'ok');
+      cancelStaffEdit();
+    });
+  } else {
+    db.ref(\`\${BASE}/staff\`).push(staffObj).then(() => {
+      cancelStaffEdit();
+      toast('✅ تم إضافة الموظف', 'ok');
+    });
+  }
+}
+
+function editStaff(k) {
+  editingStaffKey = k;
+  const s = _staff[k];
+  document.getElementById('sftN').value = s.name;
+  document.getElementById('sftR').value = s.role || 'reception';
+  document.getElementById('sftE').value = s.emoji || '👤';
+  
+  const b = document.getElementById('btnStaffAdd');
+  b.innerHTML = '<i class="fas fa-save" style="margin-left:4px"></i>تحديث معلومات الموظف';
+  b.style.background = 'linear-gradient(135deg, var(--amber), #d97706)';
+  document.getElementById('btnCancelStaffEdit').style.display = 'block';
+  document.getElementById('staffAuthPanel').style.display = 'block';
+  document.getElementById('sftN').focus();
+}
+
+function cancelStaffEdit() {
+  editingStaffKey = null;
+  document.getElementById('sftN').value = '';
+  document.getElementById('sftR').value = 'pharmacist';
+  document.getElementById('sftE').value = '👤';
+  document.getElementById('sftPass').value = '';
+  
+  const b = document.getElementById('btnStaffAdd');
+  b.innerHTML = '<i class="fas fa-plus" style="margin-left:4px"></i>إضافة موظف';
+  b.style.background = 'linear-gradient(135deg,var(--teal),var(--sky))';
+  document.getElementById('btnCancelStaffEdit').style.display = 'none';
+  document.getElementById('staffAuthPanel').style.display = 'none';
+}
+
+function updateStaffPass() {
+  if (!editingStaffKey) return;
+  const pass = document.getElementById('sftPass').value;
+  if (!pass) { toast('⚠️ أدخل كلمة مرور', 'err'); return; }
+  ArgonEnterpriseAuth.setStaffCredentials(editingStaffKey, pass, false).then(() => {
+    document.getElementById('sftPass').value = '';
+    toast('✅ تم تعيين كلمة المرور للموظف', 'ok');
+  });
+}
       db.ref(BASE + '/settings/logoUrl').set(compressedBase64)
         .then(() => toast('✅ تم تحديث الشعار بنجاح', 'ok'))
         .catch(() => toast('❌ فشل الحفظ', 'err'));

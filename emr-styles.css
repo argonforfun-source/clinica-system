@@ -370,3 +370,41 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   z-index: 60;
   box-shadow: 0 -4px 24px rgba(0,0,0,0.05);
 }
+
+/* ── DOCTOR SELECTION UI ── */
+.doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+.doc-card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.doc-card:hover {
+  background: rgba(13, 148, 136, 0.05);
+  border-color: var(--teal);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(13, 148, 136, 0.1);
+}
+.doc-avatar {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+}
+.doc-name {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.doc-spec {
+  font-size: 0.8rem;
+  color: var(--muted);
+}

@@ -132,21 +132,23 @@ window.addEventListener('DOMContentLoaded', () => {
       checkAndSeedDefaultDepartments();
       document.getElementById('lClinicName').textContent = _sets.name || 'العيادة الطبية';
       document.getElementById('topName').textContent = _sets.name || 'العيادة الطبية';
-      document.getElementById('tlogo').textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON EMR';
-      
-      // Auto redirect if already authed in session
-      if (sessionStorage.getItem('emr_authed_' + CID) === 'true') {
-        document.getElementById('emrLogin').style.display = 'none';
-        initEMR();
-      }
+      document.getElementById('tlogo').textContent = _sets.emoji ? \`ARGON \${_sets.emoji}\` : 'ARGON EMR';
     } else {
       document.getElementById('lClinicName').textContent = 'العيادة غير موجودة';
     }
   });
 
+  // Wait for Enterprise Runtime
+  window.waitForArgonReady('emr').then(session => {
+    document.getElementById('topName').textContent = \`مرحباً، \${session.displayName}\`;
+    initEMR();
+  });
+
   // Load Doctors for dropdowns
+  let _doctorsLoaded = false;
   db.ref(BASE + '/doctors').on('value', snap => {
     _doctors = snap.val() || {};
+    _doctorsLoaded = true;
   });
 
   // Load Departments
@@ -173,61 +175,25 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
-
-// Authentication
-function doLogin() {
-  const pass = document.getElementById('lPass').value;
-  if (!_sets) return;
-  if (pass === _sets.password) {
-    sessionStorage.setItem('emr_authed_' + CID, 'true');
-    document.getElementById('emrLogin').style.opacity = '0';
-    setTimeout(() => {
-      document.getElementById('emrLogin').style.display = 'none';
-      initEMR();
-    }, 300);
-  } else {
-    const err = document.getElementById('lErr');
-    err.style.display = 'block';
-    setTimeout(() => err.style.display = 'none', 3000);
-  }
-}
-
 // EMR Initialization
 function initEMR() {
   toast('مرحباً بك في نظام السجلات الطبية', 'ok');
   // Run legacy phone-key migration silently on first load
   setTimeout(() => migratePhoneKeyedPatients(), 3000);
-  // Load Patients list with incremental real-time event-driven queue
-  let renderTimeout = null;
-  const debouncedRenderPatients = () => {
-    clearTimeout(renderTimeout);
-    renderTimeout = setTimeout(() => {
-      // Auto-load patient from URL param on first load
-      if (!activePatientId) {
-        const urlPhone = new URLSearchParams(window.location.search).get('phone');
-        if (urlPhone && _patients[urlPhone]) {
-          viewPatientFile(urlPhone);
-          window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
-        }
+  // Load Patients List directly from Firebase
+  db.ref(BASE + '/patients').on('value', snap => {
+    _patients = snap.val() || {};
+    
+    // Auto-load patient from URL param on first load
+    if (!activePatientId) {
+      const urlPhone = new URLSearchParams(window.location.search).get('phone');
+      if (urlPhone && _patients[urlPhone]) {
+        viewPatientFile(urlPhone);
+        window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
       }
-      filterPatients();
-    }, 100);
-  };
-
-  db.ref(BASE + '/patients').on('child_added', snap => {
-    _patients[snap.key] = snap.val();
-    debouncedRenderPatients();
-  });
-  db.ref(BASE + '/patients').on('child_changed', snap => {
-    _patients[snap.key] = snap.val();
-    debouncedRenderPatients();
-    if (activePatientId === snap.key) {
-      viewPatientFile(snap.key);
     }
-  });
-  db.ref(BASE + '/patients').on('child_removed', snap => {
-    delete _patients[snap.key];
-    debouncedRenderPatients();
+    
+    filterPatients();
   });
 
   // Load Bookings for Waiting Room
@@ -492,8 +458,19 @@ function renderWaitingRoom() {
   const wrList = document.getElementById('wrList');
   if (!wrList) return;
 
+  const loggedInDoctorId = ArgonSession.staffId;
+  const isAdmin = ArgonSession.role === 'admin';
+
   const activeBookings = Object.entries(_liveBookings).filter(([k, b]) => {
-    return b.status !== 'done' && b.status !== 'completed' && b.status !== 'cancelled';
+    if (b.status === 'done' || b.status === 'completed' || b.status === 'cancelled') return false;
+    
+    // Doctor Isolation: Only show bookings for this doctor, or unassigned bookings
+    if (loggedInDoctorId && !isAdmin) {
+      // Assuming bookings may store doctorId or docKey. The new system uses doctorId.
+      const assignedDoc = b.doctorId || b.docKey;
+      if (assignedDoc && assignedDoc !== loggedInDoctorId) return false;
+    }
+    return true;
   }).sort((a, b) => {
     const prio = { 'with_doctor': 1, 'waiting': 2, 'confirmed': 3, 'new': 4 };
     const pA = prio[a[1].status] || 5;

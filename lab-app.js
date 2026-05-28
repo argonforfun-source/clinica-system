@@ -44,34 +44,16 @@ window.addEventListener('DOMContentLoaded', () => {
     if (_sets) {
       document.getElementById('lClinicName').textContent = _sets.name || 'المجمع الطبي';
       document.getElementById('topName').textContent = _sets.name || 'المجمع الطبي';
-      document.getElementById('tlogo').textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON LABORATORY';
-
-      if (ArgonSession.isValid('lab') || ArgonSession.isValid('admin')) {
-        document.getElementById('labLogin').style.display = 'none';
-        initLab();
-      }
+      document.getElementById('tlogo').textContent = _sets.emoji ? \`ARGON \${_sets.emoji}\` : 'ARGON LABORATORY';
     }
   });
-});
 
-// Role access control login
-function doLogin() {
-  const pass = document.getElementById('lPass').value;
-  if (!_sets) return;
-  const correctPass = (_sets.passcodes && _sets.passcodes.lab) || _sets.password || '1122';
-  if (pass === correctPass) {
-    ArgonSession.start('lab', 'فني المختبر');
-    document.getElementById('labLogin').style.opacity = '0';
-    setTimeout(() => {
-      document.getElementById('labLogin').style.display = 'none';
-      initLab();
-    }, 300);
-  } else {
-    const err = document.getElementById('lErr');
-    err.style.display = 'block';
-    setTimeout(() => err.style.display = 'none', 3000);
-  }
-}
+  // Wait for Enterprise Runtime
+  window.waitForArgonReady('lab').then(session => {
+    document.getElementById('topName').textContent = \`مرحباً، \${session.displayName}\`;
+    initLab();
+  });
+});
 
 // Lab Initializer
 function initLab() {

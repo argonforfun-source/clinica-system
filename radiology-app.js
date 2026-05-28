@@ -44,34 +44,16 @@ window.addEventListener('DOMContentLoaded', () => {
     if (_sets) {
       document.getElementById('lClinicName').textContent = _sets.name || 'المجمع الطبي';
       document.getElementById('topName').textContent = _sets.name || 'المجمع الطبي';
-      document.getElementById('tlogo').textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON RADIOLOGY';
-
-      if (ArgonSession.isValid('radiology') || ArgonSession.isValid('admin')) {
-        document.getElementById('radLogin').style.display = 'none';
-        initRad();
-      }
+      document.getElementById('tlogo').textContent = _sets.emoji ? \`ARGON \${_sets.emoji}\` : 'ARGON RADIOLOGY';
     }
   });
-});
 
-// Role passcode login check
-function doLogin() {
-  const pass = document.getElementById('lPass').value;
-  if (!_sets) return;
-  const correctPass = (_sets.passcodes && _sets.passcodes.radiology) || _sets.password || '1122';
-  if (pass === correctPass) {
-    ArgonSession.start('radiology', 'فني الأشعة');
-    document.getElementById('radLogin').style.opacity = '0';
-    setTimeout(() => {
-      document.getElementById('radLogin').style.display = 'none';
-      initRad();
-    }, 300);
-  } else {
-    const err = document.getElementById('lErr');
-    err.style.display = 'block';
-    setTimeout(() => err.style.display = 'none', 3000);
-  }
-}
+  // Wait for Enterprise Runtime
+  window.waitForArgonReady('radiology').then(session => {
+    document.getElementById('topName').textContent = \`مرحباً، \${session.displayName}\`;
+    initRad();
+  });
+});
 
 // Rad Initializer
 function initRad() {

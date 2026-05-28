@@ -43,34 +43,16 @@ window.addEventListener('DOMContentLoaded', () => {
     if (_sets) {
       document.getElementById('lClinicName').textContent = _sets.name || 'المجمع الطبي';
       document.getElementById('topName').textContent = _sets.name || 'المجمع الطبي';
-      document.getElementById('tlogo').textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON PHARMACY';
-
-      if (ArgonSession.isValid('pharmacist') || ArgonSession.isValid('admin')) {
-        document.getElementById('pharLogin').style.display = 'none';
-        initPharmacy();
-      }
+      document.getElementById('tlogo').textContent = _sets.emoji ? \`ARGON \${_sets.emoji}\` : 'ARGON PHARMACY';
     }
   });
-});
 
-// Access Control Login
-function doLogin() {
-  const pass = document.getElementById('lPass').value;
-  if (!_sets) return;
-  const correctPass = (_sets.passcodes && _sets.passcodes.pharmacist) || _sets.password || '1122';
-  if (pass === correctPass) {
-    ArgonSession.start('pharmacist', 'الصيدلاني المناوب');
-    document.getElementById('pharLogin').style.opacity = '0';
-    setTimeout(() => {
-      document.getElementById('pharLogin').style.display = 'none';
-      initPharmacy();
-    }, 300);
-  } else {
-    const err = document.getElementById('lErr');
-    err.style.display = 'block';
-    setTimeout(() => err.style.display = 'none', 3000);
-  }
-}
+  // Wait for Enterprise Runtime
+  window.waitForArgonReady('pharmacist').then(session => {
+    document.getElementById('topName').textContent = \`مرحباً، \${session.displayName}\`;
+    initPharmacy();
+  });
+});
 
 // App Initialization
 function initPharmacy() {
