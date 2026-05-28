@@ -366,7 +366,66 @@ const ArgonEnterprise = {
                 return parsed.data;
             } catch(e) { return null; }
         }
+    },
+
+    // ── 4. ENTERPRISE LIVE UPDATE ENGINE ──
+    LiveUpdate: {
+        _initialized: false,
+        init(dbRef, basePath) {
+            if (this._initialized) return;
+            this._initialized = true;
+            
+            const verRef = dbRef.ref(`${basePath}/system_version`);
+            verRef.on('value', snap => {
+                const newVer = snap.val();
+                if (!newVer) return; // Not set yet
+                
+                const currentVer = localStorage.getItem('ARGON_VERSION');
+                if (!currentVer) {
+                    // First time, just record it
+                    localStorage.setItem('ARGON_VERSION', newVer);
+                } else if (currentVer !== newVer) {
+                    // Version changed! Trigger professional auto-refresh
+                    this.triggerUpdate(newVer);
+                }
+            });
+        },
+        triggerUpdate(newVersion) {
+            const toastDiv = document.createElement('div');
+            toastDiv.innerHTML = `
+                <div style="position:fixed;bottom:25px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg, #2563eb, #3b82f6);color:white;padding:15px 35px;border-radius:30px;box-shadow:0 15px 30px rgba(37,99,235,0.4);z-index:999999;font-weight:bold;display:flex;align-items:center;gap:12px;font-family:'Tajawal', sans-serif;animation: slideUpArgon 0.6s cubic-bezier(0.16, 1, 0.3, 1);">
+                    <i class="fas fa-sync fa-spin" style="font-size:1.3rem"></i> 
+                    <span style="font-size:1.1rem;letter-spacing:0.5px">تم إطلاق تحديث جديد للنظام! جاري التحديث التلقائي...</span>
+                </div>
+            `;
+            document.body.appendChild(toastDiv);
+            
+            if(!document.getElementById('liveUpdateStyle')) {
+                const style = document.createElement('style');
+                style.id = 'liveUpdateStyle';
+                style.innerHTML = `@keyframes slideUpArgon { from { bottom: -60px; opacity: 0; transform: translateX(-50%) scale(0.9); } to { bottom: 25px; opacity: 1; transform: translateX(-50%) scale(1); } }`;
+                document.head.appendChild(style);
+            }
+
+            // Lock the screen slightly to prevent data entry during refresh
+            const overlay = document.createElement('div');
+            overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.4);z-index:999998;backdrop-filter:blur(2px);";
+            document.body.appendChild(overlay);
+
+            setTimeout(() => {
+                localStorage.setItem('ARGON_VERSION', newVersion);
+                window.location.reload(true); // Force clear cache reload
+            }, 3500);
+        }
     }
 };
 
 window.ArgonEnterprise = ArgonEnterprise;
+
+// Auto-initialize LiveUpdate when Firebase is globally ready
+const liveUpdateCheck = setInterval(() => {
+    if (typeof db !== 'undefined' && typeof BASE !== 'undefined' && typeof db.ref === 'function') {
+        clearInterval(liveUpdateCheck);
+        ArgonEnterprise.LiveUpdate.init(db, BASE);
+    }
+}, 1500);
