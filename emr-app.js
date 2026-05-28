@@ -479,7 +479,7 @@ function loadMorePatients() {
   filterPatients();
 }
 
-// Smart Filter — Unified EMR: All doctors can search all patients
+// Smart Filter — Doctor-isolated: shows only patients booked with this doctor OR manually created by this doctor
 function filterPatients() {
   const q = document.getElementById('patSearch').value.toLowerCase().trim();
   if (q !== lastQuery) {
@@ -487,9 +487,36 @@ function filterPatients() {
     lastQuery = q;
   }
 
+  const session = ArgonSession.get() || {};
+  const loggedInDoctorId = session.staffId;
+  const isAdmin = session.role === 'admin';
+
+  // Build the set of patient IDs/phones that have at least one booking for THIS doctor
+  let allowedPatients = null;
+  if (loggedInDoctorId && !isAdmin) {
+    allowedPatients = new Set();
+    Object.values(_liveBookings).forEach(b => {
+      const assignedDoc = b.doctorId || b.docKey;
+      if (assignedDoc === loggedInDoctorId) {
+        if (b.patientId) allowedPatients.add(b.patientId);
+        if (b.patPhone) allowedPatients.add(b.patPhone);
+      }
+    });
+  }
+
   const entries = Object.entries(_patients).filter(([uid, p]) => {
-    if (!q) return true;
     const info = p.info || {};
+    
+    // Enforce doctor isolation on patient list
+    if (allowedPatients !== null) {
+      const phone = info.phone || '';
+      const createdByMe = info.createdBy === loggedInDoctorId;
+      if (!createdByMe && !allowedPatients.has(uid) && !allowedPatients.has(phone)) {
+        return false;
+      }
+    }
+
+    if (!q) return true;
     return (info.phone || '').includes(q) ||
            (info.name || '').toLowerCase().includes(q) ||
            (info.mrn || '').toLowerCase().includes(q) ||
@@ -654,6 +681,9 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
   // Create a new patient profile since the name didn't match anyone in the family
   const newRef = db.ref(`${BASE}/patients`).push();
   const patPhone = cleanPhone(booking.patPhone || '');
+  const session = ArgonSession.get() || {};
+  const loggedInDoctorId = session.staffId || null;
+  
   const patObj = {
     info: {
       name: booking.patName || 'مريض',
@@ -661,7 +691,8 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
       age: booking.patAge ? parseInt(booking.patAge) : null,
       gender: booking.patGender || '',
       mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      createdBy: loggedInDoctorId
     }
   };
 
@@ -824,6 +855,9 @@ function saveNewPatient() {
     }
   }
 
+  const session = ArgonSession.get() || {};
+  const loggedInDoctorId = session.staffId || null;
+
   const mrn = genMRN();
   const patObj = {
     info: {
@@ -838,7 +872,8 @@ function saveNewPatient() {
       mrn,
       notes: sanitize(notes),
       photo: npPhotoData || null,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      createdBy: loggedInDoctorId
     }
   };
 
