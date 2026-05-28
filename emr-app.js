@@ -2552,8 +2552,8 @@ function completeWorkspaceVisit() {
         patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
         docName: localStorage.getItem('empName') || 'طبيب',
         createdAt: new Date().toISOString(),
-        requestedTests: labTestsList.map(t => ({ name: t, status: 'pending' })),
-        status: 'pending',
+        requestedTests: labTestsList.map(t => ({ name: t, status: 'waiting' })),
+        status: 'waiting',
         visitId: timelineKey
       };
     }
@@ -2566,8 +2566,8 @@ function completeWorkspaceVisit() {
         patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
         docName: localStorage.getItem('empName') || 'طبيب',
         createdAt: new Date().toISOString(),
-        requestedScans: radScansList.map(s => ({ name: s, status: 'pending' })),
-        status: 'pending',
+        requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
+        status: 'waiting',
         visitId: timelineKey
       };
     }
@@ -2601,8 +2601,8 @@ function completeWorkspaceVisit() {
         patientPhone: booking.patPhone || activeVisit.phone || '',
         docName: localStorage.getItem('empName') || 'طبيب',
         createdAt: new Date().toISOString(),
-        requestedTests: labTestsList.map(t => ({ name: t, status: 'pending' })),
-        status: 'pending',
+        requestedTests: labTestsList.map(t => ({ name: t, status: 'waiting' })),
+        status: 'waiting',
         visitId: timelineKey
       };
     }
@@ -2615,8 +2615,8 @@ function completeWorkspaceVisit() {
         patientPhone: booking.patPhone || activeVisit.phone || '',
         docName: localStorage.getItem('empName') || 'طبيب',
         createdAt: new Date().toISOString(),
-        requestedScans: radScansList.map(s => ({ name: s, status: 'pending' })),
-        status: 'pending',
+        requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
+        status: 'waiting',
         visitId: timelineKey
       };
     }
