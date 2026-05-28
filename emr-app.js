@@ -2510,7 +2510,7 @@ function completeWorkspaceVisit() {
     date: now.toISOString().split('T')[0],
     time: now.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' }),
     // Doctor identity
-    docName: localStorage.getItem('empName') || 'طبيب',
+    docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
     docKey: 'doctor',
     // Complaint — timeline reads v.complaint
     complaint: comp || '—',
@@ -2550,7 +2550,7 @@ function completeWorkspaceVisit() {
         patientId: uid,
         patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
         patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
-        docName: localStorage.getItem('empName') || 'طبيب',
+        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
         createdAt: new Date().toISOString(),
         requestedTests: labTestsList.map(t => ({ name: t, status: 'waiting' })),
         status: 'waiting',
@@ -2564,11 +2564,34 @@ function completeWorkspaceVisit() {
         patientId: uid,
         patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
         patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
-        docName: localStorage.getItem('empName') || 'طبيب',
+        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
         createdAt: new Date().toISOString(),
         requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
         status: 'waiting',
         visitId: timelineKey
+      };
+    }
+    
+    // Create prescription order for pharmacy
+    if (activeVisit.rx && activeVisit.rx.length > 0) {
+      const prescKey = db.ref(`${BASE}/prescriptions`).push().key;
+      updates[`${BASE}/prescriptions/${prescKey}`] = {
+        patientId: uid,
+        patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
+        doctorId: 'doctor',
+        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
+        medications: activeVisit.rx.map(m => ({ 
+          name: m.drug, 
+          dose: m.dose, 
+          freq: '', 
+          dur: '', 
+          note: '', 
+          status: 'waiting' 
+        })),
+        status: 'waiting',
+        visitId: timelineKey,
+        orgId: CID,
+        createdAt: new Date().toISOString()
       };
     }
 
@@ -2599,7 +2622,7 @@ function completeWorkspaceVisit() {
         patientId: newUid,
         patientName: booking.patName || activeVisit.name || 'مريض',
         patientPhone: booking.patPhone || activeVisit.phone || '',
-        docName: localStorage.getItem('empName') || 'طبيب',
+        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
         createdAt: new Date().toISOString(),
         requestedTests: labTestsList.map(t => ({ name: t, status: 'waiting' })),
         status: 'waiting',
@@ -2613,11 +2636,34 @@ function completeWorkspaceVisit() {
         patientId: newUid,
         patientName: booking.patName || activeVisit.name || 'مريض',
         patientPhone: booking.patPhone || activeVisit.phone || '',
-        docName: localStorage.getItem('empName') || 'طبيب',
+        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
         createdAt: new Date().toISOString(),
         requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
         status: 'waiting',
         visitId: timelineKey
+      };
+    }
+    
+    // Create prescription order for pharmacy
+    if (activeVisit.rx && activeVisit.rx.length > 0) {
+      const prescKey = db.ref(`${BASE}/prescriptions`).push().key;
+      updates[`${BASE}/prescriptions/${prescKey}`] = {
+        patientId: newUid,
+        patientName: booking.patName || activeVisit.name || 'مريض',
+        doctorId: 'doctor',
+        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
+        medications: activeVisit.rx.map(m => ({ 
+          name: m.drug, 
+          dose: m.dose, 
+          freq: '', 
+          dur: '', 
+          note: '', 
+          status: 'waiting' 
+        })),
+        status: 'waiting',
+        visitId: timelineKey,
+        orgId: CID,
+        createdAt: new Date().toISOString()
       };
     }
 
