@@ -159,6 +159,10 @@ window.ArgonSession = {
     },
     clear: function() {
         sessionStorage.removeItem(this.KEY);
+    },
+    logout: function() {
+        this.clear();
+        window.location.assign(window.location.pathname + window.location.search);
     }
 };
 
