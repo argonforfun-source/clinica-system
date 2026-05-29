@@ -348,7 +348,7 @@ function renderDoctorNotifications() {
             <span style="font-size:0.7rem;color:${isNew ? 'var(--amber)' : 'var(--muted)'};font-weight:${isNew ? 'bold' : 'normal'}"><i class="far fa-clock"></i> ${ago}</span>
           </div>
           <div style="font-size:0.85rem;color:var(--text);line-height:1.6;margin-top:4px">
-            ${n.message.replace(/(للمريض|المريض)\s+(.*?)(?=\s+لمراجعتها|$)/, '$1 <strong style="color:var(--primary); background:rgba(14,165,233,0.1); padding:2px 6px; border-radius:4px; font-weight:900; font-size:0.9rem;">$2</strong>')}
+            ${n.message.replace(/(للمريض|المريض)\s+(.*?)(?=\s+لمراجعتها|$)/, '$1 <span style="background:rgba(0,0,0,0.2);padding:2px 8px;border-radius:6px;font-weight:900;font-size:0.95rem;">$2</span>')}
           </div>
         </div>
       `;
@@ -685,6 +685,13 @@ function filterPatients() {
 // Render Waiting Room
 function renderWaitingRoom() {
   const wrList = document.getElementById('wrList');
+  const wrTitle = document.getElementById('wrTitle');
+  const docName = window.ArgonSession ? window.ArgonSession.get()?.displayName : '';
+  
+  if (wrTitle) {
+    wrTitle.innerHTML = `⏳ غرفة الانتظار المباشرة - <span style="color:var(--amber)">د. ${docName || 'الطبيب'}</span>`;
+  }
+  
   if (!wrList) return;
 
   const session = ArgonSession.get() || {};
@@ -790,7 +797,7 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
     if (!nameMismatch) {
       if (startVisit) {
         sw('newVisit');
-        loadVisitForm(booking.patientId);
+        loadVisitForm(booking.patientId, bookingKey);
       } else {
         viewPatientFile(booking.patientId);
         sw('patFile');
@@ -819,7 +826,7 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
   if (bookingName) {
     const exact = matched.find(([k, p]) => (p.info?.name || '').trim().toLowerCase() === bookingName);
     if (exact) {
-      if (startVisit) { sw('newVisit'); loadVisitForm(exact[0]); } else { viewPatientFile(exact[0]); sw('patFile'); }
+      if (startVisit) { sw('newVisit'); loadVisitForm(exact[0], bookingKey); } else { viewPatientFile(exact[0]); sw('patFile'); }
       return;
     }
 
@@ -830,14 +837,14 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
       return bFirst && pFirst && bFirst === pFirst;
     });
     if (partial) {
-      if (startVisit) { sw('newVisit'); loadVisitForm(partial[0]); } else { viewPatientFile(partial[0]); sw('patFile'); }
+      if (startVisit) { sw('newVisit'); loadVisitForm(partial[0], bookingKey); } else { viewPatientFile(partial[0]); sw('patFile'); }
       return;
     }
   }
 
   // 4️⃣ If we have exactly 1 match and no name conflict was explicitly detected (or name was missing)
   if (matched.length === 1 && !bookingName) {
-    if (startVisit) { sw('newVisit'); loadVisitForm(matched[0][0]); } else { viewPatientFile(matched[0][0]); sw('patFile'); }
+    if (startVisit) { sw('newVisit'); loadVisitForm(matched[0][0], bookingKey); } else { viewPatientFile(matched[0][0]); sw('patFile'); }
     return;
   }
 
@@ -868,7 +875,7 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
 
   newRef.set(patObj).then(() => {
     db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(newRef.key).then(() => {
-      if (startVisit) { sw('newVisit'); loadVisitForm(newRef.key); } else { viewPatientFile(newRef.key); sw('patFile'); }
+      if (startVisit) { sw('newVisit'); loadVisitForm(newRef.key, bookingKey); } else { viewPatientFile(newRef.key); sw('patFile'); }
     });
   });
 }
@@ -1287,7 +1294,7 @@ async function safeViewPatientFile(phoneOrUid) {
       return `
         <div class="glass-panel" style="padding:14px;margin-bottom:10px;border-right:4px solid ${statusColor}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <span style="font-size:0.75rem;color:var(--muted)">تاريخ الطلب: ${(o.createdAt || '').substring(0,10)}</span>
+            <span style="font-size:0.75rem;color:var(--muted)">تاريخ الطلب: ${(o.createdAt || '').substring(0,10)} <span style="color:var(--teal);margin-right:8px;font-weight:bold"><i class="far fa-clock"></i> ${window.argonTimeAgo(o.createdAt)}</span></span>
             <span style="font-size:0.75rem;color:${statusColor};font-weight:800">${statusText}</span>
           </div>
           <div style="font-size:0.82rem;margin-bottom:6px"><b>🔬 الفحوصات:</b><br>${tests}</div>
@@ -1311,7 +1318,7 @@ async function safeViewPatientFile(phoneOrUid) {
       return `
         <div class="glass-panel" style="padding:14px;margin-bottom:10px;border-right:4px solid ${statusColor}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <span style="font-size:0.75rem;color:var(--muted)">تاريخ الطلب: ${(o.createdAt || '').substring(0,10)}</span>
+            <span style="font-size:0.75rem;color:var(--muted)">تاريخ الطلب: ${(o.createdAt || '').substring(0,10)} <span style="color:var(--sky);margin-right:8px;font-weight:bold"><i class="far fa-clock"></i> ${window.argonTimeAgo(o.createdAt)}</span></span>
             <span style="font-size:0.75rem;color:${statusColor};font-weight:800">${statusText}</span>
           </div>
           <div style="font-size:0.82rem;margin-bottom:6px"><b>🩻 صور الأشعة المطلوبة:</b><br>${scans}</div>
@@ -1429,9 +1436,15 @@ async function safeViewPatientFile(phoneOrUid) {
 let labTestsList = [];
 let radScansList = [];
 
-function loadVisitForm(uid) {
+function loadVisitForm(uid, bookingId = null) {
   const p = _patients[uid];
   if (!p) return;
+
+  activeVisit.uid = uid;
+  if (bookingId) {
+    activeVisit.bookingId = bookingId;
+    db.ref(`${BASE}/bookings/${bookingId}/status`).set('with_doctor').catch(()=>{});
+  }
 
   rxItems = [];
   uploadAttachments = [];
@@ -2775,7 +2788,15 @@ function completeWorkspaceVisit() {
   if (uid && _patients[uid]) {
     const timelineKey = db.ref(`${BASE}/patients/${uid}/visits`).push().key;
     updates[`${BASE}/patients/${uid}/visits/${timelineKey}`] = visitObj;
-    if (bookingId) updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
+    if (bookingId) {
+      const b = _liveBookings[bookingId];
+      if (b) {
+        updates[`${BASE}/completedBookings/${bookingId}`] = { ...b, status: 'done', completedAt: new Date().toISOString() };
+        updates[`${BASE}/bookings/${bookingId}`] = null;
+      } else {
+        updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
+      }
+    }
     
     // Create actual lab and radiology orders
     if (labTestsList && labTestsList.length > 0) {
@@ -2849,7 +2870,15 @@ function completeWorkspaceVisit() {
     };
     const timelineKey = db.ref(`${BASE}/patients/${newUid}/visits`).push().key;
     updates[`${BASE}/patients/${newUid}/visits/${timelineKey}`] = visitObj;
-    if (bookingId) updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
+    if (bookingId) {
+      const b = _liveBookings[bookingId];
+      if (b) {
+        updates[`${BASE}/completedBookings/${bookingId}`] = { ...b, status: 'done', completedAt: new Date().toISOString() };
+        updates[`${BASE}/bookings/${bookingId}`] = null;
+      } else {
+        updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
+      }
+    }
     
     // Create actual lab and radiology orders
     if (labTestsList && labTestsList.length > 0) {
