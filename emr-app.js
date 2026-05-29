@@ -269,10 +269,7 @@ function initEMR() {
         
         renderDoctorNotifications();
         
-        if (!isInitNotify) {
-          playNotificationSound();
-          toast(`🔔 ${n.title}`, 'ok');
-        }
+        
       }
     }
   });
@@ -2812,6 +2809,7 @@ function completeWorkspaceVisit() {
         patientId: newUid,
         patientName: booking.patName || activeVisit.name || 'مريض',
         patientPhone: booking.patPhone || activeVisit.phone || '',
+        doctorId: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'doctor',
         docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
         createdAt: new Date().toISOString(),
         requestedTests: labTestsList.map(t => ({ name: t, status: 'waiting' })),
@@ -2826,6 +2824,7 @@ function completeWorkspaceVisit() {
         patientId: newUid,
         patientName: booking.patName || activeVisit.name || 'مريض',
         patientPhone: booking.patPhone || activeVisit.phone || '',
+        doctorId: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'doctor',
         docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
         createdAt: new Date().toISOString(),
         requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
@@ -2840,7 +2839,7 @@ function completeWorkspaceVisit() {
       updates[`${BASE}/prescriptions/${prescKey}`] = {
         patientId: newUid,
         patientName: booking.patName || activeVisit.name || 'مريض',
-        doctorId: 'doctor',
+        doctorId: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'doctor',
         docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
         medications: activeVisit.rx.map(m => ({ 
           name: m.drug, 

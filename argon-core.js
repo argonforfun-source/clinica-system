@@ -108,10 +108,28 @@ window.ArgonCore = {
       notificationsRef.orderByChild('createdAt').startAt(now).on('child_added', snap => {
         const notif = snap.val();
         if (notif) {
-          ArgonCore.NotificationCenter.playMedicalBeep();
-          ArgonCore.NotificationCenter.flashScreen();
-          if(typeof toast === 'function') {
-            toast(`🔔 إشعار: ${notif.title}\n${notif.message}`, 'ok');
+          const session = window.ArgonSession ? window.ArgonSession.get() : null;
+          if (!session) return;
+          
+          let shouldNotify = false;
+          if (session.role === 'doctor' && notif.role === 'doctor' && notif.docKey === session.staffId) {
+            shouldNotify = true;
+          } else if (session.role === 'lab' && notif.role === 'lab') {
+            shouldNotify = true;
+          } else if (session.role === 'radiology' && notif.role === 'radiology') {
+            shouldNotify = true;
+          } else if (session.role === 'pharmacist' && notif.role === 'pharmacist') {
+            shouldNotify = true;
+          } else if (session.role === 'admin') {
+            shouldNotify = true;
+          }
+          
+          if (shouldNotify) {
+            ArgonCore.NotificationCenter.playMedicalBeep();
+            ArgonCore.NotificationCenter.flashScreen();
+            if(typeof toast === 'function') {
+              toast(`🔔 إشعار: ${notif.title}\n${notif.message}`, 'ok');
+            }
           }
         }
       });
