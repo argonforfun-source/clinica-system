@@ -297,12 +297,12 @@ window.ArgonPortalRuntime = {
             align-items: center; justify-content: center; font-family: 'Tajawal', sans-serif; direction: rtl;
         `;
         
-        const isDepartment = ['pharmacy', 'lab', 'radiology'].includes(portalName);
+        const isDepartment = ['pharmacy', 'lab', 'radiology', 'reception'].includes(portalName);
         let contentHtml = '';
 
         if (isDepartment) {
-            let deptName = portalName === 'pharmacy' ? 'الصيدلية المركزية' : (portalName === 'lab' ? 'المختبرات الطبية' : 'قسم الأشعة');
-            let icon = portalName === 'pharmacy' ? '💊' : (portalName === 'lab' ? '🧪' : '🩻');
+            let deptName = portalName === 'pharmacy' ? 'الصيدلية المركزية' : (portalName === 'lab' ? 'المختبرات الطبية' : (portalName === 'reception' ? 'الاستقبال الرئيسي' : 'قسم الأشعة'));
+            let icon = portalName === 'pharmacy' ? '💊' : (portalName === 'lab' ? '🧪' : (portalName === 'reception' ? '🏢' : '🩻'));
             contentHtml = `
             <div style="background: #0f172a; border: 1px solid #334155; border-radius: 24px; padding: 40px; width: 90%; max-width: 450px; text-align: center; box-shadow: 0 24px 64px rgba(0,0,0,0.5);">
                 <div style="font-size: 3.5rem; margin-bottom: 12px;">${icon}</div>
