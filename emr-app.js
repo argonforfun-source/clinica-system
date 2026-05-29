@@ -60,6 +60,7 @@ let _pharmacyInventory = {};
 let _liveBookings = {};
 let _myNotifications = [];
 let _notifsClearedAt = parseInt(localStorage.getItem('argon_notifs_cleared') || '0');
+let _lastSeenNotifTimestamp = parseInt(localStorage.getItem('argon_notif_seen') || '0');
 
 let npPhotoData = '';
 let epPhotoData = '';
@@ -297,8 +298,8 @@ function initEMR() {
   let isInitNotify = true;
 
   if (sessionUid) {
-    // 🚀 ULTRA-FAST QUERY: Uses Firebase's native chronological push keys. No indexes required!
-    db.ref(BASE + '/notifications').limitToLast(200).on('child_added', snap => {
+    // 🚀 ULTRA-FAST QUERY: Explicitly using orderByKey to guarantee O(1) index seek for the last 200 items.
+    db.ref(BASE + '/notifications').orderByKey().limitToLast(200).on('child_added', snap => {
       const n = snap.val();
       n.key = snap.key;
 
@@ -310,6 +311,16 @@ function initEMR() {
             _myNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
             renderDoctorNotifications();
+
+            // Provide instant visual and audio feedback for live notifications
+            if (!isInitNotify) {
+              toast('🔔 إشعار جديد: ' + (n.title || 'رسالة جديدة'), 'ok');
+              try {
+                // Play a subtle notification chime
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                audio.play().catch(e => console.log('Audio autoplay blocked'));
+              } catch (e) {}
+            }
           }
         }
       }
