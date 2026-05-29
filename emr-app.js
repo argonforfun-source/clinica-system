@@ -297,21 +297,36 @@ function initEMR() {
   let isInitNotify = true;
 
   if (sessionUid) {
-    db.ref(BASE + '/notifications').orderByChild('docKey').equalTo(sessionUid).limitToLast(50).on('child_added', snap => {
+    // 🚀 ULTRA-FAST QUERY: Uses Firebase's native chronological push keys. No indexes required!
+    db.ref(BASE + '/notifications').limitToLast(200).on('child_added', snap => {
       const n = snap.val();
       n.key = snap.key;
 
       // STRICT ISOLATION: Process notifications targeting this specific doctor
-      if (n && n.role === 'doctor') {
-        if (!_myNotifications.find(x => x.key === n.key)) {
-          _myNotifications.unshift(n);
-          _myNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      if (n && n.role === 'doctor' && n.docKey === sessionUid) {
+        if (new Date(n.createdAt).getTime() > _notifsClearedAt) {
+          if (!_myNotifications.find(x => x.key === n.key)) {
+            _myNotifications.unshift(n);
+            _myNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-          renderDoctorNotifications();
+            renderDoctorNotifications();
+          }
         }
       }
     });
   }
+
+  window.clearAllNotifications = function () {
+    if (!confirm('هل أنت متأكد من مسح جميع الإشعارات؟')) return;
+    _notifsClearedAt = Date.now();
+    localStorage.setItem('argon_notifs_cleared', _notifsClearedAt.toString());
+    _myNotifications = [];
+    renderDoctorNotifications();
+    toast('✅ تم مسح الإشعارات بنجاح', 'ok');
+    
+    const badge = document.getElementById('notifBadge');
+    if (badge) badge.style.display = 'none';
+  };
 
   setTimeout(() => { isInitNotify = false; }, 3000);
 
@@ -326,7 +341,11 @@ function initEMR() {
 
     if (notifTitle) {
       const docName = window.ArgonSession ? window.ArgonSession.get()?.displayName : '';
-      notifTitle.innerHTML = `<i class="fas fa-bell" style="color:var(--amber)"></i> إشعارات د. ${docName || 'الطبيب'}`;
+      const clearBtn = _myNotifications.length > 0 ? `<span onclick="event.stopPropagation(); clearAllNotifications()" style="font-size:0.75rem;color:var(--red);cursor:pointer;background:rgba(239,68,68,0.1);padding:4px 8px;border-radius:6px;margin-right:auto;display:flex;align-items:center;gap:4px;font-weight:bold;transition:0.2s" onmouseover="this.style.background='rgba(239,68,68,0.2)'" onmouseout="this.style.background='rgba(239,68,68,0.1)'"><i class="fas fa-trash-alt"></i> مسح الكل</span>` : '';
+      notifTitle.innerHTML = `<div style="display:flex;align-items:center;width:100%;gap:10px">
+        <i class="fas fa-bell" style="color:var(--amber)"></i> <span>إشعارات د. ${docName || 'الطبيب'}</span>
+        ${clearBtn}
+      </div>`;
     }
 
     const unreadCount = _myNotifications.filter(n => new Date(n.createdAt).getTime() > _lastSeenNotifTimestamp).length;
