@@ -159,7 +159,8 @@ window.addEventListener('DOMContentLoaded', () => {
       const elTopName = document.getElementById('topName');
       const elTlogo = document.getElementById('tlogo');
       if (elClinicName) elClinicName.textContent = _sets.name || 'العيادة الطبية';
-      if (elTopName) elTopName.textContent = _sets.name || 'العيادة الطبية';
+      // Only set clinic name in topbar if doctor hasn't logged in yet
+      if (elTopName && !window._doctorLoggedIn) elTopName.textContent = _sets.name || 'العيادة الطبية';
       if (elTlogo) elTlogo.textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON EMR';
     } else {
       const elClinicName = document.getElementById('lClinicName');
@@ -169,7 +170,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Wait for Enterprise Runtime
   window.waitForArgonReady('emr').then(session => {
-    document.getElementById('topName').textContent = `مرحباً، ${session.displayName}`;
+    window._doctorLoggedIn = true;
+    const clinicName = _sets?.name || '';
+    const docName = session.displayName || '';
+    document.getElementById('topName').innerHTML = `<span style="color:var(--teal);font-weight:800">د. ${docName}</span><span style="margin:0 8px;opacity:0.3">|</span><span style="opacity:0.6;font-size:0.8rem">${clinicName}</span>`;
     initEMR();
   });
 
