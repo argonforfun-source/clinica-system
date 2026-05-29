@@ -235,17 +235,53 @@ function initEMR() {
 
   // Load Bookings for Waiting Room
   let bookingLoadTimer = null;
+  let isInitWr = true;
+  db.ref(BASE + '/bookings').once('value', () => { setTimeout(() => { isInitWr = false; }, 2000); });
+
+  function playWrAlert() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
+      osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.2); // A5
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.6);
+    } catch(e) { console.log('Audio fallback'); }
+  }
+
   db.ref(BASE + '/bookings').on('child_added', snap => {
-    _liveBookings[snap.key] = snap.val();
+    const b = snap.val();
+    _liveBookings[snap.key] = b;
     renderWaitingRoom();
+    
+    if (!isInitWr && b.status === 'waiting') {
+      const session = ArgonSession.get() || {};
+      const assignedDoc = b.doctorId || b.docKey;
+      if (session.role === 'admin' || assignedDoc === session.staffId) playWrAlert();
+    }
     
     // Debounce the patient list filter so it renders correctly after the initial batch of bookings arrives
     clearTimeout(bookingLoadTimer);
     bookingLoadTimer = setTimeout(() => filterPatients(), 300);
   });
   db.ref(BASE + '/bookings').on('child_changed', snap => {
-    _liveBookings[snap.key] = snap.val();
+    const oldB = _liveBookings[snap.key] || {};
+    const newB = snap.val();
+    _liveBookings[snap.key] = newB;
     renderWaitingRoom();
+
+    if (!isInitWr && newB.status === 'waiting' && oldB.status !== 'waiting') {
+      const session = ArgonSession.get() || {};
+      const assignedDoc = newB.doctorId || newB.docKey;
+      if (session.role === 'admin' || assignedDoc === session.staffId) playWrAlert();
+    }
   });
   db.ref(BASE + '/bookings').on('child_removed', snap => {
     delete _liveBookings[snap.key];
@@ -673,6 +709,17 @@ function renderWaitingRoom() {
     if (pA !== pB) return pA - pB;
     return (a[1].time || '').localeCompare(b[1].time || '');
   });
+
+  const wrBadge = document.getElementById('wrBadge');
+  if (wrBadge) {
+    const waitingCount = activeBookings.filter(b => b[1].status === 'waiting').length;
+    if (waitingCount > 0) {
+      wrBadge.innerText = waitingCount;
+      wrBadge.style.display = 'inline-block';
+    } else {
+      wrBadge.style.display = 'none';
+    }
+  }
 
   if (!activeBookings.length) {
     wrList.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">
@@ -2728,7 +2775,7 @@ function completeWorkspaceVisit() {
   if (uid && _patients[uid]) {
     const timelineKey = db.ref(`${BASE}/patients/${uid}/visits`).push().key;
     updates[`${BASE}/patients/${uid}/visits/${timelineKey}`] = visitObj;
-    if (bookingId) updates[`${BASE}/live_bookings/${bookingId}/status`] = 'completed';
+    if (bookingId) updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
     
     // Create actual lab and radiology orders
     if (labTestsList && labTestsList.length > 0) {
@@ -2802,7 +2849,7 @@ function completeWorkspaceVisit() {
     };
     const timelineKey = db.ref(`${BASE}/patients/${newUid}/visits`).push().key;
     updates[`${BASE}/patients/${newUid}/visits/${timelineKey}`] = visitObj;
-    if (bookingId) updates[`${BASE}/live_bookings/${bookingId}/status`] = 'completed';
+    if (bookingId) updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
     
     // Create actual lab and radiology orders
     if (labTestsList && labTestsList.length > 0) {
