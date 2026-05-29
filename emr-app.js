@@ -2189,7 +2189,7 @@ function removeLabTest(name) {
   labTestsList = labTestsList.filter(x => x !== name);
   renderLabOrderChips();
 }
-function renderLabOrderChips() {
+function renderLabOrderChips() { if(typeof saveVisitDraft === "function") saveVisitDraft();
   const div = document.getElementById('labOrderList');
   if (!div) return;
   if (!labTestsList.length) {
@@ -2220,7 +2220,7 @@ function removeRadScan(name) {
   radScansList = radScansList.filter(x => x !== name);
   renderRadOrderChips();
 }
-function renderRadOrderChips() {
+function renderRadOrderChips() { if(typeof saveVisitDraft === "function") saveVisitDraft();
   const div = document.getElementById('radOrderList');
   if (!div) return;
   if (!radScansList.length) {
@@ -2574,7 +2574,125 @@ function runCollisionTest() {
 }
 
 // ── ENTERPRISE MEDICAL WORKSPACE CONTROLLER ──
-let activeVisit = { uid: null, bookingId: null, rx: [] };
+let activeVisit = { uid: null, bookingId: null, rx: [] };\n\n// ── EMR AUTOSAVE DRAFT RECOVERY PROTOCOL ──
+window.EMRAutosave = {
+    version: 1,
+    saveTimer: null,
+    activeDraftKey: null,
+    lastSavedHash: null,
+    restoreLock: false
+};
+
+function getDraftKey(uid, bookingId) {
+    const session = ArgonSession.get() || {};
+    return `argon_emr_draft_${session.staffId || 'unknown'}_${uid || 'nouid'}_${bookingId || 'walkin'}`;
+}
+
+function saveVisitDraft() {
+    if (EMRAutosave.restoreLock) return;
+    if (!activeVisit.uid && !activeVisit.bookingId) return; // Prevent saving empty context
+
+    clearTimeout(EMRAutosave.saveTimer);
+    EMRAutosave.saveTimer = setTimeout(() => {
+        const session = ArgonSession.get() || {};
+        const draftKey = getDraftKey(activeVisit.uid, activeVisit.bookingId);
+        
+        const draft = {
+            meta: {
+                savedAt: new Date().toISOString(),
+                doctorId: session.staffId || 'unknown',
+                patientId: activeVisit.uid,
+                bookingId: activeVisit.bookingId,
+                renderVersion: EMRAutosave.version
+            },
+            form: {
+                vDiag: document.getElementById('vDiag')?.value || '',
+                vComplaint: document.getElementById('vComplaint')?.value || '',
+                vTemp: document.getElementById('vTemp')?.value || '',
+                vBp: document.getElementById('vBp')?.value || '',
+                vHr: document.getElementById('vHr')?.value || '',
+                vO2: document.getElementById('vO2')?.value || '',
+                rxDrug: document.getElementById('rxDrug')?.value || '',
+                rxDose: document.getElementById('rxDose')?.value || ''
+            },
+            rx: [...(activeVisit.rx || [])],
+            labs: [...(typeof labTestsList !== 'undefined' ? labTestsList : [])],
+            radiology: [...(typeof radScansList !== 'undefined' ? radScansList : [])]
+        };
+
+        const hash = JSON.stringify(draft);
+        if (EMRAutosave.lastSavedHash === hash) return;
+        
+        localStorage.setItem(draftKey, hash);
+        EMRAutosave.lastSavedHash = hash;
+        EMRAutosave.activeDraftKey = draftKey;
+
+        // Show non-blocking indicator
+        const ind = document.getElementById('autosaveIndicator');
+        if (ind) {
+            ind.style.opacity = '1';
+            setTimeout(() => { ind.style.opacity = '0'; }, 2000);
+        }
+    }, 500);
+}
+
+function loadVisitDraft() {
+    if (!activeVisit.uid && !activeVisit.bookingId) return;
+    const session = ArgonSession.get() || {};
+    const draftKey = getDraftKey(activeVisit.uid, activeVisit.bookingId);
+    const raw = localStorage.getItem(draftKey);
+    
+    if (!raw) return;
+    
+    try {
+        const draft = JSON.parse(raw);
+        if (draft.meta.doctorId !== session.staffId) return;
+        if (draft.meta.patientId !== activeVisit.uid) return;
+        
+        EMRAutosave.restoreLock = true;
+        
+        // Restore Inputs
+        if (draft.form) {
+            Object.entries(draft.form).forEach(([id, val]) => {
+                const el = document.getElementById(id);
+                if (el) el.value = val;
+            });
+        }
+        
+        // Restore Arrays
+        if (draft.rx) activeVisit.rx = draft.rx;
+        if (draft.labs) labTestsList = draft.labs;
+        if (draft.radiology) radScansList = draft.radiology;
+        
+        // Render UI
+        if (typeof renderWorkspaceRx === 'function') renderWorkspaceRx();
+        if (typeof renderLabOrderTags === 'function') renderLabOrderTags();
+        if (typeof renderRadOrderTags === 'function') renderRadOrderTags();
+        
+        if (typeof ArgonCore !== 'undefined') {
+            ArgonCore.logAudit('DRAFT_RESTORED', `تم استعادة مسودة غير مكتملة للمريض: ${activeVisit.uid}`, 'EMR_AUTOSAVE');
+        }
+        
+        EMRAutosave.restoreLock = false;
+        toast('تم استعادة بيانات الزيارة السابقة تلقائياً', 'ok');
+    } catch (e) {
+        console.error('Draft load error', e);
+        EMRAutosave.restoreLock = false;
+    }
+}
+
+function clearVisitDraft() {
+    if (!EMRAutosave.activeDraftKey) {
+        EMRAutosave.activeDraftKey = getDraftKey(activeVisit.uid, activeVisit.bookingId);
+    }
+    localStorage.removeItem(EMRAutosave.activeDraftKey);
+    EMRAutosave.activeDraftKey = null;
+    EMRAutosave.lastSavedHash = null;
+    if (typeof ArgonCore !== 'undefined') {
+        ArgonCore.logAudit('DRAFT_CLEARED', 'تم تفريغ المسودة بعد اكتمال الزيارة', 'EMR_AUTOSAVE');
+    }
+}
+
 
 // ── Resolve patient UID from push-key OR phone fallback ──
 function resolvePatientUid(rawUid, expectedName = '') {
@@ -2704,7 +2822,7 @@ function addWorkspaceRx() {
   renderWorkspaceRx();
 }
 
-function renderWorkspaceRx() {
+function renderWorkspaceRx() { if(typeof saveVisitDraft === "function") saveVisitDraft();
   const tb = document.getElementById('wsRxTbody');
   if (!tb) return;
   if (!activeVisit.rx.length) {
