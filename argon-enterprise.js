@@ -337,6 +337,143 @@ const ArgonEnterprise = {
 
             window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
             window.XLSX.writeFile(wb, `${filename}.xlsx`);
+        },
+
+        async exportComprehensiveReport(clinicId) {
+            if (!window.firebase || !window.firebase.database) throw new Error("Firebase not ready");
+            
+            if (typeof toast === 'function') toast("جاري سحب وتجميع البيانات الشاملة... يرجى الانتظار", "info");
+            
+            if (typeof window.XLSX === 'undefined') {
+                await ArgonEnterprise.PDF._loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+            }
+
+            const db = window.firebase.database();
+            const snap = await db.ref(`clinics/${clinicId}`).once('value');
+            const data = snap.val();
+            
+            if (!data) {
+                if (typeof toast === 'function') toast("لم يتم العثور على بيانات العيادة", "err");
+                return;
+            }
+
+            const wb = window.XLSX.utils.book_new();
+            wb.Workbook = { Views: [{ RTL: true }] };
+            const dateStr = new Date().toLocaleDateString('ar-JO', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            const clinicName = (data.settings && data.settings.name) ? data.settings.name : "العيادة";
+
+            const appendSheet = (dataArray, sheetName) => {
+                if (!dataArray || dataArray.length === 0) {
+                    dataArray = [{"ملاحظة": "لا يوجد بيانات"}];
+                }
+                const ws = window.XLSX.utils.json_to_sheet(dataArray);
+                const colWidths = [];
+                dataArray.forEach(row => {
+                    Object.keys(row).forEach((key, i) => {
+                        const valStr = String(row[key]);
+                        colWidths[i] = Math.max(colWidths[i] || 0, valStr.length, key.length);
+                    });
+                });
+                ws['!cols'] = colWidths.map(w => ({ wch: w + 5 }));
+                window.XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0, 31));
+            };
+
+            // 1. Summary
+            const patientsCount = data.patients ? Object.keys(data.patients).length : 0;
+            const aptsCount = data.appointments ? Object.keys(data.appointments).reduce((acc, d) => acc + Object.keys(data.appointments[d]).reduce((a2, t) => a2 + Object.keys(data.appointments[d][t]).length, 0), 0) : 0;
+            const docCount = data.doctors ? Object.keys(data.doctors).length : 0;
+            const staffCount = data.staff ? Object.keys(data.staff).length : 0;
+            
+            const summaryData = [{
+                "اسم العيادة": clinicName,
+                "رقم الهاتف": data.settings?.phone || "-",
+                "إجمالي المرضى": patientsCount,
+                "إجمالي المواعيد": aptsCount,
+                "عدد الأطباء": docCount,
+                "طاقم العمل": staffCount,
+                "تاريخ التقرير": dateStr
+            }];
+            appendSheet(summaryData, "ملخص وإحصائيات");
+
+            // 2. Patients
+            const ptsData = [];
+            if (data.patients) {
+                Object.values(data.patients).forEach(p => {
+                    ptsData.push({
+                        "اسم المريض": p.info?.name || "-",
+                        "رقم الهاتف": p.info?.phone || "-",
+                        "الرقم الوطني / الهوية": p.info?.natId || "-",
+                        "تاريخ الميلاد / العمر": p.info?.age || "-",
+                        "الجنس": p.info?.gender === 'male' ? 'ذكر' : (p.info?.gender === 'female' ? 'أنثى' : '-'),
+                        "تاريخ التسجيل": p.info?.createdAt ? new Date(p.info.createdAt).toLocaleDateString('ar-JO') : "-"
+                    });
+                });
+            }
+            appendSheet(ptsData, "سجل المرضى");
+
+            // 3. Appointments
+            const aptData = [];
+            if (data.appointments) {
+                const allApts = [];
+                Object.keys(data.appointments).forEach(date => {
+                    const dObj = data.appointments[date];
+                    Object.keys(dObj).forEach(time => {
+                        const tObj = dObj[time];
+                        Object.values(tObj).forEach(a => {
+                            allApts.push({ date, time, ...a });
+                        });
+                    });
+                });
+                allApts.sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+                
+                const statusMap = { 'waiting': 'قيد الانتظار', 'in-progress': 'في الداخل', 'completed': 'مكتمل', 'cancelled': 'ملغي' };
+                allApts.forEach(a => {
+                    aptData.push({
+                        "التاريخ": a.date,
+                        "الوقت": a.time,
+                        "رقم الدور": a.queueNum || "-",
+                        "اسم المريض": a.patientName || "-",
+                        "الحالة": statusMap[a.status] || a.status,
+                        "نوع الحجز": a.type === 'consultation' ? 'كشفية' : (a.type === 'followup' ? 'مراجعة' : a.type || '-')
+                    });
+                });
+            }
+            appendSheet(aptData, "المواعيد والحجوزات");
+
+            // 4. Doctors
+            const docData = [];
+            if (data.doctors) {
+                Object.values(data.doctors).forEach(d => {
+                    if(d.credentials) {
+                        docData.push({
+                            "اسم الطبيب": d.credentials.name || "-",
+                            "الهاتف": d.credentials.phone || "-",
+                            "التخصص": d.credentials.specialty || "-",
+                            "حالة الحساب": d.credentials.identityStatus === 'SUSPENDED' ? 'موقوف' : 'فعال'
+                        });
+                    }
+                });
+            }
+            appendSheet(docData, "الكادر الطبي");
+
+            // 5. Staff
+            const staffData = [];
+            if (data.staff) {
+                Object.values(data.staff).forEach(s => {
+                    if(s.credentials) {
+                        staffData.push({
+                            "الاسم": s.credentials.name || "-",
+                            "الهاتف": s.credentials.phone || "-",
+                            "الصلاحية (الدور)": s.credentials.role || "-",
+                            "حالة الحساب": s.credentials.identityStatus === 'SUSPENDED' ? 'موقوف' : 'فعال'
+                        });
+                    }
+                });
+            }
+            appendSheet(staffData, "طاقم العمل");
+
+            window.XLSX.writeFile(wb, `تقرير_شامل_${clinicName}_${dateStr.replace(/\//g,'-')}.xlsx`);
+            if (typeof toast === 'function') toast("تم تصدير التقرير بنجاح!", "ok");
         }
     },
 

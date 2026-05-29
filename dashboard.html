@@ -357,7 +357,10 @@
 
     <!-- STATS -->
     <div id="stats" class="sec on">
-      <div class="ph"><div><div class="pt">📊 الإحصائيات</div><div class="ps">نظرة شاملة على أداء العيادة</div></div></div>
+      <div class="ph">
+        <div><div class="pt">📊 الإحصائيات</div><div class="ps">نظرة شاملة على أداء العيادة</div></div>
+        <button class="tbtn" onclick="window.ArgonEnterprise.Excel.exportComprehensiveReport(CID)" style="background:var(--green);color:#fff;border:none;padding:8px 16px;font-weight:bold;display:flex;align-items:center;gap:8px;border-radius:10px;"><i class="fas fa-file-excel" style="font-size:1.2rem;"></i> تقرير احترافي (Excel)</button>
+      </div>
       <div class="sgrid" style="grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));">
         <!-- Success Rate Card -->
         <div class="scard" style="--bc:var(--green)">
