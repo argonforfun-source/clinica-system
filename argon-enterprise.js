@@ -105,6 +105,211 @@ const ArgonEnterprise = {
                 s.onerror = reject;
                 document.head.appendChild(s);
             });
+        },
+
+        async generatePrescription(clinicSettings, patientData, medications, prescNotes, docName) {
+            const div = document.createElement('div');
+            div.style.position = 'absolute';
+            div.style.left = '-9999px';
+            div.style.top = '0';
+            div.style.width = '800px';
+            div.style.background = '#fff';
+            div.style.color = '#000';
+            div.style.fontFamily = "'Tajawal', sans-serif";
+            div.dir = 'rtl';
+            
+            const dateStr = new Date().toLocaleDateString('ar-JO');
+            const medsHtml = medications.map((m, idx) => `
+                <tr style="border-bottom:1px solid #eee">
+                    <td style="padding:15px;font-weight:bold;color:#334155">${idx+1}</td>
+                    <td style="padding:15px;font-weight:bold;color:#0f172a;font-size:1.1rem">${m.name}</td>
+                    <td style="padding:15px;color:#475569">${m.dose || '-'}</td>
+                    <td style="padding:15px;color:#475569">${m.freq || '-'}</td>
+                    <td style="padding:15px;color:#475569">${m.dur || '-'}</td>
+                </tr>
+            `).join('');
+
+            div.innerHTML = `
+                <div style="padding:40px;border:2px solid #0d9488;border-radius:12px;margin:20px;position:relative">
+                    <!-- Watermark -->
+                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%, -50%) rotate(-45deg);font-size:120px;color:rgba(13, 148, 136, 0.03);z-index:0;font-weight:900;pointer-events:none;white-space:nowrap">${clinicSettings.name}</div>
+                    
+                    <div style="position:relative;z-index:1">
+                        <div style="display:flex;justify-content:space-between;border-bottom:2px solid #0d9488;padding-bottom:20px;margin-bottom:20px">
+                            <div>
+                                <h1 style="color:#0d9488;margin:0;font-size:2rem">${clinicSettings.name}</h1>
+                                <p style="margin:8px 0 0;color:#64748b;font-weight:600">د. ${docName}</p>
+                                <p style="margin:5px 0 0;color:#94a3b8;font-size:0.9rem">${clinicSettings.address || ''} | ${clinicSettings.phone || ''}</p>
+                            </div>
+                            <div style="text-align:left">
+                                <h2 style="margin:0;color:#1e293b;font-size:1.5rem">وصفة طبية (Rx)</h2>
+                                <p style="margin:8px 0 0;color:#64748b">التاريخ: ${dateStr}</p>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom:30px;background:#f8fafc;padding:15px 20px;border-radius:8px;border:1px solid #e2e8f0;display:flex;justify-content:space-between">
+                            <div>
+                                <h3 style="margin:0 0 10px;color:#0d9488;font-size:1.1rem">المريض:</h3>
+                                <p style="margin:0;font-weight:700;color:#1e293b;font-size:1.2rem">${patientData.name}</p>
+                            </div>
+                            <div style="text-align:left">
+                                <p style="margin:0;color:#64748b">العمر: ${patientData.age || '-'} سنة</p>
+                                <p style="margin:5px 0 0;color:#64748b">الجنس: ${patientData.gender === 'male' ? 'ذكر' : (patientData.gender === 'female' ? 'أنثى' : '-')}</p>
+                            </div>
+                        </div>
+
+                        <div style="font-size:4rem;color:#0d9488;line-height:1;margin-bottom:10px;font-family:serif;opacity:0.2">Rx</div>
+
+                        <table style="width:100%;border-collapse:collapse;margin-bottom:30px;text-align:right">
+                            <thead>
+                                <tr style="background:#f1f5f9;color:#475569">
+                                    <th style="padding:12px 15px;border-radius:0 8px 8px 0">#</th>
+                                    <th style="padding:12px 15px">اسم العلاج</th>
+                                    <th style="padding:12px 15px">الجرعة</th>
+                                    <th style="padding:12px 15px">التكرار</th>
+                                    <th style="padding:12px 15px;border-radius:8px 0 0 8px">المدة</th>
+                                </tr>
+                            </thead>
+                            <tbody>${medsHtml}</tbody>
+                        </table>
+
+                        ${prescNotes ? `
+                        <div style="margin-top:20px;padding:15px;border-right:4px solid #f59e0b;background:#fffbeb;border-radius:8px;color:#b45309">
+                            <h4 style="margin:0 0 5px">تعليمات إضافية:</h4>
+                            <p style="margin:0">${prescNotes.replace(/\n/g, '<br>')}</p>
+                        </div>
+                        ` : ''}
+
+                        <div style="margin-top:60px;display:flex;justify-content:space-between;align-items:flex-end">
+                            <div style="color:#94a3b8;font-size:0.85rem">
+                                ملاحظة: هذه الوصفة صالحة لمدة 3 أيام من تاريخ الإصدار.
+                            </div>
+                            <div style="text-align:center;width:200px">
+                                <div style="border-bottom:1px dashed #cbd5e1;margin-bottom:10px;height:40px"></div>
+                                <div style="color:#475569;font-weight:700">توقيع الطبيب وختم العيادة</div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top:40px;text-align:center;color:#94a3b8;font-size:0.8rem;border-top:1px solid #e2e8f0;padding-top:20px">
+                            مع تمنياتنا لكم بالشفاء العاجل<br>تم إنشاء هذه الوصفة بواسطة ARGON EMR
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(div);
+
+            if (typeof window.html2pdf === 'undefined') {
+                await this._loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
+            }
+
+            const opt = {
+                margin: 0,
+                filename: `Prescription_${patientData.name}_${dateStr}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            await window.html2pdf().set(opt).from(div).save();
+            document.body.removeChild(div);
+        },
+
+        async generateTimeline(clinicSettings, patientData, visitsArray) {
+            const div = document.createElement('div');
+            div.style.position = 'absolute';
+            div.style.left = '-9999px';
+            div.style.top = '0';
+            div.style.width = '800px';
+            div.style.background = '#fff';
+            div.style.color = '#000';
+            div.style.fontFamily = "'Tajawal', sans-serif";
+            div.dir = 'rtl';
+            
+            const dateStr = new Date().toLocaleDateString('ar-JO');
+            
+            const visitsHtml = visitsArray.map(v => `
+                <div style="margin-bottom:20px;border:1px solid #e2e8f0;border-radius:12px;padding:20px;page-break-inside:avoid">
+                    <div style="display:flex;justify-content:space-between;border-bottom:1px solid #f1f5f9;padding-bottom:10px;margin-bottom:15px">
+                        <div style="font-weight:800;color:#0d9488">${v.date} - ${v.time}</div>
+                        <div style="color:#64748b;font-weight:700">د. ${v.docName}</div>
+                    </div>
+                    
+                    ${v.complaint ? `<div style="margin-bottom:10px"><strong style="color:#475569">الشكوى الرئيسية:</strong><p style="margin:5px 0 0;color:#1e293b">${v.complaint}</p></div>` : ''}
+                    ${v.diagnosis ? `<div style="margin-bottom:10px"><strong style="color:#475569">التشخيص النهائي:</strong><p style="margin:5px 0 0;color:#1e293b">${v.diagnosis}</p></div>` : ''}
+                    ${v.notes ? `<div style="margin-bottom:10px"><strong style="color:#475569">الملاحظات الطبية:</strong><p style="margin:5px 0 0;color:#1e293b">${v.notes}</p></div>` : ''}
+                    
+                    ${(v.vitals && (v.vitals.bp || v.vitals.temp || v.vitals.pulse)) ? `
+                    <div style="display:flex;gap:15px;margin-top:15px;background:#f8fafc;padding:10px;border-radius:8px">
+                        ${v.vitals.bp ? `<div><span style="color:#64748b;font-size:0.9rem">الضغط:</span> <strong style="color:#ef4444">${v.vitals.bp}</strong></div>` : ''}
+                        ${v.vitals.temp ? `<div><span style="color:#64748b;font-size:0.9rem">الحرارة:</span> <strong style="color:#f59e0b">${v.vitals.temp} °C</strong></div>` : ''}
+                        ${v.vitals.pulse ? `<div><span style="color:#64748b;font-size:0.9rem">النبض:</span> <strong style="color:#3b82f6">${v.vitals.pulse} bpm</strong></div>` : ''}
+                    </div>` : ''}
+                </div>
+            `).join('');
+
+            div.innerHTML = `
+                <div style="padding:40px;border:2px solid #0d9488;border-radius:12px;margin:20px">
+                    <div style="display:flex;justify-content:space-between;border-bottom:2px solid #0d9488;padding-bottom:20px;margin-bottom:20px">
+                        <div>
+                            <h1 style="color:#0d9488;margin:0">${clinicSettings.name}</h1>
+                            <p style="margin:5px 0;color:#555">${clinicSettings.address || ''} | ${clinicSettings.phone || ''}</p>
+                        </div>
+                        <div style="text-align:left">
+                            <h2 style="margin:0;color:#333">السجل الطبي الموحد (EMR)</h2>
+                            <p style="margin:5px 0;color:#555">تاريخ الطباعة: ${dateStr}</p>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom:30px;background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #ddd;display:grid;grid-template-columns:1fr 1fr;gap:15px">
+                        <div>
+                            <h3 style="margin:0 0 15px;color:#0d9488;grid-column:1/-1">الملف الشخصي للمريض</h3>
+                            <p style="margin:0 0 8px"><strong>الاسم:</strong> ${patientData.name}</p>
+                            <p style="margin:0 0 8px"><strong>الهاتف:</strong> ${patientData.phone}</p>
+                            <p style="margin:0"><strong>الرقم الوطني/الهوية:</strong> ${patientData.natId || '-'}</p>
+                        </div>
+                        <div>
+                            <h3 style="margin:0 0 15px;color:transparent;user-select:none">.</h3>
+                            <p style="margin:0 0 8px"><strong>العمر:</strong> ${patientData.age || '-'}</p>
+                            <p style="margin:0 0 8px"><strong>الجنس:</strong> ${patientData.gender === 'male' ? 'ذكر' : (patientData.gender === 'female' ? 'أنثى' : '-')}</p>
+                            <p style="margin:0"><strong>فصيلة الدم:</strong> <span style="color:#ef4444;font-weight:800;direction:ltr;display:inline-block">${patientData.bloodType || '-'}</span></p>
+                        </div>
+                        
+                        ${(patientData.allergies || patientData.chronic) ? `
+                        <div style="grid-column:1/-1;margin-top:10px;padding-top:15px;border-top:1px dashed #cbd5e1">
+                            ${patientData.allergies ? `<p style="margin:0 0 8px;color:#ef4444"><strong><i class="fas fa-exclamation-triangle"></i> حساسية:</strong> ${patientData.allergies}</p>` : ''}
+                            ${patientData.chronic ? `<p style="margin:0;color:#f59e0b"><strong><i class="fas fa-notes-medical"></i> أمراض مزمنة:</strong> ${patientData.chronic}</p>` : ''}
+                        </div>` : ''}
+                    </div>
+
+                    <h3 style="margin:0 0 20px;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:10px">التاريخ الطبي والزيارات السابقة:</h3>
+                    
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                        ${visitsArray.length > 0 ? visitsHtml : '<p style="text-align:center;color:#94a3b8;padding:30px">لا يوجد سجل زيارات سابق لهذا المريض</p>'}
+                    </div>
+
+                    <div style="margin-top:50px;text-align:center;color:#777;font-size:12px;border-top:1px solid #ddd;padding-top:20px">
+                        وثيقة طبية معتمدة من نظام ARGON Enterprise Medical OS
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(div);
+
+            if (typeof window.html2pdf === 'undefined') {
+                await this._loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
+            }
+
+            const opt = {
+                margin: 0,
+                filename: `Medical_Record_${patientData.name}_${dateStr}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            await window.html2pdf().set(opt).from(div).save();
+            document.body.removeChild(div);
         }
     },
 
@@ -161,7 +366,66 @@ const ArgonEnterprise = {
                 return parsed.data;
             } catch(e) { return null; }
         }
+    },
+
+    // ── 4. ENTERPRISE LIVE UPDATE ENGINE ──
+    LiveUpdate: {
+        _initialized: false,
+        init(dbRef, basePath) {
+            if (this._initialized) return;
+            this._initialized = true;
+            
+            const verRef = dbRef.ref(`${basePath}/system_version`);
+            verRef.on('value', snap => {
+                const newVer = snap.val();
+                if (!newVer) return; // Not set yet
+                
+                const currentVer = localStorage.getItem('ARGON_VERSION');
+                if (!currentVer) {
+                    // First time, just record it
+                    localStorage.setItem('ARGON_VERSION', newVer);
+                } else if (currentVer !== newVer) {
+                    // Version changed! Trigger professional auto-refresh
+                    this.triggerUpdate(newVer);
+                }
+            });
+        },
+        triggerUpdate(newVersion) {
+            const toastDiv = document.createElement('div');
+            toastDiv.innerHTML = `
+                <div style="position:fixed;bottom:25px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg, #2563eb, #3b82f6);color:white;padding:15px 35px;border-radius:30px;box-shadow:0 15px 30px rgba(37,99,235,0.4);z-index:999999;font-weight:bold;display:flex;align-items:center;gap:12px;font-family:'Tajawal', sans-serif;animation: slideUpArgon 0.6s cubic-bezier(0.16, 1, 0.3, 1);">
+                    <i class="fas fa-sync fa-spin" style="font-size:1.3rem"></i> 
+                    <span style="font-size:1.1rem;letter-spacing:0.5px">تم إطلاق تحديث جديد للنظام! جاري التحديث التلقائي...</span>
+                </div>
+            `;
+            document.body.appendChild(toastDiv);
+            
+            if(!document.getElementById('liveUpdateStyle')) {
+                const style = document.createElement('style');
+                style.id = 'liveUpdateStyle';
+                style.innerHTML = `@keyframes slideUpArgon { from { bottom: -60px; opacity: 0; transform: translateX(-50%) scale(0.9); } to { bottom: 25px; opacity: 1; transform: translateX(-50%) scale(1); } }`;
+                document.head.appendChild(style);
+            }
+
+            // Lock the screen slightly to prevent data entry during refresh
+            const overlay = document.createElement('div');
+            overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.4);z-index:999998;backdrop-filter:blur(2px);";
+            document.body.appendChild(overlay);
+
+            setTimeout(() => {
+                localStorage.setItem('ARGON_VERSION', newVersion);
+                window.location.reload(true); // Force clear cache reload
+            }, 3500);
+        }
     }
 };
 
 window.ArgonEnterprise = ArgonEnterprise;
+
+// Auto-initialize LiveUpdate when Firebase is globally ready
+const liveUpdateCheck = setInterval(() => {
+    if (typeof db !== 'undefined' && typeof BASE !== 'undefined' && typeof db.ref === 'function') {
+        clearInterval(liveUpdateCheck);
+        ArgonEnterprise.LiveUpdate.init(db, BASE);
+    }
+}, 1500);
