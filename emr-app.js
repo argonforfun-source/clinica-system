@@ -2574,7 +2574,9 @@ function runCollisionTest() {
 }
 
 // ── ENTERPRISE MEDICAL WORKSPACE CONTROLLER ──
-let activeVisit = { uid: null, bookingId: null, rx: [] };\n\n// ── EMR AUTOSAVE DRAFT RECOVERY PROTOCOL ──
+let activeVisit = { uid: null, bookingId: null, rx: [] };
+
+// ── EMR AUTOSAVE DRAFT RECOVERY PROTOCOL ──
 window.EMRAutosave = {
     version: 1,
     saveTimer: null,
