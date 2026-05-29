@@ -60,7 +60,6 @@ let _pharmacyInventory = {};
 let _liveBookings = {};
 let _myNotifications = [];
 let _notifsClearedAt = parseInt(localStorage.getItem('argon_notifs_cleared') || '0');
-let _lastSeenNotifTimestamp = parseInt(localStorage.getItem('argon_notif_seen') || '0');
 
 let npPhotoData = '';
 let epPhotoData = '';
@@ -1034,7 +1033,7 @@ function saveNewPatient() {
     if (!nationalId) {
       // Warn but still ask for National ID to confirm distinction
       const confirm = window.confirm(
-        `⚠️ يوجد مريض بنفس الاسم ورقم الهاتف (${info.mrn}).\n\nهل هذا شخص مختلف؟ (مثلاً: أحد أفراد العائلة)\n\nأدخل الرقم الوطني للتمييز إن كان متوفراً، ثم اضغط موافق للمتابعة.`
+        `⚠️ يوجد مريض بنفس الاسم ورقم الهاتف (${info.mrn}).\nlet _notifsClearedAt = parseInt(localStorage.getItem('argon_notifs_cleared') || '0');\n\nهل هذا شخص مختلف؟ (مثلاً: أحد أفراد العائلة)\n\nأدخل الرقم الوطني للتمييز إن كان متوفراً، ثم اضغط موافق للمتابعة.`
       );
       if (!confirm) {
         viewPatientFile(dupUid);
