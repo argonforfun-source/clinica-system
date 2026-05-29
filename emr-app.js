@@ -27,27 +27,27 @@ let _depts = {};
 let activePatientId = null;
 
 window.EMRContext = {
-    activePatientId: null,
-    activeBookingId: null,
-    activeDoctorId: null,
-    sessionLock: false,
-    renderToken: null,
-    renderVersion: 0,
-    initialized: false,
-    lastOpenedAt: 0
+  activePatientId: null,
+  activeBookingId: null,
+  activeDoctorId: null,
+  sessionLock: false,
+  renderToken: null,
+  renderVersion: 0,
+  initialized: false,
+  lastOpenedAt: 0
 };
 
 window.AuditAPI = {
-    log(type, payload={}){
-        console.log('[AUDIT]', type, payload);
-    }
+  log(type, payload = {}) {
+    console.log('[AUDIT]', type, payload);
+  }
 };
 
 // ── SOFT LOCK CLEANUP ON TAB CLOSE ──
 window.addEventListener('beforeunload', () => {
-    if (window.EMRContext && window.EMRContext.activePatientId && typeof BASE !== 'undefined') {
-        db.ref(`${BASE}/active_sessions/${window.EMRContext.activePatientId}`).remove();
-    }
+  if (window.EMRContext && window.EMRContext.activePatientId && typeof BASE !== 'undefined') {
+    db.ref(`${BASE}/active_sessions/${window.EMRContext.activePatientId}`).remove();
+  }
 });
 let rxItems = [];
 let uploadAttachments = [];
@@ -108,19 +108,19 @@ function detectNewPatDuplicates() {
   const name = document.getElementById('npName').value.trim().toLowerCase();
   const phone = cleanPhone(document.getElementById('npPhone').value);
   const warningDiv = document.getElementById('npDupWarning');
-  
+
   if (!name && !phone) {
     warningDiv.style.display = 'none';
     return;
   }
-  
+
   const matches = Object.entries(_patients).filter(([uid, p]) => {
     const info = p.info || {};
     const matchName = name && (info.name || '').trim().toLowerCase().includes(name);
     const matchPhone = phone && cleanPhone(info.phone || '') === phone;
     return matchName || matchPhone;
   });
-  
+
   if (matches.length > 0) {
     let html = `<div style="font-weight:800;margin-bottom:6px"><i class="fas fa-exclamation-triangle"></i> تـنبيه: تم العثور على ملفات مشابهة (${matches.length})</div>`;
     html += matches.map(([uid, p]) => {
@@ -144,7 +144,7 @@ window.addEventListener('DOMContentLoaded', () => {
     window.location.href = "super.html";
     return;
   }
-  
+
   // Load Theme
   const savedTheme = localStorage.getItem('argon_theme') || 'light';
   document.body.setAttribute('data-theme', savedTheme);
@@ -217,22 +217,22 @@ function initEMR() {
   // Load Patients List directly from Firebase
   db.ref(BASE + '/patients').on('value', snap => {
     _patients = snap.val() || {};
-    
+
     // Auto-load patient from URL param on first load
     if (!activePatientId) {
       const urlParams = new URLSearchParams(window.location.search);
       const urlPid = urlParams.get('pid');
       const urlPhone = urlParams.get('phone');
-      
+
       const targetId = urlPid || urlPhone;
       if (targetId && _patients[targetId]) {
         viewPatientFile(targetId);
         window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
       }
     } else if (_patients[activePatientId]) {
-       refreshPatientFileUI(activePatientId);
+      refreshPatientFileUI(activePatientId);
     }
-    
+
     filterPatients();
   });
 
@@ -256,20 +256,20 @@ function initEMR() {
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.6);
-    } catch(e) { console.log('Audio fallback'); }
+    } catch (e) { console.log('Audio fallback'); }
   }
 
   db.ref(BASE + '/bookings').on('child_added', snap => {
     const b = snap.val();
     _liveBookings[snap.key] = b;
     renderWaitingRoom();
-    
+
     if (!isInitWr && b.status === 'waiting') {
       const session = ArgonSession.get() || {};
       const assignedDoc = b.doctorId || b.docKey;
       if (session.role === 'admin' || assignedDoc === session.staffId) playWrAlert();
     }
-    
+
     // Debounce the patient list filter so it renders correctly after the initial batch of bookings arrives
     clearTimeout(bookingLoadTimer);
     bookingLoadTimer = setTimeout(() => filterPatients(), 300);
@@ -295,62 +295,62 @@ function initEMR() {
   const sessionData = window.ArgonSession ? window.ArgonSession.get() : null;
   const sessionUid = sessionData ? sessionData.staffId : null;
   let isInitNotify = true;
-  
-  db.ref(BASE + '/notifications').orderByChild('createdAt').limitToLast(50).on('child_added', snap => {
-    const n = snap.val();
-    n.key = snap.key;
-    
-    // STRICT ISOLATION: Only process notifications targeting this specific doctor
-    if (n && n.role === 'doctor' && n.docKey === sessionUid) {
-      if (!_myNotifications.find(x => x.key === n.key)) {
-        _myNotifications.unshift(n);
-        _myNotifications.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-        
-        renderDoctorNotifications();
-        
-        
+
+  if (sessionUid) {
+    db.ref(BASE + '/notifications').orderByChild('docKey').equalTo(sessionUid).limitToLast(50).on('child_added', snap => {
+      const n = snap.val();
+      n.key = snap.key;
+
+      // STRICT ISOLATION: Process notifications targeting this specific doctor
+      if (n && n.role === 'doctor') {
+        if (!_myNotifications.find(x => x.key === n.key)) {
+          _myNotifications.unshift(n);
+          _myNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+          renderDoctorNotifications();
+        }
       }
-    }
-  });
+    });
+  }
 
   setTimeout(() => { isInitNotify = false; }, 3000);
 
-// --- DOCTOR NOTIFICATIONS SIDEBAR ---
+  // --- DOCTOR NOTIFICATIONS SIDEBAR ---
 
-function renderDoctorNotifications() {
-  const notifBadge = document.getElementById('notifBadge');
-  const notifList = document.getElementById('notifList');
-  const notifTitle = document.getElementById('notifSidebarTitle');
-  
-  if (!notifBadge || !notifList) return;
-  
-  if (notifTitle) {
-    const docName = window.ArgonSession ? window.ArgonSession.get()?.displayName : '';
-    notifTitle.innerHTML = `<i class="fas fa-bell" style="color:var(--amber)"></i> إشعارات د. ${docName || 'الطبيب'}`;
-  }
+  function renderDoctorNotifications() {
+    const notifBadge = document.getElementById('notifBadge');
+    const notifList = document.getElementById('notifList');
+    const notifTitle = document.getElementById('notifSidebarTitle');
 
-  const unreadCount = _myNotifications.filter(n => new Date(n.createdAt).getTime() > _lastSeenNotifTimestamp).length;
-  if (unreadCount > 0) {
-    notifBadge.textContent = unreadCount;
-    notifBadge.style.display = 'block';
-  } else {
-    notifBadge.style.display = 'none';
-  }
+    if (!notifBadge || !notifList) return;
 
-  if (_myNotifications.length > 0) {
-    
-    notifList.innerHTML = _myNotifications.map(n => {
-      const isLab = (n.title || '').includes('تحاليل') || (n.title || '').includes('🔬');
-      const isRad = (n.title || '').includes('أشعة') || (n.title || '').includes('🩻');
-      const typeIcon = isLab ? '🧪' : isRad ? '🩻' : '🔔';
-      const typeLabel = isLab ? 'نتيجة مختبر' : isRad ? 'نتيجة أشعة' : 'إشعار';
-      const typeBg = isLab ? 'rgba(16,185,129,0.15)' : isRad ? 'rgba(14,165,233,0.15)' : 'rgba(255,255,255,0.05)';
-      const typeBorder = isLab ? 'rgba(16,185,129,0.4)' : isRad ? 'rgba(14,165,233,0.4)' : 'var(--border)';
-      const typeColor = isLab ? '#10b981' : isRad ? '#0ea5e9' : 'var(--amber)';
-      const ago = window.argonTimeAgo(n.createdAt);
-      const isNew = n.createdAt && (Date.now() - new Date(n.createdAt).getTime()) < 120000;
-      
-      return `
+    if (notifTitle) {
+      const docName = window.ArgonSession ? window.ArgonSession.get()?.displayName : '';
+      notifTitle.innerHTML = `<i class="fas fa-bell" style="color:var(--amber)"></i> إشعارات د. ${docName || 'الطبيب'}`;
+    }
+
+    const unreadCount = _myNotifications.filter(n => new Date(n.createdAt).getTime() > _lastSeenNotifTimestamp).length;
+    if (unreadCount > 0) {
+      notifBadge.textContent = unreadCount;
+      notifBadge.style.display = 'block';
+    } else {
+      notifBadge.style.display = 'none';
+    }
+
+    if (_myNotifications.length > 0) {
+
+      notifList.innerHTML = _myNotifications.map(n => {
+        const isLab = (n.title || '').includes('تحاليل') || (n.title || '').includes('🔬');
+        const isRad = (n.title || '').includes('أشعة') || (n.title || '').includes('🩻');
+        const typeIcon = isLab ? '🧪' : isRad ? '🩻' : '🔔';
+        const typeLabel = isLab ? 'نتيجة مختبر' : isRad ? 'نتيجة أشعة' : 'إشعار';
+        const typeBg = isLab ? 'rgba(16,185,129,0.15)' : isRad ? 'rgba(14,165,233,0.15)' : 'rgba(255,255,255,0.05)';
+        const typeBorder = isLab ? 'rgba(16,185,129,0.4)' : isRad ? 'rgba(14,165,233,0.4)' : 'var(--border)';
+        const typeColor = isLab ? '#10b981' : isRad ? '#0ea5e9' : 'var(--amber)';
+        const ago = window.argonTimeAgo(n.createdAt);
+        const isNew = n.createdAt && (Date.now() - new Date(n.createdAt).getTime()) < 120000;
+
+        return `
         <div style="background:${typeBg};border:1px solid ${typeBorder};border-radius:12px;padding:14px;cursor:pointer;transition:0.2s;${isNew ? 'animation:notifPulse 2s ease infinite;' : ''}" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" onclick="openNotification('${n.patientId || ''}', '${n.key}')">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
             <span style="font-size:0.75rem;background:${typeColor};color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold">${typeIcon} ${typeLabel}</span>
@@ -361,66 +361,66 @@ function renderDoctorNotifications() {
           </div>
         </div>
       `;
-    }).join('');
-  } else {
-    notifBadge.style.display = 'none';
-    notifList.innerHTML = `
+      }).join('');
+    } else {
+      notifBadge.style.display = 'none';
+      notifList.innerHTML = `
       <div style="text-align:center;color:var(--muted);margin-top:40px">
         <i class="fas fa-inbox" style="font-size:2rem;opacity:0.3"></i><br>لا يوجد إشعارات حالياً
       </div>
     `;
+    }
   }
-}
 
-// Auto-refresh relative timestamps every 30 seconds
-setInterval(() => { if (_myNotifications.length > 0) renderDoctorNotifications(); }, 30000);
+  // Auto-refresh relative timestamps every 30 seconds
+  setInterval(() => { if (_myNotifications.length > 0) renderDoctorNotifications(); }, 30000);
 
-window.toggleNotifications = function() {
-  const sidebar = document.getElementById('notifSidebar');
-  if (sidebar) {
-    if (sidebar.style.left === '0px') {
-      sidebar.style.left = '-400px';
+  window.toggleNotifications = function () {
+    const sidebar = document.getElementById('notifSidebar');
+    if (sidebar) {
+      if (sidebar.style.left === '0px') {
+        sidebar.style.left = '-400px';
+      } else {
+        sidebar.style.left = '0px';
+        // Mark all as read
+        _lastSeenNotifTimestamp = Date.now();
+        localStorage.setItem('argon_notif_seen', _lastSeenNotifTimestamp);
+        const badge = document.getElementById('notifBadge');
+        if (badge) badge.style.display = 'none';
+      }
+    }
+  };
+
+  window.openNotification = function (patientId, notifKey) {
+    window.toggleNotifications();
+
+    if (patientId && patientId !== 'undefined') {
+      // 1. Switch sidebar active menu manually
+      document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
+      const patFileMenu = document.querySelectorAll('.ni')[1]; // 'ملف المريض'
+      if (patFileMenu) patFileMenu.classList.add('on');
+
+      // 2. Switch main section
+      sw('patFile');
+
+      // 3. Load Patient Profile
+      viewPatientFile(patientId);
     } else {
-      sidebar.style.left = '0px';
-      // Mark all as read
-      _lastSeenNotifTimestamp = Date.now();
-      localStorage.setItem('argon_notif_seen', _lastSeenNotifTimestamp);
-      const badge = document.getElementById('notifBadge');
-      if (badge) badge.style.display = 'none';
+      toast('⚠️ عذراً، الإشعارات القديمة لا تحتوي على رابط مباشر لملف المريض', 'err');
     }
-  }
-};
+  };
 
-window.openNotification = function(patientId, notifKey) {
-  window.toggleNotifications();
-  
-  if (patientId && patientId !== 'undefined') {
-    // 1. Switch sidebar active menu manually
-    document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
-    const patFileMenu = document.querySelectorAll('.ni')[1]; // 'ملف المريض'
-    if (patFileMenu) patFileMenu.classList.add('on');
-    
-    // 2. Switch main section
-    sw('patFile');
-    
-    // 3. Load Patient Profile
-    viewPatientFile(patientId);
-  } else {
-    toast('⚠️ عذراً، الإشعارات القديمة لا تحتوي على رابط مباشر لملف المريض', 'err');
-  }
-};
-
-// Close sidebar when clicking outside
-document.addEventListener('click', (e) => {
-  const sidebar = document.getElementById('notifSidebar');
-  const btn = document.getElementById('notifBtn');
-  if (sidebar && btn && sidebar.style.left === '0px') {
-    if (!sidebar.contains(e.target) && !btn.contains(e.target)) {
-      sidebar.style.left = '-400px';
+  // Close sidebar when clicking outside
+  document.addEventListener('click', (e) => {
+    const sidebar = document.getElementById('notifSidebar');
+    const btn = document.getElementById('notifBtn');
+    if (sidebar && btn && sidebar.style.left === '0px') {
+      if (!sidebar.contains(e.target) && !btn.contains(e.target)) {
+        sidebar.style.left = '-400px';
+      }
     }
-  }
-});
-// ----------------------------------
+  });
+  // ----------------------------------
 
   // Show referrals sidebar button if license is Medical Complex
   if (_sets && _sets.mode === 'medical_complex') {
@@ -476,10 +476,10 @@ async function migratePhoneKeyedPatients() {
     const existingUuid = Object.entries(allPatients).find(([k, p]) => {
       const isMatchPhone = k.startsWith('-') && cleanPhone(p.info?.phone || '') === phone;
       if (!isMatchPhone) return false;
-      
+
       const legacyName = (patientData.info?.name || '').trim().toLowerCase();
-      const uuidName   = (p.info?.name || '').trim().toLowerCase();
-      
+      const uuidName = (p.info?.name || '').trim().toLowerCase();
+
       // If either name is missing, or they match/substring match, we consider it the same person
       if (!legacyName || !uuidName) return true;
       return legacyName === uuidName || legacyName.includes(uuidName) || uuidName.includes(legacyName);
@@ -488,8 +488,8 @@ async function migratePhoneKeyedPatients() {
     if (existingUuid) {
       // UUID record already exists — merge visits/data from legacy into it, then delete legacy
       const [uuidKey, uuidData] = existingUuid;
-      const legacyVisits   = patientData.visits   || {};
-      const legacyInvoices = patientData.invoices  || {};
+      const legacyVisits = patientData.visits || {};
+      const legacyInvoices = patientData.invoices || {};
 
       // Copy visits not already in UUID record
       Object.entries(legacyVisits).forEach(([vk, vv]) => {
@@ -610,12 +610,12 @@ function renderPatientsList(entries) {
     const genderStr = info.gender || '';
     const ageGender = [ageStr, genderStr].filter(Boolean).join(' · ');
     const nationalId = info.nationalId ? `<span style="font-size:10px;color:var(--muted);font-family:monospace;direction:ltr">🪪 ${sanitize(info.nationalId)}</span>` : '';
-    
+
     // Detect potential duplicates — show warning badge if same name+phone as another
     const dupCount = Object.values(_patients).filter(pp => pp.info && pp.info.name === info.name && pp.info.phone === info.phone).length;
     const dupBadge = dupCount > 1 ? `<span style="background:rgba(245,158,11,0.12);color:var(--amber);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;margin-right:5px">⚠️ تعارض محتمل</span>` : '';
-    
-    const avatarHTML = info.photo 
+
+    const avatarHTML = info.photo
       ? `<div class="plist-avatar"><img src="${info.photo}"></div>`
       : `<div class="plist-avatar" style="font-size:1.5rem">${genderIcon}</div>`;
 
@@ -676,7 +676,7 @@ function filterPatients() {
 
   const entries = Object.entries(_patients).filter(([uid, p]) => {
     const info = p.info || {};
-    
+
     // Enforce doctor isolation on patient list
     if (allowedPatients !== null) {
       const phone = info.phone || '';
@@ -688,10 +688,10 @@ function filterPatients() {
 
     if (!q) return true;
     return (info.phone || '').includes(q) ||
-           (info.name || '').toLowerCase().includes(q) ||
-           (info.mrn || '').toLowerCase().includes(q) ||
-           (info.nationalId || '').toLowerCase().includes(q) ||
-           uid.includes(q);
+      (info.name || '').toLowerCase().includes(q) ||
+      (info.mrn || '').toLowerCase().includes(q) ||
+      (info.nationalId || '').toLowerCase().includes(q) ||
+      uid.includes(q);
   });
   renderPatientsList(entries);
 }
@@ -701,11 +701,11 @@ function renderWaitingRoom() {
   const wrList = document.getElementById('wrList');
   const wrTitle = document.getElementById('wrTitle');
   const docName = window.ArgonSession ? window.ArgonSession.get()?.displayName : '';
-  
+
   if (wrTitle) {
     wrTitle.innerHTML = `⏳ غرفة الانتظار المباشرة - <span style="color:var(--amber)">د. ${docName || 'الطبيب'}</span>`;
   }
-  
+
   if (!wrList) return;
 
   const session = ArgonSession.get() || {};
@@ -714,7 +714,7 @@ function renderWaitingRoom() {
 
   const activeBookings = Object.entries(_liveBookings).filter(([k, b]) => {
     if (b.status === 'done' || b.status === 'completed' || b.status === 'cancelled') return false;
-    
+
     // ═══ STRICT DOCTOR ISOLATION ═══
     // Every booking MUST have a doctorId — bookings without one are admin-only
     const assignedDoc = b.doctorId || b.docKey;
@@ -766,10 +766,10 @@ function renderWaitingRoom() {
   wrList.innerHTML = activeBookings.map(([k, b]) => {
     const isDoc = b.status === 'with_doctor';
     // Pass booking key so we can resolve by name+phone
-    return `<div class="glass-panel" style="padding:16px;border-right:4px solid ${stColor[b.status]||'var(--teal)'}; cursor:pointer; transition:all 0.2s" onclick="openPatientFromBooking('${k}')">
+    return `<div class="glass-panel" style="padding:16px;border-right:4px solid ${stColor[b.status] || 'var(--teal)'}; cursor:pointer; transition:all 0.2s" onclick="openPatientFromBooking('${k}')">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:0.75rem;font-weight:800;color:${stColor[b.status]};background:rgba(255,255,255,0.05);padding:3px 8px;border-radius:12px">${stMap[b.status]||b.status}</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem">${b.time||'—'}</span>
+        <span style="font-size:0.75rem;font-weight:800;color:${stColor[b.status]};background:rgba(255,255,255,0.05);padding:3px 8px;border-radius:12px">${stMap[b.status] || b.status}</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem">${b.time || '—'}</span>
       </div>
       <div style="font-weight:800;font-size:1.05rem;margin-bottom:4px">${sanitize(b.patName)}</div>
       <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px">📞 ${sanitize(b.patPhone)}</div>
@@ -793,7 +793,7 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
   if (booking.patientId && _patients[booking.patientId]) {
     const pInfo = _patients[booking.patientId].info || {};
     const patName = (pInfo.name || '').trim().toLowerCase();
-    
+
     // Strict Check: If names are radically different, the booking system mistakenly linked them due to a shared phone
     let nameMismatch = false;
     if (!bookingName || !patName) {
@@ -802,7 +802,7 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
       // Compare first names strictly to avoid family name overlap
       const bFirstName = bookingName.split(' ')[0];
       const pFirstName = patName.split(' ')[0];
-      
+
       if (bFirstName !== pFirstName) {
         nameMismatch = true;
       }
@@ -820,7 +820,7 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
     } else {
       console.warn('⚠️ EMR Integrity: Booking PatientID mismatch with Name. Falling back to phone resolver.', { bookingName, patName });
       // Clear the poisoned patientId for this resolution attempt
-      booking.patientId = null; 
+      booking.patientId = null;
     }
   }
 
@@ -865,13 +865,13 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
   // 5️⃣ Ambiguous (Family members sharing a phone, and name didn't match perfectly)
   // Instead of showing a popup with other doctor's patients, auto-register the patient now!
   toast('⚠️ يتم الآن فتح وتجهيز ملف المريض...', 'ok');
-  
+
   // Create a new patient profile since the name didn't match anyone in the family
   const newRef = db.ref(`${BASE}/patients`).push();
   const patPhone = cleanPhone(booking.patPhone || '');
   const session = ArgonSession.get() || {};
   const loggedInDoctorId = session.staffId || null;
-  
+
   const patObj = {
     info: {
       name: booking.patName || 'مريض',
@@ -932,7 +932,7 @@ function openEditPatient(uid) {
   document.getElementById('epAllergies').value = (p.info.allergies || []).join('، ');
   document.getElementById('epChronic').value = (p.info.chronicDiseases || []).join('، ');
   document.getElementById('epNotes').value = p.info.notes || '';
-  
+
   if (p.info.photo) {
     epPhotoData = p.info.photo;
     document.getElementById('epPhotoPreview').innerHTML = `<img src="${p.info.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
@@ -940,7 +940,7 @@ function openEditPatient(uid) {
     epPhotoData = '';
     document.getElementById('epPhotoPreview').innerHTML = '👤';
   }
-  
+
   document.getElementById('editPatModal').style.display = 'flex';
 }
 
@@ -1081,7 +1081,7 @@ function saveNewPatient() {
     document.getElementById('npBlood').value = '';
     document.getElementById('npPhotoPreview').innerHTML = '👤';
     npPhotoData = '';
-    
+
     // Reset warning banner
     const warningDiv = document.getElementById('npDupWarning');
     if (warningDiv) {
@@ -1097,14 +1097,14 @@ function generatePatientFileHTML(uid) {
   const p = _patients[uid];
   if (!p) return '';
   const info = p.info || {};
-  
+
   // Sort visits descending chronologically down to the minute using parseArabicTime
-  const visits = Object.entries(p.visits || {}).sort((a,b) => {
+  const visits = Object.entries(p.visits || {}).sort((a, b) => {
     const dateTimeA = (a[1].date || '') + 'T' + parseArabicTime(a[1].time || '');
     const dateTimeB = (b[1].date || '') + 'T' + parseArabicTime(b[1].time || '');
     return dateTimeB.localeCompare(dateTimeA);
   });
-  
+
   // Demographics HTML
   const allergiesHTML = (info.allergies || []).map(a => `<span class="tag">${sanitize(a)}</span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
   const chronicHTML = (info.chronicDiseases || []).map(c => `<span class="tag blue">${sanitize(c)}</span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
@@ -1150,11 +1150,11 @@ function generatePatientFileHTML(uid) {
       const isLab = v.docKey === 'lab';
       const isRad = v.docKey === 'radiology';
       const isReferral = v.docKey === 'referral';
-      
+
       let cardIcon = 'fa-stethoscope';
       let dotColor = 'done';
       let cardStyle = '';
-      
+
       if (isPharmacist) {
         cardIcon = 'fa-pills';
         dotColor = 'amber';
@@ -1226,11 +1226,11 @@ function generatePatientFileHTML(uid) {
       }).join('<br>');
       const statusText = o.status === 'completed' ? 'جاهزة ومكتملة ✅' : 'قيد الفحص والتحليل ⏳';
       const statusColor = o.status === 'completed' ? 'var(--green)' : 'var(--amber)';
-      
+
       return `
         <div class="glass-panel" style="padding:14px;margin-bottom:10px;border-right:4px solid ${statusColor}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <span style="font-size:0.75rem;color:var(--muted)">تاريخ الطلب: ${(o.createdAt || '').substring(0,10)} <span style="color:var(--teal);margin-right:8px;font-weight:bold"><i class="far fa-clock"></i> ${window.argonTimeAgo(o.createdAt)}</span></span>
+            <span style="font-size:0.75rem;color:var(--muted)">تاريخ الطلب: ${(o.createdAt || '').substring(0, 10)} <span style="color:var(--teal);margin-right:8px;font-weight:bold"><i class="far fa-clock"></i> ${window.argonTimeAgo(o.createdAt)}</span></span>
             <span style="font-size:0.75rem;color:${statusColor};font-weight:800">${statusText}</span>
           </div>
           <div style="font-size:0.82rem;margin-bottom:6px"><b>🔬 الفحوصات:</b><br>${tests}</div>
@@ -1250,15 +1250,15 @@ function generatePatientFileHTML(uid) {
       const scans = (o.requestedScans || []).map(s => `• ${sanitize(s.name)}`).join('<br>');
       const statusText = o.status === 'completed' ? 'جاهزة ومكتملة ✅' : 'بانتظار التصوير ⏳';
       const statusColor = o.status === 'completed' ? 'var(--green)' : 'var(--amber)';
-      
+
       return `
         <div class="glass-panel" style="padding:14px;margin-bottom:10px;border-right:4px solid ${statusColor}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <span style="font-size:0.75rem;color:var(--muted)">تاريخ الطلب: ${(o.createdAt || '').substring(0,10)} <span style="color:var(--sky);margin-right:8px;font-weight:bold"><i class="far fa-clock"></i> ${window.argonTimeAgo(o.createdAt)}</span></span>
+            <span style="font-size:0.75rem;color:var(--muted)">تاريخ الطلب: ${(o.createdAt || '').substring(0, 10)} <span style="color:var(--sky);margin-right:8px;font-weight:bold"><i class="far fa-clock"></i> ${window.argonTimeAgo(o.createdAt)}</span></span>
             <span style="font-size:0.75rem;color:${statusColor};font-weight:800">${statusText}</span>
           </div>
           <div style="font-size:0.82rem;margin-bottom:6px"><b>🩻 صور الأشعة المطلوبة:</b><br>${scans}</div>
-          ${o.report ? `<div style="font-size:0.8rem;background:rgba(255,255,255,0.02);padding:8px;border-radius:6px;margin-top:4px;color:var(--text)"><b>📝 التقرير الطبي للأشعة:</b><br>${o.report.replace(/\n/g,'<br>')}</div>` : ''}
+          ${o.report ? `<div style="font-size:0.8rem;background:rgba(255,255,255,0.02);padding:8px;border-radius:6px;margin-top:4px;color:var(--text)"><b>📝 التقرير الطبي للأشعة:</b><br>${o.report.replace(/\n/g, '<br>')}</div>` : ''}
           ${o.image ? `
             <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
               <span style="font-size:0.7rem;color:var(--sky);cursor:pointer" onclick="openAttachment('${o.image}','image')"><i class="fas fa-expand-arrows-alt"></i> اضغط لتكبير الصورة التشخيصية</span>
@@ -1268,8 +1268,8 @@ function generatePatientFileHTML(uid) {
     }).join('');
   }
 
-  const activeAvatarHTML = info.photo 
-    ? `<div class="pat-avatar"><img src="${info.photo}"></div>` 
+  const activeAvatarHTML = info.photo
+    ? `<div class="pat-avatar"><img src="${info.photo}"></div>`
     : `<div class="pat-avatar">👤</div>`;
 
   const fileHTML = `
@@ -1290,7 +1290,7 @@ function generatePatientFileHTML(uid) {
         <div class="pat-field"><div class="pfl">الرقم الوطني / الهوية</div><div class="pfv" style="font-weight:700;color:var(--teal)">${sanitize(info.nationalId || '—')}</div></div>
         <div class="pat-field"><div class="pfl">العمر / الجنس</div><div class="pfv">${info.age || 'غير محدد'} سنة · ${info.gender || 'غير محدد'}</div></div>
         <div class="pat-field"><div class="pfl">فصيلة الدم</div><div class="pfv" style="color:var(--red)">${info.bloodType || '—'}</div></div>
-        <div class="pat-field"><div class="pfl">تاريخ التسجيل</div><div class="pfv" style="font-size:.78rem;font-family:'IBM Plex Mono',monospace">${(info.createdAt || '').substring(0,10)}</div></div>
+        <div class="pat-field"><div class="pfl">تاريخ التسجيل</div><div class="pfv" style="font-size:.78rem;font-family:'IBM Plex Mono',monospace">${(info.createdAt || '').substring(0, 10)}</div></div>
       </div>
       <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <div class="pat-field" style="grid-column:span 1"><div class="pfl">الحساسية والأدوية المرفوضة</div><div>${allergiesHTML}</div></div>
@@ -1382,8 +1382,16 @@ function viewPatientFile(phoneOrUid) {
 }
 
 async function safeViewPatientFile(phoneOrUid) {
+  // Clear previous local lock if one exists so we can switch files seamlessly
+  if (window.EMRContext && window.EMRContext.sessionLock && window.EMRContext.activePatientId) {
+    if (typeof BASE !== 'undefined') {
+      db.ref(`${BASE}/active_sessions/${window.EMRContext.activePatientId}`).remove();
+    }
+    window.EMRContext.sessionLock = false;
+  }
+
   if (window.EMRContext && window.EMRContext.sessionLock) return;
-  
+
   const token = crypto.randomUUID();
   window.EMRContext.renderToken = token;
 
@@ -1392,13 +1400,13 @@ async function safeViewPatientFile(phoneOrUid) {
   const isAdmin = session?.role === 'admin';
 
   let uid = phoneOrUid;
-  
+
   if (!_patients[uid]) {
     const cleanP = cleanPhone(phoneOrUid);
     const matched = Object.entries(_patients).filter(([k, p]) => {
       return (p.info && cleanPhone(p.info.phone) === cleanP) || k === cleanP;
     });
-    
+
     if (matched.length === 1) {
       uid = matched[0][0];
     } else if (matched.length > 1) {
@@ -1447,15 +1455,15 @@ async function safeViewPatientFile(phoneOrUid) {
 
   activePatientId = uid;
   const p = _patients[uid];
-  
+
   if (window.EMRContext.renderToken !== token) {
-      if (window.AuditAPI) window.AuditAPI.log('STALE_RENDER_ABORTED', { token });
-      return;
+    if (window.AuditAPI) window.AuditAPI.log('STALE_RENDER_ABORTED', { token });
+    return;
   }
-  
+
   if (!p) {
-      window.EMRContext.sessionLock = false;
-      return;
+    window.EMRContext.sessionLock = false;
+    return;
   }
 
   document.getElementById('patFileContent').innerHTML = generatePatientFileHTML(uid);
@@ -1474,7 +1482,7 @@ function loadVisitForm(uid, bookingId = null) {
   activeVisit.uid = uid;
   if (bookingId) {
     activeVisit.bookingId = bookingId;
-    db.ref(`${BASE}/bookings/${bookingId}/status`).set('with_doctor').catch(()=>{});
+    db.ref(`${BASE}/bookings/${bookingId}/status`).set('with_doctor').catch(() => { });
   }
 
   rxItems = [];
@@ -1618,18 +1626,18 @@ function loadVisitForm(uid, bookingId = null) {
       const draft = ArgonCore.AutoSave.loadDraft(uid);
       if (draft && draft.data) {
         const d = draft.data;
-        if(document.getElementById('vDoc') && d.docKey) document.getElementById('vDoc').value = d.docKey;
-        if(document.getElementById('vDiag') && d.diagnosis) document.getElementById('vDiag').value = d.diagnosis;
-        if(document.getElementById('vComp') && d.complaint) document.getElementById('vComp').value = d.complaint;
-        if(document.getElementById('vtTemp') && d.temp) document.getElementById('vtTemp').value = d.temp;
-        if(document.getElementById('vtBP') && d.bp) document.getElementById('vtBP').value = d.bp;
-        if(document.getElementById('vtPulse') && d.pulse) document.getElementById('vtPulse').value = d.pulse;
-        if(document.getElementById('vNotes') && d.notes) document.getElementById('vNotes').value = d.notes;
-        
-        if(d.rxItems && d.rxItems.length) { rxItems = d.rxItems; renderRxTable(); }
-        if(d.labTestsList && d.labTestsList.length) { labTestsList = d.labTestsList; renderLabOrderList(); }
-        if(d.radScansList && d.radScansList.length) { radScansList = d.radScansList; renderRadOrderList(); }
-        
+        if (document.getElementById('vDoc') && d.docKey) document.getElementById('vDoc').value = d.docKey;
+        if (document.getElementById('vDiag') && d.diagnosis) document.getElementById('vDiag').value = d.diagnosis;
+        if (document.getElementById('vComp') && d.complaint) document.getElementById('vComp').value = d.complaint;
+        if (document.getElementById('vtTemp') && d.temp) document.getElementById('vtTemp').value = d.temp;
+        if (document.getElementById('vtBP') && d.bp) document.getElementById('vtBP').value = d.bp;
+        if (document.getElementById('vtPulse') && d.pulse) document.getElementById('vtPulse').value = d.pulse;
+        if (document.getElementById('vNotes') && d.notes) document.getElementById('vNotes').value = d.notes;
+
+        if (d.rxItems && d.rxItems.length) { rxItems = d.rxItems; renderRxTable(); }
+        if (d.labTestsList && d.labTestsList.length) { labTestsList = d.labTestsList; renderLabOrderList(); }
+        if (d.radScansList && d.radScansList.length) { radScansList = d.radScansList; renderRadOrderList(); }
+
         toast('🔄 تم استعادة البيانات غير المكتملة تلقائياً', 'ok');
       }
     }
@@ -1651,11 +1659,11 @@ function addRxItem() {
   }
 
   rxItems.push({ name, dose, freq, dur, note });
-  
+
   // Clean inputs
   ['rxName', 'rxDose', 'rxFreq', 'rxDur', 'rxNote'].forEach(id => {
     const el = document.getElementById(id);
-    if(el) el.value = '';
+    if (el) el.value = '';
   });
   renderRxTable();
 }
@@ -1663,7 +1671,7 @@ function addRxItem() {
 function renderRxTable() {
   const table = document.getElementById('rxTable');
   const tbody = document.getElementById('rxBody');
-  
+
   if (!rxItems.length) {
     table.style.display = 'none';
     return;
@@ -1697,10 +1705,10 @@ function _buildDrugDropdownHTML(matched, query, selectFuncName) {
 
   return matched.map(m => {
     const isOut = m.stock <= 0;
-    const stockBadge = isOut 
+    const stockBadge = isOut
       ? `<span style="font-size:0.65rem;color:#ef4444;background:rgba(239,68,68,0.1);padding:2px 6px;border-radius:4px">نفد من المستودع ❌</span>`
       : `<span style="font-size:0.65rem;color:var(--green);background:rgba(16,185,129,0.1);padding:2px 6px;border-radius:4px">متوفر: ${m.stock} عبوة ✅</span>`;
-      
+
     return `<div onclick="${selectFuncName}('${m.name.replace(/'/g, "\\'")}')" style="padding:10px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:0.2s" onmouseover="this.style.background='rgba(13,148,136,0.1)'" onmouseout="this.style.background='transparent'">
       <div>
         <div style="font-weight:700;font-size:0.85rem;color:var(--text)">${sanitize(m.name)}</div>
@@ -1718,8 +1726,8 @@ function _searchInventoryLogic(query) {
   const items = Object.values(_pharmacyInventory || {});
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  
-  return items.filter(item => 
+
+  return items.filter(item =>
     (item.name && item.name.toLowerCase().includes(q)) ||
     (item.scientificName && item.scientificName.toLowerCase().includes(q)) ||
     (item.arabicName && item.arabicName.includes(q)) ||
@@ -1772,7 +1780,7 @@ document.addEventListener('click', (e) => {
   const dd1 = document.getElementById('rxDropdown');
   const inp1 = document.getElementById('rxName');
   if (dd1 && inp1 && e.target !== inp1 && !dd1.contains(e.target)) dd1.style.display = 'none';
-  
+
   const dd2 = document.getElementById('rxWorkspaceDropdown');
   const inp2 = document.getElementById('rxDrug');
   if (dd2 && inp2 && e.target !== inp2 && !dd2.contains(e.target)) dd2.style.display = 'none';
@@ -1785,10 +1793,10 @@ function handleAttachment(e) {
 
   toast('⏳ جاري قراءة الملف...', 'ok');
   const reader = new FileReader();
-  
+
   reader.onload = ev => {
     const fileType = file.type.startsWith('image/') ? 'image' : (file.type === 'application/pdf' ? 'pdf' : 'other');
-    
+
     // Large PDF / Images handling via Storage if requested, else fallback to Base64
     if (file.size > 200 * 1024) {
       toast('💡 حجم الملف كبير، سيتم رفعه بأمان...', 'ok');
@@ -1915,75 +1923,75 @@ function saveVisit() {
   db.ref(`${BASE}/patients/${activePatientId}/visits/${visitId}`).set(visitObj).then(() => {
     // 1. Electronic Prescription Submission
     try {
-    if (rxItems.length) {
-      const prescId = db.ref().child('prescriptions').push().key;
-      db.ref(`${BASE}/prescriptions/${prescId}`).set({
-        patientId: activePatientId,
-        patientName: patientName,
-        doctorId: docKey,
-        docName: doctorDisplayName,
-        medications: rxItems.map(m => ({ ...m, status: 'waiting' })),
-        status: 'waiting',
-        visitId,
-        orgId: CID,
-        createdAt: new Date().toISOString()
-      });
-      db.ref(`${BASE}/notifications`).push({
-        title: 'وصفة طبية جديدة 💊',
-        message: `وصفة جديدة للمريض ${sanitize(patientName)}`,
-        role: 'pharmacist',
-        createdAt: new Date().toISOString()
-      });
-    }
-    } catch(e) { console.error('Rx submission error:', e); }
+      if (rxItems.length) {
+        const prescId = db.ref().child('prescriptions').push().key;
+        db.ref(`${BASE}/prescriptions/${prescId}`).set({
+          patientId: activePatientId,
+          patientName: patientName,
+          doctorId: docKey,
+          docName: doctorDisplayName,
+          medications: rxItems.map(m => ({ ...m, status: 'waiting' })),
+          status: 'waiting',
+          visitId,
+          orgId: CID,
+          createdAt: new Date().toISOString()
+        });
+        db.ref(`${BASE}/notifications`).push({
+          title: 'وصفة طبية جديدة 💊',
+          message: `وصفة جديدة للمريض ${sanitize(patientName)}`,
+          role: 'pharmacist',
+          createdAt: new Date().toISOString()
+        });
+      }
+    } catch (e) { console.error('Rx submission error:', e); }
 
     // 2. Laboratory Order Submission
     try {
-    if (labTestsList.length) {
-      const labOrderId = db.ref().child('lab_orders').push().key;
-      db.ref(`${BASE}/lab_orders/${labOrderId}`).set({
-        patientId: activePatientId,
-        patientName: patientName,
-        doctorId: docKey,
-        docName: doctorDisplayName,
-        requestedTests: labTestsList.map(t => ({ name: t, result: '', unit: '', status: 'waiting' })),
-        status: 'waiting',
-        visitId,
-        orgId: CID,
-        createdAt: new Date().toISOString()
-      });
-      db.ref(`${BASE}/notifications`).push({
-        title: 'طلب فحص مخبري جديد 🔬',
-        message: `طلب تحاليل للمريض ${sanitize(patientName)}`,
-        role: 'lab',
-        createdAt: new Date().toISOString()
-      });
-    }
-    } catch(e) { console.error('Lab submission error:', e); }
+      if (labTestsList.length) {
+        const labOrderId = db.ref().child('lab_orders').push().key;
+        db.ref(`${BASE}/lab_orders/${labOrderId}`).set({
+          patientId: activePatientId,
+          patientName: patientName,
+          doctorId: docKey,
+          docName: doctorDisplayName,
+          requestedTests: labTestsList.map(t => ({ name: t, result: '', unit: '', status: 'waiting' })),
+          status: 'waiting',
+          visitId,
+          orgId: CID,
+          createdAt: new Date().toISOString()
+        });
+        db.ref(`${BASE}/notifications`).push({
+          title: 'طلب فحص مخبري جديد 🔬',
+          message: `طلب تحاليل للمريض ${sanitize(patientName)}`,
+          role: 'lab',
+          createdAt: new Date().toISOString()
+        });
+      }
+    } catch (e) { console.error('Lab submission error:', e); }
 
     // 3. Radiology Order Submission
     try {
-    if (radScansList.length) {
-      const radOrderId = db.ref().child('radiology_orders').push().key;
-      db.ref(`${BASE}/radiology_orders/${radOrderId}`).set({
-        patientId: activePatientId,
-        patientName: patientName,
-        doctorId: docKey,
-        docName: doctorDisplayName,
-        requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
-        status: 'waiting',
-        visitId,
-        orgId: CID,
-        createdAt: new Date().toISOString()
-      });
-      db.ref(`${BASE}/notifications`).push({
-        title: 'طلب أشعة جديد 🩻',
-        message: `طلب تصوير أشعة للمريض ${sanitize(patientName)}`,
-        role: 'radiology',
-        createdAt: new Date().toISOString()
-      });
-    }
-    } catch(e) { console.error('Rad submission error:', e); }
+      if (radScansList.length) {
+        const radOrderId = db.ref().child('radiology_orders').push().key;
+        db.ref(`${BASE}/radiology_orders/${radOrderId}`).set({
+          patientId: activePatientId,
+          patientName: patientName,
+          doctorId: docKey,
+          docName: doctorDisplayName,
+          requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
+          status: 'waiting',
+          visitId,
+          orgId: CID,
+          createdAt: new Date().toISOString()
+        });
+        db.ref(`${BASE}/notifications`).push({
+          title: 'طلب أشعة جديد 🩻',
+          message: `طلب تصوير أشعة للمريض ${sanitize(patientName)}`,
+          role: 'radiology',
+          createdAt: new Date().toISOString()
+        });
+      }
+    } catch (e) { console.error('Rad submission error:', e); }
 
     // Generate Invoice link automatically
     const invId = db.ref().child('invoices').push().key;
@@ -2014,7 +2022,7 @@ function saveVisit() {
 setInterval(() => {
   if (!activePatientId || !document.getElementById('vDiag')) return;
   if (typeof ArgonCore === 'undefined') return;
-  
+
   const data = {
     docKey: document.getElementById('vDoc') ? document.getElementById('vDoc').value : '',
     diagnosis: document.getElementById('vDiag') ? document.getElementById('vDiag').value : '',
@@ -2027,7 +2035,7 @@ setInterval(() => {
     labTestsList: labTestsList || [],
     radScansList: radScansList || []
   };
-  
+
   if (data.diagnosis || data.complaint || data.rxItems.length || data.labTestsList.length || data.radScansList.length) {
     ArgonCore.AutoSave.saveDraft(activePatientId, data);
   }
@@ -2140,7 +2148,7 @@ function createInternalReferral() {
   if (!p) return;
   const dept = _depts[deptId];
   if (!dept) { toast('⚠️ القسم غير موجود', 'err'); return; }
-  
+
   // 1. Save referral node
   const refId = db.ref().child('referrals').push().key;
   const referralObj = {
@@ -2175,7 +2183,7 @@ function createInternalReferral() {
       referralId: refId,
       createdAt: new Date().toISOString()
     };
-    
+
     // Also save the referral item in the patient's visit history timeline
     const visitId = db.ref().child('visits').push().key;
     const refVisitObj = {
@@ -2220,7 +2228,8 @@ function removeLabTest(name) {
   labTestsList = labTestsList.filter(x => x !== name);
   renderLabOrderChips();
 }
-function renderLabOrderChips() { if(typeof saveVisitDraft === "function") saveVisitDraft();
+function renderLabOrderChips() {
+  if (typeof saveVisitDraft === "function") saveVisitDraft();
   const div = document.getElementById('labOrderList');
   if (!div) return;
   if (!labTestsList.length) {
@@ -2251,7 +2260,8 @@ function removeRadScan(name) {
   radScansList = radScansList.filter(x => x !== name);
   renderRadOrderChips();
 }
-function renderRadOrderChips() { if(typeof saveVisitDraft === "function") saveVisitDraft();
+function renderRadOrderChips() {
+  if (typeof saveVisitDraft === "function") saveVisitDraft();
   const div = document.getElementById('radOrderList');
   if (!div) return;
   if (!radScansList.length) {
@@ -2294,7 +2304,7 @@ function switchEmrTab(tabId) {
     content.style.display = 'none';
     content.classList.remove('active-content');
   });
-  
+
   if (tabId === 'timeline-tab') {
     document.querySelector('.emr-tab-btn:nth-child(1)').classList.add('active');
     const el = document.getElementById('emr-tab-timeline');
@@ -2317,7 +2327,7 @@ function formatArabicDate(dateStr) {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString('ar-JO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  } catch(e) {
+  } catch (e) {
     return dateStr;
   }
 }
@@ -2343,7 +2353,7 @@ function playNotificationSound() {
     if (!AudioContext) return;
     const ctx = new AudioContext();
     const now = ctx.currentTime;
-    
+
     // First high chime
     const osc1 = ctx.createOscillator();
     const gain1 = ctx.createGain();
@@ -2355,7 +2365,7 @@ function playNotificationSound() {
     gain1.connect(ctx.destination);
     osc1.start(now);
     osc1.stop(now + 0.3);
-    
+
     // Second premium chime with a minor third delay for high elegance
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
@@ -2407,7 +2417,7 @@ function renderReferralsList() {
     return `
       <div class="glass-panel" style="padding:18px;border-right:5px solid ${statusColor};position:relative;display:flex;flex-direction:column;gap:10px;animation:fu 0.25s ease">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:0.75rem;color:var(--muted)">${(r.createdAt || '').substring(0,10)} · ${(r.createdAt || '').substring(11,16)}</span>
+          <span style="font-size:0.75rem;color:var(--muted)">${(r.createdAt || '').substring(0, 10)} · ${(r.createdAt || '').substring(11, 16)}</span>
           <span style="font-size:0.72rem;font-weight:800;padding:4px 8px;border-radius:6px;background:${statusBg};color:${statusColor}">${statusLabel}</span>
         </div>
         <div style="font-size:1.05rem;font-weight:800;color:var(--text)">👤 ${sanitize(r.patientName)}</div>
@@ -2506,7 +2516,7 @@ function runCollisionTest() {
   console.log("%c🧪 Starting EMR Collision Isolation Test...", "color: #0d9488; font-weight: bold; font-size: 1.2rem;");
   const testPhone = '0799999999';
   const cleanP = cleanPhone(testPhone);
-  
+
   // We will programmatically create 10 independent patients sharing this same phone number
   const promises = [];
   for (let i = 1; i <= 10; i++) {
@@ -2525,7 +2535,7 @@ function runCollisionTest() {
         createdAt: new Date().toISOString()
       }
     };
-    
+
     // Simulate visits for each isolated patient
     const visitId = db.ref().child('visits').push().key;
     patObj.visits = {
@@ -2539,7 +2549,7 @@ function runCollisionTest() {
         notes: `تقرير فحص طبي معزول بالكامل للمريض رقم ${i}`
       }
     };
-    
+
     // Simulate invoices for each isolated patient
     const invId = db.ref().child('invoices').push().key;
     const invPromise = db.ref(`${BASE}/invoices/${invId}`).set({
@@ -2562,10 +2572,10 @@ function runCollisionTest() {
 
   Promise.all(promises).then((results) => {
     console.log("%c📊 Verifying isolated child node integrity...", "color: #0ea5e9; font-weight: bold;");
-    
+
     // Assert and verify child node isolation
     let assertionsPassed = true;
-    
+
     results.forEach((r, idx) => {
       const idxNum = idx + 1;
       const cached = _patients[r.uid];
@@ -2574,16 +2584,16 @@ function runCollisionTest() {
         assertionsPassed = false;
         return;
       }
-      
+
       const info = cached.info || {};
       const visits = cached.visits || {};
-      
+
       // Verify isolated EMR details
       if (info.name !== `مريض الفحص رقم ${idxNum}`) {
         console.error(`❌ Assertion Failed: Name mismatch for patient ${idxNum}! Expected 'مريض الفحص رقم ${idxNum}', got '${info.name}'`);
         assertionsPassed = false;
       }
-      
+
       const visitEntries = Object.entries(visits);
       if (visitEntries.length !== 1 || visitEntries[0][1].diagnosis !== `تشخيص معزول للمريض ${idxNum}`) {
         console.error(`❌ Assertion Failed: EMR visit isolation broken for patient ${idxNum}!`);
@@ -2609,121 +2619,121 @@ let activeVisit = { uid: null, bookingId: null, rx: [] };
 
 // ── EMR AUTOSAVE DRAFT RECOVERY PROTOCOL ──
 window.EMRAutosave = {
-    version: 1,
-    saveTimer: null,
-    activeDraftKey: null,
-    lastSavedHash: null,
-    restoreLock: false
+  version: 1,
+  saveTimer: null,
+  activeDraftKey: null,
+  lastSavedHash: null,
+  restoreLock: false
 };
 
 function getDraftKey(uid, bookingId) {
-    const session = ArgonSession.get() || {};
-    return `argon_emr_draft_${session.staffId || 'unknown'}_${uid || 'nouid'}_${bookingId || 'walkin'}`;
+  const session = ArgonSession.get() || {};
+  return `argon_emr_draft_${session.staffId || 'unknown'}_${uid || 'nouid'}_${bookingId || 'walkin'}`;
 }
 
 function saveVisitDraft() {
-    if (EMRAutosave.restoreLock) return;
-    if (!activeVisit.uid && !activeVisit.bookingId) return; // Prevent saving empty context
+  if (EMRAutosave.restoreLock) return;
+  if (!activeVisit.uid && !activeVisit.bookingId) return; // Prevent saving empty context
 
-    clearTimeout(EMRAutosave.saveTimer);
-    EMRAutosave.saveTimer = setTimeout(() => {
-        const session = ArgonSession.get() || {};
-        const draftKey = getDraftKey(activeVisit.uid, activeVisit.bookingId);
-        
-        const draft = {
-            meta: {
-                savedAt: new Date().toISOString(),
-                doctorId: session.staffId || 'unknown',
-                patientId: activeVisit.uid,
-                bookingId: activeVisit.bookingId,
-                renderVersion: EMRAutosave.version
-            },
-            form: {
-                vDiag: document.getElementById('vDiag')?.value || '',
-                vComplaint: document.getElementById('vComplaint')?.value || '',
-                vTemp: document.getElementById('vTemp')?.value || '',
-                vBp: document.getElementById('vBp')?.value || '',
-                vHr: document.getElementById('vHr')?.value || '',
-                vO2: document.getElementById('vO2')?.value || '',
-                rxDrug: document.getElementById('rxDrug')?.value || '',
-                rxDose: document.getElementById('rxDose')?.value || ''
-            },
-            rx: [...(activeVisit.rx || [])],
-            labs: [...(typeof labTestsList !== 'undefined' ? labTestsList : [])],
-            radiology: [...(typeof radScansList !== 'undefined' ? radScansList : [])]
-        };
+  clearTimeout(EMRAutosave.saveTimer);
+  EMRAutosave.saveTimer = setTimeout(() => {
+    const session = ArgonSession.get() || {};
+    const draftKey = getDraftKey(activeVisit.uid, activeVisit.bookingId);
 
-        const hash = JSON.stringify(draft);
-        if (EMRAutosave.lastSavedHash === hash) return;
-        
-        localStorage.setItem(draftKey, hash);
-        EMRAutosave.lastSavedHash = hash;
-        EMRAutosave.activeDraftKey = draftKey;
+    const draft = {
+      meta: {
+        savedAt: new Date().toISOString(),
+        doctorId: session.staffId || 'unknown',
+        patientId: activeVisit.uid,
+        bookingId: activeVisit.bookingId,
+        renderVersion: EMRAutosave.version
+      },
+      form: {
+        vDiag: document.getElementById('vDiag')?.value || '',
+        vComplaint: document.getElementById('vComplaint')?.value || '',
+        vTemp: document.getElementById('vTemp')?.value || '',
+        vBp: document.getElementById('vBp')?.value || '',
+        vHr: document.getElementById('vHr')?.value || '',
+        vO2: document.getElementById('vO2')?.value || '',
+        rxDrug: document.getElementById('rxDrug')?.value || '',
+        rxDose: document.getElementById('rxDose')?.value || ''
+      },
+      rx: [...(activeVisit.rx || [])],
+      labs: [...(typeof labTestsList !== 'undefined' ? labTestsList : [])],
+      radiology: [...(typeof radScansList !== 'undefined' ? radScansList : [])]
+    };
 
-        // Show non-blocking indicator
-        const ind = document.getElementById('autosaveIndicator');
-        if (ind) {
-            ind.style.opacity = '1';
-            setTimeout(() => { ind.style.opacity = '0'; }, 2000);
-        }
-    }, 500);
+    const hash = JSON.stringify(draft);
+    if (EMRAutosave.lastSavedHash === hash) return;
+
+    localStorage.setItem(draftKey, hash);
+    EMRAutosave.lastSavedHash = hash;
+    EMRAutosave.activeDraftKey = draftKey;
+
+    // Show non-blocking indicator
+    const ind = document.getElementById('autosaveIndicator');
+    if (ind) {
+      ind.style.opacity = '1';
+      setTimeout(() => { ind.style.opacity = '0'; }, 2000);
+    }
+  }, 500);
 }
 
 function loadVisitDraft() {
-    if (!activeVisit.uid && !activeVisit.bookingId) return;
-    const session = ArgonSession.get() || {};
-    const draftKey = getDraftKey(activeVisit.uid, activeVisit.bookingId);
-    const raw = localStorage.getItem(draftKey);
-    
-    if (!raw) return;
-    
-    try {
-        const draft = JSON.parse(raw);
-        if (draft.meta.doctorId !== session.staffId) return;
-        if (draft.meta.patientId !== activeVisit.uid) return;
-        
-        EMRAutosave.restoreLock = true;
-        
-        // Restore Inputs
-        if (draft.form) {
-            Object.entries(draft.form).forEach(([id, val]) => {
-                const el = document.getElementById(id);
-                if (el) el.value = val;
-            });
-        }
-        
-        // Restore Arrays
-        if (draft.rx) activeVisit.rx = draft.rx;
-        if (draft.labs) labTestsList = draft.labs;
-        if (draft.radiology) radScansList = draft.radiology;
-        
-        // Render UI
-        if (typeof renderWorkspaceRx === 'function') renderWorkspaceRx();
-        if (typeof renderLabOrderTags === 'function') renderLabOrderTags();
-        if (typeof renderRadOrderTags === 'function') renderRadOrderTags();
-        
-        if (typeof ArgonCore !== 'undefined') {
-            ArgonCore.logAudit('DRAFT_RESTORED', `تم استعادة مسودة غير مكتملة للمريض: ${activeVisit.uid}`, 'EMR_AUTOSAVE');
-        }
-        
-        EMRAutosave.restoreLock = false;
-        toast('تم استعادة بيانات الزيارة السابقة تلقائياً', 'ok');
-    } catch (e) {
-        console.error('Draft load error', e);
-        EMRAutosave.restoreLock = false;
+  if (!activeVisit.uid && !activeVisit.bookingId) return;
+  const session = ArgonSession.get() || {};
+  const draftKey = getDraftKey(activeVisit.uid, activeVisit.bookingId);
+  const raw = localStorage.getItem(draftKey);
+
+  if (!raw) return;
+
+  try {
+    const draft = JSON.parse(raw);
+    if (draft.meta.doctorId !== session.staffId) return;
+    if (draft.meta.patientId !== activeVisit.uid) return;
+
+    EMRAutosave.restoreLock = true;
+
+    // Restore Inputs
+    if (draft.form) {
+      Object.entries(draft.form).forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+      });
     }
+
+    // Restore Arrays
+    if (draft.rx) activeVisit.rx = draft.rx;
+    if (draft.labs) labTestsList = draft.labs;
+    if (draft.radiology) radScansList = draft.radiology;
+
+    // Render UI
+    if (typeof renderWorkspaceRx === 'function') renderWorkspaceRx();
+    if (typeof renderLabOrderTags === 'function') renderLabOrderTags();
+    if (typeof renderRadOrderTags === 'function') renderRadOrderTags();
+
+    if (typeof ArgonCore !== 'undefined') {
+      ArgonCore.logAudit('DRAFT_RESTORED', `تم استعادة مسودة غير مكتملة للمريض: ${activeVisit.uid}`, 'EMR_AUTOSAVE');
+    }
+
+    EMRAutosave.restoreLock = false;
+    toast('تم استعادة بيانات الزيارة السابقة تلقائياً', 'ok');
+  } catch (e) {
+    console.error('Draft load error', e);
+    EMRAutosave.restoreLock = false;
+  }
 }
 
 function clearVisitDraft() {
-    if (!EMRAutosave.activeDraftKey) {
-        EMRAutosave.activeDraftKey = getDraftKey(activeVisit.uid, activeVisit.bookingId);
-    }
-    localStorage.removeItem(EMRAutosave.activeDraftKey);
-    EMRAutosave.activeDraftKey = null;
-    EMRAutosave.lastSavedHash = null;
-    if (typeof ArgonCore !== 'undefined') {
-        ArgonCore.logAudit('DRAFT_CLEARED', 'تم تفريغ المسودة بعد اكتمال الزيارة', 'EMR_AUTOSAVE');
-    }
+  if (!EMRAutosave.activeDraftKey) {
+    EMRAutosave.activeDraftKey = getDraftKey(activeVisit.uid, activeVisit.bookingId);
+  }
+  localStorage.removeItem(EMRAutosave.activeDraftKey);
+  EMRAutosave.activeDraftKey = null;
+  EMRAutosave.lastSavedHash = null;
+  if (typeof ArgonCore !== 'undefined') {
+    ArgonCore.logAudit('DRAFT_CLEARED', 'تم تفريغ المسودة بعد اكتمال الزيارة', 'EMR_AUTOSAVE');
+  }
 }
 
 
@@ -2731,7 +2741,7 @@ function clearVisitDraft() {
 function resolvePatientUid(rawUid, expectedName = '') {
   // If direct key exists in local cache, use it
   if (_patients[rawUid]) return rawUid;
-  
+
   // Otherwise search by phone number (legacy bookings)
   const phone = cleanPhone(rawUid);
   const matched = Object.entries(_patients).filter(([k, p]) => {
@@ -2782,14 +2792,14 @@ function loadVisitForm(rawUid, bookingId, expectedName = '') {
     return;
   }
   activeVisit = { uid, bookingId, rx: [] };
-  
+
   const p = _patients[uid].info || {};
-  
+
   // Populate Header
   document.getElementById('wsName').textContent = p.name || 'غير معروف';
   document.getElementById('wsMrn').textContent = p.mrn || '—';
   document.getElementById('wsAgeGender').textContent = `${p.age ? p.age + ' سنة' : '—'} | ${p.gender || '—'}`;
-  
+
   if (p.photo) {
     document.getElementById('wsAvatar').innerHTML = `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
   } else {
@@ -2799,7 +2809,7 @@ function loadVisitForm(rawUid, bookingId, expectedName = '') {
   _applyComplexMode();
   _resetVisitForms();
   sw('newVisit');
-  
+
   // Reset to first visible tab
   const firstTab = document.querySelector('.visit-tabs .visit-tab');
   if (firstTab) switchVisitTab('tabVitals', firstTab);
@@ -2816,7 +2826,7 @@ function _applyComplexMode() {
 
 // Helper: clear all workspace form fields
 function _resetVisitForms() {
-  ['vTemp','vBp','vHr','vO2','vComplaint','vDiag','rxDrug','rxDose','labTestInput','radScanInput'].forEach(id => {
+  ['vTemp', 'vBp', 'vHr', 'vO2', 'vComplaint', 'vDiag', 'rxDrug', 'rxDose', 'labTestInput', 'radScanInput'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -2837,7 +2847,7 @@ function switchVisitTab(tabId, btn) {
   // Update Buttons
   document.querySelectorAll('.visit-tab').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  
+
   // Update Contents
   document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
   const target = document.getElementById(tabId);
@@ -2848,14 +2858,15 @@ function addWorkspaceRx() {
   const drug = document.getElementById('rxDrug').value.trim();
   const dose = document.getElementById('rxDose').value.trim();
   if (!drug) return toast('يرجى كتابة اسم الدواء', 'err');
-  
+
   activeVisit.rx.push({ drug, dose });
   document.getElementById('rxDrug').value = '';
   document.getElementById('rxDose').value = '';
   renderWorkspaceRx();
 }
 
-function renderWorkspaceRx() { if(typeof saveVisitDraft === "function") saveVisitDraft();
+function renderWorkspaceRx() {
+  if (typeof saveVisitDraft === "function") saveVisitDraft();
   const tb = document.getElementById('wsRxTbody');
   if (!tb) return;
   if (!activeVisit.rx.length) {
@@ -2917,9 +2928,9 @@ function completeWorkspaceVisit() {
     // Vitals — timeline reads v.vitals.temp, v.vitals.bp, v.vitals.pulse
     vitals: {
       temp: document.getElementById('vTemp').value.trim(),
-      bp:   document.getElementById('vBp').value.trim(),
+      bp: document.getElementById('vBp').value.trim(),
       pulse: document.getElementById('vHr').value.trim(),  // hr → pulse
-      o2:   document.getElementById('vO2').value.trim()
+      o2: document.getElementById('vO2').value.trim()
     },
     // Prescriptions — timeline reads v.prescriptions[].name / .dose / .freq
     prescriptions: activeVisit.rx.map(r => ({
@@ -2948,7 +2959,7 @@ function completeWorkspaceVisit() {
         updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
       }
     }
-    
+
     // Create actual lab and radiology orders
     if (labTestsList && labTestsList.length > 0) {
       const labKey = db.ref(`${BASE}/lab_orders`).push().key;
@@ -2964,7 +2975,7 @@ function completeWorkspaceVisit() {
         visitId: timelineKey
       };
     }
-    
+
     if (radScansList && radScansList.length > 0) {
       const radKey = db.ref(`${BASE}/radiology_orders`).push().key;
       updates[`${BASE}/radiology_orders/${radKey}`] = {
@@ -2979,7 +2990,7 @@ function completeWorkspaceVisit() {
         visitId: timelineKey
       };
     }
-    
+
     // Create prescription order for pharmacy
     if (activeVisit.rx && activeVisit.rx.length > 0) {
       const prescKey = db.ref(`${BASE}/prescriptions`).push().key;
@@ -2988,13 +2999,13 @@ function completeWorkspaceVisit() {
         patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
         doctorId: (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor',
         docName: (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب',
-        medications: activeVisit.rx.map(m => ({ 
-          name: m.drug, 
-          dose: m.dose, 
-          freq: '', 
-          dur: '', 
-          note: '', 
-          status: 'waiting' 
+        medications: activeVisit.rx.map(m => ({
+          name: m.drug,
+          dose: m.dose,
+          freq: '',
+          dur: '',
+          note: '',
+          status: 'waiting'
         })),
         status: 'waiting',
         visitId: timelineKey,
@@ -3030,7 +3041,7 @@ function completeWorkspaceVisit() {
         updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
       }
     }
-    
+
     // Create actual lab and radiology orders
     if (labTestsList && labTestsList.length > 0) {
       const labKey = db.ref(`${BASE}/lab_orders`).push().key;
@@ -3046,7 +3057,7 @@ function completeWorkspaceVisit() {
         visitId: timelineKey
       };
     }
-    
+
     if (radScansList && radScansList.length > 0) {
       const radKey = db.ref(`${BASE}/radiology_orders`).push().key;
       updates[`${BASE}/radiology_orders/${radKey}`] = {
@@ -3061,7 +3072,7 @@ function completeWorkspaceVisit() {
         visitId: timelineKey
       };
     }
-    
+
     // Create prescription order for pharmacy
     if (activeVisit.rx && activeVisit.rx.length > 0) {
       const prescKey = db.ref(`${BASE}/prescriptions`).push().key;
@@ -3070,13 +3081,13 @@ function completeWorkspaceVisit() {
         patientName: booking.patName || activeVisit.name || 'مريض',
         doctorId: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'doctor',
         docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
-        medications: activeVisit.rx.map(m => ({ 
-          name: m.drug, 
-          dose: m.dose, 
-          freq: '', 
-          dur: '', 
-          note: '', 
-          status: 'waiting' 
+        medications: activeVisit.rx.map(m => ({
+          name: m.drug,
+          dose: m.dose,
+          freq: '',
+          dur: '',
+          note: '',
+          status: 'waiting'
         })),
         status: 'waiting',
         visitId: timelineKey,
