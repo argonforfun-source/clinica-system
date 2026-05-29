@@ -311,7 +311,9 @@ function renderDoctorNotifications() {
             <span style="font-size:0.75rem;background:${typeColor};color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold">${typeIcon} ${typeLabel}</span>
             <span style="font-size:0.7rem;color:${isNew ? 'var(--amber)' : 'var(--muted)'};font-weight:${isNew ? 'bold' : 'normal'}"><i class="far fa-clock"></i> ${ago}</span>
           </div>
-          <div style="font-size:0.85rem;color:var(--text);line-height:1.5;margin-top:4px">${n.message}</div>
+          <div style="font-size:0.85rem;color:var(--text);line-height:1.6;margin-top:4px">
+            ${n.message.replace(/(للمريض|المريض)\s+(.*?)(?=\s+لمراجعتها|$)/, '$1 <strong style="color:var(--primary); background:rgba(14,165,233,0.1); padding:2px 6px; border-radius:4px; font-weight:900; font-size:0.9rem;">$2</strong>')}
+          </div>
         </div>
       `;
     }).join('');
