@@ -51,7 +51,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   // Wait for Enterprise Runtime
-  window.waitForArgonReady('pharmacist').then(session => {
+  window.waitForArgonReady('pharmacy').then(session => {
     document.getElementById('topName').textContent = `مرحباً، ${session.displayName}`;
     initPharmacy();
   });
