@@ -59,6 +59,7 @@ let currentReferralsFilter = 'all';
 let _pharmacyInventory = {};
 let _liveBookings = {};
 let _myNotifications = [];
+let _notifsClearedAt = parseInt(localStorage.getItem('argon_notifs_cleared') || '0');
 let _lastSeenNotifTimestamp = parseInt(localStorage.getItem('argon_notif_seen') || '0');
 
 let npPhotoData = '';
