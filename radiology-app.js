@@ -175,42 +175,47 @@ function openRadDetails(key) {
   document.getElementById('radModal').style.display = 'flex';
 }
 
-// Compress and upload radiology scans Base64
+// Upload any file type (images get compressed, others stored as Base64)
 function handleImageUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
 
-  toast('⏳ جاري تهيئة وضغط الصورة الرقمية...', 'ok');
+  const isImage = file.type.startsWith('image/');
+  toast('⏳ جاري رفع وتهيئة الملف...', 'ok');
   const reader = new FileReader();
   
   reader.onload = ev => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      // Standardize high resolution image size for RTDB optimal transfer
-      const maxW = 1000;
-      let w = img.width;
-      let h = img.height;
-      if (w > maxW) {
-        h *= maxW / w;
-        w = maxW;
-      }
-      canvas.width = w;
-      canvas.height = h;
-      ctx.drawImage(img, 0, 0, w, h);
-      
-      uploadedImage = canvas.toDataURL('image/jpeg', 0.65);
-      
-      const prevDiv = document.getElementById('radImagePrev');
-      const prevImg = document.getElementById('prevImg');
-      prevImg.src = uploadedImage;
-      prevDiv.style.display = 'block';
-      document.getElementById('mrFileLbl').textContent = '✅ تم تحميل صورة الأشعة بنجاح';
-      toast('✅ تم ضغط ورفع الصورة للمراجعة بنجاح', 'ok');
-    };
-    img.src = ev.target.result;
+    if (isImage) {
+      // Compress images for optimal RTDB transfer
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const maxW = 1000;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxW) { h *= maxW / w; w = maxW; }
+        canvas.width = w;
+        canvas.height = h;
+        ctx.drawImage(img, 0, 0, w, h);
+        
+        uploadedImage = canvas.toDataURL('image/jpeg', 0.65);
+        
+        const prevDiv = document.getElementById('radImagePrev');
+        const prevImg = document.getElementById('prevImg');
+        prevImg.src = uploadedImage;
+        prevDiv.style.display = 'block';
+        document.getElementById('mrFileLbl').textContent = '✅ تم رفع صورة الأشعة بنجاح';
+        toast('✅ تم ضغط ورفع الصورة بنجاح', 'ok');
+      };
+      img.src = ev.target.result;
+    } else {
+      // Non-image files: store raw Base64
+      uploadedImage = ev.target.result;
+      document.getElementById('radImagePrev').style.display = 'none';
+      document.getElementById('mrFileLbl').textContent = `✅ تم رفع الملف: ${file.name}`;
+      toast(`✅ تم رفع الملف بنجاح (${file.name})`, 'ok');
+    }
   };
   reader.readAsDataURL(file);
 }

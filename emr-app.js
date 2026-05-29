@@ -276,6 +276,24 @@ function initEMR() {
   setTimeout(() => { isInitNotify = false; }, 3000);
 
 // --- DOCTOR NOTIFICATIONS SIDEBAR ---
+
+// Arabic relative time formatter
+function _timeAgo(isoDate) {
+  if (!isoDate) return '';
+  const diff = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000);
+  if (diff < 10) return 'وصل للتو ⚡';
+  if (diff < 60) return `قبل ${diff} ثانية`;
+  const mins = Math.floor(diff / 60);
+  if (mins === 1) return 'قبل دقيقة';
+  if (mins < 60) return `قبل ${mins} دقيقة`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs === 1) return 'قبل ساعة';
+  if (hrs < 24) return `قبل ${hrs} ساعات`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'أمس';
+  return `قبل ${days} أيام`;
+}
+
 function renderDoctorNotifications() {
   const notifBadge = document.getElementById('notifBadge');
   const notifList = document.getElementById('notifList');
@@ -292,13 +310,27 @@ function renderDoctorNotifications() {
     notifBadge.textContent = _myNotifications.length;
     notifBadge.style.display = 'block';
     
-    notifList.innerHTML = _myNotifications.map(n => `
-      <div style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'" onclick="openNotification('${n.patientId || ''}', '${n.key}')">
-        <div style="font-size:0.8rem;color:var(--amber);margin-bottom:4px;font-weight:bold">${n.title}</div>
-        <div style="font-size:0.85rem;color:var(--text);line-height:1.4">${n.message}</div>
-        <div style="font-size:0.7rem;color:var(--muted);margin-top:6px;text-align:left"><i class="far fa-clock"></i> ${n.createdAt ? new Date(n.createdAt).toLocaleTimeString('ar-JO', {hour: '2-digit', minute:'2-digit'}) : ''}</div>
-      </div>
-    `).join('');
+    notifList.innerHTML = _myNotifications.map(n => {
+      const isLab = (n.title || '').includes('تحاليل') || (n.title || '').includes('🔬');
+      const isRad = (n.title || '').includes('أشعة') || (n.title || '').includes('🩻');
+      const typeIcon = isLab ? '🧪' : isRad ? '🩻' : '🔔';
+      const typeLabel = isLab ? 'نتيجة مختبر' : isRad ? 'نتيجة أشعة' : 'إشعار';
+      const typeBg = isLab ? 'rgba(16,185,129,0.15)' : isRad ? 'rgba(14,165,233,0.15)' : 'rgba(255,255,255,0.05)';
+      const typeBorder = isLab ? 'rgba(16,185,129,0.4)' : isRad ? 'rgba(14,165,233,0.4)' : 'var(--border)';
+      const typeColor = isLab ? '#10b981' : isRad ? '#0ea5e9' : 'var(--amber)';
+      const ago = _timeAgo(n.createdAt);
+      const isNew = n.createdAt && (Date.now() - new Date(n.createdAt).getTime()) < 120000;
+      
+      return `
+        <div style="background:${typeBg};border:1px solid ${typeBorder};border-radius:12px;padding:14px;cursor:pointer;transition:0.2s;${isNew ? 'animation:notifPulse 2s ease infinite;' : ''}" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" onclick="openNotification('${n.patientId || ''}', '${n.key}')">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:0.75rem;background:${typeColor};color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold">${typeIcon} ${typeLabel}</span>
+            <span style="font-size:0.7rem;color:${isNew ? 'var(--amber)' : 'var(--muted)'};font-weight:${isNew ? 'bold' : 'normal'}"><i class="far fa-clock"></i> ${ago}</span>
+          </div>
+          <div style="font-size:0.85rem;color:var(--text);line-height:1.5;margin-top:4px">${n.message}</div>
+        </div>
+      `;
+    }).join('');
   } else {
     notifBadge.style.display = 'none';
     notifList.innerHTML = `
@@ -308,6 +340,9 @@ function renderDoctorNotifications() {
     `;
   }
 }
+
+// Auto-refresh relative timestamps every 30 seconds
+setInterval(() => { if (_myNotifications.length > 0) renderDoctorNotifications(); }, 30000);
 
 window.toggleNotifications = function() {
   const sidebar = document.getElementById('notifSidebar');
