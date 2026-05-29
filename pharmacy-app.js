@@ -115,6 +115,7 @@ function renderPrescriptions() {
   grid.innerHTML = items.map(([k, p]) => {
     const medNames = (p.medications || []).map(m => m.name).join(' ، ');
     const dateStr = p.createdAt ? p.createdAt.substring(0, 16).replace('T', ' ') : 'فوري';
+    const relativeTime = window.argonTimeAgo ? window.argonTimeAgo(p.createdAt) : '';
     
     let badgeStyle = '';
     let badgeText = '';
@@ -139,8 +140,9 @@ function renderPrescriptions() {
           <div><b>الطبيب:</b> د. ${sanitize(p.docName)}</div>
           <div><b>الأدوية الموصوفة:</b> ${sanitize(medNames)}</div>
         </div>
-        <div style="font-size:0.75rem;color:var(--muted);text-align:left;border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
-          <i class="far fa-clock"></i> ${dateStr}
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
+          <span><i class="far fa-clock"></i> ${dateStr}</span>
+          <span style="color:var(--amber);font-weight:bold">${relativeTime}</span>
         </div>
       </div>
     `;
@@ -501,3 +503,6 @@ function updateThemeIcon(theme) {
 
 // Sanitization utility
 const sanitize = s => String(s || '').replace(/[<>"']/g, '').trim().substring(0, 150);
+
+// Auto-refresh timestamps every 30 seconds
+setInterval(() => { if (typeof renderPrescriptions === 'function') renderPrescriptions(); }, 30000);

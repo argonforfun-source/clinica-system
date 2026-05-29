@@ -21,6 +21,24 @@ if (typeof firebase !== 'undefined' && !firebase.apps.length) {
 
 const _argonDb = typeof firebase !== 'undefined' ? firebase.database() : null;
 
+// ── Global Time Formatter ──
+window.argonTimeAgo = function(isoDate) {
+  if (!isoDate) return '';
+  const diff = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000);
+  if (diff < 10) return 'وصل للتو ⚡';
+  if (diff < 60) return `قبل ${diff} ثانية`;
+  const mins = Math.floor(diff / 60);
+  if (mins === 1) return 'قبل دقيقة';
+  if (mins < 60) return `قبل ${mins} دقيقة`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs === 1) return 'قبل ساعة';
+  if (hrs < 24) return `قبل ${hrs} ساعات`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'أمس';
+  return `قبل ${days} أيام`;
+};
+
+
 // ── Context (Tenant Identification) ──
 const urlParams = new URLSearchParams(window.location.search);
 let CLINIC_ID = urlParams.get('id') || localStorage.getItem('argon_id') || '1';

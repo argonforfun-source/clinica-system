@@ -281,23 +281,6 @@ function initEMR() {
 
 // --- DOCTOR NOTIFICATIONS SIDEBAR ---
 
-// Arabic relative time formatter
-function _timeAgo(isoDate) {
-  if (!isoDate) return '';
-  const diff = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000);
-  if (diff < 10) return 'وصل للتو ⚡';
-  if (diff < 60) return `قبل ${diff} ثانية`;
-  const mins = Math.floor(diff / 60);
-  if (mins === 1) return 'قبل دقيقة';
-  if (mins < 60) return `قبل ${mins} دقيقة`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs === 1) return 'قبل ساعة';
-  if (hrs < 24) return `قبل ${hrs} ساعات`;
-  const days = Math.floor(hrs / 24);
-  if (days === 1) return 'أمس';
-  return `قبل ${days} أيام`;
-}
-
 function renderDoctorNotifications() {
   const notifBadge = document.getElementById('notifBadge');
   const notifList = document.getElementById('notifList');
@@ -322,7 +305,7 @@ function renderDoctorNotifications() {
       const typeBg = isLab ? 'rgba(16,185,129,0.15)' : isRad ? 'rgba(14,165,233,0.15)' : 'rgba(255,255,255,0.05)';
       const typeBorder = isLab ? 'rgba(16,185,129,0.4)' : isRad ? 'rgba(14,165,233,0.4)' : 'var(--border)';
       const typeColor = isLab ? '#10b981' : isRad ? '#0ea5e9' : 'var(--amber)';
-      const ago = _timeAgo(n.createdAt);
+      const ago = window.argonTimeAgo(n.createdAt);
       const isNew = n.createdAt && (Date.now() - new Date(n.createdAt).getTime()) < 120000;
       
       return `
