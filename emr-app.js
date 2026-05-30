@@ -1100,7 +1100,7 @@ function saveEditPatient() {
 // names or phone numbers. Families can share the same phone safely.
 // National ID is used as an optional disambiguation layer.
 // ═══════════════════════════════════════════════════════════════════
-function saveNewPatient() {
+async function saveNewPatient() {
   const name = document.getElementById('npName').value.trim();
   const phone = cleanPhone(document.getElementById('npPhone').value);
   const nationalId = document.getElementById('npNationalId').value.trim();
@@ -1116,39 +1116,58 @@ function saveNewPatient() {
     return;
   }
 
-  // Smart Duplicate Detection — warn doctor if same name + phone + nationalId already exists
-  const duplicateEntry = Object.entries(_patients).find(([uid, p]) => {
-    const info = p.info || {};
-    const samePhone = info.phone && cleanPhone(info.phone) === phone;
-    const sameName = (info.name || '').trim().toLowerCase() === name.toLowerCase();
-    const sameNid = nationalId && info.nationalId && info.nationalId.trim() === nationalId;
-    return samePhone && sameName && (sameNid || nationalId === '');
-  });
+  // ── ARGON ENTERPRISE: Smart Deduplication ──
+  if (window.ArgonMedical && window.ArgonMedical.PatientMatch) {
+    const matchResult = await window.ArgonMedical.PatientMatch.findMatch(
+      CID,
+      { name, phone, nationalId },
+      db
+    );
 
-  if (duplicateEntry) {
-    const [dupUid, dupData] = duplicateEntry;
-    const info = dupData.info || {};
-    const hasNid = info.nationalId;
-    if (nationalId && hasNid) {
-      // National ID match — definitely the same person
-      toast(`⚠️ هذا المريض موجود مسبقاً (${info.mrn})`, 'err');
-      closeModal('newPatModal');
-      viewPatientFile(dupUid);
-      return;
-    }
-    if (!nationalId) {
-      // Warn but still ask for National ID to confirm distinction
-      const confirm = window.confirm(
-        `⚠️ يوجد مريض بنفس الاسم ورقم الهاتف (${info.mrn}).\nlet _notifsClearedAt = parseInt(localStorage.getItem('argon_notifs_cleared') || '0');\n\nهل هذا شخص مختلف؟ (مثلاً: أحد أفراد العائلة)\n\nأدخل الرقم الوطني للتمييز إن كان متوفراً، ثم اضغط موافق للمتابعة.`
-      );
-      if (!confirm) {
-        viewPatientFile(dupUid);
+    await window.ArgonMedical.ShadowLog.log(
+      CID,
+      { name, phone, nationalId },
+      matchResult,
+      'emr_manual_create',
+      (ArgonSession.get() || {}).staffId || 'doctor'
+    );
+
+    const shadowMode = window.ARGON_FLAGS ? window.ARGON_FLAGS.shadowMode : true;
+
+    if (!shadowMode && matchResult.result !== "NEW") {
+      if (matchResult.result === "EXACT" || matchResult.result === "STRONG") {
+        toast(`⚠️ هذا المريض موجود مسبقاً (${matchResult.matchedName})`, 'err');
         closeModal('newPatModal');
+        viewPatientFile(matchResult.patientId);
         return;
+      }
+
+      if (matchResult.result === "POSSIBLE") {
+        matchResult._incomingName = name;
+        matchResult._incomingPhone = phone;
+
+        window.ArgonMedical.showMatchDialog(
+          matchResult,
+          (existingId) => {
+            // نفس المريض
+            closeModal('newPatModal');
+            viewPatientFile(existingId);
+          },
+          () => {
+            // مريض جديد (فرد عائلة)
+            _executeSaveNewPatient(name, phone, nationalId, age, gender, blood, allergies, chronic, notes);
+          }
+        );
+        return; // أوقف التنفيذ
       }
     }
   }
 
+  // Fallback (أو NEW أو Shadow Mode)
+  _executeSaveNewPatient(name, phone, nationalId, age, gender, blood, allergies, chronic, notes);
+}
+
+function _executeSaveNewPatient(name, phone, nationalId, age, gender, blood, allergies, chronic, notes) {
   const session = ArgonSession.get() || {};
   const loggedInDoctorId = session.staffId || null;
 
