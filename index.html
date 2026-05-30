@@ -2670,7 +2670,7 @@
           bookNo: bno,
           slotKey: slotKey, // stored so we can release lock on cancel
           docKey: selDoc.key, docName: sanitize(selDoc.name), docSpec: sanitize(selDoc.specialty || ''),
-          patName: name, patPhone: phone, patNationalId: patNID_val,
+          patName: name, patPhone: phone, patNationalId: nid,
           patAge: sanitize(document.getElementById('pAge').value),
           patGender: sanitize(document.getElementById('pGender').value),
           notes: sanitize(document.getElementById('pNotes').value),
