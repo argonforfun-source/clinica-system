@@ -23,9 +23,17 @@
         },
         "patients": {
           ".read": true,
-          ".write": true,
           "$patientId": {
-            ".validate": "newData.hasChildren(['name', 'phone'])"
+            ".write": "!data.exists()",
+            ".validate": "newData.hasChildren(['info']) || newData.hasChildren(['name'])",
+            "visits": {
+              "$visitId": {
+                ".write": "newData.exists()"
+              }
+            },
+            "$other": {
+              ".write": true
+            }
           }
         },
         "appointments": {

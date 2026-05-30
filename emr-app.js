@@ -1119,6 +1119,31 @@ function saveEditPatient() {
     photo: epPhotoData || null
   };
 
+  // ── AUDIT: Identity & Clinical Change Detection ──
+  const oldInfo = _patients[uid]?.info || {};
+  const auditFields = ['name', 'phone', 'nationalId', 'age', 'gender', 'bloodType', 'allergies', 'chronicDiseases'];
+  const changes = {};
+  auditFields.forEach(field => {
+    const oldVal = oldInfo[field] ?? null;
+    const newVal = updates[field] ?? null;
+    if (String(oldVal) !== String(newVal)) {
+      changes[field] = { old: oldVal, new: newVal };
+    }
+  });
+
+  if (Object.keys(changes).length > 0) {
+    const session = ArgonSession.get() || {};
+    const auditId = db.ref().child('audit').push().key;
+    db.ref(`${BASE}/patients/${uid}/audit/identity/${auditId}`).set({
+      changedBy:    session.staffId     || 'unknown',
+      changedName:  session.displayName || 'unknown',
+      timestamp:    new Date().toISOString(),
+      changes
+    }).catch(err => console.error('Identity audit failed:', err));
+  }
+  // ── END AUDIT ──
+
+
   db.ref(`${BASE}/patients/${uid}/info`).update(updates).then(() => {
     logAudit('EDIT_PATIENT', `تم تعديل بيانات المريض ${updates.name} (${uid})`, 'EMR');
     toast('✅ تم تحديث بيانات المريض بنجاح', 'ok');
@@ -1276,6 +1301,28 @@ function generatePatientFileHTML(uid) {
   if (visits.length) {
     let lastDate = null;
     visitsTimelineHTML = visits.map(([vk, v]) => {
+      // ── VISIT LOCK & ARCHIVE STATUS ──
+      const session       = ArgonSession.get() || {};
+      const isVisitOwner  = v.docKey === session.staffId;
+      const isExpired     = v.timestamp && (Date.now() - v.timestamp) > 86400000;
+      const isArchived    = v.status === 'archived';
+      const isLocked      = !isVisitOwner || isExpired || v.signedOff;
+
+      const lockBadge = isLocked
+        ? `<span style="background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;margin-right:6px">🔒 قراءة فقط</span>`
+        : `<span style="background:rgba(13,148,136,0.1);color:var(--teal);border:1px solid rgba(13,148,136,0.25);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;margin-right:6px">✏️ قابل للتعديل</span>`;
+
+      const archiveBadge = isArchived
+        ? `<span style="background:rgba(239,68,68,0.08);color:#f87171;border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;text-decoration:line-through;margin-right:6px">🗃️ مؤرشفة</span>`
+        : '';
+      const archivedStyle = isArchived ? 'opacity:0.5;' : '';
+      
+      // زر الأرشفة يظهر فقط للمالك وإذا ليست مؤرشفة بالفعل
+      const archiveBtn = (!isArchived && isVisitOwner && !isExpired)
+        ? `<button class="btn-secondary btn-sm" onclick="event.stopPropagation();archiveVisit('${uid}','${vk}')" style="color:var(--muted);border-color:rgba(239,68,68,0.3)"><i class="fas fa-archive"></i> أرشفة</button>`
+        : '';
+      // ── END VISIT LOCK ──
+
       let dateGroupDivider = '';
       if (v.date !== lastDate) {
         lastDate = v.date;
@@ -1340,12 +1387,15 @@ function generatePatientFileHTML(uid) {
 
       return `
         ${dateGroupDivider}
-        <div class="tl-item">
+        <div class="tl-item" style="${archivedStyle}">
           <div class="tl-dot ${dotColor}"></div>
           <div class="tl-card" style="${cardStyle}" onclick="this.classList.toggle('open')">
             <div class="tl-head">
               <span class="tl-date">${v.date} · ${v.time}</span>
-              <span class="tl-doc"><i class="fas ${cardIcon}"></i> ${sanitize(v.docName)}</span>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                ${lockBadge}${archiveBadge}
+                <span class="tl-doc"><i class="fas ${cardIcon}"></i> ${sanitize(v.docName)}</span>
+              </div>
             </div>
             <div class="tl-diag">${sanitize(v.diagnosis || 'زيارة طبية')}</div>
             <div style="font-size:.8rem;color:var(--muted);display:flex;justify-content:space-between">
@@ -1363,7 +1413,8 @@ function generatePatientFileHTML(uid) {
               
               ${attList ? `<div style="margin-top:12px"><b>📁 المرفقات الطبية وصور الأشعة:</b><div class="att-grid" style="margin-top:6px">${attList}</div></div>` : ''}
               
-              <div style="margin-top:14px;display:flex;justify-content:flex-end">
+              <div style="margin-top:14px;display:flex;justify-content:flex-end;gap:8px">
+                ${archiveBtn}
                 <button class="btn-secondary btn-sm" onclick="event.stopPropagation();printVisitSummary('${vk}')"><i class="fas fa-print"></i> طباعة الملخص</button>
               </div>
             </div>
@@ -3316,3 +3367,29 @@ function _writeVisitUpdates(updates, diag) {
     toast('❌ خطأ أثناء الحفظ: ' + err.message, 'err');
   });
 }
+
+// ── CLINICAL INTEGRITY: SOFT DELETE / ARCHIVE ──
+window.archiveVisit = function(patientId, visitKey) {
+  const session = ArgonSession.get() || {};
+  if (!confirm('⚠️ هل أنت متأكد من أرشفة (حذف) هذا السجل الطبي؟ لا يمكن التراجع عن هذه العملية.')) return;
+
+  const updates = {};
+  updates[`${BASE}/patients/${patientId}/visits/${visitKey}/status`] = 'archived';
+  updates[`${BASE}/patients/${patientId}/visits/${visitKey}/archivedBy`] = session.staffId;
+  updates[`${BASE}/patients/${patientId}/visits/${visitKey}/archivedAt`] = new Date().toISOString();
+
+  const auditId = db.ref().child('audit').push().key;
+  updates[`${BASE}/patients/${patientId}/audit/visits/${auditId}`] = {
+    action: 'ARCHIVE_VISIT',
+    visitId: visitKey,
+    archivedBy: session.staffId,
+    timestamp: new Date().toISOString()
+  };
+
+  db.ref().update(updates).then(() => {
+    toast('✅ تم أرشفة السجل الطبي بنجاح', 'ok');
+    viewPatientFile(patientId); // Refresh timeline
+  }).catch(err => {
+    toast('❌ حدث خطأ أثناء الأرشفة: ' + err.message, 'err');
+  });
+};
