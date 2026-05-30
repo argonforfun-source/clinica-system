@@ -1581,17 +1581,6 @@ async function safeViewPatientFile(phoneOrUid) {
     }
   }
 
-  // --- NID SECURITY GUARD ---
-  if (typeof window.ArgonNID !== 'undefined' && _patients[uid]) {
-    const pInfo = _patients[uid].info || {};
-    if (!window.ArgonNID.isValidNID(pInfo.nationalId)) {
-      window.ArgonNID.showCollectorDialog(pInfo.name || 'المريض', uid, db, typeof BASE !== 'undefined' ? BASE : '', (savedUid, savedNid) => {
-        safeViewPatientFile(savedUid);
-      });
-      return; 
-    }
-  }
-
   // Global Soft Lock Check
   if (typeof BASE !== 'undefined') {
     const lockRef = db.ref(`${BASE}/active_sessions/${uid}`);
