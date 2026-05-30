@@ -612,6 +612,10 @@
           </div>
         </div>
         <div class="setg"><label class="setl">إيموجي العيادة (بديل اللوغو)</label><input type="text" id="sEm" class="seti" placeholder="🏥"></div>
+        <div class="setg">
+          <label class="setl">كلمة المرور الحالية (مطلوبة للتغيير)</label>
+          <input type="password" id="sPwCurrent" class="seti" placeholder="أدخل كلمة المرور الحالية">
+        </div>
         <div class="setg"><label class="setl">كلمة المرور الجديدة</label><input type="password" id="sPw" class="seti" placeholder="اتركها فارغة للإبقاء على الحالية"></div>
         
         <!-- PATIENT PORTAL LINK COPIER -->
@@ -1825,7 +1829,21 @@ async function saveSettings() {
     color
   };
   
-  if(newPass.length>=4) update.password=newPass;
+  const currentPassInput = document.getElementById('sPwCurrent');
+  const currentPass = currentPassInput ? currentPassInput.value.trim() : '';
+
+  if (newPass.length > 0) {
+      const storedPassword = String(_pass || _sets.password || '');
+      if (!currentPass) {
+          toast('❌ أدخل كلمة المرور الحالية', 'err');
+          return;
+      }
+      if (String(currentPass) !== storedPassword) {
+          toast('❌ كلمة المرور الحالية غير صحيحة', 'err');
+          return;
+      }
+      update.password = newPass;
+  }
 
   const pharPass = document.getElementById('sPassPhar');
   if (pharPass && !pharPass.disabled) {
@@ -1845,7 +1863,10 @@ async function saveSettings() {
 
   db.ref(`${BASE}/settings`).update(update).then(()=>{
     toast('✅ تم حفظ الإعدادات بنجاح','ok');
-    document.getElementById('sPw').value='';
+    const p1 = document.getElementById('sPw');
+    const p2 = document.getElementById('sPwCurrent');
+    if (p1) p1.value = '';
+    if (p2) p2.value = '';
   }).catch(e => toast('❌ فشل الحفظ','err'));
 }
 
