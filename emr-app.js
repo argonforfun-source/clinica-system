@@ -1814,6 +1814,7 @@ if (!_hasNID) {
     doctorId:      session.staffId   || 'unknown',
     doctorName:    session.displayName || 'الطبيب',
     patientsCache: _patients,
+    currentInvalidNID: _patData?.info?.nationalId || '',
 
     onComplete: (patientId, result) => {
       // سواء أدخل الرقم أو تجاوز — نفتح الملف في الحالتين

@@ -57,7 +57,7 @@ ArgonNID.findByNIDLocal = (nid, cache) => {
  */
 ArgonNID.showGate = function(opts) {
   const { patientName, patientId, db, basePath,
-          doctorId, doctorName, patientsCache, onComplete } = opts;
+          doctorId, doctorName, patientsCache, currentInvalidNID, onComplete } = opts;
 
   const old = document.getElementById('_nidGateOverlay');
   if (old) old.remove();
@@ -102,6 +102,7 @@ ArgonNID.showGate = function(opts) {
 
       <!-- TAB A: إدخال الرقم الوطني -->
       <div id="_nidTabA">
+        ${currentInvalidNID ? `<div style="margin-bottom:12px;padding:8px 12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;font-size:.75rem;color:#ef4444;display:flex;align-items:center;gap:8px;"><i class="fas fa-exclamation-triangle"></i><span>الرقم <b>${_esc(currentInvalidNID)}</b> غير صالح. يرجى إدخال رقم وطني صحيح (9-12 رقم).</span></div>` : ''}
         <label style="font-size:.72rem;color:var(--muted,#94a3b8);font-weight:700;display:block;margin-bottom:7px;">
           الرقم الوطني / رقم الهوية
         </label>
@@ -277,6 +278,9 @@ ArgonNID.showGate = function(opts) {
     inp.style.borderColor = '';
     _hide(inpErr);
   });
+  if (currentInvalidNID) {
+    inp.value = currentInvalidNID;
+  }
   inp.focus();
 
   // ── زر الحفظ ──
