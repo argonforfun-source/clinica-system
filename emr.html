@@ -269,7 +269,7 @@
         <div class="fg"><label>رقم الهاتف *</label><input class="fi" id="npPhone" placeholder="07XXXXXXXX" dir="ltr" oninput="detectNewPatDuplicates()"></div>
       </div>
       <div id="npDupWarning"></div>
-      <div class="fg" style="margin-bottom:12px"><label><i class="fas fa-id-card"></i> الرقم الوطني / الهوية</label><input class="fi" id="npNationalId" placeholder="اختياري - للتمييز بين المرضى" dir="ltr"></div>
+      <div class="fg" style="margin-bottom:12px"><label><i class="fas fa-id-card"></i> الرقم الوطني / الهوية *</label><input class="fi" id="npNationalId" placeholder="إجباري (9 أرقام على الأقل)" dir="ltr"></div>
       <div class="fg" style="margin-bottom:12px">
         <label><i class="fas fa-camera"></i> صورة المريض (اختياري)</label>
         <div style="display:flex;gap:12px;align-items:center">
@@ -302,7 +302,7 @@
         <div class="fg"><label>اسم المريض *</label><input class="fi" id="epName" placeholder="مثال: أحمد"></div>
         <div class="fg"><label>رقم الهاتف *</label><input class="fi" id="epPhone" placeholder="07XXXXXXXX" dir="ltr"></div>
       </div>
-      <div class="fg" style="margin-bottom:12px"><label><i class="fas fa-id-card"></i> الرقم الوطني / الهوية</label><input class="fi" id="epNationalId" placeholder="اختياري - للتمييز بين المرضى" dir="ltr"></div>
+      <div class="fg" style="margin-bottom:12px"><label><i class="fas fa-id-card"></i> الرقم الوطني / الهوية *</label><input class="fi" id="epNationalId" placeholder="إجباري (9 أرقام على الأقل)" dir="ltr"></div>
       <div class="fg" style="margin-bottom:12px">
         <label><i class="fas fa-camera"></i> صورة المريض (اختياري)</label>
         <div style="display:flex;gap:12px;align-items:center">
@@ -334,6 +334,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
 <script src="argon-core.js???v=7"></script>
+<script src="argon-nid-gate.js"></script>
 <script src="argon-enterprise.js???v=7"></script>
 <script src="emr-app.js???v=7"></script>
 </body>

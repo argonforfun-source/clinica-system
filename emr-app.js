@@ -639,7 +639,17 @@ function renderPatientsList(entries) {
     const ageStr = info.age ? `${info.age} سنة` : '';
     const genderStr = info.gender || '';
     const ageGender = [ageStr, genderStr].filter(Boolean).join(' · ');
-    const nationalId = info.nationalId ? `<span style="font-size:10px;color:var(--muted);font-family:monospace;direction:ltr">🪪 ${sanitize(info.nationalId)}</span>` : '';
+        const _nidStatus = ArgonNID.isValidNID(info.nationalId || '')
+      ? `<span style="
+           font-size:10px;color:var(--teal,#0d9488);font-family:monospace;
+           background:rgba(13,148,136,.08);padding:1px 7px;border-radius:5px;
+           border:1px solid rgba(13,148,136,.2);
+         ">🪪 ${ArgonNID.cleanNID(info.nationalId)}</span>`
+      : `<span style="
+           font-size:10px;color:rgba(239,68,68,0.7);
+           background:rgba(239,68,68,.06);padding:1px 7px;border-radius:5px;
+           border:1px solid rgba(239,68,68,.15);
+         ">🪪 لا يوجد رقم وطني</span>`;
 
     // Detect potential duplicates — show warning badge if same name+phone as another
     const dupCount = Object.values(_patients).filter(pp => pp.info && pp.info.name === info.name && pp.info.phone === info.phone).length;
@@ -656,7 +666,7 @@ function renderPatientsList(entries) {
         <div class="plist-meta">${sanitize(info.phone || '')} ${ageGender ? `· ${ageGender}` : ''}</div>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <div class="plist-mrn">${info.mrn || 'MRN-NEW'}</div>
-          ${nationalId}
+          ${_nidStatus}
         </div>
       </div>
     </div>`;
@@ -813,6 +823,32 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
   const booking = _liveBookings[bookingKey] || {};
   const rawUid = booking.patientId || booking.patPhone;
   const bookingName = (booking.patName || '').trim();
+
+// B4-A: استخراج NID من بيانات الحجز
+const _bNID = ArgonNID.cleanNID(
+  booking.patNationalId || booking.nationalId || ''
+);
+
+// B4-B: إذا في NID في الحجز ← بحث مباشر وسريع بدون Firebase
+if (ArgonNID.isValidNID(_bNID)) {
+  const _nidHit = ArgonNID.findByNIDLocal(_bNID, _patients);
+  if (_nidHit) {
+    // ✅ EXACT فوري — فتح مباشر
+    if (window.ArgonMedical?.ShadowLog?.log) {
+      window.ArgonMedical.ShadowLog.log(CID, {
+        result: 'EXACT', confidence: 1.0,
+        matchedId: _nidHit.uid, matchedName: _nidHit.info.name,
+        reason: '🔒 NID direct hit from booking — instant open, zero ambiguity'
+      }, {
+        source: 'doctor_wr_nid_direct',
+        userId: (ArgonSession.get()||{}).staffId || ''
+      }, db);
+    }
+    if (startVisit) { sw('newVisit'); loadVisitForm(_nidHit.uid, bookingKey); }
+    else             { viewPatientFile(_nidHit.uid); sw('patFile'); }
+    return; // ← أوقف كل المنطق الآخر
+  }
+}
   const bookingPhone = booking.patPhone || rawUid;
 
   if (!rawUid) {
@@ -1064,8 +1100,9 @@ function saveEditPatient() {
   const chronic = document.getElementById('epChronic').value.trim().split(/[،,]/).map(s => s.trim()).filter(Boolean);
   const notes = document.getElementById('epNotes').value.trim();
 
-  if (!name) {
-    toast('⚠️ يرجى إدخال الاسم الكامل', 'err');
+  const cleanNid = ArgonNID.cleanNID(nationalId);
+  if (!name || !phone || !ArgonNID.isValidNID(cleanNid)) {
+    toast('⚠️ يرجى إدخال الاسم ورقم الهاتف والرقم الوطني (9 أرقام على الأقل)', 'err');
     return;
   }
 
@@ -1111,8 +1148,9 @@ async function saveNewPatient() {
   const chronic = document.getElementById('npChronic').value.trim().split(',').map(s => s.trim()).filter(Boolean);
   const notes = document.getElementById('npNotes').value.trim();
 
-  if (!name || !phone) {
-    toast('⚠️ يرجى إدخال الاسم ورقم الهاتف', 'err');
+  const cleanNid = ArgonNID.cleanNID(nationalId);
+  if (!name || !phone || !ArgonNID.isValidNID(cleanNid)) {
+    toast('⚠️ يرجى إدخال الاسم، رقم الهاتف، والرقم الوطني (9 أرقام كحد أدنى)', 'err');
     return;
   }
 
@@ -1543,6 +1581,17 @@ async function safeViewPatientFile(phoneOrUid) {
     }
   }
 
+  // --- NID SECURITY GUARD ---
+  if (typeof window.ArgonNID !== 'undefined' && _patients[uid]) {
+    const pInfo = _patients[uid].info || {};
+    if (!window.ArgonNID.isValidNID(pInfo.nationalId)) {
+      window.ArgonNID.showCollectorDialog(pInfo.name || 'المريض', uid, db, typeof BASE !== 'undefined' ? BASE : '', (savedUid, savedNid) => {
+        safeViewPatientFile(savedUid);
+      });
+      return; 
+    }
+  }
+
   // Global Soft Lock Check
   if (typeof BASE !== 'undefined') {
     const lockRef = db.ref(`${BASE}/active_sessions/${uid}`);
@@ -1577,6 +1626,40 @@ async function safeViewPatientFile(phoneOrUid) {
     window.AuditAPI.log('SESSION_LOCK_TRIGGERED', { patientId: uid });
     window.AuditAPI.log('PATIENT_FILE_OPENED', { patientId: uid });
   }
+
+
+const _patData = _patients[uid];
+const _hasNID  = ArgonNID.isValidNID(_patData?.info?.nationalId || '');
+
+if (!_hasNID) {
+  // أفرج عن القفل مؤقتاً
+  window.EMRContext.sessionLock = false;
+  if (typeof BASE !== 'undefined')
+    db.ref(`${BASE}/active_sessions/${uid}`).remove();
+
+  const session = window.ArgonSession ? ArgonSession.get() : {};
+
+  ArgonNID.showGate({
+    patientName:   _patData?.info?.name || 'المريض',
+    patientId:     uid,
+    db,
+    basePath:      BASE,
+    doctorId:      session.staffId   || 'unknown',
+    doctorName:    session.displayName || 'الطبيب',
+    patientsCache: _patients,
+
+    onComplete: (patientId, result) => {
+      // سواء أدخل الرقم أو تجاوز — نفتح الملف في الحالتين
+      if (_patients[patientId]?.info && result.nid) {
+        // حدّث الكاش المحلي فوراً
+        _patients[patientId].info.nationalId = result.nid;
+      }
+      // أعد المحاولة — الآن إما عنده NID أو عنده bypass مسجّل
+      safeViewPatientFile(patientId);
+    }
+  });
+  return;
+}
 
   activePatientId = uid;
   const p = _patients[uid];

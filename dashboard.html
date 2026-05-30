@@ -723,6 +723,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
 <script src="argon-core.js"></script>
+<script src="argon-nid-gate.js"></script>
 <script src="argon-enterprise.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════
@@ -1357,6 +1358,9 @@ function renderLive(keys) {
         </div>
         <div class="bname">${sanitize(b.patName)}</div>
         <div class="binfo">📞 ${sanitize(b.patPhone)}</div>
+        // ── C2: عرض الرقم الوطني على الكارت ──
+        ${b.patNationalId ? `<div class="binfo" style="font-family:'IBM Plex Mono',monospace;font-size:.74rem;color:var(--teal)">🪪 ${sanitize(b.patNationalId)}</div>` : `<div class="binfo" style="color:rgba(239,68,68,0.7);font-size:.72rem">⚠️ رقم وطني غير مُسجَّل</div>`}
+        // ── نهاية C2 ──
         ${isRef ? refBanner : `<div class="binfo">👨‍⚕️ د. ${sanitize(b.docName)} · <span style="color:var(--teal)">${sanitize(b.docSpec || '')}</span></div>`}
         <div class="binfo" style="display:flex;align-items:center;gap:10px">
           <span style="font-family:'IBM Plex Mono',monospace;background:var(--surf);border:1px solid var(--border);padding:2px 8px;border-radius:7px;font-size:.78rem">${isRef ? '🔀 تحويل داخلي' : '🕐 ' + (b.time || '—')}</span>
@@ -1437,7 +1441,8 @@ window.renderHist = function() {
       return (b.patName && b.patName.toLowerCase().includes(sq)) ||
              (b.patPhone && b.patPhone.includes(sq)) ||
              (b.bookNo && b.bookNo.toLowerCase().includes(sq)) ||
-             (b.docName && b.docName.toLowerCase().includes(sq));
+             (b.docName && b.docName.toLowerCase().includes(sq)) ||
+             (b.patNationalId && b.patNationalId.includes(sq));
     });
   }
   const noHistMsg = curLang === 'ar' ? 'لا يوجد سجل يطابق البحث' : (curLang === 'fr' ? 'Aucun historique' : 'No History');
@@ -1451,7 +1456,7 @@ window.renderHist = function() {
   hg.innerHTML=`<div class="htw"><table><thead><tr><th>${th1}</th><th>${th2}</th><th>${th3}</th><th>${th4}</th><th>${th5}</th><th>${th6}</th></tr></thead>
     <tbody>${filteredKeys.slice().reverse().slice(0,60).map(k=>{const b=_cmp[k];if(!b)return'';
       return`<tr><td><div style="font-weight:700">${b.date||'—'}</div></td>
-        <td><b>${sanitize(b.patName||'—')}</b><br><small>${sanitize(b.patPhone||'')}</small></td>
+        <td><b>${sanitize(b.patName||'—')}</b><br><small>${sanitize(b.patPhone||'')}</small>${b.patNationalId ? `<br><small style="color:var(--teal)"><i class="fas fa-id-card"></i> ${sanitize(b.patNationalId)}</small>` : ''}</td>
         <td>د. ${sanitize(b.docName||'—')}<br><small style="color:var(--teal)">${sanitize(b.docSpec||'')}</small></td>
         <td style="font-family:'IBM Plex Mono',monospace">${b.time||'—'}</td>
         <td style="color:var(--green);font-weight:800">${b.fee||'0.00'}</td>
@@ -1561,6 +1566,9 @@ async function _ensurePatientAndLink(bookingKey, b, callback) {
   if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
 
   const bookingName = (b.patName || '').trim();
+// ── C3: تمرير NID لمحرك المطابقة ──
+const bookingNID_C3 = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
+// ──
 
   // ── ARGON ENTERPRISE: Smart Patient Match & Shadow Logging ──
   if (window.ArgonMedical && window.ArgonMedical.PatientMatch) {
@@ -1568,7 +1576,7 @@ async function _ensurePatientAndLink(bookingKey, b, callback) {
     const currentUserId = session.staffId || 'unknown_admin';
     const matchResult = await window.ArgonMedical.PatientMatch.findMatch(
       CID,
-      { name: bookingName, phone: cleanPhone, nationalId: "" },
+      { name: bookingName, phone: cleanPhone, nationalId: bookingNID_C3 },
       db
     );
 

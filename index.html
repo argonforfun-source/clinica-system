@@ -1711,6 +1711,11 @@
             <div class="err-msg" id="pNameErr">يرجى إدخال الاسم</div>
           </div>
           <div class="fg">
+            <label>الرقم الوطني / الهوية *</label>
+            <input type="text" id="pNationalId" class="finp" placeholder="أدخل الرقم الوطني (9 أرقام على الأقل)" autocomplete="off" inputmode="numeric">
+            <div class="err-msg" id="pNationalIdErr">الرقم الوطني إجباري ويجب أن لا يقل عن 9 أرقام</div>
+          </div>
+          <div class="fg">
             <label>رقم الهاتف *</label>
             <input type="tel" id="pPhone" class="finp" placeholder="07XXXXXXXX" autocomplete="tel" dir="ltr">
             <div class="err-msg" id="pPhoneErr">يرجى إدخال رقم هاتف صحيح</div>
@@ -1922,6 +1927,7 @@
         closedBtn: "الحجز متوقف حالياً", bookBtn: "احجز موعد", notAvailBtn: "غير متاح",
         selectDateFirst: "اختر تاريخاً أولاً", today: "اليوم",
         patNameLabel: "الاسم الكريم", patNamePh: "مثال: أحمد خالد",
+        patNationalIdLabel: "الرقم الوطني / الهوية *", patNationalIdPh: "أدخل الرقم الوطني",
         patAgeLabel: "العمر", patAgePh: "سنة",
         patGenderLabel: "الجنس", genderM: "ذكر", genderF: "أنثى",
         patPhoneLabel: "رقم الهاتف", patPhonePh: "مثال: 0791234567",
@@ -1934,7 +1940,7 @@
         errLimit: "لقد وصلت للحد الأقصى المسموح به (5 حجوزات في الساعة).\\nيرجى الانتظار قليلاً ثم المحاولة مجدداً.",
         errSlot: "قام شخص آخر بحجز هذا الموعد في نفس اللحظة.\\nيرجى اختيار موعد آخر من القائمة المتاحة.",
         errClosed: "استقبال الحجوزات الإلكترونية متوقف مؤقتاً.\\nيرجى المحاولة لاحقاً أو التواصل مع العيادة مباشرة.",
-        errData: "⚠️ يرجى التحقق من البيانات المدخلة", errSelectDT: "⚠️ يرجى اختيار تاريخ ووقت الحجز",
+        errData: "⚠️ يرجى التحقق من البيانات المدخلة", errNid: "⚠️ يرجى إدخال رقم وطني صحيح", errSelectDT: "⚠️ يرجى اختيار تاريخ ووقت الحجز",
         succBooked: "✅ تم تأكيد حجزك بنجاح!", succCancel: "✅ تم إلغاء الحجز", succEdit: "✅ تم تحديث بيانات الحجز", succRate: "✅ شكراً لتقييمك!",
         hMetaOpen: "مفتوح الآن", hMetaClosed: "مغلق مؤقتاً",
         sysStopMain: "⛔ الحجز متوقف حالياً", sysStopSub: "نعتذر منكم، العيادة لا تستقبل حجوزات إلكترونية في الوقت الحالي.<br>يرجى التواصل معنا عبر واتساب للمساعدة."
@@ -2015,17 +2021,19 @@
       
       const sBox = document.getElementById('searchBox'); if(sBox) sBox.placeholder = T('searchDoc');
       const pN = document.getElementById('pName'); if(pN) pN.placeholder = T('patNamePh');
+      const pNid = document.getElementById('pNationalId'); if(pNid) pNid.placeholder = T('patNationalIdPh');
       const pA = document.getElementById('pAge'); if(pA) pA.placeholder = T('patAgePh');
       const pP = document.getElementById('pPhone'); if(pP) pP.placeholder = T('patPhonePh');
       const pNo = document.getElementById('pNotes'); if(pNo) pNo.placeholder = T('patNotesPh');
       
-      const lbls = document.querySelectorAll('#s2 .fg label');
-      if(lbls.length>=4) {
+      const lbls = document.querySelectorAll('#s1 .fg label');
+      if(lbls.length>=5) {
         lbls[0].textContent = T('patNameLabel');
-        lbls[1].textContent = T('patAgeLabel');
-        lbls[2].textContent = T('patGenderLabel');
-        lbls[3].textContent = T('patPhoneLabel');
-        if(lbls[4]) lbls[4].textContent = T('patNotesLabel');
+        lbls[1].textContent = T('patNationalIdLabel');
+        lbls[2].textContent = T('patPhoneLabel');
+        lbls[3].textContent = T('patAgeLabel');
+        lbls[4].textContent = T('patGenderLabel');
+        if(lbls[5]) lbls[5].textContent = T('patNotesLabel');
       }
       
       q('#genM', T('genderM')); q('#genF', T('genderF'));
@@ -2582,11 +2590,14 @@
     function validateStep1() {
       const name = document.getElementById('pName').value.trim();
       const phone = toEngNum(document.getElementById('pPhone').value).trim();
+      const nid = toEngNum(document.getElementById('pNationalId').value).replace(/\D/g, '').trim();
       let ok = true;
       if (!isName(name)) { document.getElementById('pName').classList.add('err'); document.getElementById('pNameErr').style.display = 'block'; ok = false; }
       else { document.getElementById('pName').classList.remove('err'); document.getElementById('pNameErr').style.display = 'none'; }
       if (!isPhone(phone)) { document.getElementById('pPhone').classList.add('err'); document.getElementById('pPhoneErr').style.display = 'block'; ok = false; }
       else { document.getElementById('pPhone').classList.remove('err'); document.getElementById('pPhoneErr').style.display = 'none'; }
+      if (nid.length < 9) { document.getElementById('pNationalId').classList.add('err'); document.getElementById('pNationalIdErr').style.display = 'block'; ok = false; }
+      else { document.getElementById('pNationalId').classList.remove('err'); document.getElementById('pNationalIdErr').style.display = 'none'; }
       if (ok) goStep(2);
     }
     document.getElementById('s1').querySelectorAll && document.querySelectorAll && (function () {
@@ -2608,7 +2619,8 @@
 
       const name = sanitize(document.getElementById('pName').value);
       const phone = sanitize(toEngNum(document.getElementById('pPhone').value));
-      if (!isName(name) || !isPhone(phone)) { toast(T('errData'), 'err'); return; }
+      const nid = sanitize(toEngNum(document.getElementById('pNationalId').value).replace(/\D/g, ''));
+      if (!isName(name) || !isPhone(phone) || nid.length < 9) { toast(T('errData'), 'err'); return; }
 
       sending = true;
       const btn = document.getElementById('sendBtn');
@@ -2658,7 +2670,7 @@
           bookNo: bno,
           slotKey: slotKey, // stored so we can release lock on cancel
           docKey: selDoc.key, docName: sanitize(selDoc.name), docSpec: sanitize(selDoc.specialty || ''),
-          patName: name, patPhone: phone,
+          patName: name, patPhone: phone, patNationalId: patNID_val,
           patAge: sanitize(document.getElementById('pAge').value),
           patGender: sanitize(document.getElementById('pGender').value),
           notes: sanitize(document.getElementById('pNotes').value),
@@ -2671,30 +2683,6 @@
 
         // Increment lifetime stats counter
         db.ref(BASE + '/stats/totalBookings').transaction(c => (c || 0) + 1).catch(() => {});
-
-        // Auto-create EMR patient profile under a unique Push Key if not exists (EMR Collision Prevention)
-        let patPhone = phone.replace(/\D/g,'');
-        if (patPhone.startsWith('962')) patPhone = patPhone.substring(3);
-        if (patPhone.startsWith('0')) patPhone = patPhone.substring(1);
-        
-        db.ref(`${BASE}/patients`).once('value', snap => {
-          const pats = snap.val() || {};
-          const exists = Object.values(pats).some(p => p.info && p.info.phone === patPhone);
-          
-          if (!exists) {
-            const newRef = db.ref(`${BASE}/patients`).push();
-            newRef.set({
-              info: {
-                name: name,
-                phone: patPhone,
-                age: booking.patAge ? parseInt(booking.patAge) : null,
-                gender: booking.patGender || '',
-                mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
-                createdAt: new Date().toISOString()
-              }
-            }).catch(err => console.error("Auto EMR registration failed: ", err));
-          }
-        });
 
         return db.ref(BASE + '/bookings').push(booking).then(ref => ({ ref, bno, booking }));
 
