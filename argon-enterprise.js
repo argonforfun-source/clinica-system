@@ -398,13 +398,14 @@ const ArgonEnterprise = {
             // 2. Patients
             const ptsData = [];
             if (data.patients) {
+                const genderMap = { 'male': 'ذكر', 'female': 'أنثى', 'ذكر': 'ذكر', 'أنثى': 'أنثى' };
                 Object.values(data.patients).forEach(p => {
                     ptsData.push({
                         "اسم المريض": p.info?.name || "-",
                         "رقم الهاتف": p.info?.phone || "-",
                         "الرقم الوطني / الهوية": p.info?.nationalId || "",
                         "تاريخ الميلاد / العمر": p.info?.age || "-",
-                        "الجنس": p.info?.gender === 'male' ? 'ذكر' : (p.info?.gender === 'female' ? 'أنثى' : '-'),
+                        "الجنس": genderMap[p.info?.gender] || p.info?.gender || "-",
                         "تاريخ التسجيل": p.info?.createdAt ? new Date(p.info.createdAt).toLocaleDateString('ar-JO') : "-"
                     });
                 });
