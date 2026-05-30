@@ -809,15 +809,76 @@ function renderWaitingRoom() {
 }
 
 // Open patient file from waiting room — resolves correct patient by phone+name from booking
-function openPatientFromBooking(bookingKey, startVisit = false) {
+async function openPatientFromBooking(bookingKey, startVisit = false) {
   const booking = _liveBookings[bookingKey] || {};
   const rawUid = booking.patientId || booking.patPhone;
-  const bookingName = (booking.patName || '').trim().toLowerCase();
+  const bookingName = (booking.patName || '').trim();
+  const bookingPhone = booking.patPhone || rawUid;
 
   if (!rawUid) {
     toast('⚠️ لا توجد بيانات مرتبطة بهذا الحجز', 'err');
     return;
   }
+
+  // ── ARGON ENTERPRISE: Smart Patient Match & Shadow Logging ──
+  if (window.ArgonMedical && window.ArgonMedical.PatientMatch) {
+    const session = window.ArgonSession ? window.ArgonSession.get() : {};
+    const currentDoctorId = session.staffId || 'unknown_doc';
+    const matchResult = await window.ArgonMedical.PatientMatch.findMatch(
+      CID,
+      { name: bookingName, phone: bookingPhone, nationalId: "" },
+      db
+    );
+
+    await window.ArgonMedical.ShadowLog.log(
+      CID,
+      matchResult,
+      { source: "doctor_waiting_room", userId: currentDoctorId,
+        incoming: { name: bookingName, phone: bookingPhone } },
+      db
+    );
+
+    // If Shadow Mode is OFF, we enforce the smart matching decision
+    if (typeof ARGON_FLAGS !== 'undefined' && !ARGON_FLAGS.shadowMode) {
+      if (matchResult.result === "EXACT" || matchResult.result === "STRONG") {
+        if (startVisit) {
+          sw('newVisit');
+          loadVisitForm(matchResult.matchedId, bookingKey);
+        } else {
+          viewPatientFile(matchResult.matchedId);
+          sw('patFile');
+        }
+        return;
+      }
+      if (matchResult.result === "POSSIBLE") {
+        // أضف البيانات الواردة للنتيجة حتى تظهر في نافذة المقارنة
+        matchResult._incomingName  = bookingName;
+        matchResult._incomingPhone = booking.patPhone || rawUid;
+
+        window.ArgonMedical.showMatchDialog(
+          matchResult,
+          // ✅ المستخدم قال: نفس الشخص
+          (existingId) => {
+            if (startVisit) {
+              sw('newVisit');
+              loadVisitForm(existingId, bookingKey);
+            } else {
+              viewPatientFile(existingId);
+              sw('patFile');
+            }
+            // اربط الحجز بالملف الصحيح
+            db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(existingId).catch(() => {});
+          },
+          // 👨👩👧 المستخدم قال: فرد عائلة جديد — سكمّل المنطق القديم
+          () => {
+            _openPatientFromBookingLegacy(bookingKey, booking, startVisit);
+          }
+        );
+        return; // أوقف التنفيذ — النافذة ستتولى الأمر
+      }
+    }
+  }
+  // ─────────────────────────────────────────────────────────────
 
   // 1️⃣ Direct Firebase Push Key match (patientId) WITH Strict Name Integrity
   if (booking.patientId && _patients[booking.patientId]) {
@@ -893,33 +954,48 @@ function openPatientFromBooking(bookingKey, startVisit = false) {
   }
 
   // 5️⃣ Ambiguous (Family members sharing a phone, and name didn't match perfectly)
-  // Instead of showing a popup with other doctor's patients, auto-register the patient now!
-  toast('⚠️ يتم الآن فتح وتجهيز ملف المريض...', 'ok');
+  _openPatientFromBookingLegacy(bookingKey, booking, startVisit);
+}
 
-  // Create a new patient profile since the name didn't match anyone in the family
+/**
+ * ── دالة مساعدة: المنطق القديم معزولاً ──
+ */
+async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = false) {
+  toast('⚠️ يتم الآن تجهيز ملف مريض جديد...', 'ok');
+
   const newRef = db.ref(`${BASE}/patients`).push();
-  const patPhone = cleanPhone(booking.patPhone || '');
+  const patPhone = booking.patPhone ? booking.patPhone.replace(/\D/g, '') : '';
+  let cleanPhoneStr = patPhone;
+  if (cleanPhoneStr.startsWith('962')) cleanPhoneStr = cleanPhoneStr.substring(3);
+  if (cleanPhoneStr.startsWith('0')) cleanPhoneStr = cleanPhoneStr.substring(1);
+
   const session = ArgonSession.get() || {};
   const loggedInDoctorId = session.staffId || null;
 
   const patObj = {
     info: {
-      name: booking.patName || 'مريض',
-      phone: patPhone,
-      age: booking.patAge ? parseInt(booking.patAge) : null,
-      gender: booking.patGender || '',
-      mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
-      createdAt: new Date().toISOString(),
-      createdBy: loggedInDoctorId
+      name:       booking.patName || 'مريض',
+      phone:      cleanPhoneStr,
+      age:        booking.patAge ? parseInt(booking.patAge) : null,
+      gender:     booking.patGender || '',
+      mrn:        'MRN-' + Math.floor(100000 + Math.random() * 900000),
+      createdAt:  new Date().toISOString(),
+      createdBy:  loggedInDoctorId
     }
   };
 
-  // Inject into local memory immediately so viewPatientFile doesn't abort due to Firebase latency
+  // أضف إلى الذاكرة المحلية فوراً لتجنب تأخير Firebase
   _patients[newRef.key] = patObj;
 
   newRef.set(patObj).then(() => {
     db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(newRef.key).then(() => {
-      if (startVisit) { sw('newVisit'); loadVisitForm(newRef.key, bookingKey); } else { viewPatientFile(newRef.key); sw('patFile'); }
+      if (startVisit) {
+        sw('newVisit');
+        loadVisitForm(newRef.key, bookingKey);
+      } else {
+        viewPatientFile(newRef.key);
+        sw('patFile');
+      }
     });
   });
 }

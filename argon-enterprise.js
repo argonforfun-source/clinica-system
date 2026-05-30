@@ -558,3 +558,430 @@ const liveUpdateCheck = setInterval(() => {
         ArgonEnterprise.LiveUpdate.init(db, BASE);
     }
 }, 1500);
+
+/**
+ * ============================================================
+ *  ARGON Medical OS — Smart Patient Deduplication Engine
+ *  argon-patient-match.js
+ *
+ *  ⚠️  READ-ONLY SHADOW MODE BY DEFAULT
+ *  لا يعدّل أي بيانات حقيقية حتى تفعّل FLAG يدوياً
+ * ============================================================
+ */
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🚦 LAYER 1 — Feature Flags (افتح / اقفل كل ميزة مستقلة)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const ARGON_FLAGS = {
+  /**
+   * shadowMode: true  → يسجّل في smart_log فقط، لا يغير أي شيء
+   *             false → يطبّق القرار فعلياً على النظام
+   *  ← ابقِها true حتى تراجع النتائج وتطمئن 100%
+   */
+  shadowMode: true,
+
+  /** تفعيل محرك المطابقة الذكية */
+  enableSmartMatch: true,
+
+  /** تفعيل فهرس MPI للبحث السريع */
+  enableMPI: false,
+
+  /** تفعيل فلترة زيارات الطبيب */
+  enableDoctorFilter: false,
+
+  /** مستوى التسجيل: 'verbose' | 'normal' | 'errors_only' */
+  logLevel: "verbose",
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🔧 LAYER 2 — Smart Match Engine
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * نتائج المطابقة الممكنة
+ * EXACT     → تطابق مؤكد 100%، لا تنشئ ملفاً جديداً
+ * STRONG    → تطابق قوي جداً، على الأرجح نفس الشخص
+ * POSSIBLE  → تشابه، يحتاج تأكيد بشري
+ * NEW       → لا يوجد تطابق، آمن لإنشاء ملف جديد
+ */
+const MatchResult = Object.freeze({
+  EXACT: "EXACT",
+  STRONG: "STRONG",
+  POSSIBLE: "POSSIBLE",
+  NEW: "NEW",
+});
+
+window.ArgonMedical = window.ArgonMedical || {};
+
+window.ArgonMedical.PatientMatch = (() => {
+  // ─────────────────────────────────────────────────────────
+  // 🔤 Text Normalization — تطبيع النص العربي
+  // ─────────────────────────────────────────────────────────
+
+  function normalizeArabic(str) {
+    if (!str || typeof str !== "string") return "";
+    return str
+      .trim()
+      // حذف التشكيل (فتحة، ضمة، كسرة، شدة، سكون، إلخ)
+      .replace(/[\u0610-\u061A\u064B-\u065F\u0670]/g, "")
+      .replace(/^ال/, "")           // حذف ال التعريف من البداية
+      .replace(/[أإآا]/g, "ا")      // توحيد الهمزات
+      .replace(/ة/g, "ه")           // توحيد التاء المربوطة
+      .replace(/ى/g, "ي")           // توحيد الألف المقصورة
+      .replace(/\s+/g, " ")         // مسافات زائدة
+      .toLowerCase();
+  }
+
+  function nameSimilarity(name1, name2) {
+    const a = normalizeArabic(name1);
+    const b = normalizeArabic(name2);
+
+    if (!a || !b) return 0;
+    if (a === b) return 1.0;
+
+    const getTrigrams = (s) => {
+      const trigrams = new Set();
+      for (let i = 0; i < s.length - 2; i++) {
+        trigrams.add(s.slice(i, i + 3));
+      }
+      return trigrams;
+    };
+
+    const tA = getTrigrams(a);
+    const tB = getTrigrams(b);
+
+    let trigramScore = 0;
+    if (tA.size > 0 && tB.size > 0) {
+      let intersection = 0;
+      tA.forEach((t) => { if (tB.has(t)) intersection++; });
+      trigramScore = (2 * intersection) / (tA.size + tB.size);
+    }
+
+    const charScore = (() => {
+      const shorter = a.length <= b.length ? a : b;
+      const longer  = a.length <= b.length ? b : a;
+      let matches = 0;
+      const used = new Array(longer.length).fill(false);
+      for (const ch of shorter) {
+        const idx = longer.split("").findIndex((c, i) => c === ch && !used[i]);
+        if (idx !== -1) { matches++; used[idx] = true; }
+      }
+      return (2 * matches) / (a.length + b.length);
+    })();
+
+    return Math.max(trigramScore, charScore);
+  }
+
+  function normalizePhone(phone) {
+    if (!phone) return "";
+    return String(phone)
+      .replace(/\s+/g, "")
+      .replace(/^\+/, "00")
+      .replace(/^00962/, "0")
+      .replace(/[^\d]/g, "");
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // 🔍 الدالة الرئيسية: findMatch
+  // ─────────────────────────────────────────────────────────
+
+  async function findMatch(clinicId, incoming, db) {
+    if (!ARGON_FLAGS.enableSmartMatch) {
+      return { result: MatchResult.NEW, confidence: 0, reason: "SmartMatch disabled" };
+    }
+
+    const inPhone = normalizePhone(incoming.phone);
+    const inNID   = (incoming.nationalId || "").trim();
+    const inName  = incoming.name || "";
+
+    let candidates = [];
+
+    try {
+      const snap = await db
+        .ref(`clinics/${clinicId}/patients`)
+        .orderByChild("info/phone")
+        .equalTo(incoming.phone)
+        .once("value");
+
+      snap.forEach((child) => {
+        candidates.push({ id: child.key, ...child.val().info });
+      });
+    } catch (err) {
+      console.error("[ARGON:Match] Firebase query error:", err);
+      return { result: MatchResult.NEW, confidence: 0, reason: "DB error" };
+    }
+
+    if (candidates.length === 0) {
+      return { result: MatchResult.NEW, confidence: 0, reason: "No phone match" };
+    }
+
+    // ── أولوية 1: الرقم الوطني ──────────────
+    if (inNID) {
+      const exactNID = candidates.find(
+        (c) => c.nationalId && c.nationalId.trim() === inNID
+      );
+      if (exactNID) {
+        return {
+          result:      MatchResult.EXACT,
+          confidence:  1.0,
+          matchedId:   exactNID.id,
+          matchedName: exactNID.name,
+          reason:      "National ID exact match",
+        };
+      }
+    }
+
+    // ── أولوية 2: الهاتف + الاسم المتشابه ───────────────────
+    let bestCandidate = null;
+    let bestScore     = 0;
+
+    for (const c of candidates) {
+      const score = nameSimilarity(inName, c.name);
+      if (score > bestScore) {
+        bestScore     = score;
+        bestCandidate = c;
+      }
+    }
+
+    if (bestScore >= 0.85) {
+      return {
+        result:      MatchResult.STRONG,
+        confidence:  bestScore,
+        matchedId:   bestCandidate.id,
+        matchedName: bestCandidate.name,
+        reason:      `Phone + name similarity ${(bestScore * 100).toFixed(1)}%`,
+      };
+    }
+
+    if (bestScore >= 0.5) {
+      return {
+        result:      MatchResult.POSSIBLE,
+        confidence:  bestScore,
+        matchedId:   bestCandidate.id,
+        matchedName: bestCandidate.name,
+        reason:      `Phone match, name similarity ${(bestScore * 100).toFixed(1)}% — needs confirmation`,
+      };
+    }
+
+    // ── أولوية 3: نفس الهاتف، اسم مختلف ─────────
+    return {
+      result:      MatchResult.POSSIBLE,
+      confidence:  0.3,
+      matchedId:   candidates[0].id,
+      matchedName: candidates[0].name,
+      reason:      "Same phone, different name — possible family member",
+    };
+  }
+
+  return { findMatch, normalizeArabic, normalizePhone, nameSimilarity, MatchResult };
+})();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 📋 LAYER 3 — Shadow Engine (التسجيل الصامت)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+window.ArgonMedical.ShadowLog = (() => {
+  async function log(clinicId, matchResult, context, db) {
+    if (!ARGON_FLAGS.shadowMode && ARGON_FLAGS.logLevel === "errors_only") return;
+
+    const entry = {
+      timestamp:   Date.now(),
+      isoTime:     new Date().toISOString(),
+      source:      context.source || "unknown",
+      triggeredBy: context.userId || "unknown",
+      incoming: {
+        name:       context.incoming?.name || "",
+        phone:      context.incoming?.phone || "",
+        nationalId: context.incoming?.nationalId || "",
+      },
+      decision: {
+        result:      matchResult.result,
+        confidence:  matchResult.confidence,
+        matchedId:   matchResult.matchedId   || null,
+        matchedName: matchResult.matchedName || null,
+        reason:      matchResult.reason,
+      },
+      shadowMode: ARGON_FLAGS.shadowMode,
+      wouldHaveCreatedDuplicate:
+        matchResult.result !== "NEW" && ARGON_FLAGS.shadowMode,
+    };
+
+    try {
+      await db.ref(`clinics/${clinicId}/smart_log`).push(entry);
+      if (ARGON_FLAGS.logLevel === "verbose") {
+        console.log(
+          `[ARGON:Shadow] ${entry.decision.result} | ${entry.decision.reason}`
+        );
+      }
+    } catch (err) {
+      console.error("[ARGON:Shadow] Log write failed:", err);
+    }
+  }
+
+  return { log };
+})();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🪟 نافذة التأكيد — showArgonMatchDialog()
+// تظهر فقط عند POSSIBLE وshadowMode = false
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+window.ArgonMedical = window.ArgonMedical || {};
+
+/**
+ * يعرض نافذة تأكيد للمستخدم عند نتيجة POSSIBLE
+ *
+ * @param {object} matchResult   - نتيجة findMatch
+ * @param {Function} onUseExisting - callback إذا اختار "نفس الشخص"
+ * @param {Function} onCreateNew   - callback إذا اختار "فرد عائلة جديد"
+ */
+window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCreateNew) {
+  // أزل أي نافذة سابقة
+  const old = document.getElementById('_argonMatchOverlay');
+  if (old) old.remove();
+
+  const conf = Math.round((matchResult.confidence || 0) * 100);
+  const isFamily = matchResult.reason && matchResult.reason.includes('family member');
+  const reasonText = isFamily
+    ? 'نفس رقم الهاتف — قد يكون فرداً من العائلة'
+    : `نسبة تشابه الاسم: ${conf}%`;
+
+  const overlay = document.createElement('div');
+  overlay.id = '_argonMatchOverlay';
+  overlay.style.cssText = `
+    position: fixed; inset: 0;
+    background: rgba(3,11,10,0.75);
+    backdrop-filter: blur(8px);
+    z-index: 999999;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; font-family: 'Tajawal', sans-serif;
+    animation: _argonFadeIn 0.2s ease;
+  `;
+
+  // أضف animation keyframe مرة واحدة
+  if (!document.getElementById('_argonMatchStyle')) {
+    const style = document.createElement('style');
+    style.id = '_argonMatchStyle';
+    style.textContent = `
+      @keyframes _argonFadeIn { from { opacity:0; } to { opacity:1; } }
+      @keyframes _argonSlideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+      #_argonMatchCard { animation: _argonSlideUp 0.25s ease; }
+      #_argonMatchCard .am-btn { transition: opacity 0.15s, transform 0.15s; cursor: pointer; border-radius: 10px; padding: 11px 0; font-family: 'Tajawal', sans-serif; font-size: 0.92rem; font-weight: 700; width: 100%; border: none; }
+      #_argonMatchCard .am-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+      #_argonMatchCard .am-btn:active { transform: scale(0.98); }
+    `;
+    document.head.appendChild(style);
+  }
+
+  overlay.innerHTML = `
+    <div id="_argonMatchCard" style="
+      background: var(--panel, #0f172a);
+      border: 1px solid var(--border, #334155);
+      border-radius: 20px;
+      padding: 28px 24px;
+      width: 100%; max-width: 430px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+      direction: rtl;
+    ">
+      <!-- Header -->
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+        <div style="
+          width:42px; height:42px; border-radius:50%;
+          background:rgba(245,158,11,0.12);
+          display:flex; align-items:center; justify-content:center;
+          font-size:1.3rem; flex-shrink:0;
+        ">⚠️</div>
+        <div>
+          <div style="font-size:1rem; font-weight:800; color:var(--text,#f8fafc)">تم العثور على ملف مشابه</div>
+          <div style="font-size:0.78rem; color:var(--muted,#94a3b8); margin-top:2px">${reasonText}</div>
+        </div>
+        <span style="
+          margin-right:auto; font-size:0.7rem; font-weight:800;
+          background:rgba(245,158,11,0.1); color:#f59e0b;
+          border:1px solid rgba(245,158,11,0.25);
+          padding:3px 10px; border-radius:20px;
+        ">${conf}% تشابه</span>
+      </div>
+
+      <!-- مقارنة البيانات -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;">
+        <!-- الملف الموجود -->
+        <div style="
+          padding:12px 14px;
+          border-radius:10px;
+          border:2px solid rgba(14,165,233,0.35);
+          background:rgba(14,165,233,0.05);
+        ">
+          <div style="font-size:0.7rem; color:#0ea5e9; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:5px;">
+            <span>📂</span> الملف الموجود
+          </div>
+          <div style="font-size:0.95rem; font-weight:800; color:var(--text,#f8fafc)">${window.ArgonMedical._escHtml(matchResult.matchedName || '—')}</div>
+          <div style="font-size:0.75rem; color:var(--muted,#94a3b8); margin-top:3px; font-family:'IBM Plex Mono',monospace; direction:ltr;">${window.ArgonMedical._escHtml(matchResult.matchedId || '')}</div>
+        </div>
+        <!-- البيانات الواردة -->
+        <div style="
+          padding:12px 14px;
+          border-radius:10px;
+          border:1px solid var(--border,#334155);
+          background:rgba(255,255,255,0.02);
+        ">
+          <div style="font-size:0.7rem; color:var(--muted,#94a3b8); font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:5px;">
+            <span>🆕</span> الطلب الحالي
+          </div>
+          <div style="font-size:0.95rem; font-weight:800; color:var(--text,#f8fafc)">${window.ArgonMedical._escHtml(matchResult.incoming?.name || matchResult._incomingName || '—')}</div>
+          <div style="font-size:0.75rem; color:var(--muted,#94a3b8); margin-top:3px; font-family:'IBM Plex Mono',monospace; direction:ltr;">${window.ArgonMedical._escHtml(matchResult.incoming?.phone || matchResult._incomingPhone || '')}</div>
+        </div>
+      </div>
+
+      <!-- سبب المحرك -->
+      <div style="
+        padding:8px 12px; border-radius:8px; margin-bottom:20px;
+        background:rgba(255,255,255,0.03);
+        border:1px solid var(--border,#334155);
+        font-size:0.78rem; color:var(--muted,#94a3b8);
+        display:flex; align-items:center; gap:7px;
+      ">
+        <span style="font-size:1rem">🤖</span>
+        <span>${window.ArgonMedical._escHtml(matchResult.reason || '')}</span>
+      </div>
+
+      <!-- أزرار القرار -->
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="am-btn" id="_argonBtnUse" style="background:var(--teal,#0d9488); color:#fff;">
+          ✅ نفس الشخص — استخدم الملف الموجود
+        </button>
+        <button class="am-btn" id="_argonBtnNew" style="background:rgba(255,255,255,0.04); color:var(--text,#f8fafc); border:1px solid var(--border,#334155) !important;">
+          👨‍👩‍👧 فرد عائلة جديد — أنشئ ملفاً مستقلاً
+        </button>
+        <button class="am-btn" id="_argonBtnCancel" style="background:transparent; color:var(--muted,#94a3b8); font-size:0.82rem; padding:7px 0;">
+          إلغاء
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // ربط الأزرار
+  document.getElementById('_argonBtnUse').onclick = () => {
+    overlay.remove();
+    if (typeof onUseExisting === 'function') onUseExisting(matchResult.matchedId);
+  };
+  document.getElementById('_argonBtnNew').onclick = () => {
+    overlay.remove();
+    if (typeof onCreateNew === 'function') onCreateNew();
+  };
+  document.getElementById('_argonBtnCancel').onclick = () => {
+    overlay.remove();
+  };
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.remove();
+  });
+};
+
+// دالة مساعدة لتنظيف HTML
+window.ArgonMedical._escHtml = function(str) {
+  return String(str || '').replace(/[<>"'&]/g, c =>
+    ({ '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":"&#39;", '&':'&amp;' }[c])
+  );
+};

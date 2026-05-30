@@ -1554,14 +1554,44 @@ function updSt(k, s) {
 }
 
 // Auto-register patient in EMR and store patientId back into the booking
-function _ensurePatientAndLink(bookingKey, b, callback) {
+async function _ensurePatientAndLink(bookingKey, b, callback) {
   let cleanPhone = (b.patPhone || '').replace(/\D/g, '');
   if (cleanPhone.startsWith('962')) cleanPhone = cleanPhone.substring(3);
   if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
 
+  const bookingName = (b.patName || '').trim();
+
+  // ── ARGON ENTERPRISE: Smart Patient Match & Shadow Logging ──
+  if (window.ArgonMedical && window.ArgonMedical.PatientMatch) {
+    const session = window.ArgonSession ? window.ArgonSession.get() : {};
+    const currentUserId = session.staffId || 'unknown_admin';
+    const matchResult = await window.ArgonMedical.PatientMatch.findMatch(
+      CID,
+      { name: bookingName, phone: cleanPhone, nationalId: "" },
+      db
+    );
+
+    await window.ArgonMedical.ShadowLog.log(
+      CID,
+      matchResult,
+      { source: "reception_link_booking", userId: currentUserId,
+        incoming: { name: bookingName, phone: cleanPhone } },
+      db
+    );
+
+    if (typeof ARGON_FLAGS !== 'undefined' && !ARGON_FLAGS.shadowMode) {
+      if (matchResult.result === "EXACT" || matchResult.result === "STRONG") {
+        db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(matchResult.matchedId).then(callback);
+        return;
+      }
+    }
+  }
+  // ─────────────────────────────────────────────────────────────
+
   db.ref(`${BASE}/patients`).once('value', snap => {
     const pats = snap.val() || {};
-    const bookingName = (b.patName || '').trim().toLowerCase();
+    const bookingNameLower = bookingName.toLowerCase();
+
     
     // Check if patient already exists by phone AND name
     const found = Object.entries(pats).find(([uid, p]) => {
@@ -1571,8 +1601,8 @@ function _ensurePatientAndLink(bookingKey, b, callback) {
       
       const patName = (p.info && p.info.name || '').trim().toLowerCase();
       // Only link if names are somewhat similar to prevent family member crossover
-      if (bookingName && patName) {
-        if (bookingName !== patName && !patName.includes(bookingName) && !bookingName.includes(patName)) {
+      if (bookingNameLower && patName) {
+        if (bookingNameLower !== patName && !patName.includes(bookingNameLower) && !bookingNameLower.includes(patName)) {
            return false; // Name mismatch, do NOT link
         }
       }
@@ -1612,7 +1642,7 @@ function openPatientEMR(bookingKey) {
   }
 }
 
-function cmpBook(k) {
+async function cmpBook(k) {
   const b = _bks[k]; if (!b) return;
 
   // Auto-create basic EMR profile under a unique Push Key if not exists (EMR Collision Prevention)
@@ -1621,17 +1651,52 @@ function cmpBook(k) {
     if (patPhone.startsWith('962')) patPhone = patPhone.substring(3);
     if (patPhone.startsWith('0')) patPhone = patPhone.substring(1);
     
+    const bookingName = (b.patName || '').trim();
+
+    // ── ARGON ENTERPRISE: Smart Patient Match & Shadow Logging ──
+    if (window.ArgonMedical && window.ArgonMedical.PatientMatch) {
+      const session = window.ArgonSession ? window.ArgonSession.get() : {};
+      const currentUserId = session.staffId || 'unknown_admin';
+      const matchResult = await window.ArgonMedical.PatientMatch.findMatch(
+        CID,
+        { name: bookingName, phone: patPhone, nationalId: "" },
+        db
+      );
+
+      await window.ArgonMedical.ShadowLog.log(
+        CID,
+        matchResult,
+        { source: "reception_complete_booking", userId: currentUserId,
+          incoming: { name: bookingName, phone: patPhone } },
+        db
+      );
+
+      if (typeof ARGON_FLAGS !== 'undefined' && !ARGON_FLAGS.shadowMode) {
+        if (matchResult.result === "EXACT" || matchResult.result === "STRONG") {
+          // Patient already exists, no need to auto-create
+          // Update the status and return
+          db.ref(`${BASE}/bookings/${k}/status`).set('done');
+          db.ref(`${BASE}/bookings/${k}/patientId`).set(matchResult.matchedId);
+          db.ref(`${BASE}/completedBookings/${k}`).set(_bks[k]);
+          db.ref(`${BASE}/bookings/${k}`).remove();
+          toast('✅ تم إكمال الزيارة', 'ok');
+          return;
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────
+
     db.ref(`${BASE}/patients`).once('value', snap => {
       const pats = snap.val() || {};
-      const bookingName = (b.patName || '').trim().toLowerCase();
+      const bookingNameLower = bookingName.toLowerCase();
       const exists = Object.values(pats).some(p => {
         const pPhone = (p.info && p.info.phone || '').replace(/\D/g, '');
         const isPhoneMatch = (pPhone === patPhone || pPhone.endsWith(patPhone));
         if (!isPhoneMatch) return false;
         
         const patName = (p.info && p.info.name || '').trim().toLowerCase();
-        if (bookingName && patName) {
-           if (bookingName !== patName && !patName.includes(bookingName) && !bookingName.includes(patName)) {
+        if (bookingNameLower && patName) {
+           if (bookingNameLower !== patName && !patName.includes(bookingNameLower) && !bookingNameLower.includes(patName)) {
               return false; // Name mismatch, they are different patients
            }
         }
