@@ -26,7 +26,20 @@ ArgonNID.BYPASS_REASONS = [
   { id: 'other',     label: '📝 سبب آخر (اكتب أدناه)' },
 ];
 
-ArgonNID.isValidNID   = (nid) => /^\d{9,12}$/.test(String(nid||'').replace(/[\s\-]/g,''));
+ArgonNID.isValidNID = function(nid) {
+  const clean = String(nid || '').replace(/[\s\-]/g, '');
+
+  // طول 9 أرقام على الأقل
+  if (clean.length < 9 || !/^\d+$/.test(clean)) return false;
+
+  // ليس كله أصفاراً
+  if (/^0+$/.test(clean)) return false;
+
+  // ليس تاريخ ميلاد مكتوب بدون شرطات (مثل 19991231)
+  if (clean.length === 8 && /^(19|20)\d{6}$/.test(clean)) return false;
+
+  return true;
+};
 ArgonNID.cleanNID     = (nid) => String(nid||'').replace(/[\s\-]/g,'').trim();
 ArgonNID.findByNIDLocal = (nid, cache) => {
   const c = ArgonNID.cleanNID(nid);
