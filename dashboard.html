@@ -681,23 +681,22 @@
           <label class="setl" style="color:#25D366;font-weight:800"><i class="fab fa-whatsapp"></i> مركز أتمتة الواتساب (WhatsApp Automation)</label>
           <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px;background:rgba(37,211,102,0.03);border:1px solid rgba(37,211,102,0.2);padding:15px;border-radius:12px">
             
-            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;font-weight:700;cursor:pointer">
-              <input type="checkbox" id="waEnabled" style="width:16px;height:16px;accent-color:#25D366">
-              تفعيل الإرسال التلقائي للرسائل
-            </label>
-            
-            <div>
-              <label class="mfl">توقيع رسائل الواتساب التلقائي (سيتم إضافته نهاية كل رسالة)</label>
-              <input type="text" id="waSignature" class="mfi" placeholder="مع تحيات، مجمع طبي أرغون 🏥">
+            <div style="text-align:center; padding: 20px 10px;">
+                <div style="font-size: 1.8rem; margin-bottom: 12px;">🚧</div>
+                <div style="color:#25D366; font-weight: 700; font-size: 1.1rem; margin-bottom: 8px;">خدمة الواتساب التلقائي غير مفعلة في هذه النسخة</div>
+                <div style="color:var(--muted); font-size: 0.85rem; line-height: 1.6;">سيتم توفيرها في إصدار مؤسسي مستقبلي من ARGON Medical OS.</div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;cursor:pointer"><input type="checkbox" id="waRemind30"> تذكير الموعد (قبل 30 دقيقة)</label>
-              <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;cursor:pointer"><input type="checkbox" id="waRemind10"> تذكير الموعد (قبل 10 دقائق)</label>
-              <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;cursor:pointer"><input type="checkbox" id="waPhar"> إشعار الصيدلية (جاهزية الدواء)</label>
-              <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;cursor:pointer"><input type="checkbox" id="waLab"> إشعار المختبر (ظهور النتائج)</label>
-              <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;cursor:pointer"><input type="checkbox" id="waRad"> إشعار الأشعة (إنجاز التقرير)</label>
-              <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;cursor:pointer"><input type="checkbox" id="waBill"> إشعار الفواتير غير المدفوعة</label>
+            <!-- HIDDEN FIELDS FOR BACKWARD COMPATIBILITY -->
+            <div style="display:none">
+              <input type="checkbox" id="waEnabled">
+              <input type="text" id="waSignature">
+              <input type="checkbox" id="waRemind30">
+              <input type="checkbox" id="waRemind10">
+              <input type="checkbox" id="waPhar">
+              <input type="checkbox" id="waLab">
+              <input type="checkbox" id="waRad">
+              <input type="checkbox" id="waBill">
             </div>
             
           </div>
