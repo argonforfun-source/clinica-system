@@ -1091,3 +1091,56 @@ window.ArgonAuditLog = {
     auditRef.set(auditRecord).catch(err => console.error('Audit Log failed:', err));
   }
 };
+
+// ── 3. Clinical Summary Versioning (Wave 2) ──
+window.ArgonClinicalParser = {
+  getClinicalList: function(patientData, fieldName) {
+    if (!patientData || !patientData[fieldName]) return [];
+    const data = patientData[fieldName];
+    
+    // 1. New Format (Array of Objects)
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object') {
+      return data;
+    }
+    
+    const encodeStableId = (item, index) => {
+      // Create a stable ID using base64 without relying on math.random for legacy items
+      try {
+        return 'legacy_' + btoa(encodeURIComponent(item)).substring(0, 15) + '_' + index;
+      } catch (e) {
+        return 'legacy_' + index;
+      }
+    };
+
+    // 2. Legacy Format (Array of Strings)
+    if (Array.isArray(data)) {
+      return data.map((item, index) => ({
+        entryId: encodeStableId(item, index),
+        value: item,
+        status: 'active',
+        sourceType: 'legacy_import',
+        isLegacy: true,
+        schemaVersion: 2
+      }));
+    }
+    
+    // 3. Legacy Format (String)
+    if (typeof data === 'string') {
+      return data.split(/[,،]/).map(item => item.trim()).filter(Boolean).map((item, index) => ({
+        entryId: encodeStableId(item, index),
+        value: item,
+        status: 'active',
+        sourceType: 'legacy_import',
+        isLegacy: true,
+        schemaVersion: 2
+      }));
+    }
+    
+    return [];
+  },
+
+  toLegacyText: function(entries) {
+    if (!Array.isArray(entries)) return '';
+    return entries.filter(e => e.status === 'active').map(e => e.value).join('، ');
+  }
+};

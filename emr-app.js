@@ -1071,8 +1071,15 @@ function openEditPatient(uid) {
   document.getElementById('epAge').value = p.info.age || '';
   document.getElementById('epGender').value = p.info.gender || '';
   document.getElementById('epBlood').value = p.info.bloodType || '';
-  document.getElementById('epAllergies').value = (p.info.allergies || []).join('، ');
-  document.getElementById('epChronic').value = (p.info.chronicDiseases || []).join('، ');
+  if (window.ArgonClinicalParser && window.ARGON_FEATURES.ENABLE_CLINICAL_VERSIONING) {
+    const algList = ArgonClinicalParser.getClinicalList(p.info, 'allergies');
+    const chrList = ArgonClinicalParser.getClinicalList(p.info, 'chronicDiseases');
+    document.getElementById('epAllergies').value = ArgonClinicalParser.toLegacyText(algList);
+    document.getElementById('epChronic').value = ArgonClinicalParser.toLegacyText(chrList);
+  } else {
+    document.getElementById('epAllergies').value = (p.info.allergies || []).join('، ');
+    document.getElementById('epChronic').value = (p.info.chronicDiseases || []).join('، ');
+  }
   document.getElementById('epNotes').value = p.info.notes || '';
 
   if (p.info.photo) {
@@ -1098,6 +1105,52 @@ function saveEditPatient() {
   const blood = document.getElementById('epBlood').value;
   const allergies = document.getElementById('epAllergies').value.trim().split(/[،,]/).map(s => s.trim()).filter(Boolean);
   const chronic = document.getElementById('epChronic').value.trim().split(/[،,]/).map(s => s.trim()).filter(Boolean);
+  
+  // Wave 2 Diffing
+  let finalAllergies = allergies;
+  let finalChronic = chronic;
+  let summaryVersion = 1;
+
+  if (window.ArgonClinicalParser && window.ARGON_FEATURES.ENABLE_CLINICAL_VERSIONING) {
+    summaryVersion = 2;
+    const session = ArgonSession.get() || {};
+    const nowIso = new Date().toISOString();
+
+    const diffClinical = (oldArray, newStrings) => {
+      const currentList = ArgonClinicalParser.getClinicalList(oldInfo, oldArray);
+      const newValues = new Set(newStrings);
+      
+      // 1. Mark missing as revoked
+      currentList.forEach(item => {
+        if (item.status === 'active' && !newValues.has(item.value)) {
+          item.status = 'revoked';
+          item.revokedBy = session.staffId || 'unknown';
+          item.revokedAt = nowIso;
+          item.reason = 'Removed via text input';
+        }
+      });
+
+      // 2. Add new values
+      const existingValues = new Set(currentList.filter(i => i.status === 'active').map(i => i.value));
+      newStrings.forEach(val => {
+        if (!existingValues.has(val)) {
+          currentList.push({
+            entryId: 'entry_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
+            schemaVersion: 2,
+            sourceType: 'doctor_entry',
+            value: val,
+            status: 'active',
+            addedBy: session.staffId || 'unknown',
+            addedAt: nowIso
+          });
+        }
+      });
+      return currentList;
+    };
+
+    finalAllergies = diffClinical('allergies', allergies);
+    finalChronic = diffClinical('chronicDiseases', chronic);
+  }
   const notes = document.getElementById('epNotes').value.trim();
 
   const cleanNid = ArgonNID.cleanNID(nationalId);
@@ -1113,8 +1166,10 @@ function saveEditPatient() {
     age: age ? parseInt(age) : null,
     gender: sanitize(gender),
     bloodType: sanitize(blood),
-    allergies: allergies.length ? allergies : null,
-    chronicDiseases: chronic.length ? chronic : null,
+    allergies: finalAllergies.length ? finalAllergies : null,
+    chronicDiseases: finalChronic.length ? finalChronic : null,
+    criticalAlerts: window._tempCriticalAlerts.length ? window._tempCriticalAlerts : null,
+    clinicalSummaryVersion: summaryVersion,
     notes: sanitize(notes),
     photo: epPhotoData || null
   };
@@ -1509,6 +1564,15 @@ function generatePatientFileHTML(uid) {
       <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <div class="pat-field" style="grid-column:span 1"><div class="pfl">الحساسية والأدوية المرفوضة</div><div>${allergiesHTML}</div></div>
         <div class="pat-field" style="grid-column:span 1"><div class="pfl">الأمراض المزمنة</div><div>${chronicHTML}</div></div>
+    
+    ${(info.criticalAlerts && info.criticalAlerts.length > 0) ? `
+    <div class="pat-field" style="grid-column:span 2; background:#fef2f2; border:1px solid #fee2e2; border-radius:8px; margin-top:8px;">
+       <div class="pfl" style="color:#dc2626; font-weight:bold;">⚠️ تنبيهات حرجة</div>
+       <div style="margin-top:4px; display:flex; flex-direction:column; gap:4px;">
+         ${info.criticalAlerts.filter(a => a.status === 'active').map(a => `<div style="color:#b91c1c; font-size:0.85rem;">• ${a.value} <span style="background:#dc2626; color:white; padding:1px 4px; border-radius:3px; font-size:0.7rem; margin-right:4px;">${a.severity}</span> <span style="color:#94a3b8; font-size:0.75rem; margin-right:6px;">(بواسطة ${a.addedBy})</span></div>`).join('')}
+       </div>
+    </div>
+    ` : ''}
       </div>
       ${info.notes ? `<div class="pat-field" style="margin-top:14px"><div class="pfl">ملاحظات عامة</div><div class="pfv" style="font-weight:normal;font-size:.82rem">${sanitize(info.notes)}</div></div>` : ''}
     </div>
@@ -1639,9 +1703,28 @@ async function safeViewPatientFile(phoneOrUid) {
     if (lockSnap.exists()) {
       const lockData = lockSnap.val();
       if (!isAdmin && lockData.doctorId !== loggedInDoctorId) {
-        toast(`الملف الطبي مفتوح لتعديله بواسطة ${lockData.doctorName}`, 'err');
-        if (window.AuditAPI) window.AuditAPI.log('PATIENT_FILE_LOCKED_CONFLICT', { patientId: uid, lockedBy: lockData.doctorId });
-        return;
+        let isEmergencyGranted = false;
+        if (window.ARGON_FEATURES && window.ARGON_FEATURES.ENABLE_BREAK_GLASS) {
+           const grant = lockData.emergencyGrants ? lockData.emergencyGrants[loggedInDoctorId] : null;
+           if (grant && Date.now() < grant.expiresAt) {
+              isEmergencyGranted = true;
+           }
+        }
+        
+        if (!isEmergencyGranted) {
+          toast(`الملف الطبي مفتوح لتعديله بواسطة ${lockData.doctorName}`, 'err');
+          
+          if (window.ARGON_FEATURES && window.ARGON_FEATURES.ENABLE_BREAK_GLASS) {
+             // Show Break Glass Button in UI
+             const tl = document.getElementById('timelineList');
+             if (tl) tl.innerHTML = `<div style="text-align:center; padding: 40px;"><p>الملف مقفل بواسطة ${lockData.doctorName}</p><button class="btn-primary" onclick="requestBreakGlass('${uid}')" style="background:#dc2626; border-color:#b91c1c;">🚨 تفعيل وصول الطوارئ (Break Glass)</button></div>`;
+          }
+          
+          if (window.AuditAPI) window.AuditAPI.log('PATIENT_FILE_LOCKED_CONFLICT', { patientId: uid, lockedBy: lockData.doctorId });
+          return;
+        } else {
+          toast('🚨 تم الدخول بوضع الطوارئ.', 'warn');
+        }
       }
     }
 
@@ -3392,4 +3475,85 @@ window.archiveVisit = function(patientId, visitKey) {
   }).catch(err => {
     toast('❌ حدث خطأ أثناء الأرشفة: ' + err.message, 'err');
   });
+};
+// ── Break Glass Access ──
+window.requestBreakGlass = async function(uid) {
+  const reason = prompt('⚠️ وصول الطوارئ مراقب بالكامل. الرجاء إدخال سبب الدخول الطارئ (إلزامي):');
+  if (!reason || reason.trim().length < 5) {
+     toast('❌ سبب غير كافٍ. تم إلغاء العملية.', 'err');
+     return;
+  }
+  
+  const session = ArgonSession.get() || {};
+  const lockRef = db.ref(`${BASE}/active_sessions/${uid}`);
+  const lockSnap = await lockRef.once('value');
+  
+  if (lockSnap.exists()) {
+     const updates = {};
+     updates[`emergencyGrants/${session.staffId}`] = {
+        reason: reason.trim(),
+        grantedAt: firebase.database.ServerValue.TIMESTAMP,
+        expiresAt: Date.now() + (30 * 60 * 1000) // 30 mins
+     };
+     
+     await lockRef.update(updates);
+     
+     if (window.ArgonAuditLog) {
+        window.ArgonAuditLog.log('PATIENT', uid, 'BREAK_GLASS', null, { reason: reason }, 'Emergency Override');
+     }
+     
+     toast('✅ تم منح وصول الطوارئ لمدة 30 دقيقة.', 'ok');
+     viewPatientFile(uid);
+  }
+};
+
+window._tempCriticalAlerts = [];
+
+window.addCriticalAlertUI = function() {
+  const nameInput = document.getElementById('epCriticalAlertName');
+  const severitySelect = document.getElementById('epCriticalAlertSeverity');
+  const name = nameInput.value.trim();
+  const severity = severitySelect.value;
+  
+  if (!name) return toast('الرجاء إدخال اسم التنبيه', 'err');
+  if (!severity) return toast('الرجاء اختيار الحدة (Severity) - إجباري', 'err');
+  
+  window._tempCriticalAlerts.push({
+    entryId: 'alert_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
+    schemaVersion: 2,
+    sourceType: 'doctor_entry',
+    type: 'critical_alert',
+    value: name,
+    severity: severity,
+    status: 'active',
+    addedBy: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'unknown',
+    addedAt: new Date().toISOString()
+  });
+  
+  nameInput.value = '';
+  severitySelect.value = '';
+  renderCriticalAlertsUI();
+};
+
+window.removeCriticalAlertUI = function(entryId) {
+   const alert = window._tempCriticalAlerts.find(a => a.entryId === entryId);
+   if (alert) {
+      alert.status = 'revoked';
+      alert.revokedBy = (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'unknown';
+      alert.revokedAt = new Date().toISOString();
+      alert.reason = 'Removed via UI';
+   }
+   renderCriticalAlertsUI();
+};
+
+window.renderCriticalAlertsUI = function() {
+   const container = document.getElementById('epCriticalAlertsList');
+   if (!container) return;
+   
+   container.innerHTML = window._tempCriticalAlerts.filter(a => a.status === 'active').map(a => `
+      <span style="background:#fee2e2; color:#b91c1c; padding:4px 8px; border-radius:4px; font-size:0.8rem; display:flex; align-items:center; gap:6px;">
+         <span>${a.value} (${a.severity})</span>
+         <i class="fas fa-times" style="cursor:pointer" onclick="removeCriticalAlertUI('${a.entryId}')"></i>
+      </span>
+   `).join('');
 };

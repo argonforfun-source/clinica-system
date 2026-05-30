@@ -318,6 +318,19 @@
     </div>
     <div class="fg"><label>الحساسية (افصل بفاصلة)</label><input class="fi" id="epAllergies" placeholder="بنسلين، أسبرين..."></div>
     <div class="fg"><label>الأمراض المزمنة (افصل بفاصلة)</label><input class="fi" id="epChronic" placeholder="سكري، ضغط..."></div>
+    <div class="fg" style="border:1px solid #fee2e2; padding:10px; border-radius:8px; background:#fef2f2;">
+      <label style="color:#dc2626; font-weight:bold;">⚠️ تنبيهات حرجة (Critical Alerts)</label>
+      <div style="display:flex; gap:8px; margin-bottom:8px;">
+         <input class="fi" id="epCriticalAlertName" placeholder="نوع التنبيه الحرج (مثال: حساسية بنسلين شديدة)...">
+         <select class="fi" id="epCriticalAlertSeverity" style="width:120px;">
+            <option value="">اختر الحدة</option>
+            <option value="high">عالية (High)</option>
+            <option value="medium">متوسطة (Med)</option>
+         </select>
+         <button class="btn-primary" type="button" onclick="addCriticalAlertUI()" style="background:#dc2626; border-color:#dc2626; padding:0 12px;">إضافة</button>
+      </div>
+      <div id="epCriticalAlertsList" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+    </div>
     <div class="fg"><label>ملاحظات</label><textarea class="fi" id="epNotes" rows="2" style="resize:none" placeholder="ملاحظات إضافية..."></textarea></div>
     <div style="display:flex;gap:10px;margin-top:16px">
       <button class="btn-primary" style="flex:1" onclick="saveEditPatient()"><i class="fas fa-save"></i> تحديث البيانات</button>
