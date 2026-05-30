@@ -1003,6 +1003,7 @@ async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = f
     info: {
       name:       booking.patName || 'مريض',
       phone:      cleanPhoneStr,
+      nationalId: booking.patNationalId || booking.nationalId || '',
       age:        booking.patAge ? parseInt(booking.patAge) : null,
       gender:     booking.patGender || '',
       mrn:        'MRN-' + Math.floor(100000 + Math.random() * 900000),

@@ -1626,6 +1626,7 @@ const bookingNID_C3 = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
         info: {
           name: b.patName || 'مريض',
           phone: cleanPhone,
+          nationalId: b.patNationalId || b.nationalId || '',
           age: b.patAge ? parseInt(b.patAge) : null,
           gender: b.patGender || '',
           mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
@@ -1717,6 +1718,7 @@ async function cmpBook(k) {
           info: {
             name: b.patName,
             phone: patPhone,
+            nationalId: b.patNationalId || b.nationalId || '',
             age: b.patAge ? parseInt(b.patAge) : null,
             gender: b.patGender || '',
             mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
