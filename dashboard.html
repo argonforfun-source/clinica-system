@@ -342,7 +342,7 @@
       </div>
 
       <div class="ni" onclick="sw('docs',this)"><i class="fas fa-user-md"></i>إدارة الأطباء</div>
-      <div class="ni" onclick="sw('staff',this)"><i class="fas fa-users-cog"></i>إدارة طاقم العمل</div>
+      <div class="ni" id="mStaff" onclick="sw('staff',this)"><i class="fas fa-users-cog"></i><span>إدارة طاقم العمل</span></div>
       <div class="ni" onclick="sw('settings',this)"><i class="fas fa-gear"></i>الإعدادات</div>
     </div>
     <div class="royal-foot">
@@ -753,36 +753,36 @@ let prevCount = 0, firstLoad = true, audioCtx = null, _anonUid = null;
 // ── DASHBOARD MULTI-LANGUAGE (i18n) ENGINE ──
 const dash_i18n = {
   ar: {
-    menuLive: "الحجوزات الحية", menuHist: "السجل", menuDocs: "الأطباء", menuSets: "الإعدادات",
+    menuLive: "الحجوزات الحية", menuHist: "السجل", menuDocs: "الأطباء", menuStaff: "طاقم العمل", menuSets: "الإعدادات",
     statLive: "النشاط المباشر", statLiveSub: "زائر يتصفح النظام", statToday: "حجوزات اليوم", statRev: "الإيرادات اليومية", statTotal: "إجمالي الحجوزات",
     badgeOpen: "مفتوح", badgeClosed: "مغلق",
     docPerf: "أداء الأطباء", bookingsTitle: "الحجوزات الحية",
     histTitle: "السجل", clearHist: "مسح السجل",
-    docTitle: "إدارة الأطباء", btnAdd: "إضافة",
+    docTitle: "إدارة الأطباء", staffTitle: "إدارة طاقم العمل", btnAdd: "إضافة",
     setsTitle: "الإعدادات", btnSave: "حفظ التغييرات",
     loginTitle: "تسجيل الدخول", loginSub: "لوحة تحكم الطبيب", btnLogin: "دخول",
     toastConn: "تم الاتصال", toastNoConn: "لا يوجد اتصال",
     connOk: "متصل", connOff: "لا يوجد اتصال..."
   },
   en: {
-    menuLive: "Live Bookings", menuHist: "History", menuDocs: "Doctors", menuSets: "Settings",
+    menuLive: "Live Bookings", menuHist: "History", menuDocs: "Doctors", menuStaff: "Staff", menuSets: "Settings",
     statLive: "Live Activity", statLiveSub: "Active Visitors", statToday: "Today's Bookings", statRev: "Daily Revenue", statTotal: "Total Bookings",
     badgeOpen: "Open", badgeClosed: "Closed",
     docPerf: "Doctors Performance", bookingsTitle: "Live Bookings",
     histTitle: "History", clearHist: "Clear History",
-    docTitle: "Manage Doctors", btnAdd: "Add",
+    docTitle: "Manage Doctors", staffTitle: "Manage Staff", btnAdd: "Add",
     setsTitle: "Settings", btnSave: "Save Changes",
     loginTitle: "Login", loginSub: "Admin Dashboard", btnLogin: "Login",
     toastConn: "Connected", toastNoConn: "No Connection",
     connOk: "Connected", connOff: "No connection..."
   },
   fr: {
-    menuLive: "Réservations en direct", menuHist: "Historique", menuDocs: "Médecins", menuSets: "Paramètres",
+    menuLive: "Réservations en direct", menuHist: "Historique", menuDocs: "Médecins", menuStaff: "Personnel", menuSets: "Paramètres",
     statLive: "Activité en direct", statLiveSub: "Visiteurs actifs", statToday: "Réservations du jour", statRev: "Revenus", statTotal: "Total",
     badgeOpen: "Ouvert", badgeClosed: "Fermé",
     docPerf: "Performance", bookingsTitle: "Réservations en direct",
     histTitle: "Historique", clearHist: "Effacer",
-    docTitle: "Gérer les Médecins", btnAdd: "Ajouter",
+    docTitle: "Gérer les Médecins", staffTitle: "Gérer le Personnel", btnAdd: "Ajouter",
     setsTitle: "Paramètres", btnSave: "Enregistrer",
     loginTitle: "Connexion", loginSub: "Tableau de Bord", btnLogin: "Entrer",
     toastConn: "Connecté", toastNoConn: "Pas de connexion",
@@ -802,10 +802,10 @@ function setDashLang(lang) {
   
   // Update Static Texts
   const q = (sel, txt) => { const el = document.querySelector(sel); if(el) el.innerHTML = txt; };
-  q('#m1 span', DT('menuLive')); q('#m2 span', DT('menuHist')); q('#m3 span', DT('menuDocs')); q('#m4 span', DT('menuSets'));
+  q('#m1 span', DT('menuLive')); q('#m2 span', DT('menuHist')); q('#m3 span', DT('menuDocs')); q('#mStaff span', DT('menuStaff')); q('#m4 span', DT('menuSets'));
   q('#live .pt', '🔔 ' + DT('bookingsTitle'));
   q('#hist .pt', '📜 ' + DT('histTitle')); q('#hist button', '<i class="fas fa-trash" style="margin-left:5px"></i>' + DT('clearHist'));
-  q('#docs .pt', '👨‍⚕️ ' + DT('docTitle')); q('.badd', '<i class="fas fa-plus" style="margin-left:4px"></i>' + DT('btnAdd'));
+  q('#docs .pt', '👨‍⚕️ ' + DT('docTitle')); q('#staff .pt', '👥 ' + DT('staffTitle')); q('.badd', '<i class="fas fa-plus" style="margin-left:4px"></i>' + DT('btnAdd'));
   q('#settings .pt', '⚙️ ' + DT('setsTitle')); q('.bsave', '<i class="fas fa-floppy-disk" style="margin-left:8px"></i>' + DT('btnSave'));
   q('.lcard h2', '🏥 ' + DT('loginTitle')); q('.lcard p', DT('loginSub')); q('#btnLog', DT('btnLogin'));
   
