@@ -1643,10 +1643,12 @@ const bookingNID_C3 = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
 function openPatientEMR(bookingKey) {
   const b = _bks[bookingKey];
   if (!b) return;
+  const nid = b.patNationalId || b.nationalId || '';
+  const nidParam = nid ? `&nid=${encodeURIComponent(nid)}` : '';
   if (b.patientId) {
-    window.open(`emr.html?id=${CID}&pid=${encodeURIComponent(b.patientId)}`, '_blank');
+    window.open(`emr.html?id=${CID}&pid=${encodeURIComponent(b.patientId)}${nidParam}`, '_blank');
   } else if (b.patPhone) {
-    window.open(`emr.html?id=${CID}&phone=${encodeURIComponent(b.patPhone)}`, '_blank');
+    window.open(`emr.html?id=${CID}&phone=${encodeURIComponent(b.patPhone)}${nidParam}`, '_blank');
   }
 }
 
