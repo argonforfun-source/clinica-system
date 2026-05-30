@@ -1618,7 +1618,11 @@ async function safeViewPatientFile(phoneOrUid) {
 
 
 const _patData = _patients[uid];
-const _hasNID  = ArgonNID.isValidNID(_patData?.info?.nationalId || '');
+window.EMRContext = window.EMRContext || {};
+window.EMRContext.bypassedPatients = window.EMRContext.bypassedPatients || {};
+
+const _hasBypass = window.EMRContext.bypassedPatients[uid];
+const _hasNID    = ArgonNID.isValidNID(_patData?.info?.nationalId || '') || _hasBypass;
 
 if (!_hasNID) {
   // أفرج عن القفل مؤقتاً
@@ -1642,6 +1646,9 @@ if (!_hasNID) {
       if (_patients[patientId]?.info && result.nid) {
         // حدّث الكاش المحلي فوراً
         _patients[patientId].info.nationalId = result.nid;
+      }
+      if (result.bypassed) {
+        window.EMRContext.bypassedPatients[patientId] = true;
       }
       // أعد المحاولة — الآن إما عنده NID أو عنده bypass مسجّل
       safeViewPatientFile(patientId);
