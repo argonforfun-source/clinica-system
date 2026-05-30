@@ -2401,31 +2401,46 @@ function printVisitSummary(vk) {
   const v = p.visits[vk];
   if (!v) return;
 
+  const cleanPhone = (str) => {
+    if (!str) return 'غير متوفر';
+    if (/[a-zA-Z]/.test(str) || str.length > 20) return 'غير متوفر'; // Ignore Firebase IDs
+    return str;
+  };
+  const printPhone = cleanPhone(p.info.phone) !== 'غير متوفر' ? cleanPhone(p.info.phone) : cleanPhone(activePatientId);
+
   const rx = (v.prescriptions || []).map(item => `
     <tr>
-      <td style="padding:8px;border-bottom:1px solid #ddd"><b>${sanitize(item.name)}</b></td>
-      <td style="padding:8px;border-bottom:1px solid #ddd">${sanitize(item.dose || '—')}</td>
-      <td style="padding:8px;border-bottom:1px solid #ddd">${sanitize(item.freq || '—')}</td>
-      <td style="padding:8px;border-bottom:1px solid #ddd">${sanitize(item.dur || '—')}</td>
+      <td style="padding:12px;border:1px solid #e2e8f0;font-weight:700;color:#0f172a">${sanitize(item.name)}</td>
+      <td style="padding:12px;border:1px solid #e2e8f0;text-align:center">${sanitize(item.dose) || '<span style="color:#94a3b8;font-size:0.85em">غير محدد</span>'}</td>
+      <td style="padding:12px;border:1px solid #e2e8f0;text-align:center">${sanitize(item.freq) || '<span style="color:#94a3b8;font-size:0.85em">غير محدد</span>'}</td>
+      <td style="padding:12px;border:1px solid #e2e8f0;text-align:center">${sanitize(item.dur) || '<span style="color:#94a3b8;font-size:0.85em">غير محدد</span>'}</td>
     </tr>
-  `).join('') || '<tr><td colspan="4" style="text-align:center;padding:8px;color:#888">لا يوجد أدوية موصوفة</td></tr>';
+  `).join('') || '<tr><td colspan="4" style="text-align:center;padding:16px;color:#94a3b8;font-style:italic">لا يوجد أدوية موصوفة في هذه الزيارة</td></tr>';
 
-  let printTitle = '📄 ملخص زيارة طبية / وصفة إلكترونية';
+  let printTitle = 'ملخص زيارة طبية / وصفة إلكترونية';
   let sigTitle = 'توقيع وختم الطبيب المعالج:';
   let showRx = true;
+  let themeColor = '#0f766e'; // Teal
+  let headerIcon = '👨‍⚕️';
 
   if (v.docKey === 'lab') {
-    printTitle = '🔬 تقرير فحوصات مخبرية';
+    printTitle = 'تقرير فحوصات مخبرية';
     sigTitle = 'توقيع وختم المختبر:';
     showRx = false;
+    themeColor = '#0ea5e9'; // Blue
+    headerIcon = '🔬';
   } else if (v.docKey === 'radiology') {
-    printTitle = '🩻 تقرير صور أشعة';
+    printTitle = 'تقرير صور أشعة';
     sigTitle = 'توقيع طبيب الأشعة:';
     showRx = false;
+    themeColor = '#8b5cf6'; // Purple
+    headerIcon = '🩻';
   } else if (v.docKey === 'pharmacist') {
-    printTitle = '💊 تقرير صرف أدوية';
+    printTitle = 'تقرير صرف أدوية';
     sigTitle = 'توقيع الصيدلاني:';
     showRx = false;
+    themeColor = '#f59e0b'; // Amber
+    headerIcon = '💊';
   }
 
   const w = window.open('', '_blank');
@@ -2435,77 +2450,155 @@ function printVisitSummary(vk) {
     <head>
       <meta charset="UTF-8">
       <title>${printTitle} - ${sanitize(p.info.name)}</title>
-      <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
       <style>
-        body { font-family:'Tajawal',sans-serif; margin:40px; color:#333; line-height:1.6 }
-        .hdr { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #0d9488; padding-bottom:16px; margin-bottom:30px }
-        .title { font-size:22px; font-weight:900; color:#0f766e }
-        .p-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:30px }
-        .p-field { font-size:14px }
-        .rx-table { width:100%; border-collapse:collapse; margin-top:20px }
-        .rx-table th { background:#f3f4f6; color:#4b5563; font-size:12px; padding:10px; text-align:right }
-        .sig { text-align:left; margin-top:60px; font-weight:bold; color:#4b5563 }
+        @page { size: A4; margin: 20mm; }
+        body { font-family:'Tajawal',sans-serif; color:#1e293b; line-height:1.6; margin:0; padding:20px; background:#fff; }
+        .print-container { max-width: 800px; margin: 0 auto; }
+        
+        /* Header Section */
+        .hdr { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid ${themeColor}; padding-bottom:20px; margin-bottom:30px; }
+        .clinic-brand { display:flex; align-items:center; gap:15px; }
+        .clinic-logo-placeholder { width: 60px; height: 60px; background: ${themeColor}; color: white; border-radius: 12px; display:flex; align-items:center; justify-content:center; font-size: 28px; font-weight:bold; }
+        .title { font-size:26px; font-weight:900; color:${themeColor}; margin-bottom:4px; }
+        .subtitle { font-size:14px; color:#64748b; font-weight:500; }
+        
+        .meta-info { text-align:left; font-size:13px; color:#475569; background:#f8fafc; padding:10px 15px; border-radius:8px; border:1px solid #e2e8f0; }
+        
+        /* Document Title */
+        .doc-title { text-align:center; font-size:22px; font-weight:900; margin: 30px 0; color:#334155; padding:10px; background:#f1f5f9; border-radius:8px; letter-spacing:0.5px; display:flex; align-items:center; justify-content:center; gap:10px; }
+        
+        /* Patient Details Grid */
+        .p-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; background:#fff; border:2px solid #e2e8f0; border-radius:12px; padding:20px; margin-bottom:30px; position:relative; overflow:hidden; }
+        .p-grid::before { content:''; position:absolute; top:0; right:0; width:6px; height:100%; background:${themeColor}; }
+        .p-field { font-size:15px; display:flex; align-items:center; }
+        .p-field b { color:#64748b; width:110px; flex-shrink:0; }
+        .p-value { font-weight:700; color:#0f172a; }
+        
+        /* Clinical Sections */
+        .section-title { font-size:18px; font-weight:800; color:${themeColor}; border-bottom:2px solid #e2e8f0; padding-bottom:8px; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+        .clinical-box { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:16px; margin-bottom:24px; }
+        
+        /* Rx Table */
+        .rx-table { width:100%; border-collapse:collapse; margin-bottom:30px; background:#fff; border-radius:8px; overflow:hidden; border: 1px solid #e2e8f0; }
+        .rx-table th { background:${themeColor}; color:#fff; font-size:14px; padding:12px; text-align:center; font-weight:700; border:1px solid ${themeColor}; }
+        .rx-table td { border: 1px solid #e2e8f0; }
+        .rx-table tr:nth-child(even) { background-color: #f8fafc; }
+        
+        /* Footer & Signature */
+        .footer-grid { display:flex; justify-content:space-between; margin-top:50px; page-break-inside: avoid; }
+        .sig-box { text-align:center; padding-top:20px; width: 250px; }
+        .sig-line { border-top:2px dashed #cbd5e1; margin-bottom:10px; }
+        .sig-title { font-weight:700; color:#64748b; font-size:14px; }
+        .sig-name { font-weight:900; color:${themeColor}; font-size:18px; margin-top:8px; }
+        
+        /* Vitals Pills */
+        .vitals-flex { display:flex; gap:15px; flex-wrap:wrap; }
+        .vital-pill { background:#fff; border:1px solid #cbd5e1; padding:8px 16px; border-radius:20px; font-weight:700; font-size:14px; color:#334155; display:flex; align-items:center; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
+        
+        /* Print optimizations */
+        @media print {
+          body { background:#fff; margin:0; padding:0; }
+          .print-container { max-width: 100%; }
+        }
       </style>
     </head>
     <body>
-      <div class="hdr">
-        <div>
-          <div class="title">🏥 ${_sets.name || 'العيادة الطبية'}</div>
-          <div style="font-size:12px;color:#666">${_sets.specialty || 'تخصصات طبية'} · هاتف: ${_sets.phone || ''}</div>
+      <div class="print-container">
+        <!-- Header -->
+        <div class="hdr">
+          <div class="clinic-brand">
+            <div class="clinic-logo-placeholder">
+               <i class="fas fa-hospital-symbol">H</i>
+            </div>
+            <div>
+              <div class="title">${_sets.name || 'العيادة الطبية'}</div>
+              <div class="subtitle">${_sets.specialty || 'عيادة تخصصية متكاملة'} | هاتف: <span dir="ltr">${_sets.phone || 'غير مدرج'}</span></div>
+            </div>
+          </div>
+          <div class="meta-info">
+            <div><b>تاريخ الطباعة:</b> ${new Date().toLocaleDateString('ar-JO')}</div>
+            <div style="margin-top:4px;"><b>الرقم الطبي للمريض:</b> <span dir="ltr">${p.info.mrn || p.info.nationalId || '---'}</span></div>
+          </div>
         </div>
-        <div style="text-align:left;font-size:12px;color:#666">
-          تاريخ الطباعة: ${new Date().toLocaleDateString('ar-JO')}<br>
-          الرقم الطبي: ${p.info.mrn || ''}
+        
+        <!-- Document Title -->
+        <div class="doc-title">
+          <span>${headerIcon}</span> ${printTitle}
         </div>
-      </div>
-      
-      <h2>${printTitle}</h2>
-      <div class="p-grid">
-        <div class="p-field"><b>المريض:</b> ${sanitize(p.info.name)}</div>
-        <div class="p-field"><b>رقم الهاتف:</b> <span dir="ltr">${sanitize(p.info.phone || '—')}</span></div>
-        <div class="p-field"><b>العمر/الجنس:</b> ${p.info.age || '—'} سنة / ${p.info.gender || '—'}</div>
-        <div class="p-field"><b>تاريخ الزيارة:</b> ${v.date} · ${v.time}</div>
-      </div>
-
-      <div style="margin-bottom:20px">
-        <b>🩺 التشخيص/الموضوع:</b> ${sanitize(v.diagnosis || 'فحص عام')}<br>
-        <b>🔍 التفاصيل:</b> ${sanitize(v.complaint || '—')}
-      </div>
-
-      ${v.vitals?.temp || v.vitals?.bp ? `
-        <div style="background:#f0fdfa;border:1px solid #ccfbf1;border-radius:8px;padding:12px;margin-bottom:20px">
-          <b>🌡️ العلامات الحيوية:</b> 
-          ${v.vitals.temp ? `الحرارة: ${v.vitals.temp}°C ` : ''} 
-          ${v.vitals.bp ? `· الضغط: ${v.vitals.bp} ` : ''} 
-          ${v.vitals.pulse ? `· النبض: ${v.vitals.pulse}/دقيقة` : ''}
+        
+        <!-- Patient Details -->
+        <div class="p-grid">
+          <div class="p-field"><b>اسم المريض:</b> <span class="p-value">${sanitize(p.info.name)}</span></div>
+          <div class="p-field"><b>رقم الهاتف:</b> <span class="p-value" dir="ltr">${sanitize(printPhone)}</span></div>
+          <div class="p-field"><b>العمر / الجنس:</b> <span class="p-value">${p.info.age ? p.info.age + ' سنة' : '—'} / ${p.info.gender || '—'}</span></div>
+          <div class="p-field"><b>تاريخ ووقت الزيارة:</b> <span class="p-value">${v.date} · ${v.time}</span></div>
         </div>
-      ` : ''}
 
-      ${showRx ? `
-      <h3>💊 الأدوية الموصوفة (Rx):</h3>
-      <table class="rx-table">
-        <thead>
-          <tr>
-            <th>اسم الدواء</th>
-            <th>الجرعة</th>
-            <th>التكرار</th>
-            <th>المدة</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rx}
-        </tbody>
-      </table>
-      ` : ''}
+        <!-- Clinical Details -->
+        <div class="clinical-box">
+          <div style="margin-bottom:12px;">
+            <b style="color:#64748b;">🩺 التشخيص/الموضوع:</b> 
+            <span style="font-weight:700; font-size:16px;">${sanitize(v.diagnosis || 'فحص طبي')}</span>
+          </div>
+          <div>
+            <b style="color:#64748b;">🔍 التفاصيل والشكوى:</b> 
+            <span>${sanitize(v.complaint || 'لا يوجد تفاصيل إضافية')}</span>
+          </div>
+        </div>
 
-      ${v.notes ? `<div style="margin-top:20px"><b>📝 تقرير وتوجيهات:</b><p style="white-space: pre-wrap;">${sanitize(v.notes)}</p></div>` : ''}
+        <!-- Vitals -->
+        ${v.vitals?.temp || v.vitals?.bp || v.vitals?.pulse ? `
+          <div class="clinical-box" style="background:#f1f5f9;">
+            <div class="vitals-flex">
+              ${v.vitals.temp ? `<div class="vital-pill">🌡️ الحرارة: ${v.vitals.temp}°C</div>` : ''} 
+              ${v.vitals.bp ? `<div class="vital-pill">❤️ الضغط: <span dir="ltr">${v.vitals.bp}</span></div>` : ''} 
+              ${v.vitals.pulse ? `<div class="vital-pill">💓 النبض: ${v.vitals.pulse}/د</div>` : ''}
+            </div>
+          </div>
+        ` : ''}
 
-      <div class="sig">
-        ${sigTitle}<br><br>
-        <span style="color:#0f766e">${sanitize(v.docName)}</span>
+        <!-- Prescriptions -->
+        ${showRx ? `
+        <div class="section-title">💊 الأدوية الموصوفة (Rx)</div>
+        <table class="rx-table">
+          <thead>
+            <tr>
+              <th style="width: 40%;">اسم الدواء</th>
+              <th style="width: 20%;">الجرعة</th>
+              <th style="width: 20%;">التكرار</th>
+              <th style="width: 20%;">المدة</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rx}
+          </tbody>
+        </table>
+        ` : ''}
+
+        <!-- Notes / Directives -->
+        ${v.notes ? `
+        <div class="section-title">📝 تقرير وتوجيهات إضافية</div>
+        <div class="clinical-box">
+          <p style="white-space: pre-wrap; margin:0;">${sanitize(v.notes)}</p>
+        </div>
+        ` : ''}
+
+        <!-- Footer / Signature -->
+        <div class="footer-grid">
+          <div style="font-size:12px; color:#94a3b8; max-width: 400px; padding-top:20px;">
+            * هذه الوثيقة صادرة إلكترونياً من نظام كلينيكا لإدارة العيادات ولا تحتاج إلى ختم إذا كانت تحمل توقيعاً إلكترونياً معتمداً.
+            <br>* نتمنى لكم دوام الصحة والعافية.
+          </div>
+          <div class="sig-box">
+            <div class="sig-line"></div>
+            <div class="sig-title">${sigTitle}</div>
+            <div class="sig-name">د. ${sanitize(v.docName)}</div>
+          </div>
+        </div>
+
       </div>
-
-      <script>window.onload = () => { window.print(); window.close(); }</script>
+      <script>window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 500); }</script>
     </body>
     </html>
   `);
