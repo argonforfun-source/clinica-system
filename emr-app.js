@@ -853,7 +853,7 @@ if (ArgonNID.isValidNID(_bNID)) {
     const currentDoctorId = session.staffId || 'unknown_doc';
     const matchResult = await window.ArgonMedical.PatientMatch.findMatch(
       CID,
-      { name: bookingName, phone: bookingPhone, nationalId: "" },
+      { name: bookingName, phone: bookingPhone, nationalId: _bNID },
       db
     );
 

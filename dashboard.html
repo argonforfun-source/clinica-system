@@ -1358,9 +1358,7 @@ function renderLive(keys) {
         </div>
         <div class="bname">${sanitize(b.patName)}</div>
         <div class="binfo">📞 ${sanitize(b.patPhone)}</div>
-        // ── C2: عرض الرقم الوطني على الكارت ──
         ${b.patNationalId ? `<div class="binfo" style="font-family:'IBM Plex Mono',monospace;font-size:.74rem;color:var(--teal)">🪪 ${sanitize(b.patNationalId)}</div>` : `<div class="binfo" style="color:rgba(239,68,68,0.7);font-size:.72rem">⚠️ رقم وطني غير مُسجَّل</div>`}
-        // ── نهاية C2 ──
         ${isRef ? refBanner : `<div class="binfo">👨‍⚕️ د. ${sanitize(b.docName)} · <span style="color:var(--teal)">${sanitize(b.docSpec || '')}</span></div>`}
         <div class="binfo" style="display:flex;align-items:center;gap:10px">
           <span style="font-family:'IBM Plex Mono',monospace;background:var(--surf);border:1px solid var(--border);padding:2px 8px;border-radius:7px;font-size:.78rem">${isRef ? '🔀 تحويل داخلي' : '🕐 ' + (b.time || '—')}</span>
@@ -1666,9 +1664,10 @@ async function cmpBook(k) {
     if (window.ArgonMedical && window.ArgonMedical.PatientMatch) {
       const session = window.ArgonSession ? window.ArgonSession.get() : {};
       const currentUserId = session.staffId || 'unknown_admin';
+      const bookingNID_cmp = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
       const matchResult = await window.ArgonMedical.PatientMatch.findMatch(
         CID,
-        { name: bookingName, phone: patPhone, nationalId: "" },
+        { name: bookingName, phone: patPhone, nationalId: bookingNID_cmp },
         db
       );
 
