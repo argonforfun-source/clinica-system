@@ -350,5 +350,14 @@
 <script src="argon-nid-gate.js"></script>
 <script src="argon-enterprise.js???v=7"></script>
 <script src="emr-app.js???v=7"></script>
+<script>
+(function setMaxDates() {
+  const today = new Date().toISOString().split('T')[0];
+  ['pDob', 'npDob', 'epDob'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.max = today;
+  });
+})();
+</script>
 </body>
 </html>

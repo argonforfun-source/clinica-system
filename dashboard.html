@@ -1627,7 +1627,8 @@ const bookingNID_C3 = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
           name: b.patName || 'مريض',
           phone: cleanPhone,
           nationalId: b.patNationalId || b.nationalId || '',
-          age: b.patAge ? parseInt(b.patAge) : null,
+          dob: b.patDob || null,
+            age: b.patDob ? window.ArgonCalcAge(b.patDob) : (b.patAge ? parseInt(b.patAge) : null),
           gender: b.patGender || '',
           mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
           createdAt: new Date().toISOString()
@@ -2200,6 +2201,15 @@ function checkAndSeedDefaultDepartments() {
 
 // PWA
 if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+</script>
+<script>
+(function setMaxDates() {
+  const today = new Date().toISOString().split('T')[0];
+  ['pDob', 'npDob', 'epDob'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.max = today;
+  });
+})();
 </script>
 </body>
 </html>

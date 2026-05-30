@@ -2607,7 +2607,7 @@
       const name  = document.getElementById('pName').value.trim();
       const phone = toEngNum(document.getElementById('pPhone').value).trim();
       const rawNid = toEngNum(document.getElementById('pNationalId').value).replace(/\D/g, '').trim();
-      const ageRaw = toEngNum(document.getElementById('pAge').value || '').trim();
+      const _dobVal   = document.getElementById('pDob')?.value || '';
 
       let ok = true;
 
@@ -2803,7 +2803,8 @@
           slotKey: slotKey, // stored so we can release lock on cancel
           docKey: selDoc.key, docName: sanitize(selDoc.name), docSpec: sanitize(selDoc.specialty || ''),
           patName: name, patPhone: phone, patNationalId: _nidFinal,
-          patAge: _ageFinal ? String(_ageFinal) : '',
+          patDob: sanitize(_dobValFinal),
+          patAge: _dobValFinal ? String(window.ArgonCalcAge(_dobValFinal) || '') : '',
           patGender: sanitize(document.getElementById('pGender').value),
           notes: sanitize(document.getElementById('pNotes').value),
           date: selDate, time: selTime,
@@ -3154,8 +3155,10 @@
           currentKey = null;
           curRating = 0;
           goStep(0);
-          ['pName', 'pPhone', 'pAge', 'pNotes'].forEach(i => document.getElementById(i).value = '');
+          ['pName', 'pPhone', 'pDob', 'pNotes'].forEach(i => document.getElementById(i).value = '');
           document.getElementById('pGender').value = '';
+    const _disp = document.getElementById('pAgeDisplay');
+    if (_disp) _disp.style.display = 'none';
           ['pName', 'pPhone'].forEach(i => { document.getElementById(i).classList.remove('err'); });
           ['pNameErr', 'pPhoneErr'].forEach(i => { document.getElementById(i).style.display = 'none'; });
           const sb = document.getElementById('sendBtn');
@@ -3253,6 +3256,15 @@
     // Fix step 1 button
     document.querySelector('#s1 .btn-next').onclick = validateStep1;
   </script>
+<script>
+(function setMaxDates() {
+  const today = new Date().toISOString().split('T')[0];
+  ['pDob', 'npDob', 'epDob'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.max = today;
+  });
+})();
+</script>
 </body>
 
 </html>

@@ -1060,7 +1060,13 @@ function openEditPatient(uid) {
   document.getElementById('epName').value = p.info.name || '';
   document.getElementById('epPhone').value = p.info.phone || uid;
   document.getElementById('epNationalId').value = p.info.nationalId || '';
-  document.getElementById('epAge').value = p.info.age || '';
+  const _epDobEl = document.getElementById('epDob');
+  if (_epDobEl) {
+    _epDobEl.value = p.info.dob || '';
+    if (!p.info.dob && p.info.age) {
+      _epDobEl.placeholder = `عمر سابق: ${p.info.age} سنة`;
+    }
+  }
   document.getElementById('epGender').value = p.info.gender || '';
   document.getElementById('epBlood').value = p.info.bloodType || '';
   if (window.ArgonClinicalParser && window.ARGON_FEATURES.ENABLE_CLINICAL_VERSIONING) {
@@ -1092,7 +1098,12 @@ function saveEditPatient() {
   const name = document.getElementById('epName').value.trim();
   const phone = cleanPhone(document.getElementById('epPhone').value);
   const nationalId = document.getElementById('epNationalId').value.trim();
-  const age = document.getElementById('epAge').value.trim();
+  const _dob_ep    = (document.getElementById('epDob')?.value || '').trim();
+  const _dobChk_ep = _dob_ep ? window.ArgonValidateDOB(_dob_ep) : { ok: true };
+  if (_dob_ep && !_dobChk_ep.ok) {
+    toast('⚠️ ' + _dobChk_ep.msg, 'err');
+    return;
+  }
   const gender = document.getElementById('epGender').value;
   const blood = document.getElementById('epBlood').value;
   const allergies = document.getElementById('epAllergies').value.trim().split(/[،,]/).map(s => s.trim()).filter(Boolean);
@@ -1155,7 +1166,8 @@ function saveEditPatient() {
     name: sanitize(name),
     phone: sanitize(phone),
     nationalId: nationalId ? sanitize(nationalId) : null,
-    age: age ? parseInt(age) : null,
+    dob: _dob_np || null,
+      age: _calcAge_np,
     gender: sanitize(gender),
     bloodType: sanitize(blood),
     allergies: finalAllergies.length ? finalAllergies : null,
@@ -1208,7 +1220,13 @@ async function saveNewPatient() {
   const name = document.getElementById('npName').value.trim();
   const phone = cleanPhone(document.getElementById('npPhone').value);
   const nationalId = document.getElementById('npNationalId').value.trim();
-  const age = document.getElementById('npAge').value.trim();
+  const _dob_np     = (document.getElementById('npDob')?.value || '').trim();
+  const _dobChk_np  = _dob_np ? window.ArgonValidateDOB(_dob_np) : { ok: true };
+  const _calcAge_np = _dob_np ? window.ArgonCalcAge(_dob_np) : null;
+  if (_dob_np && !_dobChk_np.ok) {
+    toast('⚠️ ' + _dobChk_np.msg, 'err');
+    return;
+  }
   const gender = document.getElementById('npGender').value;
   const blood = document.getElementById('npBlood').value;
   const allergies = document.getElementById('npAllergies').value.trim().split(',').map(s => s.trim()).filter(Boolean);
@@ -1282,7 +1300,8 @@ function _executeSaveNewPatient(name, phone, nationalId, age, gender, blood, all
       name: sanitize(name),
       phone: sanitize(phone),
       nationalId: nationalId ? sanitize(nationalId) : null,
-      age: age ? parseInt(age) : null,
+      dob: _dob_ep || null,
+      age: _dob_ep ? window.ArgonCalcAge(_dob_ep) : (p.info.age || null),
       gender: sanitize(gender),
       bloodType: sanitize(blood),
       allergies,
@@ -1585,7 +1604,7 @@ function generatePatientFileHTML(uid) {
       <div class="pat-grid">
         <div class="pat-field"><div class="pfl">رقم الهاتف</div><div class="pfv">${sanitize(info.phone || '—')}</div></div>
         <div class="pat-field"><div class="pfl">الرقم الوطني / الهوية</div><div class="pfv" style="font-weight:700;color:var(--teal)">${sanitize(info.nationalId || '—')}</div></div>
-        <div class="pat-field"><div class="pfl">العمر / الجنس</div><div class="pfv">${info.age || 'غير محدد'} سنة · ${info.gender || 'غير محدد'}</div></div>
+        <div class="pat-field"><div class="pfl">العمر / الجنس</div><div class="pfv">${info.dob ? window.ArgonAgeDisplay(info.dob) : (info.age ? `${info.age} سنة (تقريبي)` : 'غير محدد')} · ${info.gender || 'غير محدد'}</div></div>
         <div class="pat-field"><div class="pfl">فصيلة الدم</div><div class="pfv" style="color:var(--red)">${info.bloodType || '—'}</div></div>
         <div class="pat-field"><div class="pfl">تاريخ التسجيل</div><div class="pfv" style="font-size:.78rem;font-family:'IBM Plex Mono',monospace">${(info.createdAt || '').substring(0, 10)}</div></div>
       </div>

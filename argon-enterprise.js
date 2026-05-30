@@ -1,3 +1,55 @@
+
+/**
+ * يحسب العمر بالسنوات من تاريخ الميلاد حتى اليوم
+ * @param {string} dob — "YYYY-MM-DD"
+ * @returns {number|null}
+ */
+window.ArgonCalcAge = function(dob) {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age >= 0 ? age : null;
+};
+
+/**
+ * يعرض العمر بشكل لطيف: "22 سنة" أو "8 أشهر" للرضع
+ * @param {string} dob — "YYYY-MM-DD"
+ * @returns {string}
+ */
+window.ArgonAgeDisplay = function(dob) {
+  if (!dob) return '—';
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return '—';
+  const today = new Date();
+  let years  = today.getFullYear() - birth.getFullYear();
+  let months = today.getMonth()    - birth.getMonth();
+  if (today.getDate() < birth.getDate()) months--;
+  if (months < 0) { years--; months += 12; }
+  if (years < 0) return '—';
+  if (years === 0 && months === 0) return 'أقل من شهر';
+  if (years === 0) return `${months} شهر`;
+  if (years <  2) return `${years} سنة و${months} شهر`;
+  return `${years} سنة`;
+};
+
+/**
+ * يتحقق أن تاريخ الميلاد منطقي (لا مستقبلي، لا أكثر من 130 سنة)
+ */
+window.ArgonValidateDOB = function(dob) {
+  if (!dob) return { ok: false, msg: 'تاريخ الميلاد مطلوب' };
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return { ok: false, msg: 'تاريخ غير صالح' };
+  const today = new Date();
+  if (birth > today) return { ok: false, msg: 'تاريخ الميلاد لا يمكن أن يكون في المستقبل' };
+  const age = ArgonCalcAge(dob);
+  if (age > 130) return { ok: false, msg: 'تاريخ الميلاد غير منطقي (أكثر من 130 سنة)' };
+  return { ok: true, age };
+};
+
 ﻿/**
  * ARGON MEDICAL OS â€” Enterprise Features v4.0
  * PDF Generation (RTL), Excel Export, Advanced Optimizations
