@@ -529,6 +529,7 @@
           <div><label class="mfl">إيموجي</label><input type="text" id="sftE" class="mfi" value="👤"></div>
         </div>
         <div class="addrow2" style="margin-top:8px; align-items:flex-end;">
+          <div><label class="mfl">الرقم الوطني</label><input type="text" id="sftNatId" class="mfi" placeholder="اختياري"></div>
           <div><label class="mfl" style="color:var(--teal)">كلمة مرور البوابة 🔒</label><input type="password" id="sftPass" class="mfi" placeholder="اكتب لتعيين كلمة مرور (اختياري)"></div>
           <button class="badd" id="btnStaffAdd" onclick="addStaff()"><i class="fas fa-plus" style="margin-left:4px"></i>إضافة موظف</button>
           <button class="badd" id="btnCancelStaffEdit" onclick="cancelStaffEdit()" style="display:none;background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)"><i class="fas fa-times" style="margin-left:4px"></i>تراجع</button>
@@ -1967,6 +1968,7 @@ function addStaff() {
   const sftN = document.getElementById('sftN');
   const sftR = document.getElementById('sftR');
   const sftP = document.getElementById('sftP');
+  const sftNatId = document.getElementById('sftNatId');
   const sftE = document.getElementById('sftE');
   if (!sftN || !sftR) return;
 
@@ -1977,6 +1979,7 @@ function addStaff() {
   const staffObj = {
     name, role,
     phone: sftP ? sftP.value.trim() : '',
+    nationalId: sftNatId ? sftNatId.value.trim() : '',
     emoji: sftE ? (sftE.value.trim() || '👤') : '👤'
   };
   
@@ -2002,6 +2005,7 @@ function editStaff(k) {
   const sftN = document.getElementById('sftN');
   const sftR = document.getElementById('sftR');
   const sftP = document.getElementById('sftP');
+  const sftNatId = document.getElementById('sftNatId');
   const sftE = document.getElementById('sftE');
   if (!sftN || !sftR) return;
 
@@ -2010,6 +2014,7 @@ function editStaff(k) {
   sftN.value = s.name || '';
   sftR.value = s.role || 'reception';
   if (sftP) sftP.value = s.phone || '';
+  if (sftNatId) sftNatId.value = s.nationalId || '';
   if (sftE) sftE.value = s.emoji || '👤';
   
   const b = document.getElementById('btnStaffAdd');
@@ -2027,12 +2032,14 @@ function cancelStaffEdit() {
   const sftN = document.getElementById('sftN');
   const sftR = document.getElementById('sftR');
   const sftP = document.getElementById('sftP');
+  const sftNatId = document.getElementById('sftNatId');
   const sftE = document.getElementById('sftE');
   const sftPass = document.getElementById('sftPass');
   
   if(sftN) sftN.value = '';
   if(sftR) sftR.value = 'reception';
   if(sftP) sftP.value = '';
+  if(sftNatId) sftNatId.value = '';
   if(sftE) sftE.value = '👤';
   if(sftPass) sftPass.value = '';
   

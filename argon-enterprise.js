@@ -462,6 +462,7 @@ const ArgonEnterprise = {
                     staffData.push({
                         "الاسم": s.name || "",
                         "الهاتف": s.phone || "",
+                        "الرقم الوطني": s.nationalId || "",
                         "الصلاحية (الدور)": s.role || ""
                     });
                 });
