@@ -1322,10 +1322,12 @@ function _executeSaveNewPatient(name, phone, nationalId, age, gender, blood, all
     logAudit('CREATE_PATIENT', `تم تسجيل مريض جديد ${patObj.info.name} (${newUid}) - MRN: ${mrn}`, 'EMR');
     toast(`✅ تم تسجيل المريض بنجاح — ${mrn}`, 'ok');
     closeModal('newPatModal');
-    ['npName', 'npPhone', 'npNationalId', 'npAge', 'npAllergies', 'npChronic', 'npNotes'].forEach(id => {
+    ['npName', 'npPhone', 'npNationalId', 'npDob', 'npAllergies', 'npChronic', 'npNotes'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+    const prNP = document.getElementById('npAgePreview');
+    if (prNP) prNP.style.display = 'none';
     document.getElementById('npGender').value = '';
     document.getElementById('npBlood').value = '';
     document.getElementById('npPhotoPreview').innerHTML = '👤';

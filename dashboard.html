@@ -1722,7 +1722,8 @@ async function cmpBook(k) {
             name: b.patName,
             phone: patPhone,
             nationalId: b.patNationalId || b.nationalId || '',
-            age: b.patAge ? parseInt(b.patAge) : null,
+            dob: b.patDob || null,
+            age: b.patDob ? window.ArgonCalcAge(b.patDob) : (b.patAge ? parseInt(b.patAge) : null),
             gender: b.patGender || '',
             mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
             createdAt: new Date().toISOString()
