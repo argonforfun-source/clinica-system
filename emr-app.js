@@ -2443,6 +2443,29 @@ function printVisitSummary(vk) {
     headerIcon = '💊';
   }
 
+  // Calculate Treating/Referring Doctor for auxiliary reports
+  let treatingDoctorStr = '';
+  if (v.docKey === 'lab' || v.docKey === 'radiology' || v.docKey === 'pharmacist') {
+    let referringDoc = 'غير محدد';
+    if (v.referredBy) {
+      referringDoc = v.referredBy;
+    } else {
+      // Find the most recent doctor visit chronologically before this visit
+      const vKeys = Object.keys(p.visits).sort();
+      const currentIndex = vKeys.indexOf(vk);
+      if (currentIndex > 0) {
+        for (let i = currentIndex - 1; i >= 0; i--) {
+          const pastV = p.visits[vKeys[i]];
+          if (pastV && pastV.docKey !== 'lab' && pastV.docKey !== 'radiology' && pastV.docKey !== 'pharmacist') {
+            referringDoc = pastV.docName || 'غير محدد';
+            break;
+          }
+        }
+      }
+    }
+    treatingDoctorStr = `<div class="p-field"><b>الطبيب المعالج:</b> <span class="p-value" style="color:${themeColor}">د. ${sanitize(referringDoc)}</span></div>`;
+  }
+
   const w = window.open('', '_blank');
   w.document.write(`
     <!DOCTYPE html>
@@ -2518,7 +2541,7 @@ function printVisitSummary(vk) {
           </div>
           <div class="meta-info">
             <div><b>تاريخ الطباعة:</b> ${new Date().toLocaleDateString('ar-JO')}</div>
-            <div style="margin-top:4px;"><b>الرقم الطبي للمريض:</b> <span dir="ltr">${p.info.mrn || p.info.nationalId || '---'}</span></div>
+            <div style="margin-top:4px;"><b>الرقم الطبي للمريض:</b> <span dir="ltr">${p.info.mrn || 'غير مدرج'}</span></div>
           </div>
         </div>
         
@@ -2530,9 +2553,11 @@ function printVisitSummary(vk) {
         <!-- Patient Details -->
         <div class="p-grid">
           <div class="p-field"><b>اسم المريض:</b> <span class="p-value">${sanitize(p.info.name)}</span></div>
+          <div class="p-field"><b>الرقم الوطني:</b> <span class="p-value" dir="ltr">${sanitize(p.info.nationalId || 'غير مدرج')}</span></div>
           <div class="p-field"><b>رقم الهاتف:</b> <span class="p-value" dir="ltr">${sanitize(printPhone)}</span></div>
           <div class="p-field"><b>العمر / الجنس:</b> <span class="p-value">${p.info.age ? p.info.age + ' سنة' : '—'} / ${p.info.gender || '—'}</span></div>
           <div class="p-field"><b>تاريخ ووقت الزيارة:</b> <span class="p-value">${v.date} · ${v.time}</span></div>
+          ${treatingDoctorStr}
         </div>
 
         <!-- Clinical Details -->
