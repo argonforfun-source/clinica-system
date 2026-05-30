@@ -530,7 +530,7 @@
         </div>
         <div class="addrow2" style="margin-top:8px; align-items:flex-end;">
           <div><label class="mfl">الرقم الوطني</label><input type="text" id="sftNatId" class="mfi" placeholder="اختياري"></div>
-          <div><label class="mfl" style="color:var(--teal)">كلمة مرور البوابة 🔒</label><input type="password" id="sftPass" class="mfi" placeholder="اكتب لتعيين كلمة مرور (اختياري)"></div>
+          <!-- Password removed -->
           <button class="badd" id="btnStaffAdd" onclick="addStaff()"><i class="fas fa-plus" style="margin-left:4px"></i>إضافة موظف</button>
           <button class="badd" id="btnCancelStaffEdit" onclick="cancelStaffEdit()" style="display:none;background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)"><i class="fas fa-times" style="margin-left:4px"></i>تراجع</button>
         </div>
@@ -1985,16 +1985,12 @@ function addStaff() {
   
   if (editingStaffKey) {
     db.ref(`${BASE}/staff/${editingStaffKey}`).update(staffObj).then(() => {
-      const sPass = document.getElementById('sftPass');
-      if(sPass && sPass.value) ArgonEnterpriseAuth.setStaffCredentials(editingStaffKey, sPass.value, false);
       toast('✅ تم تحديث الموظف', 'ok');
       cancelStaffEdit();
     });
   } else {
     const staffRef = db.ref(`${BASE}/staff`).push();
     staffRef.set(staffObj).then(() => {
-      const sPass = document.getElementById('sftPass');
-      if(sPass && sPass.value) ArgonEnterpriseAuth.setStaffCredentials(staffRef.key, sPass.value, false);
       cancelStaffEdit();
       toast('✅ تم إضافة الموظف', 'ok');
     });
@@ -2034,14 +2030,12 @@ function cancelStaffEdit() {
   const sftP = document.getElementById('sftP');
   const sftNatId = document.getElementById('sftNatId');
   const sftE = document.getElementById('sftE');
-  const sftPass = document.getElementById('sftPass');
   
   if(sftN) sftN.value = '';
   if(sftR) sftR.value = 'reception';
   if(sftP) sftP.value = '';
   if(sftNatId) sftNatId.value = '';
   if(sftE) sftE.value = '👤';
-  if(sftPass) sftPass.value = '';
   
   const b = document.getElementById('btnStaffAdd');
   if(b) {
@@ -2080,15 +2074,7 @@ function confirmSetPass() {
 }
 document.addEventListener('keydown', e => { if(e.key === 'Escape') closeSetPass(); if(e.key === 'Enter' && _setPassUid) confirmSetPass(); });
 
-function updateStaffPass() {
-  if (!editingStaffKey) return;
-  const pass = document.getElementById('sftPass').value;
-  if (!pass) { toast('⚠️ أدخل كلمة مرور', 'err'); return; }
-  ArgonEnterpriseAuth.setStaffCredentials(editingStaffKey, pass, false).then(() => {
-    document.getElementById('sftPass').value = '';
-    toast('✅ تم تعيين كلمة المرور للموظف', 'ok');
-  });
-}
+// updateStaffPass removed
 
 
 function delLogo() {
