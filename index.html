@@ -2716,7 +2716,23 @@
         // so the slot doesn't stay locked forever
         // ════════════════════════════════════════════
         slotRef.remove().catch(() => {});
-        toast('❌ Error: ' + (err.message || err), 'err');
+        
+        let errMsg = err.message || String(err);
+        let userTitle = '⚠️ لم يكتمل الحجز';
+        let userBody = 'حدث خطأ أثناء محاولة تأكيد الحجز. يرجى التأكد من اتصالك بالإنترنت والمحاولة مجدداً.';
+        
+        if (errMsg.includes('PERMISSION_DENIED') || errMsg.includes('permission_denied')) {
+            userBody = 'تم رفض الحجز بسبب سياسات الحماية. تأكد من إدخال بياناتك بشكل صحيح (الاسم الكامل، رقم الهاتف الصالح، والرقم الوطني).';
+        } else if (errMsg.includes('network') || errMsg.includes('offline') || errMsg.includes('Failed to fetch')) {
+            userBody = 'يبدو أنك غير متصل بالإنترنت أو الاتصال ضعيف. يرجى التحقق من الشبكة والمحاولة مجدداً.';
+        } else if (errMsg.includes('timeout')) {
+            userBody = 'انتهى وقت الاتصال بالخادم. يرجى المحاولة مرة أخرى.';
+        } else {
+            userBody = `عذراً، فشل النظام في معالجة طلبك لأسباب تقنية. (الكود: ${errMsg.substring(0,50)})`;
+        }
+        
+        showErrModal('❌', userTitle, userBody);
+        
         sending = false;
         btn.innerHTML = '<i class="fas fa-check-circle" style="margin-left:8px"></i> ' + T('btnConfirm');
         btn.disabled = false;
