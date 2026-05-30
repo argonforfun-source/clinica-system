@@ -380,7 +380,7 @@ const ArgonEnterprise = {
 
             // 1. Summary
             const patientsCount = data.patients ? Object.keys(data.patients).length : 0;
-            const aptsCount = data.appointments ? Object.keys(data.appointments).reduce((acc, d) => acc + Object.keys(data.appointments[d]).reduce((a2, t) => a2 + Object.keys(data.appointments[d][t]).length, 0), 0) : 0;
+            const aptsCount = (data.bookings ? Object.keys(data.bookings).length : 0) + (data.completedBookings ? Object.keys(data.completedBookings).length : 0);
             const docCount = data.doctors ? Object.keys(data.doctors).length : 0;
             const staffCount = data.staff ? Object.keys(data.staff).length : 0;
             
@@ -411,29 +411,23 @@ const ArgonEnterprise = {
             }
             appendSheet(ptsData, "سجل المرضى");
 
-            // 3. Appointments
+            // 3. Appointments & Bookings
             const aptData = [];
-            if (data.appointments) {
-                const allApts = [];
-                Object.keys(data.appointments).forEach(date => {
-                    const dObj = data.appointments[date];
-                    Object.keys(dObj).forEach(time => {
-                        const tObj = dObj[time];
-                        Object.values(tObj).forEach(a => {
-                            allApts.push({ date, time, ...a });
-                        });
-                    });
-                });
-                allApts.sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+            const allApts = [];
+            if (data.bookings) Object.values(data.bookings).forEach(b => allApts.push(b));
+            if (data.completedBookings) Object.values(data.completedBookings).forEach(b => allApts.push(b));
+            
+            if (allApts.length > 0) {
+                allApts.sort((a,b) => new Date(`${a.date || '1970-01-01'}T${a.time || '00:00'}`) - new Date(`${b.date || '1970-01-01'}T${b.time || '00:00'}`));
                 
-                const statusMap = { 'waiting': 'قيد الانتظار', 'in-progress': 'في الداخل', 'completed': 'مكتمل', 'cancelled': 'ملغي' };
+                const statusMap = { 'waiting': 'قيد الانتظار', 'in-progress': 'في الداخل', 'done': 'مكتمل', 'cancelled': 'ملغي' };
                 allApts.forEach(a => {
                     aptData.push({
-                        "التاريخ": a.date,
-                        "الوقت": a.time,
-                        "رقم الدور": a.queueNum || "-",
-                        "اسم المريض": a.patientName || "-",
-                        "الحالة": statusMap[a.status] || a.status,
+                        "التاريخ": a.date || "-",
+                        "الوقت": a.time || "-",
+                        "رقم الدور": a.queueNum || a.queue || "-",
+                        "اسم المريض": a.patName || a.patientName || "-",
+                        "الحالة": a.status ? (statusMap[a.status] || a.status) : "-",
                         "نوع الحجز": a.type === 'consultation' ? 'كشفية' : (a.type === 'followup' ? 'مراجعة' : a.type || '-')
                     });
                 });
