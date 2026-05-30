@@ -1340,17 +1340,28 @@ function generatePatientFileHTML(uid) {
   if (window.ArgonClinicalParser && window.ARGON_FEATURES && window.ARGON_FEATURES.ENABLE_CLINICAL_VERSIONING) {
     const algList = ArgonClinicalParser.getClinicalList(info, 'allergies');
     const chrList = ArgonClinicalParser.getClinicalList(info, 'chronicDiseases');
+    
+    const resolveStaffName = (sId) => {
+      if (!sId || sId === 'Legacy' || sId === 'unknown') return 'طبيب سابق';
+      if (window.ArgonSession && ArgonSession.get()?.staffId === sId) return ArgonSession.get()?.displayName || 'طبيب';
+      if (p.visits) {
+         for (const vk in p.visits) {
+            if (p.visits[vk].doctorId === sId && p.visits[vk].docName) return p.visits[vk].docName;
+         }
+      }
+      return 'طبيب مختص';
+    };
 
-    allergiesHTML = algList.filter(a => a.status === 'active').map(a => `<span class="tag" style="padding: 4px 8px;" title="Added by: ${sanitize(a.addedBy || 'Legacy')}">${sanitize(a.value)} <span style="font-size:0.65rem; opacity:0.7; margin-right:4px;">(د. ${sanitize(a.addedBy || 'سابق')})</span></span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
-    chronicHTML = chrList.filter(a => a.status === 'active').map(a => `<span class="tag blue" style="padding: 4px 8px;" title="Added by: ${sanitize(a.addedBy || 'Legacy')}">${sanitize(a.value)} <span style="font-size:0.65rem; opacity:0.7; margin-right:4px;">(د. ${sanitize(a.addedBy || 'سابق')})</span></span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
+    allergiesHTML = algList.filter(a => a.status === 'active').map(a => `<span class="tag" style="padding: 4px 8px;" title="Added by: ${sanitize(a.addedBy || 'Legacy')}">${sanitize(a.value)} <span style="font-size:0.65rem; opacity:0.7; margin-right:4px;">(د. ${sanitize(resolveStaffName(a.addedBy))})</span></span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
+    chronicHTML = chrList.filter(a => a.status === 'active').map(a => `<span class="tag blue" style="padding: 4px 8px;" title="Added by: ${sanitize(a.addedBy || 'Legacy')}">${sanitize(a.value)} <span style="font-size:0.65rem; opacity:0.7; margin-right:4px;">(د. ${sanitize(resolveStaffName(a.addedBy))})</span></span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
     
     const revokedAlg = algList.filter(a => a.status === 'revoked');
     if (revokedAlg.length > 0) {
-       allergiesHTML += `<div style="font-size:10px; color:#94a3b8; margin-top:4px;">أبطلت: ` + revokedAlg.map(a => `<span style="text-decoration:line-through" title="Revoked by: ${sanitize(a.revokedBy)} - ${sanitize(a.reason)}">${sanitize(a.value)}</span>`).join(', ') + `</div>`;
+       allergiesHTML += `<div style="font-size:10px; color:#94a3b8; margin-top:4px;">أبطلت: ` + revokedAlg.map(a => `<span style="text-decoration:line-through" title="Revoked by: ${sanitize(a.revokedBy)} - ${sanitize(a.reason)}">${sanitize(a.value)}</span> <span style="font-size:8px;">(د. ${sanitize(resolveStaffName(a.revokedBy))})</span>`).join(', ') + `</div>`;
     }
     const revokedChr = chrList.filter(a => a.status === 'revoked');
     if (revokedChr.length > 0) {
-       chronicHTML += `<div style="font-size:10px; color:#94a3b8; margin-top:4px;">أبطلت: ` + revokedChr.map(a => `<span style="text-decoration:line-through" title="Revoked by: ${sanitize(a.revokedBy)} - ${sanitize(a.reason)}">${sanitize(a.value)}</span>`).join(', ') + `</div>`;
+       chronicHTML += `<div style="font-size:10px; color:#94a3b8; margin-top:4px;">أبطلت: ` + revokedChr.map(a => `<span style="text-decoration:line-through" title="Revoked by: ${sanitize(a.revokedBy)} - ${sanitize(a.reason)}">${sanitize(a.value)}</span> <span style="font-size:8px;">(د. ${sanitize(resolveStaffName(a.revokedBy))})</span>`).join(', ') + `</div>`;
     }
   } else {
     allergiesHTML = (info.allergies || []).map(a => `<span class="tag">${sanitize(a)}</span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
@@ -1585,7 +1596,19 @@ function generatePatientFileHTML(uid) {
     <div class="pat-field" style="grid-column:span 2; background:#fef2f2; border:1px solid #fee2e2; border-radius:8px; margin-top:8px;">
        <div class="pfl" style="color:#dc2626; font-weight:bold;">⚠️ تنبيهات حرجة</div>
        <div style="margin-top:4px; display:flex; flex-direction:column; gap:4px;">
-         ${info.criticalAlerts.filter(a => a.status === 'active').map(a => `<div style="color:#b91c1c; font-size:0.85rem;">• ${a.value} <span style="background:#dc2626; color:white; padding:1px 4px; border-radius:3px; font-size:0.7rem; margin-right:4px;">${a.severity}</span> <span style="color:#94a3b8; font-size:0.75rem; margin-right:6px;">(بواسطة ${a.addedBy})</span></div>`).join('')}
+         ${info.criticalAlerts.filter(a => a.status === 'active').map(a => {
+            const resolveStaffName = (sId) => {
+              if (!sId || sId === 'Legacy' || sId === 'unknown') return 'طبيب سابق';
+              if (window.ArgonSession && ArgonSession.get()?.staffId === sId) return ArgonSession.get()?.displayName || 'طبيب';
+              if (p.visits) {
+                 for (const vk in p.visits) {
+                    if (p.visits[vk].doctorId === sId && p.visits[vk].docName) return p.visits[vk].docName;
+                 }
+              }
+              return 'طبيب مختص';
+            };
+            return `<div style="color:#b91c1c; font-size:0.85rem;">• ${a.value} <span style="background:#dc2626; color:white; padding:1px 4px; border-radius:3px; font-size:0.7rem; margin-right:4px;">${a.severity}</span> <span style="color:#94a3b8; font-size:0.75rem; margin-right:6px;">(بواسطة: د. ${sanitize(resolveStaffName(a.addedBy))})</span></div>`;
+         }).join('')}
        </div>
     </div>
     ` : ''}
