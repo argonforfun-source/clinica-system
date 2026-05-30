@@ -26,8 +26,8 @@ ArgonNID.BYPASS_REASONS = [
   { id: 'other',     label: '📝 سبب آخر (اكتب أدناه)' },
 ];
 
-ArgonNID.isValidNID   = (nid) => /^\\d{9,12}$/.test(String(nid||'').replace(/[\\s\\-]/g,''));
-ArgonNID.cleanNID     = (nid) => String(nid||'').replace(/[\\s\\-]/g,'').trim();
+ArgonNID.isValidNID   = (nid) => /^\d{9,12}$/.test(String(nid||'').replace(/[\s\-]/g,''));
+ArgonNID.cleanNID     = (nid) => String(nid||'').replace(/[\s\-]/g,'').trim();
 ArgonNID.findByNIDLocal = (nid, cache) => {
   const c = ArgonNID.cleanNID(nid);
   if (!ArgonNID.isValidNID(c)) return null;
@@ -66,14 +66,14 @@ ArgonNID.showGate = function(opts) {
 
   const overlay = document.createElement('div');
   overlay.id = '_nidGateOverlay';
-  overlay.style.cssText = \`
+  overlay.style.cssText = `
     position:fixed;inset:0;z-index:9999999;
     background:rgba(3,11,10,0.88);backdrop-filter:blur(12px);
     display:flex;align-items:center;justify-content:center;
     padding:20px;font-family:'Tajawal',sans-serif;direction:rtl;
-  \`;
+  `;
 
-  overlay.innerHTML = \`
+  overlay.innerHTML = `
     <div id="_nidGateCard" style="
       background:var(--panel,#0f172a);
       border:1px solid var(--border,#334155);
@@ -95,7 +95,7 @@ ArgonNID.showGate = function(opts) {
             تأكيد هوية المريض
           </div>
           <div style="font-size:.78rem;color:var(--muted,#94a3b8);margin-top:2px;">
-            ملف: <strong style="color:var(--teal,#0d9488);">\${_esc(patientName)}</strong>
+            ملف: <strong style="color:var(--teal,#0d9488);">${_esc(patientName)}</strong>
           </div>
         </div>
       </div>
@@ -169,10 +169,10 @@ ArgonNID.showGate = function(opts) {
           سبب التجاوز *
         </label>
         <div id="_nidReasonBtns" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px;">
-          \${ArgonNID.BYPASS_REASONS.map(r => \`
+          ${ArgonNID.BYPASS_REASONS.map(r => `
             <button
               class="_nidReasonBtn"
-              data-id="\${r.id}"
+              data-id="${r.id}"
               style="
                 padding:6px 13px;border-radius:20px;
                 border:1.5px solid var(--border,#334155);
@@ -180,8 +180,8 @@ ArgonNID.showGate = function(opts) {
                 font-family:'Tajawal',sans-serif;font-size:.78rem;font-weight:600;
                 cursor:pointer;transition:.15s;
               "
-            >\${r.label}</button>
-          \`).join('')}
+            >${r.label}</button>
+          `).join('')}
         </div>
 
         <div id="_nidOtherWrap" style="display:none;margin-bottom:12px;">
@@ -251,7 +251,7 @@ ArgonNID.showGate = function(opts) {
       </div>
 
     </div>
-  \`;
+  `;
 
   document.body.appendChild(overlay);
 
@@ -308,19 +308,19 @@ ArgonNID.showGate = function(opts) {
       if (conflict) {
         // ── TAB C: تعارض ──
         document.getElementById('_nidConflictMsg').innerHTML =
-          \`الرقم الوطني <strong style="font-family:monospace">\${nid}</strong> مسجّل مسبقاً لـ<br>
-           <strong style="color:var(--text,#f8fafc);font-size:.95rem">\${_esc(conflict.name)}</strong><br>
-           <span style="font-size:.72rem;opacity:.6">(UID: \${conflict.uid})</span>\`;
+          `الرقم الوطني <strong style="font-family:monospace">${nid}</strong> مسجّل مسبقاً لـ<br>
+           <strong style="color:var(--text,#f8fafc);font-size:.95rem">${_esc(conflict.name)}</strong><br>
+           <span style="font-size:.72rem;opacity:.6">(UID: ${conflict.uid})</span>`;
         tabA.style.display='none'; tabB.style.display='none'; tabC.style.display='block';
         saveBtn.disabled=false; saveBtn.textContent='✅ تحقق وافتح الملف';
         return;
       }
 
       // ✅ احفظ في Firebase
-      await db.ref(\`\${basePath}/patients/\${patientId}/info/nationalId\`).set(nid);
-      await db.ref(\`\${basePath}/mpi/\${patientId}/nationalId\`).set(nid).catch(()=>{});
+      await db.ref(`${basePath}/patients/${patientId}/info/nationalId`).set(nid);
+      await db.ref(`${basePath}/mpi/${patientId}/nationalId`).set(nid).catch(()=>{});
       await _logBypass(db, basePath, patientId, patientName, doctorId, doctorName,
-                       'nid_collected', \`تم جمع الرقم الوطني \${nid} من المريض\`, nid);
+                       'nid_collected', `تم جمع الرقم الوطني ${nid} من المريض`, nid);
 
       overlay.remove();
       if (typeof onComplete === 'function')
@@ -408,7 +408,7 @@ async function _logBypass(db, basePath, patientId, patientName,
     nid:          nid || null,
     type:         nid ? 'NID_COLLECTED' : 'NID_BYPASS',
   };
-  return db.ref(\`\${basePath}/nid_bypass_log\`).push(entry);
+  return db.ref(`${basePath}/nid_bypass_log`).push(entry);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -431,13 +431,13 @@ function _injectStyles(){
   if(document.getElementById('_nidGateStyle')) return;
   const s = document.createElement('style');
   s.id = '_nidGateStyle';
-  s.textContent = \`
+  s.textContent = `
     @keyframes _nidGateIn  { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
     @keyframes _nidShake    { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-7px)} 75%{transform:translateX(7px)} }
     #_nidGateCard           { animation:_nidGateIn .25s ease; }
     #_nidInp:focus          { border-color:var(--teal,#0d9488)!important; outline:none; }
     ._nidReasonBtn:hover    { border-color:rgba(245,158,11,.4)!important; color:var(--amber,#f59e0b)!important; }
     ._nidShake              { animation:_nidShake .35s ease; }
-  \`;
+  `;
   document.head.appendChild(s);
 }
