@@ -402,7 +402,7 @@ const ArgonEnterprise = {
                     ptsData.push({
                         "اسم المريض": p.info?.name || "-",
                         "رقم الهاتف": p.info?.phone || "-",
-                        "الرقم الوطني / الهوية": p.info?.natId || "-",
+                        "الرقم الوطني / الهوية": p.info?.nationalId || "",
                         "تاريخ الميلاد / العمر": p.info?.age || "-",
                         "الجنس": p.info?.gender === 'male' ? 'ذكر' : (p.info?.gender === 'female' ? 'أنثى' : '-'),
                         "تاريخ التسجيل": p.info?.createdAt ? new Date(p.info.createdAt).toLocaleDateString('ar-JO') : "-"
@@ -444,14 +444,13 @@ const ArgonEnterprise = {
             const docData = [];
             if (data.doctors) {
                 Object.values(data.doctors).forEach(d => {
-                    if(d.credentials) {
-                        docData.push({
-                            "اسم الطبيب": d.credentials.name || "-",
-                            "الهاتف": d.credentials.phone || "-",
-                            "التخصص": d.credentials.specialty || "-",
-                            "حالة الحساب": d.credentials.identityStatus === 'SUSPENDED' ? 'موقوف' : 'فعال'
-                        });
-                    }
+                    docData.push({
+                        "اسم الطبيب": d.name || "",
+                        "التخصص": d.specialty || "",
+                        "الرسوم (كشفية)": d.fee || "-",
+                        "أيام الدوام": d.workDays ? d.workDays.map(x => ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'][x]).join(', ') : "",
+                        "ساعات العمل": (d.workStart || "") + " - " + (d.workEnd || "")
+                    });
                 });
             }
             appendSheet(docData, "الكادر الطبي");
@@ -460,14 +459,11 @@ const ArgonEnterprise = {
             const staffData = [];
             if (data.staff) {
                 Object.values(data.staff).forEach(s => {
-                    if(s.credentials) {
-                        staffData.push({
-                            "الاسم": s.credentials.name || "-",
-                            "الهاتف": s.credentials.phone || "-",
-                            "الصلاحية (الدور)": s.credentials.role || "-",
-                            "حالة الحساب": s.credentials.identityStatus === 'SUSPENDED' ? 'موقوف' : 'فعال'
-                        });
-                    }
+                    staffData.push({
+                        "الاسم": s.name || "",
+                        "الهاتف": s.phone || "",
+                        "الصلاحية (الدور)": s.role || ""
+                    });
                 });
             }
             appendSheet(staffData, "طاقم العمل");
