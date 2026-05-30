@@ -342,6 +342,7 @@
       </div>
 
       <div class="ni" onclick="sw('docs',this)"><i class="fas fa-user-md"></i>إدارة الأطباء</div>
+      <div class="ni" onclick="sw('staff',this)"><i class="fas fa-users-cog"></i>إدارة طاقم العمل</div>
       <div class="ni" onclick="sw('settings',this)"><i class="fas fa-gear"></i>الإعدادات</div>
     </div>
     <div class="royal-foot">
@@ -509,7 +510,32 @@
       <div class="dgrid2" id="docGrid"></div>
     </div>
 
-    <!-- STAFF MODULE REMOVED -->
+    <!-- STAFF -->
+    <div id="staff" class="sec">
+      <div class="ph"><div><div class="pt">👥 إدارة طاقم العمل</div><div class="ps">إضافة وتعديل بيانات الموظفين والصلاحيات</div></div></div>
+      <div class="addpanel">
+        <div class="addrow2">
+          <div><label class="mfl">اسم الموظف *</label><input type="text" id="sftN" class="mfi" placeholder="الاسم الكامل"></div>
+          <div><label class="mfl">الدور / الوظيفة</label>
+            <select id="sftR" class="mfi">
+              <option value="reception">موظف استقبال</option>
+              <option value="pharmacist">صيدلي</option>
+              <option value="lab">فني مختبر</option>
+              <option value="radiology">فني أشعة</option>
+              <option value="admin">إدارة</option>
+            </select>
+          </div>
+          <div><label class="mfl">رقم الهاتف</label><input type="text" id="sftP" class="mfi" placeholder="اختياري"></div>
+          <div><label class="mfl">إيموجي</label><input type="text" id="sftE" class="mfi" value="👤"></div>
+        </div>
+        <div class="addrow2" style="margin-top:8px; align-items:flex-end;">
+          <div><label class="mfl" style="color:var(--teal)">كلمة مرور البوابة 🔒</label><input type="password" id="sftPass" class="mfi" placeholder="اكتب لتعيين كلمة مرور (اختياري)"></div>
+          <button class="badd" id="btnStaffAdd" onclick="addStaff()"><i class="fas fa-plus" style="margin-left:4px"></i>إضافة موظف</button>
+          <button class="badd" id="btnCancelStaffEdit" onclick="cancelStaffEdit()" style="display:none;background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)"><i class="fas fa-times" style="margin-left:4px"></i>تراجع</button>
+        </div>
+      </div>
+      <div class="dgrid2" id="staffGrid"></div>
+    </div>
 
     <!-- SETTINGS -->
     <div id="settings" class="sec">
@@ -1481,6 +1507,7 @@ let _staff = {};
 db.ref(BASE+'/staff').on('value', snap => {
   _staff = snap.val()||{};
   const sg=document.getElementById('staffGrid');
+  if(!sg) return;
   const keys=Object.keys(_staff);
   if(!keys.length){sg.innerHTML='<div style="color:var(--muted);font-size:.84rem;grid-column:1/-1">لا يوجد موظفين بعد</div>';return;}
   sg.innerHTML=keys.map(k=>{
@@ -1937,13 +1964,20 @@ function upLogo(inp) {
 // ── STAFF ACTIONS ──
 let editingStaffKey = null;
 function addStaff() {
-  const name=document.getElementById('sftN').value.trim();
-  const role=document.getElementById('sftR').value;
+  const sftN = document.getElementById('sftN');
+  const sftR = document.getElementById('sftR');
+  const sftP = document.getElementById('sftP');
+  const sftE = document.getElementById('sftE');
+  if (!sftN || !sftR) return;
+
+  const name = sftN.value.trim();
+  const role = sftR.value;
   if(!name){toast('⚠️ أدخل الاسم','err');return;}
   
   const staffObj = {
     name, role,
-    emoji:document.getElementById('sftE').value.trim()||'👤'
+    phone: sftP ? sftP.value.trim() : '',
+    emoji: sftE ? (sftE.value.trim() || '👤') : '👤'
   };
   
   if (editingStaffKey) {
@@ -1965,30 +1999,50 @@ function addStaff() {
 }
 
 function editStaff(k) {
+  const sftN = document.getElementById('sftN');
+  const sftR = document.getElementById('sftR');
+  const sftP = document.getElementById('sftP');
+  const sftE = document.getElementById('sftE');
+  if (!sftN || !sftR) return;
+
   editingStaffKey = k;
   const s = _staff[k];
-  document.getElementById('sftN').value = s.name;
-  document.getElementById('sftR').value = s.role || 'reception';
-  document.getElementById('sftE').value = s.emoji || '👤';
+  sftN.value = s.name || '';
+  sftR.value = s.role || 'reception';
+  if (sftP) sftP.value = s.phone || '';
+  if (sftE) sftE.value = s.emoji || '👤';
   
   const b = document.getElementById('btnStaffAdd');
-  b.innerHTML = '<i class="fas fa-save" style="margin-left:4px"></i>تحديث معلومات الموظف';
-  b.style.background = 'linear-gradient(135deg, var(--amber), #d97706)';
-  document.getElementById('btnCancelStaffEdit').style.display = 'block';
-  document.getElementById('sftN').focus();
+  if(b) {
+    b.innerHTML = '<i class="fas fa-save" style="margin-left:4px"></i>تحديث معلومات الموظف';
+    b.style.background = 'linear-gradient(135deg, var(--amber), #d97706)';
+  }
+  const btnC = document.getElementById('btnCancelStaffEdit');
+  if(btnC) btnC.style.display = 'block';
+  sftN.focus();
 }
 
 function cancelStaffEdit() {
   editingStaffKey = null;
-  document.getElementById('sftN').value = '';
-  document.getElementById('sftR').value = 'pharmacist';
-  document.getElementById('sftE').value = '👤';
-  document.getElementById('sftPass').value = '';
+  const sftN = document.getElementById('sftN');
+  const sftR = document.getElementById('sftR');
+  const sftP = document.getElementById('sftP');
+  const sftE = document.getElementById('sftE');
+  const sftPass = document.getElementById('sftPass');
+  
+  if(sftN) sftN.value = '';
+  if(sftR) sftR.value = 'reception';
+  if(sftP) sftP.value = '';
+  if(sftE) sftE.value = '👤';
+  if(sftPass) sftPass.value = '';
   
   const b = document.getElementById('btnStaffAdd');
-  b.innerHTML = '<i class="fas fa-plus" style="margin-left:4px"></i>إضافة موظف';
-  b.style.background = 'linear-gradient(135deg,var(--teal),var(--sky))';
-  document.getElementById('btnCancelStaffEdit').style.display = 'none';
+  if(b) {
+    b.innerHTML = '<i class="fas fa-plus" style="margin-left:4px"></i>إضافة موظف';
+    b.style.background = 'linear-gradient(135deg,var(--teal),var(--sky))';
+  }
+  const btnC = document.getElementById('btnCancelStaffEdit');
+  if(btnC) btnC.style.display = 'none';
 }
 
 // ── SET PASSWORD MODAL ──
