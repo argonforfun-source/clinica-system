@@ -1109,6 +1109,8 @@ function saveEditPatient() {
   const allergies = document.getElementById('epAllergies').value.trim().split(/[،,]/).map(s => s.trim()).filter(Boolean);
   const chronic = document.getElementById('epChronic').value.trim().split(/[،,]/).map(s => s.trim()).filter(Boolean);
   
+  const oldInfo = _patients[uid]?.info || {};
+
   // Wave 2 Diffing
   let finalAllergies = allergies;
   let finalChronic = chronic;
@@ -1166,8 +1168,8 @@ function saveEditPatient() {
     name: sanitize(name),
     phone: sanitize(phone),
     nationalId: nationalId ? sanitize(nationalId) : null,
-    dob: _dob_np || null,
-      age: _calcAge_np,
+    dob: _dob_ep || null,
+    age: _dob_ep ? window.ArgonCalcAge(_dob_ep) : null,
     gender: sanitize(gender),
     bloodType: sanitize(blood),
     allergies: finalAllergies.length ? finalAllergies : null,
@@ -1179,7 +1181,6 @@ function saveEditPatient() {
   };
 
   // ── AUDIT: Identity & Clinical Change Detection ──
-  const oldInfo = _patients[uid]?.info || {};
   const auditFields = ['name', 'phone', 'nationalId', 'age', 'gender', 'bloodType', 'allergies', 'chronicDiseases'];
   const changes = {};
   auditFields.forEach(field => {
