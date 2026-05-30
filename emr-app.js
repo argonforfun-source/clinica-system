@@ -717,15 +717,6 @@ function filterPatients() {
   const entries = Object.entries(_patients).filter(([uid, p]) => {
     const info = p.info || {};
 
-    // Enforce doctor isolation on patient list
-    if (allowedPatients !== null) {
-      const phone = info.phone || '';
-      const createdByMe = info.createdBy === loggedInDoctorId;
-      if (!createdByMe && !allowedPatients.has(uid) && !allowedPatients.has(phone)) {
-        return false;
-      }
-    }
-
     if (!q) return true;
     return (info.phone || '').includes(q) ||
       (info.name || '').toLowerCase().includes(q) ||
@@ -1343,28 +1334,51 @@ function generatePatientFileHTML(uid) {
     return dateTimeB.localeCompare(dateTimeA);
   });
 
-  // Demographics HTML
-  const allergiesHTML = (info.allergies || []).map(a => `<span class="tag">${sanitize(a)}</span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
-  const chronicHTML = (info.chronicDiseases || []).map(c => `<span class="tag blue">${sanitize(c)}</span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
+  let allergiesHTML = '';
+  let chronicHTML = '';
+
+  if (window.ArgonClinicalParser && window.ARGON_FEATURES && window.ARGON_FEATURES.ENABLE_CLINICAL_VERSIONING) {
+    const algList = ArgonClinicalParser.getClinicalList(info, 'allergies');
+    const chrList = ArgonClinicalParser.getClinicalList(info, 'chronicDiseases');
+
+    allergiesHTML = algList.filter(a => a.status === 'active').map(a => `<span class="tag" style="padding: 4px 8px;" title="Added by: ${sanitize(a.addedBy || 'Legacy')}">${sanitize(a.value)} <span style="font-size:0.65rem; opacity:0.7; margin-right:4px;">(د. ${sanitize(a.addedBy || 'سابق')})</span></span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
+    chronicHTML = chrList.filter(a => a.status === 'active').map(a => `<span class="tag blue" style="padding: 4px 8px;" title="Added by: ${sanitize(a.addedBy || 'Legacy')}">${sanitize(a.value)} <span style="font-size:0.65rem; opacity:0.7; margin-right:4px;">(د. ${sanitize(a.addedBy || 'سابق')})</span></span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
+    
+    const revokedAlg = algList.filter(a => a.status === 'revoked');
+    if (revokedAlg.length > 0) {
+       allergiesHTML += `<div style="font-size:10px; color:#94a3b8; margin-top:4px;">أبطلت: ` + revokedAlg.map(a => `<span style="text-decoration:line-through" title="Revoked by: ${sanitize(a.revokedBy)} - ${sanitize(a.reason)}">${sanitize(a.value)}</span>`).join(', ') + `</div>`;
+    }
+    const revokedChr = chrList.filter(a => a.status === 'revoked');
+    if (revokedChr.length > 0) {
+       chronicHTML += `<div style="font-size:10px; color:#94a3b8; margin-top:4px;">أبطلت: ` + revokedChr.map(a => `<span style="text-decoration:line-through" title="Revoked by: ${sanitize(a.revokedBy)} - ${sanitize(a.reason)}">${sanitize(a.value)}</span>`).join(', ') + `</div>`;
+    }
+  } else {
+    allergiesHTML = (info.allergies || []).map(a => `<span class="tag">${sanitize(a)}</span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
+    chronicHTML = (info.chronicDiseases || []).map(c => `<span class="tag blue">${sanitize(c)}</span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
+  }
 
   let visitsTimelineHTML = `<div style="color:var(--muted);text-align:center;padding:20px;">لا يوجد زيارات سابقة</div>`;
   if (visits.length) {
     let lastDate = null;
     visitsTimelineHTML = visits.map(([vk, v]) => {
       // ── VISIT LOCK & ARCHIVE STATUS ──
-      const session       = ArgonSession.get() || {};
-      const isVisitOwner  = v.docKey === session.staffId;
-      const isExpired     = v.timestamp && (Date.now() - v.timestamp) > 86400000;
+      const session       = window.ArgonSession ? window.ArgonSession.get() : {};
+      const canEdit       = window.ArgonPermissions ? window.ArgonPermissions.canEditVisit(v, session.staffId) : false;
       const isArchived    = v.status === 'archived';
-      const isLocked      = !isVisitOwner || isExpired || v.signedOff;
+      const isSigned      = v.status === 'signed' || v.signedOff;
 
-      const lockBadge = isLocked
+      const lockBadge = !canEdit
         ? `<span style="background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;margin-right:6px">🔒 قراءة فقط</span>`
         : `<span style="background:rgba(13,148,136,0.1);color:var(--teal);border:1px solid rgba(13,148,136,0.25);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;margin-right:6px">✏️ قابل للتعديل</span>`;
 
-      const archiveBadge = isArchived
-        ? `<span style="background:rgba(239,68,68,0.08);color:#f87171;border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;text-decoration:line-through;margin-right:6px">🗃️ مؤرشفة</span>`
-        : '';
+      let stateBadge = '';
+      if (isArchived) {
+        stateBadge = `<span style="background:rgba(239,68,68,0.08);color:#f87171;border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;text-decoration:line-through;margin-right:6px">🗃️ مؤرشفة</span>`;
+      } else if (isSigned) {
+        stateBadge = `<span style="background:rgba(16,185,129,0.1);color:var(--green);border:1px solid rgba(16,185,129,0.2);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;margin-right:6px">✍️ موقعة إلكترونياً</span>`;
+      }
+      
+      const archiveBadge = stateBadge; // for compatibility with legacy variable below
       const archivedStyle = isArchived ? 'opacity:0.5;' : '';
       
       // أزرار التحكم تظهر إذا كان يملك الصلاحية
@@ -1444,11 +1458,13 @@ function generatePatientFileHTML(uid) {
         <div class="tl-item" style="${archivedStyle}">
           <div class="tl-dot ${dotColor}"></div>
           <div class="tl-card" style="${cardStyle}" onclick="this.classList.toggle('open')">
-            <div class="tl-head">
-              <span class="tl-date">${v.date} · ${v.time}</span>
+            <div class="tl-head" style="justify-content: space-between; align-items:flex-start;">
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <span class="tl-date">${v.date} · ${v.time}</span>
+                <span class="tl-doc" style="background:#0f172a; color:#f8fafc; padding:4px 10px; border-radius:8px; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(0,0,0,0.1); width:fit-content; border: 1px solid #334155;"><i class="fas ${cardIcon}"></i> الطبيب: ${sanitize(v.docName)}</span>
+              </div>
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                ${lockBadge}${stateBadge}
-                <span class="tl-doc"><i class="fas ${cardIcon}"></i> ${sanitize(v.docName)}</span>
+                ${lockBadge}${archiveBadge}
               </div>
             </div>
             <div class="tl-diag">${sanitize(v.diagnosis || 'زيارة طبية')}</div>
