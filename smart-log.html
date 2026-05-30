@@ -92,6 +92,7 @@
     <div class="live-dot"></div>
     <span style="font-size:.75rem;color:var(--green);font-weight:700">مباشر</span>
   </div>
+  <button class="tbtn" id="btnScan" onclick="scanDatabaseForDuplicates()" style="margin-right:8px;background:rgba(14,165,233,.1);color:var(--sky);border-color:rgba(14,165,233,.3);">🔬 فحص السجلات القديمة</button>
   <button class="tbtn" onclick="clearLogs()" style="margin-right:0;color:#fca5a5;background:rgba(239,68,68,.05);border-color:rgba(239,68,68,.2);">🗑️ مسح السجل</button>
   <button class="tbtn" style="margin-right:8px" onclick="exportCSV()">📊 تصدير CSV</button>
 </div>
@@ -192,18 +193,114 @@ db.ref(BASE + '/argon_config/shadowMode').on('value', snap => {
 
 // ── الاستماع للـ smart_log ──
 let isInit = true;
-db.ref(BASE + '/smart_log').orderByKey().limitToLast(200).on('child_added', snap => {
-  _logs[snap.key] = { _key: snap.key, ...snap.val() };
-  if (!isInit) renderTable(snap.key); // أضف الصف الجديد مباشرة
-  else renderTable();
-});
-db.ref(BASE + '/smart_log').once('value', () => {
-  setTimeout(() => { isInit = false; renderTable(); }, 300);
-});
-db.ref(BASE + '/smart_log').on('child_removed', snap => {
-  delete _logs[snap.key];
-  renderTable();
-});
+function startLiveLogs() {
+  db.ref(BASE + '/smart_log').orderByKey().limitToLast(200).on('child_added', snap => {
+    _logs[snap.key] = { _key: snap.key, ...snap.val() };
+    if (!isInit) renderTable(snap.key);
+    else renderTable();
+  });
+  db.ref(BASE + '/smart_log').once('value', () => {
+    setTimeout(() => { isInit = false; renderTable(); }, 300);
+  });
+  db.ref(BASE + '/smart_log').on('child_removed', snap => {
+    delete _logs[snap.key];
+    renderTable();
+  });
+}
+startLiveLogs();
+
+// ── فحص السجلات القديمة (Audit) ──
+async function scanDatabaseForDuplicates() {
+  const btn = document.getElementById('btnScan');
+  btn.textContent = '⏳ جاري الفحص...';
+  btn.disabled = true;
+
+  try {
+    const snap = await db.ref(BASE + '/patients').once('value');
+    const patientsData = snap.val() || {};
+    const patients = Object.entries(patientsData).map(([k, v]) => ({ id: k, ...v.info }));
+
+    const normalize = (str) => {
+        if (!str) return '';
+        let s = str.trim().toLowerCase();
+        s = s.replace(/أ|إ|آ/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/عبد ال/g, 'عبدال').replace(/ابو /g, 'ابو').replace(/\s+/g, ' ');
+        return s;
+    };
+    const cleanPhone = p => p ? p.replace(/\D/g, '') : '';
+
+    const auditLogs = [];
+    
+    // Pairwise comparison of all historical patients
+    for (let i = 0; i < patients.length; i++) {
+        const p1 = patients[i];
+        for (let j = i + 1; j < patients.length; j++) {
+            const p2 = patients[j];
+            
+            const n1 = normalize(p1.name);
+            const n2 = normalize(p2.name);
+            const ph1 = cleanPhone(p1.phone);
+            const ph2 = cleanPhone(p2.phone);
+            const nid1 = p1.nationalId;
+            const nid2 = p2.nationalId;
+
+            let result = null;
+            let conf = 0;
+            let reason = '';
+
+            const isSamePhone = ph1 && ph2 && ph1 === ph2;
+            const isSameName = n1 && n2 && n1 === n2;
+            const isSameNid = nid1 && nid2 && nid1 === nid2;
+
+            if (isSameNid) {
+                result = 'EXACT'; conf = 1.0; reason = 'تطابق الرقم الوطني';
+            } else if (isSameName && isSamePhone) {
+                result = 'EXACT'; conf = 0.98; reason = 'تطابق تام (الاسم والهاتف)';
+            } else if (isSamePhone && !isSameName) {
+                if (n1.includes(n2) || n2.includes(n1)) {
+                    result = 'STRONG'; conf = 0.85; reason = 'هاتف مطابق + جزء من الاسم';
+                } else {
+                    result = 'POSSIBLE'; conf = 0.6; reason = 'هاتف مطابق (اسم مختلف)';
+                }
+            } else if (isSameName && !isSamePhone) {
+                result = 'POSSIBLE'; conf = 0.65; reason = 'اسم مطابق (هاتف مختلف)';
+            }
+
+            if (result) {
+                auditLogs.push({
+                    timestamp: new Date(p1.createdAt || 0).getTime(),
+                    isoTime: p1.createdAt || new Date().toISOString(),
+                    source: 'فحص_قاعدة_البيانات',
+                    triggeredBy: 'Audit',
+                    incoming: { name: p1.name, phone: p1.phone },
+                    decision: { result, confidence: conf, reason, matchedName: p2.name },
+                    wouldHaveCreatedDuplicate: true
+                });
+            }
+        }
+    }
+
+    // إيقاف الاستماع المباشر
+    db.ref(BASE + '/smart_log').off();
+    
+    _logs = {};
+    auditLogs.forEach((l, idx) => _logs['audit_'+idx] = l);
+    
+    // تفعيل فلتر الكل
+    _filter = 'all';
+    document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('act','act-exact','act-strong','act-possible','act-new','act-dup'));
+    document.getElementById('fAll').classList.add('act');
+
+    renderTable();
+    alert(`✅ اكتمل الفحص! تم العثور على ${auditLogs.length} تكرار محتمل في السجلات القديمة.`);
+
+  } catch (e) {
+    console.error(e);
+    alert('❌ حدث خطأ أثناء الفحص');
+  }
+
+  btn.textContent = '🔬 فحص السجلات القديمة';
+  btn.disabled = false;
+}
 
 function setFilter(f, btn) {
   _filter = f;
