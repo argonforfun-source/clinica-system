@@ -1132,14 +1132,9 @@ function saveEditPatient() {
   });
 
   if (Object.keys(changes).length > 0) {
-    const session = ArgonSession.get() || {};
-    const auditId = db.ref().child('audit').push().key;
-    db.ref(`${BASE}/patients/${uid}/audit/identity/${auditId}`).set({
-      changedBy:    session.staffId     || 'unknown',
-      changedName:  session.displayName || 'unknown',
-      timestamp:    new Date().toISOString(),
-      changes
-    }).catch(err => console.error('Identity audit failed:', err));
+    if (window.ArgonAuditLog) {
+      window.ArgonAuditLog.log('PATIENT_IDENTITY', uid, 'UPDATE', oldInfo, updates, 'Profile Edit');
+    }
   }
   // ── END AUDIT ──
 
@@ -1317,9 +1312,13 @@ function generatePatientFileHTML(uid) {
         : '';
       const archivedStyle = isArchived ? 'opacity:0.5;' : '';
       
-      // زر الأرشفة يظهر فقط للمالك وإذا ليست مؤرشفة بالفعل
-      const archiveBtn = (!isArchived && isVisitOwner && !isExpired)
+      // أزرار التحكم تظهر إذا كان يملك الصلاحية
+      const archiveBtn = (!isArchived && canEdit)
         ? `<button class="btn-secondary btn-sm" onclick="event.stopPropagation();archiveVisit('${uid}','${vk}')" style="color:var(--muted);border-color:rgba(239,68,68,0.3)"><i class="fas fa-archive"></i> أرشفة</button>`
+        : '';
+        
+      const signOffBtn = (!isArchived && !isSigned && canEdit)
+        ? `<button class="btn-secondary btn-sm" onclick="event.stopPropagation();signOffVisit('${uid}','${vk}')" style="color:var(--teal);border-color:rgba(13,148,136,0.3)"><i class="fas fa-file-signature"></i> توقيع وإقفال</button>`
         : '';
       // ── END VISIT LOCK ──
 
@@ -1393,7 +1392,7 @@ function generatePatientFileHTML(uid) {
             <div class="tl-head">
               <span class="tl-date">${v.date} · ${v.time}</span>
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                ${lockBadge}${archiveBadge}
+                ${lockBadge}${stateBadge}
                 <span class="tl-doc"><i class="fas ${cardIcon}"></i> ${sanitize(v.docName)}</span>
               </div>
             </div>
@@ -1415,6 +1414,7 @@ function generatePatientFileHTML(uid) {
               
               <div style="margin-top:14px;display:flex;justify-content:flex-end;gap:8px">
                 ${archiveBtn}
+                ${signOffBtn}
                 <button class="btn-secondary btn-sm" onclick="event.stopPropagation();printVisitSummary('${vk}')"><i class="fas fa-print"></i> طباعة الملخص</button>
               </div>
             </div>
