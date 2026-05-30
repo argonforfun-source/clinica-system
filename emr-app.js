@@ -2410,13 +2410,31 @@ function printVisitSummary(vk) {
     </tr>
   `).join('') || '<tr><td colspan="4" style="text-align:center;padding:8px;color:#888">لا يوجد أدوية موصوفة</td></tr>';
 
+  let printTitle = '📄 ملخص زيارة طبية / وصفة إلكترونية';
+  let sigTitle = 'توقيع وختم الطبيب المعالج:';
+  let showRx = true;
+
+  if (v.docKey === 'lab') {
+    printTitle = '🔬 تقرير فحوصات مخبرية';
+    sigTitle = 'توقيع وختم المختبر:';
+    showRx = false;
+  } else if (v.docKey === 'radiology') {
+    printTitle = '🩻 تقرير صور أشعة';
+    sigTitle = 'توقيع طبيب الأشعة:';
+    showRx = false;
+  } else if (v.docKey === 'pharmacist') {
+    printTitle = '💊 تقرير صرف أدوية';
+    sigTitle = 'توقيع الصيدلاني:';
+    showRx = false;
+  }
+
   const w = window.open('', '_blank');
   w.document.write(`
     <!DOCTYPE html>
     <html lang="ar" dir="rtl">
     <head>
       <meta charset="UTF-8">
-      <title>وصفة طبية - ${sanitize(p.info.name)}</title>
+      <title>${printTitle} - ${sanitize(p.info.name)}</title>
       <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
       <style>
         body { font-family:'Tajawal',sans-serif; margin:40px; color:#333; line-height:1.6 }
@@ -2441,17 +2459,17 @@ function printVisitSummary(vk) {
         </div>
       </div>
       
-      <h2>📄 ملخص زيارة طبية / وصفة إلكترونية</h2>
+      <h2>${printTitle}</h2>
       <div class="p-grid">
         <div class="p-field"><b>المريض:</b> ${sanitize(p.info.name)}</div>
-        <div class="p-field"><b>رقم الهاتف:</b> ${sanitize(activePatientId)}</div>
+        <div class="p-field"><b>رقم الهاتف:</b> <span dir="ltr">${sanitize(p.info.phone || '—')}</span></div>
         <div class="p-field"><b>العمر/الجنس:</b> ${p.info.age || '—'} سنة / ${p.info.gender || '—'}</div>
         <div class="p-field"><b>تاريخ الزيارة:</b> ${v.date} · ${v.time}</div>
       </div>
 
       <div style="margin-bottom:20px">
-        <b>🩺 التشخيص الرئيسي:</b> ${sanitize(v.diagnosis || 'فحص عام')}<br>
-        <b>🔍 الشكوى:</b> ${sanitize(v.complaint || 'مراجعة')}
+        <b>🩺 التشخيص/الموضوع:</b> ${sanitize(v.diagnosis || 'فحص عام')}<br>
+        <b>🔍 التفاصيل:</b> ${sanitize(v.complaint || '—')}
       </div>
 
       ${v.vitals?.temp || v.vitals?.bp ? `
@@ -2463,6 +2481,7 @@ function printVisitSummary(vk) {
         </div>
       ` : ''}
 
+      ${showRx ? `
       <h3>💊 الأدوية الموصوفة (Rx):</h3>
       <table class="rx-table">
         <thead>
@@ -2477,12 +2496,13 @@ function printVisitSummary(vk) {
           ${rx}
         </tbody>
       </table>
+      ` : ''}
 
-      ${v.notes ? `<div style="margin-top:20px"><b>📝 توجيهات الطبيب:</b><p>${sanitize(v.notes)}</p></div>` : ''}
+      ${v.notes ? `<div style="margin-top:20px"><b>📝 تقرير وتوجيهات:</b><p style="white-space: pre-wrap;">${sanitize(v.notes)}</p></div>` : ''}
 
       <div class="sig">
-        توقيع وختم الطبيب المعالج:<br><br>
-        د. ${sanitize(v.docName)}
+        ${sigTitle}<br><br>
+        <span style="color:#0f766e">${sanitize(v.docName)}</span>
       </div>
 
       <script>window.onload = () => { window.print(); window.close(); }</script>
