@@ -2661,58 +2661,20 @@
         nidErr.style.display = 'none';
       }
 
-      // ── العمر: اختياري لكن إذا أُدخل يجب أن يكون منطقياً ──
-      const ageNum = parseInt(ageRaw, 10);
-      const ageInp = document.getElementById('pAge');
-
-      if (ageRaw !== '') {
-        // تحقق: إذا أدخل سنة ميلاد (4 أرقام تبدأ بـ 19 أو 20)
-        if (/^(19|20)\d{2}$/.test(ageRaw)) {
-          ageInp.classList.add('err');
-          ageInp.style.outline = '2px solid var(--red)';
-          // احسب العمر الصحيح وضعه تلقائياً
-          const calculatedAge = new Date().getFullYear() - parseInt(ageRaw, 10);
-          if (calculatedAge > 0 && calculatedAge < 130) {
-            ageInp.value = calculatedAge;
-            ageInp.classList.remove('err');
-            ageInp.style.outline = '';
-            // أظهر تلميح لطيف
-            _showAgeHint(ageInp, تم التحويل تلقائياً:  سنة);
-          } else {
-            ok = false;
-            _showAgeHint(ageInp, '⚠️ أدخل العمر بالسنوات وليس سنة الميلاد');
-          }
-        } else if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
-          ageInp.classList.add('err');
-          _showAgeHint(ageInp, '⚠️ العمر يجب أن يكون بين 1 و120 سنة');
-          ok = false;
-        } else {
-          ageInp.classList.remove('err');
-          ageInp.style.outline = '';
-          _removeAgeHint(ageInp);
-        }
+            // تاريخ الميلاد اختياري — لكن إن أُدخل يجب أن يكون صحيحاً
+      const _dobCheck = window.ArgonValidateDOB(_dobVal);
+      const _dobInp   = document.getElementById('pDob');
+      const _dobErr   = document.getElementById('pDobErr');
+      if (_dobVal && !_dobCheck.ok) {
+        _dobInp?.classList.add('err');
+        if (_dobErr) { _dobErr.textContent = _dobCheck.msg; _dobErr.style.display = 'block'; }
+        ok = false;
+      } else {
+        _dobInp?.classList.remove('err');
+        if (_dobErr) _dobErr.style.display = 'none';
       }
 
       if (ok) goStep(2);
-    }
-    
-    // دالة مساعدة: تعرض تلميح تحت حقل العمر
-    function _showAgeHint(inp, msg) {
-      let hint = inp.parentElement.querySelector('._age-hint');
-      if (!hint) {
-        hint = document.createElement('div');
-        hint.className = '_age-hint';
-        hint.style.cssText = 'font-size:.72rem;margin-top:4px;padding:5px 9px;border-radius:7px;';
-        inp.parentElement.appendChild(hint);
-      }
-      const isOk = !msg.includes('⚠️');
-      hint.style.background = isOk ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.07)';
-      hint.style.color = isOk ? 'var(--green)' : 'var(--red)';
-      hint.textContent = msg;
-    }
-    function _removeAgeHint(inp) {
-      const hint = inp.parentElement.querySelector('._age-hint');
-      if (hint) hint.remove();
     }
     document.getElementById('s1').querySelectorAll && document.querySelectorAll && (function () {
       // Attach validation to step 1 next button
