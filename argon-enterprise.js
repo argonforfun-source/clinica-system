@@ -50,13 +50,16 @@ window.ArgonValidateDOB = function(dob) {
   return { ok: true, age };
 };
 
-﻿/**
- * ARGON MEDICAL OS â€” Enterprise Features v4.0
+﻿window.ARGON_TEXT_ENCODING = 'UTF-8'; // Phase 5: Permanent Protection
+
+/**
+ * ARGON MEDICAL OS — Enterprise Features v4.0
+
  * PDF Generation (RTL), Excel Export, Advanced Optimizations
  */
 
 const ArgonEnterprise = {
-    // â”€â”€ 1. PDF INVOICING (RTL) â”€â”€
+    // ── 1. PDF INVOICING (RTL) ──
     PDF: {
         async generateInvoice(clinicSettings, patientData, items, total, invoiceNo) {
             // Create a hidden div for the invoice
@@ -89,26 +92,26 @@ const ArgonEnterprise = {
                             <p style="margin:5px 0;color:#555">${clinicSettings.address || ''} | ${clinicSettings.phone || ''}</p>
                         </div>
                         <div style="text-align:left">
-                            <h2 style="margin:0;color:#333">ظپط§طھظˆط±ط© ط¶ط±ظٹط¨ظٹط©</h2>
-                            <p style="margin:5px 0;color:#555">ط±ظ‚ظ…: ${invoiceNo}</p>
-                            <p style="margin:5px 0;color:#555">ط§ظ„طھط§ط±ظٹط®: ${dateStr}</p>
+                            <h2 style="margin:0;color:#333">فاتورة ضريبية</h2>
+                            <p style="margin:5px 0;color:#555">رقم: ${invoiceNo}</p>
+                            <p style="margin:5px 0;color:#555">التاريخ: ${dateStr}</p>
                         </div>
                     </div>
                     
                     <div style="margin-bottom:30px;background:#f8f9fa;padding:15px;border-radius:8px">
-                        <h3 style="margin:0 0 10px;color:#0d9488">ط¨ظٹط§ظ†ط§طھ ط§ظ„ظ…ط±ظٹط¶:</h3>
-                        <p style="margin:0"><strong>ط§ظ„ط§ط³ظ…:</strong> ${patientData.name}</p>
-                        <p style="margin:5px 0 0"><strong>ط§ظ„ظ‡ط§طھظپ:</strong> ${patientData.phone}</p>
+                        <h3 style="margin:0 0 10px;color:#0d9488">بيانات المريض:</h3>
+                        <p style="margin:0"><strong>الاسم:</strong> ${patientData.name}</p>
+                        <p style="margin:5px 0 0"><strong>الهاتف:</strong> ${patientData.phone}</p>
                     </div>
 
                     <table style="width:100%;border-collapse:collapse;margin-bottom:30px;text-align:right">
                         <thead>
                             <tr style="background:#0d9488;color:#fff">
                                 <th style="padding:10px">#</th>
-                                <th style="padding:10px">ط§ظ„ط¨ظٹط§ظ†</th>
-                                <th style="padding:10px">ط§ظ„ظƒظ…ظٹط©</th>
-                                <th style="padding:10px">ط§ظ„ط³ط¹ط± ط§ظ„ط¥ظپط±ط§ط¯ظٹ</th>
-                                <th style="padding:10px">ط§ظ„ظ…ط¬ظ…ظˆط¹</th>
+                                <th style="padding:10px">البيان</th>
+                                <th style="padding:10px">الكمية</th>
+                                <th style="padding:10px">السعر الإفرادي</th>
+                                <th style="padding:10px">المجموع</th>
                             </tr>
                         </thead>
                         <tbody>${itemsHtml}</tbody>
@@ -117,15 +120,15 @@ const ArgonEnterprise = {
                     <div style="display:flex;justify-content:flex-end">
                         <div style="width:300px;background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #ddd">
                             <h2 style="margin:0;color:#0d9488;display:flex;justify-content:space-between">
-                                <span>ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ:</span>
+                                <span>الإجمالي:</span>
                                 <span>${total.toFixed(2)} JOD</span>
                             </h2>
                         </div>
                     </div>
                     
                     <div style="margin-top:50px;text-align:center;color:#777;font-size:12px;border-top:1px solid #ddd;padding-top:20px">
-                        ط´ظƒط±ط§ظ‹ ظ„ط«ظ‚طھظƒظ… ط¨ظ†ط§. ظ…ط¹ طھظ…ظ†ظٹط§طھظ†ط§ ظ„ظƒظ… ط¨ط§ظ„طµط­ط© ظˆط§ظ„ط¹ط§ظپظٹط©.
-                        <br>طھظ… ط¥ظ†ط´ط§ط، ظ‡ط°ظ‡ ط§ظ„ظپط§طھظˆط±ط© ط¨ظˆط§ط³ط·ط© ARGON Medical OS
+                        شكراً لثقتكم بنا. مع تمنياتنا لكم بالصحة والعافية.
+                        <br>تم إنشاء هذه الفاتورة بواسطة ARGON Medical OS
                     </div>
                 </div>
             `;
@@ -190,23 +193,23 @@ const ArgonEnterprise = {
                         <div style="display:flex;justify-content:space-between;border-bottom:2px solid #0d9488;padding-bottom:20px;margin-bottom:20px">
                             <div>
                                 <h1 style="color:#0d9488;margin:0;font-size:2rem">${clinicSettings.name}</h1>
-                                <p style="margin:8px 0 0;color:#64748b;font-weight:600">ط¯. ${docName}</p>
+                                <p style="margin:8px 0 0;color:#64748b;font-weight:600">د. ${docName}</p>
                                 <p style="margin:5px 0 0;color:#94a3b8;font-size:0.9rem">${clinicSettings.address || ''} | ${clinicSettings.phone || ''}</p>
                             </div>
                             <div style="text-align:left">
-                                <h2 style="margin:0;color:#1e293b;font-size:1.5rem">ظˆطµظپط© ط·ط¨ظٹط© (Rx)</h2>
-                                <p style="margin:8px 0 0;color:#64748b">ط§ظ„طھط§ط±ظٹط®: ${dateStr}</p>
+                                <h2 style="margin:0;color:#1e293b;font-size:1.5rem">وصفة طبية (Rx)</h2>
+                                <p style="margin:8px 0 0;color:#64748b">التاريخ: ${dateStr}</p>
                             </div>
                         </div>
                         
                         <div style="margin-bottom:30px;background:#f8fafc;padding:15px 20px;border-radius:8px;border:1px solid #e2e8f0;display:flex;justify-content:space-between">
                             <div>
-                                <h3 style="margin:0 0 10px;color:#0d9488;font-size:1.1rem">ط§ظ„ظ…ط±ظٹط¶:</h3>
+                                <h3 style="margin:0 0 10px;color:#0d9488;font-size:1.1rem">المريض:</h3>
                                 <p style="margin:0;font-weight:700;color:#1e293b;font-size:1.2rem">${patientData.name}</p>
                             </div>
                             <div style="text-align:left">
-                                <p style="margin:0;color:#64748b">ط§ظ„ط¹ظ…ط±: ${patientData.age || '-'} ط³ظ†ط©</p>
-                                <p style="margin:5px 0 0;color:#64748b">ط§ظ„ط¬ظ†ط³: ${patientData.gender === 'male' ? 'ط°ظƒط±' : (patientData.gender === 'female' ? 'ط£ظ†ط«ظ‰' : '-')}</p>
+                                <p style="margin:0;color:#64748b">العمر: ${patientData.age || '-'} سنة</p>
+                                <p style="margin:5px 0 0;color:#64748b">الجنس: ${patientData.gender === 'male' ? 'ذكر' : (patientData.gender === 'female' ? 'أنثى' : '-')}</p>
                             </div>
                         </div>
 
@@ -216,10 +219,10 @@ const ArgonEnterprise = {
                             <thead>
                                 <tr style="background:#f1f5f9;color:#475569">
                                     <th style="padding:12px 15px;border-radius:0 8px 8px 0">#</th>
-                                    <th style="padding:12px 15px">ط§ط³ظ… ط§ظ„ط¹ظ„ط§ط¬</th>
-                                    <th style="padding:12px 15px">ط§ظ„ط¬ط±ط¹ط©</th>
-                                    <th style="padding:12px 15px">ط§ظ„طھظƒط±ط§ط±</th>
-                                    <th style="padding:12px 15px;border-radius:8px 0 0 8px">ط§ظ„ظ…ط¯ط©</th>
+                                    <th style="padding:12px 15px">اسم العلاج</th>
+                                    <th style="padding:12px 15px">الجرعة</th>
+                                    <th style="padding:12px 15px">التكرار</th>
+                                    <th style="padding:12px 15px;border-radius:8px 0 0 8px">المدة</th>
                                 </tr>
                             </thead>
                             <tbody>${medsHtml}</tbody>
@@ -227,23 +230,23 @@ const ArgonEnterprise = {
 
                         ${prescNotes ? `
                         <div style="margin-top:20px;padding:15px;border-right:4px solid #f59e0b;background:#fffbeb;border-radius:8px;color:#b45309">
-                            <h4 style="margin:0 0 5px">طھط¹ظ„ظٹظ…ط§طھ ط¥ط¶ط§ظپظٹط©:</h4>
+                            <h4 style="margin:0 0 5px">طھط¹ظ„ظٹظ…ط§ت إضافية:</h4>
                             <p style="margin:0">${prescNotes.replace(/\n/g, '<br>')}</p>
                         </div>
                         ` : ''}
 
                         <div style="margin-top:60px;display:flex;justify-content:space-between;align-items:flex-end">
                             <div style="color:#94a3b8;font-size:0.85rem">
-                                ظ…ظ„ط§ط­ط¸ط©: ظ‡ط°ظ‡ ط§ظ„ظˆطµظپط© طµط§ظ„ط­ط© ظ„ظ…ط¯ط© 3 ط£ظٹط§ظ… ظ…ظ† طھط§ط±ظٹط® ط§ظ„ط¥طµط¯ط§ط±.
+                                ملاحظة: هذه الوصفة صالحة لمدة 3 أيام من تاريخ الإصدار.
                             </div>
                             <div style="text-align:center;width:200px">
                                 <div style="border-bottom:1px dashed #cbd5e1;margin-bottom:10px;height:40px"></div>
-                                <div style="color:#475569;font-weight:700">طھظˆظ‚ظٹط¹ ط§ظ„ط·ط¨ظٹط¨ ظˆط®طھظ… ط§ظ„ط¹ظٹط§ط¯ط©</div>
+                                <div style="color:#475569;font-weight:700">توقيع الطبيب وختم العيادة</div>
                             </div>
                         </div>
                         
                         <div style="margin-top:40px;text-align:center;color:#94a3b8;font-size:0.8rem;border-top:1px solid #e2e8f0;padding-top:20px">
-                            ظ…ط¹ طھظ…ظ†ظٹط§طھظ†ط§ ظ„ظƒظ… ط¨ط§ظ„ط´ظپط§ط، ط§ظ„ط¹ط§ط¬ظ„<br>طھظ… ط¥ظ†ط´ط§ط، ظ‡ط°ظ‡ ط§ظ„ظˆطµظپط© ط¨ظˆط§ط³ط·ط© ARGON EMR
+                            مع تمنياتنا لكم ط¨ط§ظ„ط´ظپط§ء العاجل<br>تم إنشاء هذه الوصفة بواسطة ARGON EMR
                         </div>
                     </div>
                 </div>
@@ -284,18 +287,18 @@ const ArgonEnterprise = {
                 <div style="margin-bottom:20px;border:1px solid #e2e8f0;border-radius:12px;padding:20px;page-break-inside:avoid">
                     <div style="display:flex;justify-content:space-between;border-bottom:1px solid #f1f5f9;padding-bottom:10px;margin-bottom:15px">
                         <div style="font-weight:800;color:#0d9488">${v.date} - ${v.time}</div>
-                        <div style="color:#64748b;font-weight:700">ط¯. ${v.docName}</div>
+                        <div style="color:#64748b;font-weight:700">د. ${v.docName}</div>
                     </div>
                     
-                    ${v.complaint ? `<div style="margin-bottom:10px"><strong style="color:#475569">ط§ظ„ط´ظƒظˆظ‰ ط§ظ„ط±ط¦ظٹط³ظٹط©:</strong><p style="margin:5px 0 0;color:#1e293b">${v.complaint}</p></div>` : ''}
-                    ${v.diagnosis ? `<div style="margin-bottom:10px"><strong style="color:#475569">ط§ظ„طھط´ط®ظٹطµ ط§ظ„ظ†ظ‡ط§ط¦ظٹ:</strong><p style="margin:5px 0 0;color:#1e293b">${v.diagnosis}</p></div>` : ''}
-                    ${v.notes ? `<div style="margin-bottom:10px"><strong style="color:#475569">ط§ظ„ظ…ظ„ط§ط­ط¸ط§طھ ط§ظ„ط·ط¨ظٹط©:</strong><p style="margin:5px 0 0;color:#1e293b">${v.notes}</p></div>` : ''}
+                    ${v.complaint ? `<div style="margin-bottom:10px"><strong style="color:#475569">الشكوى الرئيسية:</strong><p style="margin:5px 0 0;color:#1e293b">${v.complaint}</p></div>` : ''}
+                    ${v.diagnosis ? `<div style="margin-bottom:10px"><strong style="color:#475569">التشخيص ط§ظ„ظ†ظ‡ط§ط¦ي:</strong><p style="margin:5px 0 0;color:#1e293b">${v.diagnosis}</p></div>` : ''}
+                    ${v.notes ? `<div style="margin-bottom:10px"><strong style="color:#475569">ط§ظ„ظ…ظ„ط§ط­ط¸ط§ت الطبية:</strong><p style="margin:5px 0 0;color:#1e293b">${v.notes}</p></div>` : ''}
                     
                     ${(v.vitals && (v.vitals.bp || v.vitals.temp || v.vitals.pulse)) ? `
                     <div style="display:flex;gap:15px;margin-top:15px;background:#f8fafc;padding:10px;border-radius:8px">
-                        ${v.vitals.bp ? `<div><span style="color:#64748b;font-size:0.9rem">ط§ظ„ط¶ط؛ط·:</span> <strong style="color:#ef4444">${v.vitals.bp}</strong></div>` : ''}
-                        ${v.vitals.temp ? `<div><span style="color:#64748b;font-size:0.9rem">ط§ظ„ط­ط±ط§ط±ط©:</span> <strong style="color:#f59e0b">${v.vitals.temp} آ°C</strong></div>` : ''}
-                        ${v.vitals.pulse ? `<div><span style="color:#64748b;font-size:0.9rem">ط§ظ„ظ†ط¨ط¶:</span> <strong style="color:#3b82f6">${v.vitals.pulse} bpm</strong></div>` : ''}
+                        ${v.vitals.bp ? `<div><span style="color:#64748b;font-size:0.9rem">الضغط:</span> <strong style="color:#ef4444">${v.vitals.bp}</strong></div>` : ''}
+                        ${v.vitals.temp ? `<div><span style="color:#64748b;font-size:0.9rem">الحرارة:</span> <strong style="color:#f59e0b">${v.vitals.temp} °C</strong></div>` : ''}
+                        ${v.vitals.pulse ? `<div><span style="color:#64748b;font-size:0.9rem">النبض:</span> <strong style="color:#3b82f6">${v.vitals.pulse} bpm</strong></div>` : ''}
                     </div>` : ''}
                 </div>
             `).join('');
@@ -308,40 +311,40 @@ const ArgonEnterprise = {
                             <p style="margin:5px 0;color:#555">${clinicSettings.address || ''} | ${clinicSettings.phone || ''}</p>
                         </div>
                         <div style="text-align:left">
-                            <h2 style="margin:0;color:#333">ط§ظ„ط³ط¬ظ„ ط§ظ„ط·ط¨ظٹ ط§ظ„ظ…ظˆط­ط¯ (EMR)</h2>
-                            <p style="margin:5px 0;color:#555">طھط§ط±ظٹط® ط§ظ„ط·ط¨ط§ط¹ط©: ${dateStr}</p>
+                            <h2 style="margin:0;color:#333">السجل ط§ظ„ط·ط¨ي الموحد (EMR)</h2>
+                            <p style="margin:5px 0;color:#555">تاريخ الطباعة: ${dateStr}</p>
                         </div>
                     </div>
                     
                     <div style="margin-bottom:30px;background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #ddd;display:grid;grid-template-columns:1fr 1fr;gap:15px">
                         <div>
-                            <h3 style="margin:0 0 15px;color:#0d9488;grid-column:1/-1">ط§ظ„ظ…ظ„ظپ ط§ظ„ط´ط®طµظٹ ظ„ظ„ظ…ط±ظٹط¶</h3>
-                            <p style="margin:0 0 8px"><strong>ط§ظ„ط§ط³ظ…:</strong> ${patientData.name}</p>
-                            <p style="margin:0 0 8px"><strong>ط§ظ„ظ‡ط§طھظپ:</strong> ${patientData.phone}</p>
-                            <p style="margin:0"><strong>ط§ظ„ط±ظ‚ظ… ط§ظ„ظˆط·ظ†ظٹ/ط§ظ„ظ‡ظˆظٹط©:</strong> ${patientData.natId || '-'}</p>
+                            <h3 style="margin:0 0 15px;color:#0d9488;grid-column:1/-1">ط§ظ„ظ…ظ„ف ط§ظ„ط´ط®طµي للمريض</h3>
+                            <p style="margin:0 0 8px"><strong>الاسم:</strong> ${patientData.name}</p>
+                            <p style="margin:0 0 8px"><strong>الهاتف:</strong> ${patientData.phone}</p>
+                            <p style="margin:0"><strong>الرقم الوطني/الهوية:</strong> ${patientData.natId || '-'}</p>
                         </div>
                         <div>
                             <h3 style="margin:0 0 15px;color:transparent;user-select:none">.</h3>
-                            <p style="margin:0 0 8px"><strong>ط§ظ„ط¹ظ…ط±:</strong> ${patientData.age || '-'}</p>
-                            <p style="margin:0 0 8px"><strong>ط§ظ„ط¬ظ†ط³:</strong> ${patientData.gender === 'male' ? 'ط°ظƒط±' : (patientData.gender === 'female' ? 'ط£ظ†ط«ظ‰' : '-')}</p>
-                            <p style="margin:0"><strong>ظپطµظٹظ„ط© ط§ظ„ط¯ظ…:</strong> <span style="color:#ef4444;font-weight:800;direction:ltr;display:inline-block">${patientData.bloodType || '-'}</span></p>
+                            <p style="margin:0 0 8px"><strong>العمر:</strong> ${patientData.age || '-'}</p>
+                            <p style="margin:0 0 8px"><strong>الجنس:</strong> ${patientData.gender === 'male' ? 'ذكر' : (patientData.gender === 'female' ? 'أنثى' : '-')}</p>
+                            <p style="margin:0"><strong>فصيلة الدم:</strong> <span style="color:#ef4444;font-weight:800;direction:ltr;display:inline-block">${patientData.bloodType || '-'}</span></p>
                         </div>
                         
                         ${(patientData.allergies || patientData.chronic) ? `
                         <div style="grid-column:1/-1;margin-top:10px;padding-top:15px;border-top:1px dashed #cbd5e1">
-                            ${patientData.allergies ? `<p style="margin:0 0 8px;color:#ef4444"><strong><i class="fas fa-exclamation-triangle"></i> ط­ط³ط§ط³ظٹط©:</strong> ${patientData.allergies}</p>` : ''}
-                            ${patientData.chronic ? `<p style="margin:0;color:#f59e0b"><strong><i class="fas fa-notes-medical"></i> ط£ظ…ط±ط§ط¶ ظ…ط²ظ…ظ†ط©:</strong> ${patientData.chronic}</p>` : ''}
+                            ${patientData.allergies ? `<p style="margin:0 0 8px;color:#ef4444"><strong><i class="fas fa-exclamation-triangle"></i> حساسية:</strong> ${patientData.allergies}</p>` : ''}
+                            ${patientData.chronic ? `<p style="margin:0;color:#f59e0b"><strong><i class="fas fa-notes-medical"></i> أمراض مزمنة:</strong> ${patientData.chronic}</p>` : ''}
                         </div>` : ''}
                     </div>
 
-                    <h3 style="margin:0 0 20px;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:10px">ط§ظ„طھط§ط±ظٹط® ط§ظ„ط·ط¨ظٹ ظˆط§ظ„ط²ظٹط§ط±ط§طھ ط§ظ„ط³ط§ط¨ظ‚ط©:</h3>
+                    <h3 style="margin:0 0 20px;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:10px">التاريخ ط§ظ„ط·ط¨ي ظˆط§ظ„ط²ظٹط§ط±ط§ت السابقة:</h3>
                     
                     <div style="display:flex;flex-direction:column;gap:10px">
-                        ${visitsArray.length > 0 ? visitsHtml : '<p style="text-align:center;color:#94a3b8;padding:30px">ظ„ط§ ظٹظˆط¬ط¯ ط³ط¬ظ„ ط²ظٹط§ط±ط§طھ ط³ط§ط¨ظ‚ ظ„ظ‡ط°ط§ ط§ظ„ظ…ط±ظٹط¶</p>'}
+                        ${visitsArray.length > 0 ? visitsHtml : '<p style="text-align:center;color:#94a3b8;padding:30px">لا يوجد سجل ط²ظٹط§ط±ط§ت سابق لهذا المريض</p>'}
                     </div>
 
                     <div style="margin-top:50px;text-align:center;color:#777;font-size:12px;border-top:1px solid #ddd;padding-top:20px">
-                        ظˆط«ظٹظ‚ط© ط·ط¨ظٹط© ظ…ط¹طھظ…ط¯ط© ظ…ظ† ظ†ط¸ط§ظ… ARGON Enterprise Medical OS
+                        وثيقة طبية معتمدة من نظام ARGON Enterprise Medical OS
                     </div>
                 </div>
             `;
@@ -365,11 +368,24 @@ const ArgonEnterprise = {
         }
     },
 
-    // â”€â”€ 2. EXCEL EXPORT (RTL) â”€â”€
+    // ── 2. EXCEL EXPORT (RTL) ──
     Excel: {
         async exportTable(dataArray, filename, sheetName = 'Sheet1') {
             if (typeof window.XLSX === 'undefined') {
                 await ArgonEnterprise.PDF._loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+            }
+
+            // Phase 4: Export Validation - Check first 20 records for Mojibake
+            const sample = dataArray.slice(0, 20);
+            const mojibakePatterns = ['ط§', 'ط¹', 'ظ…', 'ظٹ', 'Ø', 'Ù', 'Ã', 'Â'];
+            for (const row of sample) {
+                const rowStr = JSON.stringify(row);
+                for (const pattern of mojibakePatterns) {
+                    if (rowStr.includes(pattern)) {
+                        console.error(`🛑 Arabic Encoding Validation Failed in Export: ${pattern} detected.`);
+                        throw new Error('Arabic Encoding Validation Failed');
+                    }
+                }
             }
 
             const wb = window.XLSX.utils.book_new();
@@ -394,7 +410,7 @@ const ArgonEnterprise = {
         async exportComprehensiveReport(clinicId) {
             if (!window.firebase || !window.firebase.database) throw new Error("Firebase not ready");
             
-            if (typeof toast === 'function') toast("ط¬ط§ط±ظٹ ط³ط­ط¨ ظˆطھط¬ظ…ظٹط¹ ط§ظ„ط¨ظٹط§ظ†ط§طھ ط§ظ„ط´ط§ظ…ظ„ط©... ظٹط±ط¬ظ‰ ط§ظ„ط§ظ†طھط¸ط§ط±", "info");
+            if (typeof toast === 'function') toast("جاري سحب وتجميع البيانات الشاملة... يرجى الانتظار", "info");
             
             if (typeof window.XLSX === 'undefined') {
                 await ArgonEnterprise.PDF._loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
@@ -405,18 +421,18 @@ const ArgonEnterprise = {
             const data = snap.val();
             
             if (!data) {
-                if (typeof toast === 'function') toast("ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ط¨ظٹط§ظ†ط§طھ ط§ظ„ط¹ظٹط§ط¯ط©", "err");
+                if (typeof toast === 'function') toast("لم يتم العثور على بيانات العيادة", "err");
                 return;
             }
 
             const wb = window.XLSX.utils.book_new();
             wb.Workbook = { Views: [{ RTL: true }] };
             const dateStr = new Date().toLocaleDateString('ar-JO', { year: 'numeric', month: '2-digit', day: '2-digit' });
-            const clinicName = (data.settings && data.settings.name) ? data.settings.name : "ط§ظ„ط¹ظٹط§ط¯ط©";
+            const clinicName = (data.settings && data.settings.name) ? data.settings.name : "العيادة";
 
             const appendSheet = (dataArray, sheetName) => {
                 if (!dataArray || dataArray.length === 0) {
-                    dataArray = [{"ظ…ظ„ط§ط­ط¸ط©": "ظ„ط§ ظٹظˆط¬ط¯ ط¨ظٹط§ظ†ط§طھ"}];
+                    dataArray = [{"ملاحظة": "لا يوجد بيانات"}];
                 }
                 const ws = window.XLSX.utils.json_to_sheet(dataArray);
                 const colWidths = [];
@@ -437,32 +453,32 @@ const ArgonEnterprise = {
             const staffCount = data.staff ? Object.keys(data.staff).length : 0;
             
             const summaryData = [{
-                "ط§ط³ظ… ط§ظ„ط¹ظٹط§ط¯ط©": clinicName,
-                "ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ": data.settings?.phone || "-",
-                "ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ…ط±ط¶ظ‰": patientsCount,
-                "ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ…ظˆط§ط¹ظٹط¯": aptsCount,
-                "ط¹ط¯ط¯ ط§ظ„ط£ط·ط¨ط§ط،": docCount,
-                "ط·ط§ظ‚ظ… ط§ظ„ط¹ظ…ظ„": staffCount,
-                "طھط§ط±ظٹط® ط§ظ„طھظ‚ط±ظٹط±": dateStr
+                "اسم العيادة": clinicName,
+                "رقم الهاتف": data.settings?.phone || "-",
+                "إجمالي المرضى": patientsCount,
+                "إجمالي المواعيد": aptsCount,
+                "عدد الأطباء": docCount,
+                "طاقم العمل": staffCount,
+                "تاريخ التقرير": dateStr
             }];
-            appendSheet(summaryData, "ظ…ظ„ط®طµ ظˆط¥ط­طµط§ط¦ظٹط§طھ");
+            appendSheet(summaryData, "ملخص وإحصائيات");
 
             // 2. Patients
             const ptsData = [];
             if (data.patients) {
-                const genderMap = { 'male': 'ط°ظƒط±', 'female': 'ط£ظ†ط«ظ‰', 'ط°ظƒط±': 'ط°ظƒط±', 'ط£ظ†ط«ظ‰': 'ط£ظ†ط«ظ‰' };
+                const genderMap = { 'male': 'ذكر', 'female': 'أنثى', 'ذكر': 'ذكر', 'أنثى': 'أنثى' };
                 Object.values(data.patients).forEach(p => {
                     ptsData.push({
-                        "ط§ط³ظ… ط§ظ„ظ…ط±ظٹط¶": p.info?.name || "-",
-                        "ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ": p.info?.phone || "-",
-                        "ط§ظ„ط±ظ‚ظ… ط§ظ„ظˆط·ظ†ظٹ / ط§ظ„ظ‡ظˆظٹط©": p.info?.nationalId || "",
-                        "طھط§ط±ظٹط® ط§ظ„ظ…ظٹظ„ط§ط¯ / ط§ظ„ط¹ظ…ط±": p.info?.age || "-",
-                        "ط§ظ„ط¬ظ†ط³": genderMap[p.info?.gender] || p.info?.gender || "-",
-                        "طھط§ط±ظٹط® ط§ظ„طھط³ط¬ظٹظ„": p.info?.createdAt ? new Date(p.info.createdAt).toLocaleDateString('ar-JO') : "-"
+                        "اسم المريض": p.info?.name || "-",
+                        "رقم الهاتف": p.info?.phone || "-",
+                        "الرقم الوطني / الهوية": p.info?.nationalId || "",
+                        "تاريخ الميلاد / العمر": p.info?.age || "-",
+                        "الجنس": genderMap[p.info?.gender] || p.info?.gender || "-",
+                        "تاريخ التسجيل": p.info?.createdAt ? new Date(p.info.createdAt).toLocaleDateString('ar-JO') : "-"
                     });
                 });
             }
-            appendSheet(ptsData, "ط³ط¬ظ„ ط§ظ„ظ…ط±ط¶ظ‰");
+            appendSheet(ptsData, "سجل المرضى");
 
             // 3. Appointments & Bookings
             const aptData = [];
@@ -473,55 +489,55 @@ const ArgonEnterprise = {
             if (allApts.length > 0) {
                 allApts.sort((a,b) => new Date(`${a.date || '1970-01-01'}T${a.time || '00:00'}`) - new Date(`${b.date || '1970-01-01'}T${b.time || '00:00'}`));
                 
-                const statusMap = { 'waiting': 'ظ‚ظٹط¯ ط§ظ„ط§ظ†طھط¸ط§ط±', 'in-progress': 'ظپظٹ ط§ظ„ط¯ط§ط®ظ„', 'done': 'ظ…ظƒطھظ…ظ„', 'cancelled': 'ظ…ظ„ط؛ظٹ' };
+                const statusMap = { 'waiting': 'قيد الانتظار', 'in-progress': 'في الداخل', 'done': 'مكتمل', 'cancelled': 'ملغي' };
                 allApts.forEach(a => {
                     aptData.push({
-                        "ط§ظ„طھط§ط±ظٹط®": a.date || "-",
-                        "ط§ظ„ظˆظ‚طھ": a.time || "-",
-                        "ط±ظ‚ظ… ط§ظ„ط¯ظˆط±": a.queueNum || a.queue || "-",
-                        "ط§ط³ظ… ط§ظ„ظ…ط±ظٹط¶": a.patName || a.patientName || "-",
-                        "ط§ظ„ط­ط§ظ„ط©": a.status ? (statusMap[a.status] || a.status) : "-",
-                        "ظ†ظˆط¹ ط§ظ„ط­ط¬ط²": a.type === 'consultation' ? 'ظƒط´ظپظٹط©' : (a.type === 'followup' ? 'ظ…ط±ط§ط¬ط¹ط©' : a.type || '-')
+                        "التاريخ": a.date || "-",
+                        "الوقت": a.time || "-",
+                        "رقم الدور": a.queueNum || a.queue || "-",
+                        "اسم المريض": a.patName || a.patientName || "-",
+                        "الحالة": a.status ? (statusMap[a.status] || a.status) : "-",
+                        "نوع الحجز": a.type === 'consultation' ? 'كشفية' : (a.type === 'followup' ? 'مراجعة' : a.type || '-')
                     });
                 });
             }
-            appendSheet(aptData, "ط§ظ„ظ…ظˆط§ط¹ظٹط¯ ظˆط§ظ„ط­ط¬ظˆط²ط§طھ");
+            appendSheet(aptData, "المواعيد والحجوزات");
 
             // 4. Doctors
             const docData = [];
             if (data.doctors) {
                 Object.values(data.doctors).forEach(d => {
                     docData.push({
-                        "ط§ط³ظ… ط§ظ„ط·ط¨ظٹط¨": d.name || "",
-                        "ط§ظ„طھط®طµطµ": d.specialty || "",
-                        "ط§ظ„ط±ط³ظˆظ… (ظƒط´ظپظٹط©)": d.fee || "-",
-                        "ط£ظٹط§ظ… ط§ظ„ط¯ظˆط§ظ…": d.workDays ? d.workDays.map(x => ['ط§ظ„ط£ط­ط¯','ط§ظ„ط§ط«ظ†ظٹظ†','ط§ظ„ط«ظ„ط§ط«ط§ط،','ط§ظ„ط£ط±ط¨ط¹ط§ط،','ط§ظ„ط®ظ…ظٹط³','ط§ظ„ط¬ظ…ط¹ط©','ط§ظ„ط³ط¨طھ'][x]).join(', ') : "",
-                        "ط³ط§ط¹ط§طھ ط§ظ„ط¹ظ…ظ„": (d.workStart || "") + " - " + (d.workEnd || "")
+                        "اسم الطبيب": d.name || "",
+                        "التخصص": d.specialty || "",
+                        "الرسوم (كشفية)": d.fee || "-",
+                        "أيام الدوام": d.workDays ? d.workDays.map(x => ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'][x]).join(', ') : "",
+                        "ساعات العمل": (d.workStart || "") + " - " + (d.workEnd || "")
                     });
                 });
             }
-            appendSheet(docData, "ط§ظ„ظƒط§ط¯ط± ط§ظ„ط·ط¨ظٹ");
+            appendSheet(docData, "الكادر الطبي");
 
             // 5. Staff
             const staffData = [];
             if (data.staff) {
                 Object.values(data.staff).forEach(s => {
                     staffData.push({
-                        "ط§ظ„ط§ط³ظ…": s.name || "",
-                        "ط§ظ„ظ‡ط§طھظپ": s.phone || "",
-                        "ط§ظ„ط±ظ‚ظ… ط§ظ„ظˆط·ظ†ظٹ": s.nationalId || "",
-                        "ط§ظ„طµظ„ط§ط­ظٹط© (ط§ظ„ط¯ظˆط±)": s.role || ""
+                        "الاسم": s.name || "",
+                        "الهاتف": s.phone || "",
+                        "الرقم الوطني": s.nationalId || "",
+                        "الصلاحية (الدور)": s.role || ""
                     });
                 });
             }
-            appendSheet(staffData, "ط·ط§ظ‚ظ… ط§ظ„ط¹ظ…ظ„");
+            appendSheet(staffData, "طاقم العمل");
 
-            window.XLSX.writeFile(wb, `طھظ‚ط±ظٹط±_ط´ط§ظ…ظ„_${clinicName}_${dateStr.replace(/\//g,'-')}.xlsx`);
-            if (typeof toast === 'function') toast("طھظ… طھطµط¯ظٹط± ط§ظ„طھظ‚ط±ظٹط± ط¨ظ†ط¬ط§ط­!", "ok");
+            window.XLSX.writeFile(wb, `تقرير_شامل_${clinicName}_${dateStr.replace(/\//g,'-')}.xlsx`);
+            if (typeof toast === 'function') toast("تم تصدير التقرير بنجاح!", "ok");
         }
     },
 
-    // â”€â”€ 3. ADVANCED CACHING & PERFORMANCE (IndexedDB fallback) â”€â”€
+    // ── 3. ADVANCED CACHING & PERFORMANCE (IndexedDB fallback) ──
     Cache: {
         async init() {
             // Simple LRU cache wrapper over localStorage for extremely fast reads of static clinical data
@@ -549,7 +565,7 @@ const ArgonEnterprise = {
         }
     },
 
-    // â”€â”€ 4. ENTERPRISE LIVE UPDATE ENGINE â”€â”€
+    // ── 4. ENTERPRISE LIVE UPDATE ENGINE ──
     LiveUpdate: {
         _initialized: false,
         init(dbRef, basePath) {
@@ -576,7 +592,7 @@ const ArgonEnterprise = {
             toastDiv.innerHTML = `
                 <div style="position:fixed;bottom:25px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg, #2563eb, #3b82f6);color:white;padding:15px 35px;border-radius:30px;box-shadow:0 15px 30px rgba(37,99,235,0.4);z-index:999999;font-weight:bold;display:flex;align-items:center;gap:12px;font-family:'Tajawal', sans-serif;animation: slideUpArgon 0.6s cubic-bezier(0.16, 1, 0.3, 1);">
                     <i class="fas fa-sync fa-spin" style="font-size:1.3rem"></i> 
-                    <span style="font-size:1.1rem;letter-spacing:0.5px">طھظ… ط¥ط·ظ„ط§ظ‚ طھط­ط¯ظٹط« ط¬ط¯ظٹط¯ ظ„ظ„ظ†ط¸ط§ظ…! ط¬ط§ط±ظٹ ط§ظ„طھط­ط¯ظٹط« ط§ظ„طھظ„ظ‚ط§ط¦ظٹ...</span>
+                    <span style="font-size:1.1rem;letter-spacing:0.5px">تم إطلاق تحديث جديد للنظام! جاري التحديث التلقائي...</span>
                 </div>
             `;
             document.body.appendChild(toastDiv);
@@ -613,48 +629,48 @@ const liveUpdateCheck = setInterval(() => {
 
 /**
  * ============================================================
- *  ARGON Medical OS â€” Smart Patient Deduplication Engine
+ *  ARGON Medical OS — Smart Patient Deduplication Engine
  *  argon-patient-match.js
  *
- *  âڑ ï¸ڈ  READ-ONLY SHADOW MODE BY DEFAULT
- *  ظ„ط§ ظٹط¹ط¯ظ‘ظ„ ط£ظٹ ط¨ظٹط§ظ†ط§طھ ط­ظ‚ظٹظ‚ظٹط© ط­طھظ‰ طھظپط¹ظ‘ظ„ FLAG ظٹط¯ظˆظٹط§ظ‹
+ *  ⚠️  READ-ONLY SHADOW MODE BY DEFAULT
+ *  لا يعدّل ط£ي بيانات حقيقية حتى تفعّل FLAG يدوياً
  * ============================================================
  */
 
-// â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ
-// ًںڑ¦ LAYER 1 â€” Feature Flags (ط§ظپطھط­ / ط§ظ‚ظپظ„ ظƒظ„ ظ…ظٹط²ط© ظ…ط³طھظ‚ظ„ط©)
-// â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🚦 LAYER 1 — Feature Flags (افتح / اقفل كل ميزة مستقلة)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const ARGON_FLAGS = {
   /**
-   * shadowMode: true  â†’ ظٹط³ط¬ظ‘ظ„ ظپظٹ smart_log ظپظ‚ط·طŒ ظ„ط§ ظٹط؛ظٹط± ط£ظٹ ط´ظٹط،
-   *             false â†’ ظٹط·ط¨ظ‘ظ‚ ط§ظ„ظ‚ط±ط§ط± ظپط¹ظ„ظٹط§ظ‹ ط¹ظ„ظ‰ ط§ظ„ظ†ط¸ط§ظ…
-   *  â†گ ط§ط¨ظ‚ظگظ‡ط§ true ط­طھظ‰ طھط±ط§ط¬ط¹ ط§ظ„ظ†طھط§ط¦ط¬ ظˆطھط·ظ…ط¦ظ† 100%
+   * shadowMode: true  → يسجّل في smart_log فقط، لا يغير ط£ي ط´يء
+   *             false → يطبّق القرار فعلياً على النظام
+   *  ← ابقِها true حتى تراجع النتائج وتطمئن 100%
    */
   shadowMode: true,
 
-  /** طھظپط¹ظٹظ„ ظ…ط­ط±ظƒ ط§ظ„ظ…ط·ط§ط¨ظ‚ط© ط§ظ„ط°ظƒظٹط© */
+  /** تفعيل محرك المطابقة الذكية */
   enableSmartMatch: true,
 
-  /** طھظپط¹ظٹظ„ ظپظ‡ط±ط³ MPI ظ„ظ„ط¨ط­ط« ط§ظ„ط³ط±ظٹط¹ */
+  /** تفعيل فهرس MPI للبحث السريع */
   enableMPI: false,
 
-  /** طھظپط¹ظٹظ„ ظپظ„طھط±ط© ط²ظٹط§ط±ط§طھ ط§ظ„ط·ط¨ظٹط¨ */
+  /** تفعيل فلترة ط²ظٹط§ط±ط§ت الطبيب */
   enableDoctorFilter: false,
 
-  /** ظ…ط³طھظˆظ‰ ط§ظ„طھط³ط¬ظٹظ„: 'verbose' | 'normal' | 'errors_only' */
+  /** مستوى التسجيل: 'verbose' | 'normal' | 'errors_only' */
   logLevel: "verbose",
 };
 
-// â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ
-// ًں”§ LAYER 2 â€” Smart Match Engine
-// â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🔧 LAYER 2 — Smart Match Engine
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /**
- * ظ†طھط§ط¦ط¬ ط§ظ„ظ…ط·ط§ط¨ظ‚ط© ط§ظ„ظ…ظ…ظƒظ†ط©
- * EXACT     â†’ طھط·ط§ط¨ظ‚ ظ…ط¤ظƒط¯ 100%طŒ ظ„ط§ طھظ†ط´ط¦ ظ…ظ„ظپط§ظ‹ ط¬ط¯ظٹط¯ط§ظ‹
- * STRONG    â†’ طھط·ط§ط¨ظ‚ ظ‚ظˆظٹ ط¬ط¯ط§ظ‹طŒ ط¹ظ„ظ‰ ط§ظ„ط£ط±ط¬ط­ ظ†ظپط³ ط§ظ„ط´ط®طµ
- * POSSIBLE  â†’ طھط´ط§ط¨ظ‡طŒ ظٹط­طھط§ط¬ طھط£ظƒظٹط¯ ط¨ط´ط±ظٹ
- * NEW       â†’ ظ„ط§ ظٹظˆط¬ط¯ طھط·ط§ط¨ظ‚طŒ ط¢ظ…ظ† ظ„ط¥ظ†ط´ط§ط، ظ…ظ„ظپ ط¬ط¯ظٹط¯
+ * نتائج المطابقة الممكنة
+ * EXACT     → تطابق مؤكد 100%، لا تنشئ ملفاً جديداً
+ * STRONG    → تطابق ظ‚ظˆي جداً، على الأرجح نفس الشخص
+ * POSSIBLE  → تشابه، يحتاج تأكيد ط¨ط´ط±ي
+ * NEW       → لا يوجد تطابق، آمن ظ„إنشاء ظ…ظ„ف جديد
  */
 const MatchResult = Object.freeze({
   EXACT: "EXACT",
@@ -666,21 +682,21 @@ const MatchResult = Object.freeze({
 window.ArgonMedical = window.ArgonMedical || {};
 
 window.ArgonMedical.PatientMatch = (() => {
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // ًں”¤ Text Normalization â€” طھط·ط¨ظٹط¹ ط§ظ„ظ†طµ ط§ظ„ط¹ط±ط¨ظٹ
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
+  // 🔤 Text Normalization — تطبيع النص ط§ظ„ط¹ط±ط¨ي
+  // ─────────────────────────────────────────────────────────
 
   function normalizeArabic(str) {
     if (!str || typeof str !== "string") return "";
     return str
       .trim()
-      // ط­ط°ظپ ط§ظ„طھط´ظƒظٹظ„ (ظپطھط­ط©طŒ ط¶ظ…ط©طŒ ظƒط³ط±ط©طŒ ط´ط¯ط©طŒ ط³ظƒظˆظ†طŒ ط¥ظ„ط®)
+      // ط­ط°ف التشكيل (فتحة، ضمة، كسرة، شدة، سكون، إلخ)
       .replace(/[\u0610-\u061A\u064B-\u065F\u0670]/g, "")
-      .replace(/^ط§ظ„/, "")           // ط­ط°ظپ ط§ظ„ ط§ظ„طھط¹ط±ظٹظپ ظ…ظ† ط§ظ„ط¨ط¯ط§ظٹط©
-      .replace(/[ط£ط¥ط¢ط§]/g, "ط§")      // طھظˆط­ظٹط¯ ط§ظ„ظ‡ظ…ط²ط§طھ
-      .replace(/ط©/g, "ظ‡")           // طھظˆط­ظٹط¯ ط§ظ„طھط§ط، ط§ظ„ظ…ط±ط¨ظˆط·ط©
-      .replace(/ظ‰/g, "ظٹ")           // طھظˆط­ظٹط¯ ط§ظ„ط£ظ„ظپ ط§ظ„ظ…ظ‚طµظˆط±ط©
-      .replace(/\s+/g, " ")         // ظ…ط³ط§ظپط§طھ ط²ط§ط¦ط¯ط©
+      .replace(/^ال/, "")           // ط­ط°ف ال ط§ظ„طھط¹ط±يف من البداية
+      .replace(/[أإآا]/g, "ا")      // توحيد ط§ظ„ظ‡ظ…ط²ط§ت
+      .replace(/ة/g, "ه")           // توحيد ط§ظ„طھط§ء المربوطة
+      .replace(/ى/g, "ي")           // توحيد ط§ظ„ط£ظ„ف المقصورة
+      .replace(/\s+/g, " ")         // ظ…ط³ط§ظپط§ت زائدة
       .toLowerCase();
   }
 
@@ -733,9 +749,9 @@ window.ArgonMedical.PatientMatch = (() => {
       .replace(/[^\d]/g, "");
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // ًں”چ ط§ظ„ط¯ط§ظ„ط© ط§ظ„ط±ط¦ظٹط³ظٹط©: findMatch
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────
+  // 🔍 الدالة الرئيسية: findMatch
+  // ─────────────────────────────────────────────────────────
 
       async function findMatch(clinicId, incoming, db) {
     if (!ARGON_FLAGS.enableSmartMatch) {
@@ -849,9 +865,9 @@ window.ArgonMedical.PatientMatch = (() => {
   return { findMatch, normalizeArabic, normalizePhone, nameSimilarity, MatchResult };
 })();
 
-// â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ
-// ًں“‹ LAYER 3 â€” Shadow Engine (ط§ظ„طھط³ط¬ظٹظ„ ط§ظ„طµط§ظ…طھ)
-// â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 📋 LAYER 3 — Shadow Engine (التسجيل ط§ظ„طµط§ظ…ت)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 window.ArgonMedical.ShadowLog = (() => {
   async function log(clinicId, matchResult, context, db) {
@@ -894,30 +910,30 @@ window.ArgonMedical.ShadowLog = (() => {
   return { log };
 })();
 
-// â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ
-// ًںھں ظ†ط§ظپط°ط© ط§ظ„طھط£ظƒظٹط¯ â€” showArgonMatchDialog()
-// طھط¸ظ‡ط± ظپظ‚ط· ط¹ظ†ط¯ POSSIBLE ظˆshadowMode = false
-// â”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پâ”پ
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🪟 نافذة التأكيد — showArgonMatchDialog()
+// تظهر فقط عند POSSIBLE وshadowMode = false
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 window.ArgonMedical = window.ArgonMedical || {};
 
 /**
- * ظٹط¹ط±ط¶ ظ†ط§ظپط°ط© طھط£ظƒظٹط¯ ظ„ظ„ظ…ط³طھط®ط¯ظ… ط¹ظ†ط¯ ظ†طھظٹط¬ط© POSSIBLE
+ * يعرض نافذة تأكيد للمستخدم عند نتيجة POSSIBLE
  *
- * @param {object} matchResult   - ظ†طھظٹط¬ط© findMatch
- * @param {Function} onUseExisting - callback ط¥ط°ط§ ط§ط®طھط§ط± "ظ†ظپط³ ط§ظ„ط´ط®طµ"
- * @param {Function} onCreateNew   - callback ط¥ط°ط§ ط§ط®طھط§ط± "ظپط±ط¯ ط¹ط§ط¦ظ„ط© ط¬ط¯ظٹط¯"
+ * @param {object} matchResult   - نتيجة findMatch
+ * @param {Function} onUseExisting - callback إذا اختار "نفس الشخص"
+ * @param {Function} onCreateNew   - callback إذا اختار "فرد عائلة جديد"
  */
 window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCreateNew) {
-  // ط£ط²ظ„ ط£ظٹ ظ†ط§ظپط°ط© ط³ط§ط¨ظ‚ط©
+  // أزل ط£ي نافذة سابقة
   const old = document.getElementById('_argonMatchOverlay');
   if (old) old.remove();
 
   const conf = Math.round((matchResult.confidence || 0) * 100);
   const isFamily = matchResult.reason && matchResult.reason.includes('family member');
   const reasonText = isFamily
-    ? 'ظ†ظپط³ ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ â€” ظ‚ط¯ ظٹظƒظˆظ† ظپط±ط¯ط§ظ‹ ظ…ظ† ط§ظ„ط¹ط§ط¦ظ„ط©'
-    : `ظ†ط³ط¨ط© طھط´ط§ط¨ظ‡ ط§ظ„ط§ط³ظ…: ${conf}%`;
+    ? 'نفس رقم الهاتف — قد يكون فرداً من العائلة'
+    : `نسبة تشابه الاسم: ${conf}%`;
 
   const overlay = document.createElement('div');
   overlay.id = '_argonMatchOverlay';
@@ -931,7 +947,7 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
     animation: _argonFadeIn 0.2s ease;
   `;
 
-  // ط£ط¶ظپ animation keyframe ظ…ط±ط© ظˆط§ط­ط¯ط©
+  // ط£ط¶ف animation keyframe مرة واحدة
   if (!document.getElementById('_argonMatchStyle')) {
     const style = document.createElement('style');
     style.id = '_argonMatchStyle';
@@ -963,9 +979,9 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
           background:rgba(245,158,11,0.12);
           display:flex; align-items:center; justify-content:center;
           font-size:1.3rem; flex-shrink:0;
-        ">âڑ ï¸ڈ</div>
+        ">⚠️</div>
         <div>
-          <div style="font-size:1rem; font-weight:800; color:var(--text,#f8fafc)">طھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ظ…ظ„ظپ ظ…ط´ط§ط¨ظ‡</div>
+          <div style="font-size:1rem; font-weight:800; color:var(--text,#f8fafc)">تم العثور على ظ…ظ„ف مشابه</div>
           <div style="font-size:0.78rem; color:var(--muted,#94a3b8); margin-top:2px">${reasonText}</div>
         </div>
         <span style="
@@ -973,12 +989,12 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
           background:rgba(245,158,11,0.1); color:#f59e0b;
           border:1px solid rgba(245,158,11,0.25);
           padding:3px 10px; border-radius:20px;
-        ">${conf}% طھط´ط§ط¨ظ‡</span>
+        ">${conf}% تشابه</span>
       </div>
 
-      <!-- ظ…ظ‚ط§ط±ظ†ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ -->
+      <!-- مقارنة ط§ظ„بيانات -->
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;">
-        <!-- ط§ظ„ظ…ظ„ظپ ط§ظ„ظ…ظˆط¬ظˆط¯ -->
+        <!-- ط§ظ„ظ…ظ„ف الموجود -->
         <div style="
           padding:12px 14px;
           border-radius:10px;
@@ -986,12 +1002,12 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
           background:rgba(14,165,233,0.05);
         ">
           <div style="font-size:0.7rem; color:#0ea5e9; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:5px;">
-            <span>ًں“‚</span> ط§ظ„ظ…ظ„ظپ ط§ظ„ظ…ظˆط¬ظˆط¯
+            <span>📂</span> ط§ظ„ظ…ظ„ف الموجود
           </div>
-          <div style="font-size:0.95rem; font-weight:800; color:var(--text,#f8fafc)">${window.ArgonMedical._escHtml(matchResult.matchedName || 'â€”')}</div>
+          <div style="font-size:0.95rem; font-weight:800; color:var(--text,#f8fafc)">${window.ArgonMedical._escHtml(matchResult.matchedName || '—')}</div>
           <div style="font-size:0.75rem; color:var(--muted,#94a3b8); margin-top:3px; font-family:'IBM Plex Mono',monospace; direction:ltr;">${window.ArgonMedical._escHtml(matchResult.matchedId || '')}</div>
         </div>
-        <!-- ط§ظ„ط¨ظٹط§ظ†ط§طھ ط§ظ„ظˆط§ط±ط¯ط© -->
+        <!-- ط§ظ„بيانات الواردة -->
         <div style="
           padding:12px 14px;
           border-radius:10px;
@@ -999,14 +1015,14 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
           background:rgba(255,255,255,0.02);
         ">
           <div style="font-size:0.7rem; color:var(--muted,#94a3b8); font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:5px;">
-            <span>ًں†•</span> ط§ظ„ط·ظ„ط¨ ط§ظ„ط­ط§ظ„ظٹ
+            <span>🆕</span> الطلب ط§ظ„ط­ط§ظ„ي
           </div>
-          <div style="font-size:0.95rem; font-weight:800; color:var(--text,#f8fafc)">${window.ArgonMedical._escHtml(matchResult.incoming?.name || matchResult._incomingName || 'â€”')}</div>
+          <div style="font-size:0.95rem; font-weight:800; color:var(--text,#f8fafc)">${window.ArgonMedical._escHtml(matchResult.incoming?.name || matchResult._incomingName || '—')}</div>
           <div style="font-size:0.75rem; color:var(--muted,#94a3b8); margin-top:3px; font-family:'IBM Plex Mono',monospace; direction:ltr;">${window.ArgonMedical._escHtml(matchResult.incoming?.phone || matchResult._incomingPhone || '')}</div>
         </div>
       </div>
 
-      <!-- ط³ط¨ط¨ ط§ظ„ظ…ط­ط±ظƒ -->
+      <!-- سبب المحرك -->
       <div style="
         padding:8px 12px; border-radius:8px; margin-bottom:20px;
         background:rgba(255,255,255,0.03);
@@ -1014,20 +1030,20 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
         font-size:0.78rem; color:var(--muted,#94a3b8);
         display:flex; align-items:center; gap:7px;
       ">
-        <span style="font-size:1rem">ًں¤–</span>
+        <span style="font-size:1rem">🤖</span>
         <span>${window.ArgonMedical._escHtml(matchResult.reason || '')}</span>
       </div>
 
-      <!-- ط£ط²ط±ط§ط± ط§ظ„ظ‚ط±ط§ط± -->
+      <!-- أزرار القرار -->
       <div style="display:flex; flex-direction:column; gap:8px;">
         <button class="am-btn" id="_argonBtnUse" style="background:var(--teal,#0d9488); color:#fff;">
-          âœ… ظ†ظپط³ ط§ظ„ط´ط®طµ â€” ط§ط³طھط®ط¯ظ… ط§ظ„ظ…ظ„ظپ ط§ظ„ظ…ظˆط¬ظˆط¯
+          ✅ نفس الشخص — استخدم ط§ظ„ظ…ظ„ف الموجود
         </button>
         <button class="am-btn" id="_argonBtnNew" style="background:rgba(255,255,255,0.04); color:var(--text,#f8fafc); border:1px solid var(--border,#334155) !important;">
-          ًں‘¨â€چًں‘©â€چًں‘§ ظپط±ط¯ ط¹ط§ط¦ظ„ط© ط¬ط¯ظٹط¯ â€” ط£ظ†ط´ط¦ ظ…ظ„ظپط§ظ‹ ظ…ط³طھظ‚ظ„ط§ظ‹
+          👨‍👩‍👧 فرد عائلة جديد — أنشئ ملفاً مستقلاً
         </button>
         <button class="am-btn" id="_argonBtnCancel" style="background:transparent; color:var(--muted,#94a3b8); font-size:0.82rem; padding:7px 0;">
-          ط¥ظ„ط؛ط§ط،
+          ط¥ظ„ط؛ط§ء
         </button>
       </div>
     </div>
@@ -1035,7 +1051,7 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
 
   document.body.appendChild(overlay);
 
-  // ط±ط¨ط· ط§ظ„ط£ط²ط±ط§ط±
+  // ربط الأزرار
   document.getElementById('_argonBtnUse').onclick = () => {
     overlay.remove();
     if (typeof onUseExisting === 'function') onUseExisting(matchResult.matchedId);
@@ -1052,7 +1068,7 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
   });
 };
 
-// ط¯ط§ظ„ط© ظ…ط³ط§ط¹ط¯ط© ظ„طھظ†ط¸ظٹظپ HTML
+// دالة مساعدة ظ„طھظ†ط¸يف HTML
 window.ArgonMedical._escHtml = function(str) {
   return String(str || '').replace(/[<>"'&]/g, c =>
     ({ '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":"&#39;", '&':'&amp;' }[c])
