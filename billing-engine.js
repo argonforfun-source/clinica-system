@@ -48,7 +48,12 @@ const BillingEngine = {
         if (this.activePatientId) this.renderPatientLedger(this.activePatientId);
       });
 
-      this._patientsRef = typeof _patients !== 'undefined' ? _patients : {};
+      // Listen to Patients for Name Resolution
+      db.ref(`${BASE}/patients`).on('value', snap => {
+        this._patientsRef = snap.val() || {};
+        this.renderReceivables();
+        if (this.activePatientId) this.renderPatientLedger(this.activePatientId);
+      });
 
       // 2. Additive Observer - Generates Invoices without touching existing workflows
       this.initInvoiceGenerators();
@@ -57,57 +62,55 @@ const BillingEngine = {
 
   // ── SMART INVOICE GENERATOR (ADDITIVE ONLY) ──
   initInvoiceGenerators: function() {
-    // 1. Observe Completed Bookings (Visit Fee)
-    db.ref(`${BASE}/completedBookings`).on('child_added', snap => {
-      this.generateInvoiceFromVisit(snap.key, snap.val());
+    let initialBks = true, initialLab = true, initialRad = true, initialRx = true;
+    
+    const bksRef = db.ref(`${BASE}/completedBookings`);
+    bksRef.once('value', () => initialBks = false);
+    bksRef.on('child_added', snap => {
+      if (!initialBks) this.generateInvoiceFromVisit(snap.key, snap.val());
     });
 
-    // 2. Observe Lab Orders
-    db.ref(`${BASE}/lab_orders`).on('child_added', snap => {
-      this.generateInvoiceFromAux(snap.key, snap.val(), 'مختبر', 20); // Base dummy price if none exists
+    const labRef = db.ref(`${BASE}/lab_orders`);
+    labRef.once('value', () => initialLab = false);
+    labRef.on('child_added', snap => {
+      if (!initialLab) this.generateInvoiceFromAux(snap.key, snap.val(), 'مختبر', 20);
     });
 
-    // 3. Observe Radiology Orders
-    db.ref(`${BASE}/radiology_orders`).on('child_added', snap => {
-      this.generateInvoiceFromAux(snap.key, snap.val(), 'أشعة', 30);
+    const radRef = db.ref(`${BASE}/radiology_orders`);
+    radRef.once('value', () => initialRad = false);
+    radRef.on('child_added', snap => {
+      if (!initialRad) this.generateInvoiceFromAux(snap.key, snap.val(), 'أشعة', 30);
     });
 
-    // 4. Observe Pharmacy
-    db.ref(`${BASE}/prescriptions`).on('child_added', snap => {
-      this.generateInvoiceFromAux(snap.key, snap.val(), 'صيدلية', 15);
+    const rxRef = db.ref(`${BASE}/prescriptions`);
+    rxRef.once('value', () => initialRx = false);
+    rxRef.on('child_added', snap => {
+      if (!initialRx) this.generateInvoiceFromAux(snap.key, snap.val(), 'صيدلية', 15);
     });
   },
 
   generateInvoiceFromVisit: function(visitId, visitData) {
     if(!visitData || !visitData.patientId) return;
     const invId = `INV-${visitId}`;
-    if (this._invoices[invId]) return; // Already exists
+    if (this._invoices[invId]) return;
 
-    // Safe default prices (Can be dynamic based on doctor)
     let fee = 15;
     if (typeof _docs !== 'undefined' && _docs[visitData.docId] && _docs[visitData.docId].fee) {
       fee = parseFloat(_docs[visitData.docId].fee);
     }
 
-    this.saveInvoice(invId, visitData.patientId, visitId, [{name: 'كشفية الطبيب', price: fee}]);
+    this.saveInvoice(invId, visitData.patientId, visitId, [{name: 'كشفية الطبيب', price: fee}], visitData.patName, visitData.patPhone);
   },
 
   generateInvoiceFromAux: function(orderId, orderData, deptName, defaultPrice) {
     if(!orderData || !orderData.patientId) return;
-    const visitId = orderData.visitId || orderId; // Fallback if no visitId
+    const visitId = orderData.visitId || orderId; 
     
-    // Check Settings for Billing Policy
     const isUnified = (typeof _sets !== 'undefined' && (_sets.billingPolicy === 'unified' || !_sets.billingPolicy));
-    
     const invId = isUnified ? `INV-${visitId}` : `INV-${deptName}-${orderId}`;
-    
-    // EMR often saves tests as array or comma separated. We assign a flat default fee for now.
-    // In a full implementation, price lists would be checked.
     const items = [{name: `رسوم ${deptName}`, price: defaultPrice}];
 
-    // If unified and exists, append item. If not, create.
     if (isUnified && this._invoices[invId]) {
-      // Append to existing
       const currentItems = this._invoices[invId].items || [];
       const exists = currentItems.find(i => i.name === items[0].name);
       if(!exists) {
@@ -119,17 +122,18 @@ const BillingEngine = {
         });
       }
     } else if (!this._invoices[invId]) {
-      this.saveInvoice(invId, orderData.patientId, visitId, items);
+      this.saveInvoice(invId, orderData.patientId, visitId, items, orderData.patientName || orderData.patName, orderData.patientPhone || orderData.patPhone);
     }
   },
 
-  saveInvoice: function(invId, patientId, visitId, items) {
+  saveInvoice: function(invId, patientId, visitId, items, patName, patPhone) {
     const total = items.reduce((acc, curr) => acc + curr.price, 0);
     const ts = new Date().toISOString();
     
-    // Jordan National E-Invoicing Prep Fields
     const invoiceData = {
       patientId: patientId,
+      patientName: patName || '',
+      patientPhone: patPhone || '',
       visitId: visitId,
       items: items,
       total: total,

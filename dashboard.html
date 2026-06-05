@@ -692,10 +692,11 @@
         <div class="setg" style="display:grid;grid-template-columns:1fr;gap:12px">
           <div>
             <label class="setl">سياسة الفوترة (Billing Policy)</label>
-            <select id="sBillingPolicy" class="setsel">
+            <select id="sBillingPolicy" class="setsel" style="margin-bottom:8px">
               <option value="unified">فاتورة موحدة (مجمعة عند الاستقبال)</option>
               <option value="decentralized">فاتورة منفصلة (الدفع عند كل قسم)</option>
             </select>
+            <button onclick="if(confirm('هل أنت متأكد من تصفير ومسح جميع الفواتير والحركات المالية الحالية؟ (تستخدم فقط في مرحلة الإعداد)')) { db.ref(BASE + '/invoices').remove(); db.ref(BASE + '/financial_transactions').remove(); toast('تم تصفير الفواتير بنجاح', 'ok'); }" style="background:var(--red);color:white;border:none;padding:5px 10px;border-radius:6px;font-size:0.75rem;cursor:pointer;"><i class="fas fa-trash"></i> مسح الفواتير التجريبية</button>
           </div>
           <div style="display:none;">
             <label class="setl">نظام التشغيل (Operational Mode) *</label>
