@@ -98,25 +98,43 @@ const BillingEngine = {
   generateInvoiceFromVisit: function(visitId, visitData) {
     if(!visitData || !visitData.patientId) return;
     const invId = `INV-${visitId}`;
-    if (this._invoices[invId]) return;
 
     let fee = 15;
     if (typeof _docs !== 'undefined' && _docs[visitData.docId] && _docs[visitData.docId].fee) {
       fee = parseFloat(_docs[visitData.docId].fee);
     }
+    const visitItem = {name: 'كشفية الطبيب', price: fee};
 
-    this.saveInvoice(invId, visitData.patientId, visitId, [{name: 'كشفية الطبيب', price: fee}], visitData.patName, visitData.patPhone);
+    if (this._invoices[invId]) {
+      const currentItems = this._invoices[invId].items || [];
+      const exists = currentItems.find(i => i.name === visitItem.name);
+      if(!exists) {
+        currentItems.push(visitItem);
+        let newTotal = currentItems.reduce((acc, curr) => acc + curr.price, 0);
+        db.ref(`${BASE}/invoices/${invId}`).update({
+          items: currentItems,
+          total: newTotal
+        });
+      }
+    } else {
+      this.saveInvoice(invId, visitData.patientId, visitId, [visitItem], visitData.patName, visitData.patPhone);
+    }
   },
 
   generateInvoiceFromAux: function(orderId, orderData, deptName, defaultPrice) {
     if(!orderData || !orderData.patientId) return;
-    const visitId = orderData.visitId || orderId; 
     
     const isUnified = (typeof _sets !== 'undefined' && (_sets.billingPolicy === 'unified' || !_sets.billingPolicy));
-    const invId = isUnified ? `INV-${visitId}` : `INV-${deptName}-${orderId}`;
+    
+    // In Decentralized mode, auxiliary departments handle their own accounting.
+    // So we do NOT add them to the central Reception Billing ledger.
+    if (!isUnified) return; 
+    
+    const visitId = orderData.visitId || orderId; 
+    const invId = `INV-${visitId}`;
     const items = [{name: `رسوم ${deptName}`, price: defaultPrice}];
 
-    if (isUnified && this._invoices[invId]) {
+    if (this._invoices[invId]) {
       const currentItems = this._invoices[invId].items || [];
       const exists = currentItems.find(i => i.name === items[0].name);
       if(!exists) {
@@ -127,7 +145,7 @@ const BillingEngine = {
           total: newTotal
         });
       }
-    } else if (!this._invoices[invId]) {
+    } else {
       this.saveInvoice(invId, orderData.patientId, visitId, items, orderData.patientName || orderData.patName, orderData.patientPhone || orderData.patPhone);
     }
   },
