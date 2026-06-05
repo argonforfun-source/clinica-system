@@ -21,6 +21,7 @@ let CID = new URLSearchParams(window.location.search).get('id') || '';
 let BASE = 'clinics/' + CID;
 let _sets = null;
 let _orders = {};
+let _pricingCatalog = {};
 let activeOrderId = null;
 let currentRadFilter = 'waiting';
 let uploadedImages = []; // Array of {imageId, fileName, storagePath, downloadUrl, uploadedAt, uploadedBy}
@@ -60,6 +61,11 @@ window.addEventListener('DOMContentLoaded', () => {
 // Rad Initializer
 function initRad() {
   toast('مرحباً بك في قسم الأشعة الذكي ☢️', 'ok');
+
+  // Load Pricing Catalog for accurate billing
+  db.ref(BASE + '/pricing_catalog').on('value', snap => {
+    _pricingCatalog = snap.val() || {};
+  });
 
   // Enterprise Incremental Radiology Orders (child events only)
   let _radRenderTimer = null;
@@ -457,7 +463,9 @@ function saveRadReport() {
       });
     } catch(e) { console.error('Notification error', e); }
 
-    // 4. Auto-Billing Link: add standard flat rate of 25.00 JOD per radiology scan
+    // 4. Auto-Billing: Add each scan with its price from Pricing Catalog
+    const defaultRadPrice = (_sets && _sets.billingPrices && _sets.billingPrices.rad) ? parseFloat(_sets.billingPrices.rad) : 25;
+    
     db.ref(`${BASE}/invoices`).orderByChild('visitId').equalTo(visitId).once('value', invSnap => {
       const invoices = invSnap.val() || {};
       const invEntry = Object.entries(invoices)[0];
@@ -466,9 +474,19 @@ function saveRadReport() {
         const currentItems = invVal.items || [];
         
         (o.requestedScans || []).forEach(s => {
+          // Lookup price from pricing catalog by scan name
+          let scanPrice = defaultRadPrice;
+          const normalizedName = (s.name || '').trim().toLowerCase();
+          const catalogEntry = Object.values(_pricingCatalog).find(item => {
+            if (!item.active || item.type !== 'radiology') return false;
+            const catName = (item.name || '').trim().toLowerCase();
+            return catName === normalizedName || catName.includes(normalizedName) || normalizedName.includes(catName);
+          });
+          if (catalogEntry) scanPrice = parseFloat(catalogEntry.price);
+
           currentItems.push({
-            name: `تصوير أشعة: ${s.name}`,
-            price: 25.00 // Standard flat rate of 25.00 JOD per radiology item
+            name: `تصوير: ${s.name}`,
+            price: scanPrice
           });
         });
 

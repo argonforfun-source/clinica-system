@@ -21,6 +21,7 @@ let CID = new URLSearchParams(window.location.search).get('id') || '';
 let BASE = 'clinics/' + CID;
 let _sets = null;
 let _orders = {};
+let _pricingCatalog = {};
 let activeOrderId = null;
 let currentLabFilter = 'waiting';
 let uploadedAttachment = null; // Stores Base64 PDF / image
@@ -58,6 +59,11 @@ window.addEventListener('DOMContentLoaded', () => {
 // Lab Initializer
 function initLab() {
   toast('مرحباً بك في المختبر الطبي المركزي 🧪', 'ok');
+
+  // Load Pricing Catalog for accurate billing
+  db.ref(BASE + '/pricing_catalog').on('value', snap => {
+    _pricingCatalog = snap.val() || {};
+  });
 
   // Enterprise Incremental Lab Orders (child events only)
   let _labRenderTimer = null;
@@ -294,7 +300,9 @@ function saveLabResults() {
       });
     } catch(e) { console.error('Notification error', e); }
 
-    // 4. Auto-Billing Link: add standard lab service charge (10.00 dinars flat rate per test)
+    // 4. Auto-Billing: Add each test with its price from Pricing Catalog
+    const defaultLabPrice = (_sets && _sets.billingPrices && _sets.billingPrices.lab) ? parseFloat(_sets.billingPrices.lab) : 10;
+    
     db.ref(`${BASE}/invoices`).orderByChild('visitId').equalTo(visitId).once('value', invSnap => {
       const invoices = invSnap.val() || {};
       const invEntry = Object.entries(invoices)[0];
@@ -303,9 +311,19 @@ function saveLabResults() {
         const currentItems = invVal.items || [];
         
         completedTests.forEach(t => {
+          // Lookup price from pricing catalog by test name
+          let testPrice = defaultLabPrice;
+          const normalizedName = (t.name || '').trim().toLowerCase();
+          const catalogEntry = Object.values(_pricingCatalog).find(item => {
+            if (!item.active || item.type !== 'lab') return false;
+            const catName = (item.name || '').trim().toLowerCase();
+            return catName === normalizedName || catName.includes(normalizedName) || normalizedName.includes(catName);
+          });
+          if (catalogEntry) testPrice = parseFloat(catalogEntry.price);
+
           currentItems.push({
-            name: `تحليل مخبري: ${t.name}`,
-            price: 10.00 // Standard flat rate of 10.00 JOD per test
+            name: `تحليل: ${t.name}`,
+            price: testPrice
           });
         });
 

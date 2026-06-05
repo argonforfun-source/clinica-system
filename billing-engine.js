@@ -55,47 +55,47 @@ const BillingEngine = {
         if (this.activePatientId) this.renderPatientLedger(this.activePatientId);
       });
 
-      // 2. Additive Observer - Generates Invoices without touching existing workflows
-      this.initInvoiceGenerators();
+      // 2. Listen for Pricing Catalog (Enterprise Pricing)
+      db.ref(`${BASE}/pricing_catalog`).on('value', snap => {
+        this._pricingCatalog = snap.val() || {};
+      });
+
+      // 3. Additive Observer — ONLY for Visit Fee (كشفية الطبيب)
+      // Lab, Radiology, Pharmacy add their own detailed items when they complete services.
+      // This prevents double billing.
+      this.initVisitFeeObserver();
     }
   },
 
-  // ── SMART INVOICE GENERATOR (ADDITIVE ONLY) ──
-  initInvoiceGenerators: function() {
-    let initialBks = true, initialLab = true, initialRad = true, initialRx = true;
+  // ── Pricing Catalog Lookup ──
+  // Used by lab-app.js and radiology-app.js to get prices per service name
+  lookupPrice: function(serviceName, serviceType) {
+    const catalog = this._pricingCatalog || {};
+    const normalizedName = (serviceName || '').trim().toLowerCase();
+    
+    // Search by exact match or partial match on service name
+    const entry = Object.values(catalog).find(item => {
+      if (!item.active) return false;
+      if (serviceType && item.type !== serviceType) return false;
+      const catName = (item.name || '').trim().toLowerCase();
+      return catName === normalizedName || catName.includes(normalizedName) || normalizedName.includes(catName);
+    });
+
+    return entry ? parseFloat(entry.price) : null;
+  },
+
+  // ── VISIT FEE OBSERVER (كشفية الطبيب فقط) ──
+  initVisitFeeObserver: function() {
+    let initialBks = true;
     
     const bksRef = db.ref(`${BASE}/completedBookings`);
     bksRef.once('value', () => initialBks = false);
     bksRef.on('child_added', snap => {
-      if (!initialBks) this.generateInvoiceFromVisit(snap.key, snap.val());
-    });
-
-    // 2. Observe Lab Orders
-    const labRef = db.ref(`${BASE}/lab_orders`);
-    labRef.once('value', () => initialLab = false);
-    labRef.on('child_added', snap => {
-      const pLab = (typeof _sets !== 'undefined' && _sets.billingPrices) ? _sets.billingPrices.lab : 20;
-      if (!initialLab) this.generateInvoiceFromAux(snap.key, snap.val(), 'مختبر', pLab || 20);
-    });
-
-    // 3. Observe Radiology Orders
-    const radRef = db.ref(`${BASE}/radiology_orders`);
-    radRef.once('value', () => initialRad = false);
-    radRef.on('child_added', snap => {
-      const pRad = (typeof _sets !== 'undefined' && _sets.billingPrices) ? _sets.billingPrices.rad : 30;
-      if (!initialRad) this.generateInvoiceFromAux(snap.key, snap.val(), 'أشعة', pRad || 30);
-    });
-
-    // 4. Observe Pharmacy
-    const rxRef = db.ref(`${BASE}/prescriptions`);
-    rxRef.once('value', () => initialRx = false);
-    rxRef.on('child_added', snap => {
-      const pPhar = (typeof _sets !== 'undefined' && _sets.billingPrices) ? _sets.billingPrices.phar : 15;
-      if (!initialRx) this.generateInvoiceFromAux(snap.key, snap.val(), 'صيدلية', pPhar || 15);
+      if (!initialBks) this.generateVisitInvoice(snap.key, snap.val());
     });
   },
 
-  generateInvoiceFromVisit: function(visitId, visitData) {
+  generateVisitInvoice: function(visitId, visitData) {
     if(!visitData || !visitData.patientId) return;
     const invId = `INV-${visitId}`;
 
@@ -118,35 +118,6 @@ const BillingEngine = {
       }
     } else {
       this.saveInvoice(invId, visitData.patientId, visitId, [visitItem], visitData.patName, visitData.patPhone);
-    }
-  },
-
-  generateInvoiceFromAux: function(orderId, orderData, deptName, defaultPrice) {
-    if(!orderData || !orderData.patientId) return;
-    
-    const isUnified = (typeof _sets !== 'undefined' && (_sets.billingPolicy === 'unified' || !_sets.billingPolicy));
-    
-    // In Decentralized mode, auxiliary departments handle their own accounting.
-    // So we do NOT add them to the central Reception Billing ledger.
-    if (!isUnified) return; 
-    
-    const visitId = orderData.visitId || orderId; 
-    const invId = `INV-${visitId}`;
-    const items = [{name: `رسوم ${deptName}`, price: defaultPrice}];
-
-    if (this._invoices[invId]) {
-      const currentItems = this._invoices[invId].items || [];
-      const exists = currentItems.find(i => i.name === items[0].name);
-      if(!exists) {
-        currentItems.push(items[0]);
-        let newTotal = currentItems.reduce((acc, curr) => acc + curr.price, 0);
-        db.ref(`${BASE}/invoices/${invId}`).update({
-          items: currentItems,
-          total: newTotal
-        });
-      }
-    } else {
-      this.saveInvoice(invId, orderData.patientId, visitId, items, orderData.patientName || orderData.patName, orderData.patientPhone || orderData.patPhone);
     }
   },
 
@@ -575,7 +546,160 @@ function closeBillingModal() {
   BillingEngine.activePatientId = null;
 }
 
+// ══════════════════════════════════════════════════════
+// 🏷️ PRICING CATALOG MANAGEMENT (Enterprise)
+// ══════════════════════════════════════════════════════
+
+let _pricingCatalog = {};
+
+function initPricingCatalog() {
+  db.ref(`${BASE}/pricing_catalog`).on('value', snap => {
+    _pricingCatalog = snap.val() || {};
+    renderPricingTables();
+  });
+
+  // Show pricing button if billing is visible
+  const pricingBtn = document.getElementById('mPricing');
+  const billingBtn = document.getElementById('mBilling');
+  if (pricingBtn && billingBtn && billingBtn.style.display === 'flex') {
+    pricingBtn.style.display = 'flex';
+  }
+}
+
+function renderPricingTables() {
+  const labBody = document.getElementById('pricingLabBody');
+  const radBody = document.getElementById('pricingRadBody');
+  if (!labBody || !radBody) return;
+
+  const entries = Object.entries(_pricingCatalog);
+  const labItems = entries.filter(([k, v]) => v.type === 'lab');
+  const radItems = entries.filter(([k, v]) => v.type === 'radiology');
+
+  // Lab Table
+  if (!labItems.length) {
+    labBody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--muted)">لم يتم إضافة فحوصات مختبرية بعد. اضغط "إضافة فحص" للبدء.</td></tr>';
+  } else {
+    labBody.innerHTML = labItems.map(([k, item]) => {
+      const statusBadge = item.active !== false
+        ? '<span style="color:var(--green);background:rgba(16,185,129,0.1);padding:3px 8px;border-radius:6px;font-size:0.7rem;font-weight:bold">مفعّل ✅</span>'
+        : '<span style="color:var(--red);background:rgba(239,68,68,0.1);padding:3px 8px;border-radius:6px;font-size:0.7rem;font-weight:bold">معطّل ❌</span>';
+      return `
+        <tr>
+          <td style="font-weight:800"><i class="fas fa-flask" style="color:var(--green);margin-left:6px"></i>${sanitize(item.name)}</td>
+          <td style="font-weight:bold;font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:1.05rem">${parseFloat(item.price).toFixed(2)} د.أ</td>
+          <td>${statusBadge}</td>
+          <td style="text-align:center;display:flex;gap:6px;justify-content:center">
+            <button class="tbtn" onclick="editPricingItem('${k}')" style="background:rgba(14,165,233,.1);color:var(--sky);border-color:rgba(14,165,233,.2)"><i class="fas fa-edit"></i></button>
+            <button class="tbtn" onclick="togglePricingItem('${k}',${item.active !== false ? 'false' : 'true'})" style="background:rgba(245,158,11,.1);color:var(--amber);border-color:rgba(245,158,11,.2)"><i class="fas fa-${item.active !== false ? 'pause' : 'play'}"></i></button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  // Radiology Table
+  if (!radItems.length) {
+    radBody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--muted)">لم يتم إضافة فحوصات أشعة بعد. اضغط "إضافة فحص" للبدء.</td></tr>';
+  } else {
+    radBody.innerHTML = radItems.map(([k, item]) => {
+      const statusBadge = item.active !== false
+        ? '<span style="color:var(--green);background:rgba(16,185,129,0.1);padding:3px 8px;border-radius:6px;font-size:0.7rem;font-weight:bold">مفعّل ✅</span>'
+        : '<span style="color:var(--red);background:rgba(239,68,68,0.1);padding:3px 8px;border-radius:6px;font-size:0.7rem;font-weight:bold">معطّل ❌</span>';
+      return `
+        <tr>
+          <td style="font-weight:800"><i class="fas fa-x-ray" style="color:var(--sky);margin-left:6px"></i>${sanitize(item.name)}</td>
+          <td style="font-weight:bold;font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:1.05rem">${parseFloat(item.price).toFixed(2)} د.أ</td>
+          <td>${statusBadge}</td>
+          <td style="text-align:center;display:flex;gap:6px;justify-content:center">
+            <button class="tbtn" onclick="editPricingItem('${k}')" style="background:rgba(14,165,233,.1);color:var(--sky);border-color:rgba(14,165,233,.2)"><i class="fas fa-edit"></i></button>
+            <button class="tbtn" onclick="togglePricingItem('${k}',${item.active !== false ? 'false' : 'true'})" style="background:rgba(245,158,11,.1);color:var(--amber);border-color:rgba(245,158,11,.2)"><i class="fas fa-${item.active !== false ? 'pause' : 'play'}"></i></button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+}
+
+function openAddPricingItem(type) {
+  document.getElementById('prEditKey').value = '';
+  document.getElementById('prEditType').value = type;
+  document.getElementById('prName').value = '';
+  document.getElementById('prPrice').value = '';
+  document.getElementById('pricingModalTitle').textContent = type === 'lab' ? 'إضافة فحص مختبري جديد' : 'إضافة فحص أشعة جديد';
+  document.getElementById('pricingModal').style.display = 'flex';
+}
+
+function editPricingItem(key) {
+  const item = _pricingCatalog[key];
+  if (!item) return;
+  document.getElementById('prEditKey').value = key;
+  document.getElementById('prEditType').value = item.type;
+  document.getElementById('prName').value = item.name;
+  document.getElementById('prPrice').value = item.price;
+  document.getElementById('pricingModalTitle').textContent = 'تعديل السعر';
+  document.getElementById('pricingModal').style.display = 'flex';
+}
+
+function savePricingItem() {
+  const key = document.getElementById('prEditKey').value;
+  const type = document.getElementById('prEditType').value;
+  const name = document.getElementById('prName').value.trim();
+  const price = parseFloat(document.getElementById('prPrice').value);
+
+  if (!name) { toast('⚠️ يرجى إدخال اسم الفحص أو الخدمة', 'err'); return; }
+  if (isNaN(price) || price < 0) { toast('⚠️ يرجى إدخال سعر صحيح', 'err'); return; }
+
+  const itemData = {
+    name: name,
+    type: type,
+    price: price,
+    active: true,
+    updatedAt: new Date().toISOString()
+  };
+
+  // Audit: log old price if editing
+  if (key && _pricingCatalog[key] && typeof ArgonCore !== 'undefined') {
+    const oldPrice = _pricingCatalog[key].price;
+    if (oldPrice !== price) {
+      ArgonCore.logAudit('PRICE_CHANGE', `تعديل سعر "${name}" من ${oldPrice} إلى ${price} د.أ`, 'BILLING');
+    }
+  }
+
+  const ref = key ? db.ref(`${BASE}/pricing_catalog/${key}`) : db.ref(`${BASE}/pricing_catalog`).push();
+  
+  ref.set(itemData).then(() => {
+    toast(key ? '✅ تم تحديث السعر بنجاح' : '✅ تم إضافة الخدمة وتسعيرها بنجاح', 'ok');
+    document.getElementById('pricingModal').style.display = 'none';
+    
+    if (!key && typeof ArgonCore !== 'undefined') {
+      ArgonCore.logAudit('PRICE_ADD', `إضافة خدمة جديدة "${name}" بسعر ${price} د.أ`, 'BILLING');
+    }
+  }).catch(e => {
+    toast('❌ فشل حفظ التسعيرة', 'err');
+    console.error(e);
+  });
+}
+
+function togglePricingItem(key, newState) {
+  const item = _pricingCatalog[key];
+  if (!item) return;
+  
+  db.ref(`${BASE}/pricing_catalog/${key}/active`).set(newState === 'true' || newState === true).then(() => {
+    toast(newState ? '✅ تم تفعيل الخدمة' : '⏸️ تم تعطيل الخدمة', 'ok');
+    if (typeof ArgonCore !== 'undefined') {
+      ArgonCore.logAudit('PRICE_TOGGLE', `${newState ? 'تفعيل' : 'تعطيل'} خدمة "${item.name}"`, 'BILLING');
+    }
+  });
+}
+
+function renderReceivables() {
+  if (typeof BillingEngine !== 'undefined' && BillingEngine.renderReceivables) {
+    BillingEngine.renderReceivables();
+  }
+}
+
 // Hook into Dashboard initialization
 document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => BillingEngine.init(), 1500);
+  setTimeout(() => {
+    BillingEngine.init();
+    initPricingCatalog();
+  }, 1500);
 });
