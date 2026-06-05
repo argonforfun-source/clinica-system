@@ -722,8 +722,9 @@ function renderPricingTables() {
           <td style="font-weight:bold;font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:1.05rem">${parseFloat(item.price).toFixed(2)} د.أ</td>
           <td>${statusBadge}</td>
           <td style="text-align:center;display:flex;gap:6px;justify-content:center">
-            <button class="tbtn" onclick="editPricingItem('${k}')" style="background:rgba(14,165,233,.1);color:var(--sky);border-color:rgba(14,165,233,.2)"><i class="fas fa-edit"></i></button>
-            <button class="tbtn" onclick="togglePricingItem('${k}',${item.active !== false ? 'false' : 'true'})" style="background:rgba(245,158,11,.1);color:var(--amber);border-color:rgba(245,158,11,.2)"><i class="fas fa-${item.active !== false ? 'pause' : 'play'}"></i></button>
+            <button class="tbtn" onclick="editPricingItem('${k}')" style="background:rgba(14,165,233,.1);color:var(--sky);border-color:rgba(14,165,233,.2)" title="تعديل"><i class="fas fa-edit"></i></button>
+            <button class="tbtn" onclick="togglePricingItem('${k}',${item.active !== false ? 'false' : 'true'})" style="background:rgba(245,158,11,.1);color:var(--amber);border-color:rgba(245,158,11,.2)" title="${item.active !== false ? 'تعطيل' : 'تفعيل'}"><i class="fas fa-${item.active !== false ? 'pause' : 'play'}"></i></button>
+            <button class="tbtn" onclick="deletePricingItem('${k}', '${sanitize(item.name).replace(/'/g, "\\'")}')" style="background:rgba(239,68,68,.1);color:var(--red);border-color:rgba(239,68,68,.2)" title="حذف نهائي"><i class="fas fa-trash"></i></button>
           </td>
         </tr>`;
     }).join('');
@@ -743,8 +744,9 @@ function renderPricingTables() {
           <td style="font-weight:bold;font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:1.05rem">${parseFloat(item.price).toFixed(2)} د.أ</td>
           <td>${statusBadge}</td>
           <td style="text-align:center;display:flex;gap:6px;justify-content:center">
-            <button class="tbtn" onclick="editPricingItem('${k}')" style="background:rgba(14,165,233,.1);color:var(--sky);border-color:rgba(14,165,233,.2)"><i class="fas fa-edit"></i></button>
-            <button class="tbtn" onclick="togglePricingItem('${k}',${item.active !== false ? 'false' : 'true'})" style="background:rgba(245,158,11,.1);color:var(--amber);border-color:rgba(245,158,11,.2)"><i class="fas fa-${item.active !== false ? 'pause' : 'play'}"></i></button>
+            <button class="tbtn" onclick="editPricingItem('${k}')" style="background:rgba(14,165,233,.1);color:var(--sky);border-color:rgba(14,165,233,.2)" title="تعديل"><i class="fas fa-edit"></i></button>
+            <button class="tbtn" onclick="togglePricingItem('${k}',${item.active !== false ? 'false' : 'true'})" style="background:rgba(245,158,11,.1);color:var(--amber);border-color:rgba(245,158,11,.2)" title="${item.active !== false ? 'تعطيل' : 'تفعيل'}"><i class="fas fa-${item.active !== false ? 'pause' : 'play'}"></i></button>
+            <button class="tbtn" onclick="deletePricingItem('${k}', '${sanitize(item.name).replace(/'/g, "\\'")}')" style="background:rgba(239,68,68,.1);color:var(--red);border-color:rgba(239,68,68,.2)" title="حذف نهائي"><i class="fas fa-trash"></i></button>
           </td>
         </tr>`;
     }).join('');
@@ -821,6 +823,20 @@ function togglePricingItem(key, newState) {
       ArgonCore.logAudit('PRICE_TOGGLE', `${newState ? 'تفعيل' : 'تعطيل'} خدمة "${item.name}"`, 'BILLING');
     }
   });
+}
+
+function deletePricingItem(key, itemName) {
+  if (confirm(`تحذير: هل أنت متأكد من حذف الفحص والتسعيرة "${itemName}" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`)) {
+    db.ref(`${BASE}/pricing_catalog/${key}`).remove().then(() => {
+      toast('🗑️ تم الحذف بنجاح', 'ok');
+      if (typeof ArgonCore !== 'undefined') {
+        ArgonCore.logAudit('PRICE_DELETE', `حذف خدمة وتسعيرة "${itemName}" نهائياً`, 'BILLING');
+      }
+    }).catch(e => {
+      toast('❌ فشل الحذف', 'err');
+      console.error(e);
+    });
+  }
 }
 
 function renderReceivables() {
