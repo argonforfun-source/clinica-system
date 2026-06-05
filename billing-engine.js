@@ -10,9 +10,20 @@ const BillingEngine = {
   activePatientId: null,
 
   init: function() {
-    const session = window.ArgonSession ? window.ArgonSession.get() : null;
-    if (!session) return;
-    if (session.role !== 'admin' && session.role !== 'accountant' && session.role !== 'superadmin') {
+    let isAuthorized = false;
+
+    // Check if we are in dashboard.html (which sets clinica_auth_CID)
+    if (typeof CID !== 'undefined' && sessionStorage.getItem('clinica_auth_' + CID) === '1') {
+      isAuthorized = true; // Dashboard user is inherently an admin
+    } else if (window.ArgonSession) {
+      // Check standard ArgonSession used in other portals
+      const session = window.ArgonSession.get();
+      if (session && (session.role === 'admin' || session.role === 'accountant' || session.role === 'superadmin')) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
       const btn = document.getElementById('mBilling');
       if (btn) btn.style.display = 'none';
       return;
