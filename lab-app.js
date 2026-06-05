@@ -88,9 +88,20 @@ function filterLab(status) {
 // Render Lab Orders cards list
 function renderLabOrders() {
   const grid = document.getElementById('labGrid');
+  const searchInput = document.getElementById('labSearchInp');
+  const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
   const items = Object.entries(_orders).filter(([k, v]) => {
-    if (currentLabFilter === 'waiting') return v.status === 'waiting' || v.status === 'pending';
-    return v.status === currentLabFilter;
+    if (currentLabFilter === 'waiting' && !(v.status === 'waiting' || v.status === 'pending')) return false;
+    if (currentLabFilter !== 'waiting' && v.status !== currentLabFilter) return false;
+    
+    if (searchVal) {
+      const pName = (v.patientName || '').toLowerCase();
+      const pPhone = String(v.phone || v.patientPhone || '').replace(/\D/g, '');
+      return pName.includes(searchVal) || pPhone.includes(searchVal);
+    }
+    
+    return true;
   });
 
   if (!items.length) {

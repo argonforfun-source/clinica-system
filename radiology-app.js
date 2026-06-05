@@ -90,9 +90,20 @@ function filterRad(status) {
 // Render Radiology Orders cards list
 function renderRadOrders() {
   const grid = document.getElementById('radGrid');
+  const searchInput = document.getElementById('radSearchInp');
+  const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
   const items = Object.entries(_orders).filter(([k, v]) => {
-    if (currentRadFilter === 'waiting') return v.status === 'waiting' || v.status === 'pending';
-    return v.status === currentRadFilter;
+    if (currentRadFilter === 'waiting' && !(v.status === 'waiting' || v.status === 'pending')) return false;
+    if (currentRadFilter !== 'waiting' && v.status !== currentRadFilter) return false;
+    
+    if (searchVal) {
+      const pName = (v.patientName || '').toLowerCase();
+      const pPhone = String(v.phone || v.patientPhone || '').replace(/\D/g, '');
+      return pName.includes(searchVal) || pPhone.includes(searchVal);
+    }
+    
+    return true;
   });
 
   if (!items.length) {

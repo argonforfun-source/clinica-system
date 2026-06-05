@@ -101,7 +101,20 @@ function filterPresc(status) {
 // Render Prescriptions Inbox List
 function renderPrescriptions() {
   const grid = document.getElementById('prescGrid');
-  const items = Object.entries(_prescriptions).filter(([k, v]) => (v.status || 'waiting') === currentPrescFilter);
+  const searchInput = document.getElementById('pharSearchInp');
+  const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+  const items = Object.entries(_prescriptions).filter(([k, v]) => {
+    if ((v.status || 'waiting') !== currentPrescFilter) return false;
+    
+    if (searchVal) {
+      const pName = (v.patientName || '').toLowerCase();
+      const pPhone = String(v.phone || v.patientPhone || '').replace(/\D/g, '');
+      return pName.includes(searchVal) || pPhone.includes(searchVal);
+    }
+    
+    return true;
+  });
   
   if (!items.length) {
     grid.innerHTML = `

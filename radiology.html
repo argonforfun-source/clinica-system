@@ -57,6 +57,13 @@
         </div>
       </div>
 
+      <div style="display:flex;gap:10px;margin-top:15px;margin-bottom:15px;align-items:center">
+        <div style="position:relative;flex:1;max-width:400px">
+          <i class="fas fa-search" style="position:absolute;right:15px;top:50%;transform:translateY(-50%);color:var(--muted)"></i>
+          <input type="text" id="radSearchInp" onkeyup="renderRadOrders()" placeholder="🔍 ابحث بالاسم أو رقم الهاتف..." class="fi" style="padding-right:40px;width:100%;background:var(--panel);border:1px solid var(--border)">
+        </div>
+      </div>
+
       <div id="radGrid" class="card-grid">
         <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--muted)">
           <i class="fas fa-spinner fa-spin" style="font-size:2rem;display:block;margin-bottom:12px"></i>
