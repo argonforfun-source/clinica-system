@@ -1594,6 +1594,16 @@ const bookingNID_C3 = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
     }
   }
   // ─────────────────────────────────────────────────────────────
+  // ── ARGON ENTERPRISE: Zero Auto-Merge & Create Without NID ──
+  if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
+    if (!bookingNID_C3 || bookingNID_C3.length < 9) {
+      toast('⚠️ لا يمكن ربط أو إنشاء ملف مريض تلقائياً بدون رقم وطني. يرجى تعديل الحجز وإضافة الرقم.', 'err');
+      if (window.ArgonMedical && window.ArgonMedical.ShadowLog) {
+        window.ArgonMedical.ShadowLog.log(CID, {result: "BLOCKED", reason: "Zero auto-merge/create. Missing NID."}, {source: "reception_link_booking"}, db);
+      }
+      return;
+    }
+  }
 
   db.ref(`${BASE}/patients`).once('value', snap => {
     const pats = snap.val() || {};
@@ -1697,6 +1707,19 @@ async function cmpBook(k) {
       }
     }
     // ─────────────────────────────────────────────────────────────
+    // ── ARGON ENTERPRISE: Block Creation Without NID ──
+    if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
+      const bookingNID_cmp = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
+      if (!bookingNID_cmp || bookingNID_cmp.length < 9) {
+        console.warn("Blocked auto-create patient due to missing NID on cmpBook.");
+        // Skip patient creation, just complete the booking
+        db.ref(`${BASE}/completedBookings/${k}`)
+          .set({ ...b, status: 'done', completedAt: new Date().toISOString() })
+          .then(() => db.ref(`${BASE}/bookings/${k}`).remove()
+            .then(() => toast('✅ تم إنهاء الحجز (بدون ملف EMR لعدم وجود رقم وطني)', 'ok')));
+        return;
+      }
+    }
 
     db.ref(`${BASE}/patients`).once('value', snap => {
       const pats = snap.val() || {};

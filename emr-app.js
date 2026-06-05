@@ -822,8 +822,17 @@ const _bNID = ArgonNID.cleanNID(
 
 // B4-B: إذا في NID في الحجز ← بحث مباشر وسريع بدون Firebase
 if (ArgonNID.isValidNID(_bNID)) {
-  const _nidHit = ArgonNID.findByNIDLocal(_bNID, _patients);
-  if (_nidHit) {
+  const nidMatches = Object.entries(_patients).filter(([uid, p]) => ArgonNID.cleanNID(p.info?.nationalId||'') === _bNID);
+  
+  if (nidMatches.length > 1) {
+    // ── ARGON ENTERPRISE: CRITICAL NID DUPLICATE DETECTION ──
+    toast('🚨 خطأ أمني: يوجد أكثر من ملف طبي يحمل نفس الرقم الوطني. تم إيقاف الدخول لحماية السجلات.', 'err');
+    if (typeof logAudit === 'function') {
+      logAudit('CRITICAL_NID_DUPLICATE_DETECTION', `تم إيقاف الدخول لملف المريض من الحجز. تطابق الرقم الوطني (${_bNID}) لعدة مرضى.`, 'EMR');
+    }
+    return; // أوقف الفتح بالكامل — يحتاج مراجعة إدارية
+  } else if (nidMatches.length === 1) {
+    const _nidHit = { uid: nidMatches[0][0], info: nidMatches[0][1].info || {} };
     // ✅ EXACT فوري — فتح مباشر
     if (window.ArgonMedical?.ShadowLog?.log) {
       window.ArgonMedical.ShadowLog.log(CID, {
@@ -942,6 +951,15 @@ if (ArgonNID.isValidNID(_bNID)) {
     }
   }
 
+  // ── ARGON ENTERPRISE: Zero Auto-Merge Without NID ──
+  if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
+    toast('⚠️ لا يمكن مطابقة ملف المريض تلقائياً بدون رقم وطني مؤكد. يرجى طلب تحديث بيانات المريض من الاستقبال أو البحث يدوياً.', 'err');
+    if (window.ArgonMedical && window.ArgonMedical.ShadowLog) {
+      window.ArgonMedical.ShadowLog.log(CID, {result: "BLOCKED", reason: "Zero auto-merge policy enforced. Missing NID."}, {source: "doctor_wr_fallback", incoming: {name: bookingName}}, db);
+    }
+    return;
+  }
+
   // 2️⃣ Search by Phone
   const phone = cleanPhone(booking.patPhone || rawUid);
   const matched = Object.entries(_patients).filter(([k, p]) =>
@@ -954,33 +972,27 @@ if (ArgonNID.isValidNID(_bNID)) {
     return;
   }
 
-  // 3️⃣ Try to find an exact or partial name match among the phone matches
-  if (bookingName) {
-    const exact = matched.find(([k, p]) => (p.info?.name || '').trim().toLowerCase() === bookingName);
-    if (exact) {
-      if (startVisit) { sw('newVisit'); loadVisitForm(exact[0], bookingKey); } else { viewPatientFile(exact[0]); sw('patFile'); }
-      return;
-    }
-
-    const partial = matched.find(([k, p]) => {
-      const pn = (p.info?.name || '').toLowerCase().trim();
-      const bFirst = bookingName.split(' ')[0];
-      const pFirst = pn.split(' ')[0];
-      return bFirst && pFirst && bFirst === pFirst;
+  // 3️⃣ ARGON ENTERPRISE: Block Ambiguous Auto-Open
+  if (matched.length > 1) {
+    showDoctorProfileSelector(matched, bookingName || phone, (selectedUid) => {
+      // ✅ الطبيب اختار المريض يدوياً بناءً على الهوية الصريحة
+      if (typeof BASE !== 'undefined' && bookingKey && !bookingKey.includes('walkin')) {
+        // نحدث الحجز بالمعرف الصحيح لتأكيد الربط
+        db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(selectedUid).catch(()=>{});
+      }
+      if (startVisit) { sw('newVisit'); loadVisitForm(selectedUid, bookingKey); }
+      else            { viewPatientFile(selectedUid); sw('patFile'); }
     });
-    if (partial) {
-      if (startVisit) { sw('newVisit'); loadVisitForm(partial[0], bookingKey); } else { viewPatientFile(partial[0]); sw('patFile'); }
-      return;
-    }
+    return;
   }
 
-  // 4️⃣ If we have exactly 1 match and no name conflict was explicitly detected (or name was missing)
-  if (matched.length === 1 && !bookingName) {
+  // 4️⃣ If we have exactly 1 match
+  if (matched.length === 1) {
     if (startVisit) { sw('newVisit'); loadVisitForm(matched[0][0], bookingKey); } else { viewPatientFile(matched[0][0]); sw('patFile'); }
     return;
   }
 
-  // 5️⃣ Ambiguous (Family members sharing a phone, and name didn't match perfectly)
+  // 5️⃣ Fallback Legacy
   _openPatientFromBookingLegacy(bookingKey, booking, startVisit);
 }
 
@@ -988,6 +1000,36 @@ if (ArgonNID.isValidNID(_bNID)) {
  * ── دالة مساعدة: المنطق القديم معزولاً ──
  */
 async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = false) {
+  const _legacyNID = ArgonNID.cleanNID(booking.patNationalId || booking.nationalId || '');
+  
+  // ── ARGON ENTERPRISE: Block creation without NID ──
+  if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
+    if (!ArgonNID.isValidNID(_legacyNID)) {
+      toast('⚠️ لا يمكن إنشاء ملف مريض جديد بدون رقم وطني (أو جواز سفر). يرجى إضافته من نافذة الحجز.', 'err');
+      if (window.ArgonMedical && window.ArgonMedical.ShadowLog) {
+        window.ArgonMedical.ShadowLog.log(CID, {result: "BLOCKED", reason: "Missing NID for new file creation"}, {source: "legacy_booking_guard", incoming: {name: booking.patName}}, db);
+      }
+      return;
+    }
+  }
+
+  // ── ARGON ENTERPRISE: Prevent duplicating existing NID ──
+  if (ArgonNID.isValidNID(_legacyNID)) {
+    const existing = ArgonNID.findByNIDLocal(_legacyNID, _patients);
+    if (existing) {
+      db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(existing.uid).then(() => {
+        if (startVisit) {
+          sw('newVisit');
+          loadVisitForm(existing.uid, bookingKey);
+        } else {
+          viewPatientFile(existing.uid);
+          sw('patFile');
+        }
+      });
+      return;
+    }
+  }
+
   toast('⚠️ يتم الآن تجهيز ملف مريض جديد...', 'ok');
 
   const newRef = db.ref(`${BASE}/patients`).push();
@@ -1181,7 +1223,7 @@ function saveEditPatient() {
   };
 
   // ── AUDIT: Identity & Clinical Change Detection ──
-  const auditFields = ['name', 'phone', 'nationalId', 'age', 'gender', 'bloodType', 'allergies', 'chronicDiseases'];
+  const auditFields = ['name', 'phone', 'nationalId', 'dob', 'age', 'gender', 'bloodType', 'allergies', 'chronicDiseases'];
   const changes = {};
   auditFields.forEach(field => {
     const oldVal = oldInfo[field] ?? null;
@@ -1191,6 +1233,27 @@ function saveEditPatient() {
     }
   });
 
+  // ── ARGON ENTERPRISE: Identity Change Workflow ──
+  const protectedFields = ['name', 'phone', 'nationalId', 'dob', 'age'];
+  const pendingIdentityChanges = {};
+  let hasIdentityChanges = false;
+  
+  if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
+    protectedFields.forEach(field => {
+      if (changes[field]) {
+        pendingIdentityChanges[field] = {
+          oldValue: changes[field].old,
+          newValue: changes[field].new
+        };
+        // Revert the update to the old value to protect the master record
+        updates[field] = oldInfo[field] || null;
+        hasIdentityChanges = true;
+        // Also remove from immediate changes so audit log doesn't show it as applied yet
+        delete changes[field];
+      }
+    });
+  }
+
   if (Object.keys(changes).length > 0) {
     if (window.ArgonAuditLog) {
       window.ArgonAuditLog.log('PATIENT_IDENTITY', uid, 'UPDATE', oldInfo, updates, 'Profile Edit');
@@ -1198,10 +1261,30 @@ function saveEditPatient() {
   }
   // ── END AUDIT ──
 
-
   db.ref(`${BASE}/patients/${uid}/info`).update(updates).then(() => {
-    logAudit('EDIT_PATIENT', `تم تعديل بيانات المريض ${updates.name} (${uid})`, 'EMR');
-    toast('✅ تم تحديث بيانات المريض بنجاح', 'ok');
+    if (hasIdentityChanges) {
+      db.ref(`${BASE}/identity_changes`).push({
+        patientId: uid,
+        requestedBy: (ArgonSession.get() || {}).staffId || 'unknown',
+        requestedAt: new Date().toISOString(),
+        status: 'pending',
+        changes: pendingIdentityChanges,
+        approvedBy: null,
+        approvedAt: null,
+        rejectedBy: null,
+        rejectedAt: null,
+        reason: null
+      });
+      toast('✅ تم حفظ التحديثات. تعديلات الهوية (الاسم/الرقم/العمر) أُرسلت للإدارة للاعتماد.', 'ok');
+      logAudit('EDIT_PATIENT_IDENTITY_REQ', `طلب تعديل هوية المريض (${uid})`, 'EMR');
+    } else {
+      toast('✅ تم تحديث بيانات المريض بنجاح', 'ok');
+    }
+
+    if (Object.keys(changes).length) {
+      logAudit('EDIT_PATIENT', `تعديل بيانات سريرية للمريض (${uid})`, 'EMR');
+    }
+    
     closeModal('editPatModal');
     if (activePatientId === uid) {
       viewPatientFile(uid);
@@ -1279,7 +1362,7 @@ async function saveNewPatient() {
           },
           () => {
             // مريض جديد (فرد عائلة)
-            _executeSaveNewPatient(name, phone, nationalId, age, gender, blood, allergies, chronic, notes);
+            _executeSaveNewPatient(name, phone, nationalId, _dob_np, _calcAge_np, gender, blood, allergies, chronic, notes);
           }
         );
         return; // أوقف التنفيذ
@@ -1288,10 +1371,10 @@ async function saveNewPatient() {
   }
 
   // Fallback (أو NEW أو Shadow Mode)
-  _executeSaveNewPatient(name, phone, nationalId, age, gender, blood, allergies, chronic, notes);
+  _executeSaveNewPatient(name, phone, nationalId, _dob_np, _calcAge_np, gender, blood, allergies, chronic, notes);
 }
 
-function _executeSaveNewPatient(name, phone, nationalId, age, gender, blood, allergies, chronic, notes) {
+function _executeSaveNewPatient(name, phone, nationalId, dob, age, gender, blood, allergies, chronic, notes) {
   const session = ArgonSession.get() || {};
   const loggedInDoctorId = session.staffId || null;
 
@@ -1301,8 +1384,8 @@ function _executeSaveNewPatient(name, phone, nationalId, age, gender, blood, all
       name: sanitize(name),
       phone: sanitize(phone),
       nationalId: nationalId ? sanitize(nationalId) : null,
-      dob: _dob_ep || null,
-      age: _dob_ep ? window.ArgonCalcAge(_dob_ep) : (p.info.age || null),
+      dob: dob || null,
+      age: dob ? window.ArgonCalcAge(dob) : (age || null),
       gender: sanitize(gender),
       bloodType: sanitize(blood),
       allergies,
@@ -1721,6 +1804,33 @@ function viewPatientFile(phoneOrUid) {
   return safeViewPatientFile(phoneOrUid);
 }
 
+// ── ARGON ENTERPRISE: Lock Takeover Function ──
+window.executeLockTakeover = async function(uid, prevDoctorId, prevDoctorName) {
+  const session = window.ArgonSession ? ArgonSession.get() : {};
+  const currentDoctorId = session?.staffId || 'unknown';
+  const currentDoctorName = session?.displayName || 'طبيب';
+
+  if (typeof logAudit === 'function') {
+    logAudit('LOCK_TAKEOVER', `استيلاء على جلسة المريض (${uid}). الجلسة السابقة: ${prevDoctorName} (${prevDoctorId})`, 'EMR');
+  }
+
+  // Update lock directly
+  if (typeof BASE !== 'undefined') {
+    await db.ref(`${BASE}/active_sessions/${uid}`).update({
+      doctorId: currentDoctorId,
+      doctorName: currentDoctorName,
+      lockedAt: Date.now(),
+      takeoverFrom: prevDoctorId,
+      takeoverReason: 'Expired Session (> 30 mins)'
+    });
+  }
+  
+  toast('✅ تم الاستيلاء على الجلسة بنجاح.', 'ok');
+  
+  // Re-run viewPatientFile to load the UI now that we own the lock
+  viewPatientFile(uid);
+};
+
 async function safeViewPatientFile(phoneOrUid) {
   // Clear previous local lock if one exists so we can switch files seamlessly
   if (window.EMRContext && window.EMRContext.sessionLock && window.EMRContext.activePatientId) {
@@ -1765,6 +1875,22 @@ async function safeViewPatientFile(phoneOrUid) {
     if (lockSnap.exists()) {
       const lockData = lockSnap.val();
       if (!isAdmin && lockData.doctorId !== loggedInDoctorId) {
+        // ── ARGON ENTERPRISE: Session Lock Takeover ──
+        const lockAgeMs = Date.now() - (lockData.lockedAt || Date.now());
+        const isExpired = lockAgeMs > 30 * 60 * 1000; // 30 minutes
+
+        if (isExpired) {
+          const tl = document.getElementById('timelineList');
+          if (tl) tl.innerHTML = `
+            <div style="text-align:center; padding: 40px; background: rgba(245,158,11,0.05); border-radius: 12px; border: 1px solid rgba(245,158,11,0.2);">
+              <div style="font-size: 3rem; margin-bottom: 12px;">⏳</div>
+              <h3 style="color: var(--amber); margin-bottom: 8px;">الجلسة قديمة (Expired Session)</h3>
+              <p style="color: var(--muted); margin-bottom: 20px; line-height: 1.6;">الملف الطبي مقفل بواسطة د. <b>${sanitize(lockData.doctorName)}</b><br>ولكن الجلسة تجاوزت 30 دقيقة ولم تُغلق. يمكنك الاستيلاء على الجلسة الآن.</p>
+              <button class="btn-primary" onclick="executeLockTakeover('${uid}', '${lockData.doctorId}', '${sanitize(lockData.doctorName)}')" style="background:var(--amber); border-color:var(--amber); color: #000; font-weight: bold; font-size: 1rem;"><i class="fas fa-unlock-alt"></i> الاستيلاء على الجلسة ومتابعة العمل</button>
+            </div>`;
+          return;
+        }
+
         let isEmergencyGranted = false;
         if (window.ARGON_FEATURES && window.ARGON_FEATURES.ENABLE_BREAK_GLASS) {
            const grant = lockData.emergencyGrants ? lockData.emergencyGrants[loggedInDoctorId] : null;
@@ -1810,6 +1936,11 @@ async function safeViewPatientFile(phoneOrUid) {
   if (window.AuditAPI) {
     window.AuditAPI.log('SESSION_LOCK_TRIGGERED', { patientId: uid });
     window.AuditAPI.log('PATIENT_FILE_OPENED', { patientId: uid });
+  }
+  
+  // ── ARGON ENTERPRISE: Server Audit for File Access ──
+  if (typeof logAudit === 'function') {
+    logAudit('OPEN_FILE', `تم فتح ملف المريض (${uid})`, 'EMR');
   }
 
 
@@ -2282,6 +2413,8 @@ function saveVisit() {
     time: new Date().toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' }),
     docKey,
     docName: doc.name || 'غير محدد',
+    doctorId: (ArgonSession.get() || {}).staffId || docKey,
+    patientId: activePatientId,
     diagnosis,
     complaint,
     notes,
@@ -2981,8 +3114,8 @@ function completeReferral(refId) {
   });
 }
 
-// Beautiful Doctor Profile Selector Modal
-function showDoctorProfileSelector(matchedPats, originalPhone) {
+// Beautiful Doctor Profile Selector Modal (Ambiguity Disambiguation)
+function showDoctorProfileSelector(matchedPats, originalSearchTerm, onSelectCallback = null) {
   const existing = document.getElementById('doctorProfileSelectorOverlay');
   if (existing) existing.remove();
 
@@ -3009,35 +3142,57 @@ function showDoctorProfileSelector(matchedPats, originalPhone) {
     border-radius: 22px;
     padding: 28px;
     width: 100%;
-    max-width: 460px;
+    max-width: 520px;
     box-shadow: 0 20px 40px rgba(0,0,0,0.5);
     text-align: center;
   `;
 
+  // Attach callback globally for the inline onclick handlers
+  window._tempProfileSelectorCallback = onSelectCallback;
+
   let profilesHTML = matchedPats.map(([uid, p]) => {
     const info = p.info || {};
     const genderIcon = info.gender === 'ذكر' ? '👨' : info.gender === 'أنثى' ? '👩' : '👤';
-    const ageGender = [info.age ? `${info.age} سنة` : '', info.gender || ''].filter(Boolean).join(' · ');
+    const ageStr = info.age ? `${info.age} سنة` : 'العمر غير مسجل';
+    const regDate = info.createdAt ? new Date(info.createdAt).toLocaleDateString('ar-JO') : '—';
+    
+    // Default action if no callback is provided
+    let clickAction = `document.getElementById('doctorProfileSelectorOverlay').remove(); viewPatientFile('${uid}'); sw('patFile');`;
+    if (onSelectCallback) {
+      clickAction = `document.getElementById('doctorProfileSelectorOverlay').remove(); if(window._tempProfileSelectorCallback) window._tempProfileSelectorCallback('${uid}');`;
+    }
+
     return `
-      <div class="plist-card" style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; text-align: right; margin-bottom: 10px; transition: all 0.2s;" 
-           onclick="document.getElementById('doctorProfileSelectorOverlay').remove(); viewPatientFile('${uid}'); sw('patFile');">
-        <div style="font-size: 1.8rem;">${genderIcon}</div>
-        <div style="flex: 1;">
-          <div style="font-weight: 800; font-size: 0.95rem; color: var(--text);">${sanitize(info.name)}</div>
-          <div style="font-size: 0.78rem; color: var(--muted); margin-top: 2px;">
-            ${ageGender ? `${ageGender} · ` : ''}الرقم الطبي: <span style="font-family: monospace;">${info.mrn || '—'}</span>
-            ${info.nationalId ? `<br><span style="color:var(--teal)">الرقم الوطني: ${info.nationalId}</span>` : ''}
+      <div class="plist-card" style="border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; align-items: flex-start; gap: 14px; cursor: pointer; text-align: right; margin-bottom: 12px; transition: all 0.2s;" 
+           onclick="${clickAction}">
+        <div style="font-size: 2.2rem; background: rgba(255,255,255,0.03); border-radius: 12px; padding: 10px; width: 60px; text-align: center;">${genderIcon}</div>
+        <div style="flex: 1; line-height: 1.6;">
+          <div style="font-weight: 800; font-size: 1.1rem; color: var(--text);">${sanitize(info.name)}</div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.78rem; color: var(--muted); margin-top: 6px;">
+            <div><i class="far fa-id-badge" style="width:14px; color:var(--sky)"></i> الرقم الطبي: <span style="font-family: monospace; font-weight: bold; color:var(--text);">${info.mrn || '—'}</span></div>
+            <div><i class="fas fa-fingerprint" style="width:14px; color:var(--teal)"></i> Patient UID: <span style="font-family: monospace; font-size: 0.65rem;">${uid.substring(0,8)}...</span></div>
+            
+            <div style="grid-column: 1 / -1; ${info.nationalId ? 'color:var(--amber); font-weight:bold;' : ''}"><i class="far fa-id-card" style="width:14px;"></i> الرقم الوطني: ${info.nationalId || 'غير مسجل'}</div>
+            
+            <div><i class="far fa-calendar-alt" style="width:14px;"></i> تاريخ الميلاد: ${info.dob || '—'}</div>
+            <div><i class="fas fa-user-clock" style="width:14px;"></i> العمر: ${ageStr}</div>
+            
+            <div><i class="fas fa-phone" style="width:14px;"></i> الهاتف: ${info.phone || '—'}</div>
+            <div><i class="fas fa-venus-mars" style="width:14px;"></i> الجنس: ${info.gender || '—'}</div>
+            
+            <div style="grid-column: 1 / -1; margin-top: 4px; font-size: 0.7rem; opacity: 0.7;"><i class="fas fa-history" style="width:14px;"></i> تاريخ التسجيل: ${regDate}</div>
           </div>
         </div>
-        <div style="color: var(--teal);"><i class="fas fa-chevron-left"></i></div>
+        <div style="color: var(--teal); display: flex; align-items: center; align-self: center;"><i class="fas fa-chevron-left fa-lg"></i></div>
       </div>
     `;
   }).join('');
 
   container.innerHTML = `
-    <div style="font-size: 3rem; margin-bottom: 12px;">👥</div>
-    <h3 style="font-weight: 900; margin-bottom: 8px; color: var(--teal);">تحديد ملف المريض</h3>
-    <p style="font-size: 0.82rem; color: var(--muted); margin-bottom: 20px;">تم العثور على عدة ملفات مسجلة بنفس رقم الهاتف (${originalPhone}). الرجاء تحديد المريض المطلوب للزيارة:</p>
+    <div style="font-size: 3rem; margin-bottom: 12px; display: inline-block; background: rgba(239,68,68,0.1); border-radius: 50%; width: 80px; height: 80px; line-height: 80px; border: 2px solid rgba(239,68,68,0.3);">⚠️</div>
+    <h3 style="font-weight: 900; margin-bottom: 8px; color: var(--text);">تطابق أسماء أو بيانات</h3>
+    <p style="font-size: 0.85rem; color: var(--amber); margin-bottom: 20px; font-weight: bold;">يوجد أكثر من ملف طبي مطابق لبحثك (${sanitize(originalSearchTerm)}). يرجى التمييز الدقيق واختيار الملف الصحيح لتجنب الخلط الطبي:</p>
     
     <div style="max-height: 280px; overflow-y: auto; margin-bottom: 20px;">
       ${profilesHTML}
