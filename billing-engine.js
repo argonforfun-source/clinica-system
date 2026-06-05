@@ -401,34 +401,55 @@ const BillingEngine = {
       const total = parseFloat(inv.total) || 0;
       const paid = this.calculateInvoicePaid(k);
       const remaining = parseFloat((total - paid).toFixed(2));
-      const dateStr = inv.createdAt ? new Date(inv.createdAt).toLocaleString('ar-JO') : '—';
+      const dateStr = inv.createdAt ? new Date(inv.createdAt).toLocaleString('ar-JO') : '\u2014';
       
-      let itemsHtml = '<div style="display:flex;flex-direction:column;gap:4px;">';
+      // Categorize items by department
+      const cats = { consult: [], lab: [], rad: [], pharm: [], other: [] };
       (inv.items || []).forEach(i => {
-        itemsHtml += `
-          <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.02);padding:2px 6px;border-radius:4px;border:1px solid var(--border)">
-            <span>${BillingEngine.sanitize(i.name)}</span>
-            <span style="font-family:'IBM Plex Mono',monospace;font-weight:bold;color:var(--teal)">${parseFloat(i.price).toFixed(2)} د.أ</span>
-          </div>
-        `;
+        const n = (i.name || '').toLowerCase();
+        if (n.includes('\u0643\u0634\u0641\u064a\u0629') || n.includes('consultation')) cats.consult.push(i);
+        else if (n.includes('\u062a\u062d\u0644\u064a\u0644') || n.includes('lab')) cats.lab.push(i);
+        else if (n.includes('\u062a\u0635\u0648\u064a\u0631') || n.includes('\u0623\u0634\u0639\u0629') || n.includes('rad') || n.includes('x-ray') || n.includes('mri') || n.includes('ct')) cats.rad.push(i);
+        else if (n.includes('\u0635\u064a\u062f\u0644') || n.includes('\u062f\u0648\u0627\u0621') || n.includes('pharm')) cats.pharm.push(i);
+        else cats.other.push(i);
       });
+
+      const renderCat = (icon, label, color, items) => {
+        if (!items.length) return '';
+        const sub = items.reduce((a, i) => a + (parseFloat(i.price) || 0), 0);
+        return `<div style="margin-bottom:6px">
+          <div style="font-size:0.72rem;font-weight:800;color:${color};margin-bottom:3px">${icon} ${label}</div>
+          ${items.map(i => `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.02);padding:2px 6px;border-radius:4px;border:1px solid var(--border);margin-bottom:2px">
+            <span style="font-size:0.78rem">${BillingEngine.sanitize(i.name)}</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-weight:bold;color:${color};font-size:0.78rem">${parseFloat(i.price).toFixed(2)}</span>
+          </div>`).join('')}
+          <div style="text-align:left;font-size:0.68rem;color:var(--muted);font-family:'IBM Plex Mono',monospace">\u0645\u062c\u0645\u0648\u0639: ${sub.toFixed(2)} \u062f.\u0623</div>
+        </div>`;
+      };
+
+      let itemsHtml = '<div style="display:flex;flex-direction:column;gap:2px">';
+      itemsHtml += renderCat('\ud83c\udfe5', '\u0643\u0634\u0641\u064a\u0629 \u0627\u0644\u0637\u0628\u064a\u0628', 'var(--teal)', cats.consult);
+      itemsHtml += renderCat('\ud83d\udd2c', '\u0641\u062d\u0648\u0635\u0627\u062a \u0627\u0644\u0645\u062e\u062a\u0628\u0631', 'var(--green)', cats.lab);
+      itemsHtml += renderCat('\ud83e\ude7b', '\u0635\u0648\u0631 \u0627\u0644\u0623\u0634\u0639\u0629', 'var(--sky)', cats.rad);
+      itemsHtml += renderCat('\ud83d\udc8a', '\u0627\u0644\u0635\u064a\u062f\u0644\u064a\u0629', 'var(--amber)', cats.pharm);
+      itemsHtml += renderCat('\ud83d\udccb', '\u062e\u062f\u0645\u0627\u062a \u0623\u062e\u0631\u0649', 'var(--purple)', cats.other);
       itemsHtml += '</div>';
 
-      let status = '<span style="color:var(--red);font-size:0.7rem">غير مدفوعة</span>';
-      if (remaining <= 0) status = '<span style="color:var(--green);font-size:0.7rem">مدفوعة</span>';
-      else if (paid > 0) status = '<span style="color:var(--amber);font-size:0.7rem">جزئية</span>';
+      let status = '<span style="color:var(--red);font-size:0.7rem">\u063a\u064a\u0631 \u0645\u062f\u0641\u0648\u0639\u0629</span>';
+      if (remaining <= 0) status = '<span style="color:var(--green);font-size:0.7rem">\u0645\u062f\u0641\u0648\u0639\u0629</span>';
+      else if (paid > 0) status = '<span style="color:var(--amber);font-size:0.7rem">\u062c\u0632\u0626\u064a\u0629</span>';
 
       invHtml += `
         <tr>
           <td style="font-size:0.75rem">${dateStr}</td>
-          <td style="font-size:0.75rem;min-width:200px;">${itemsHtml}</td>
+          <td style="font-size:0.75rem;min-width:240px;">${itemsHtml}</td>
           <td style="font-weight:bold;font-family:'IBM Plex Mono',monospace;font-size:1.1rem;color:var(--text)">${total.toFixed(2)}</td>
           <td>${status}</td>
         </tr>
       `;
     });
     
-    invBody.innerHTML = invHtml || '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">لا توجد مطالبات</td></tr>';
+    invBody.innerHTML = invHtml || '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u0637\u0627\u0644\u0628\u0627\u062a</td></tr>';
 
     const payBody = document.getElementById('blPaymentsBody');
     let payHtml = '';
@@ -440,7 +461,7 @@ const BillingEngine = {
 
     pTx.forEach(([k, tx], idx) => {
       if (idx === 0 && tx.timestamp) lastDate = new Date(tx.timestamp).toLocaleDateString('ar-JO');
-      const dateStr = tx.timestamp ? new Date(tx.timestamp).toLocaleString('ar-JO') : '—';
+      const dateStr = tx.timestamp ? new Date(tx.timestamp).toLocaleString('ar-JO') : '\u2014';
       const isRev = tx.type === 'REVERSAL';
       const color = isRev ? 'var(--red)' : 'var(--green)';
       const sign = isRev ? '-' : '+';
@@ -457,7 +478,103 @@ const BillingEngine = {
     });
 
     document.getElementById('blLedgerLastPay').textContent = lastDate;
-    payBody.innerHTML = payHtml || '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:20px">لا توجد حركات مالية</td></tr>';
+    payBody.innerHTML = payHtml || '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:20px">\u0644\u0627 \u062a\u0648\u062c\u062f \u062d\u0631\u0643\u0627\u062a \u0645\u0627\u0644\u064a\u0629</td></tr>';
+  },
+
+  // ── ENTERPRISE PRINT INVOICE (JOFOTARA-Ready) ──
+  printPatientInvoice: function() {
+    const pid = this.activePatientId;
+    if (!pid) return;
+
+    const pts = this._patientsRef || {};
+    const pat = pts[pid] || {};
+    const info = pat.info || {};
+    const patName = info.name || '\u0645\u0631\u064a\u0636';
+    const patPhone = info.phone || '';
+    const patNID = info.nationalId || '';
+    const fin = this.calculatePatientFinancials(pid);
+
+    // Clinic info from settings
+    const clinicName = (typeof _sets !== 'undefined' && _sets.name) ? _sets.name : '\u0627\u0644\u0639\u064a\u0627\u062f\u0629';
+    const clinicPhone = (typeof _sets !== 'undefined' && _sets.phone) ? _sets.phone : '';
+    const clinicAddr = (typeof _sets !== 'undefined' && _sets.address) ? _sets.address : '';
+    const clinicLogo = (typeof _sets !== 'undefined' && _sets.logo) ? _sets.logo : '';
+
+    // Collect ALL items across all invoices for this patient
+    const pInvoices = Object.entries(this._invoices)
+      .filter(([k, inv]) => inv.patientId === pid)
+      .sort((a, b) => (a[1].createdAt || '').localeCompare(b[1].createdAt || ''));
+
+    let allItems = [];
+    let counter = 1;
+    pInvoices.forEach(([k, inv]) => {
+      (inv.items || []).forEach(i => {
+        const n = (i.name || '').toLowerCase();
+        let dept = '\u062e\u062f\u0645\u0627\u062a \u0623\u062e\u0631\u0649';
+        if (n.includes('\u0643\u0634\u0641\u064a\u0629') || n.includes('consultation')) dept = '\u0643\u0634\u0641\u064a\u0629 \u0637\u0628\u064a\u0629';
+        else if (n.includes('\u062a\u062d\u0644\u064a\u0644') || n.includes('lab')) dept = '\u0645\u062e\u062a\u0628\u0631';
+        else if (n.includes('\u062a\u0635\u0648\u064a\u0631') || n.includes('\u0623\u0634\u0639\u0629') || n.includes('rad')) dept = '\u0623\u0634\u0639\u0629';
+        else if (n.includes('\u0635\u064a\u062f\u0644') || n.includes('\u062f\u0648\u0627\u0621') || n.includes('pharm')) dept = '\u0635\u064a\u062f\u0644\u064a\u0629';
+        allItems.push({ idx: counter++, name: BillingEngine.sanitize(i.name), dept, price: parseFloat(i.price) || 0 });
+      });
+    });
+
+    const dateNow = new Date().toLocaleDateString('ar-JO', { year:'numeric', month:'2-digit', day:'2-digit' });
+    const timeNow = new Date().toLocaleTimeString('ar-JO', { hour:'2-digit', minute:'2-digit' });
+    const invNum = 'INV-' + (pid || '').substring(0, 8).toUpperCase();
+
+    const rowsHtml = allItems.map(i => `
+      <tr><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${i.idx}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-weight:700">${i.name}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center;color:#64748b">${i.dept}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">1</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center;font-family:'IBM Plex Mono',monospace">${i.price.toFixed(2)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:bold;font-family:'IBM Plex Mono',monospace">${i.price.toFixed(2)}</td></tr>
+    `).join('');
+
+    const logoHtml = clinicLogo ? `<img src="${clinicLogo}" style="max-height:70px;max-width:120px;object-fit:contain;border-radius:8px" crossorigin="anonymous">` : '<div style="width:70px;height:70px;background:#f1f5f9;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:2rem;border:2px dashed #cbd5e1">\ud83c\udfe5</div>';
+
+    const printHtml = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Tajawal',sans-serif;color:#1e293b;background:#fff;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@page{size:A4;margin:15mm 12mm}
+.inv{max-width:780px;margin:0 auto;padding:20px}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0d9488;padding-bottom:18px;margin-bottom:18px}
+.hdr-right{display:flex;align-items:center;gap:14px}
+.hdr h1{font-size:1.6rem;color:#0d9488;font-weight:900;margin-bottom:4px}
+.hdr-left{text-align:left}
+.hdr-left h2{font-size:1.1rem;color:#334155;margin-bottom:4px}
+.pat-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pat-box b{color:#475569}
+table{width:100%;border-collapse:collapse;margin-bottom:16px}
+thead tr{background:#0d9488;color:#fff}
+thead th{padding:10px;font-weight:700;font-size:0.85rem}
+.summary{display:flex;justify-content:flex-end;margin-bottom:20px}
+.summary-box{width:280px;border:2px solid #0d9488;border-radius:10px;overflow:hidden}
+.summary-row{display:flex;justify-content:space-between;padding:8px 14px;font-size:0.9rem;border-bottom:1px solid #e2e8f0}
+.summary-row:last-child{border-bottom:none;background:#0d9488;color:#fff;font-weight:900;font-size:1.1rem}
+.stamp-area{margin-top:30px;display:flex;justify-content:space-between;align-items:flex-end}
+.stamp-box{width:200px;text-align:center}
+.stamp-box .line{border-bottom:2px dashed #94a3b8;height:60px;margin-bottom:8px}
+.stamp-box .label{color:#475569;font-weight:700;font-size:0.85rem}
+.footer{margin-top:30px;text-align:center;color:#94a3b8;font-size:0.75rem;border-top:1px solid #e2e8f0;padding-top:14px}
+@media print{body{background:#fff}.inv{padding:0}}</style></head>
+<body><div class="inv">
+<div class="hdr"><div class="hdr-right">${logoHtml}<div><h1>${BillingEngine.sanitize(clinicName)}</h1><p style="color:#64748b;font-size:0.85rem">${BillingEngine.sanitize(clinicAddr)}</p><p style="color:#64748b;font-size:0.85rem">\u0647\u0627\u062a\u0641: <span dir="ltr">${BillingEngine.sanitize(clinicPhone)}</span></p></div></div>
+<div class="hdr-left"><h2>\u0641\u0627\u062a\u0648\u0631\u0629 \u0637\u0628\u064a\u0629</h2><p style="color:#64748b;font-size:0.85rem">\u0631\u0642\u0645: ${invNum}</p><p style="color:#64748b;font-size:0.85rem">\u0627\u0644\u062a\u0627\u0631\u064a\u062e: ${dateNow}</p><p style="color:#64748b;font-size:0.85rem">\u0627\u0644\u0648\u0642\u062a: ${timeNow}</p></div></div>
+<div class="pat-box"><div><b>\u0627\u0633\u0645 \u0627\u0644\u0645\u0631\u064a\u0636:</b> ${BillingEngine.sanitize(patName)}</div><div><b>\u0627\u0644\u0647\u0627\u062a\u0641:</b> <span dir="ltr">${BillingEngine.sanitize(patPhone)}</span></div><div><b>\u0627\u0644\u0631\u0642\u0645 \u0627\u0644\u0648\u0637\u0646\u064a:</b> ${BillingEngine.sanitize(patNID) || '\u2014'}</div><div><b>\u0631\u0642\u0645 \u0627\u0644\u0645\u0644\u0641:</b> <span dir="ltr" style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem">${(pid||'').substring(0,12)}</span></div></div>
+<table><thead><tr><th>#</th><th>\u0627\u0644\u0628\u064a\u0627\u0646</th><th>\u0627\u0644\u0642\u0633\u0645</th><th>\u0627\u0644\u0643\u0645\u064a\u0629</th><th>\u0627\u0644\u0633\u0639\u0631 (\u062f.\u0623)</th><th>\u0627\u0644\u0645\u062c\u0645\u0648\u0639 (\u062f.\u0623)</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+<div class="summary"><div class="summary-box">
+<div class="summary-row"><span>\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a</span><span style="font-family:'IBM Plex Mono',monospace">${fin.total.toFixed(2)} \u062f.\u0623</span></div>
+<div class="summary-row"><span>\u0627\u0644\u0645\u062f\u0641\u0648\u0639</span><span style="font-family:'IBM Plex Mono',monospace;color:#10b981">${fin.paid.toFixed(2)} \u062f.\u0623</span></div>
+<div class="summary-row"><span>\u0635\u0627\u0641\u064a \u0627\u0644\u0645\u0633\u062a\u062d\u0642</span><span style="font-family:'IBM Plex Mono',monospace">${fin.unpaid.toFixed(2)} \u062f.\u0623</span></div>
+</div></div>
+<div class="stamp-area"><div style="color:#94a3b8;font-size:0.82rem">\u0645\u0644\u0627\u062d\u0638\u0629: \u0647\u0630\u0647 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 \u0635\u0627\u062f\u0631\u0629 \u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a\u0627\u064b \u0645\u0646 \u0627\u0644\u0646\u0638\u0627\u0645 \u0627\u0644\u0637\u0628\u064a.<br>\u064a\u0631\u062c\u0649 \u0627\u0644\u0627\u062d\u062a\u0641\u0627\u0638 \u0628\u0647\u0627 \u0644\u0623\u063a\u0631\u0627\u0636 \u0627\u0644\u0645\u0631\u0627\u062c\u0639\u0629.</div><div class="stamp-box"><div class="line"></div><div class="label">\u062e\u062a\u0645 \u0627\u0644\u0639\u064a\u0627\u062f\u0629 \u0648\u0627\u0644\u062a\u0648\u0642\u064a\u0639</div></div></div>
+<div class="footer">\u062a\u0645 \u0625\u0635\u062f\u0627\u0631 \u0647\u0630\u0647 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 \u0628\u0648\u0627\u0633\u0637\u0629 ARGON Medical OS \u2014 \u0646\u0638\u0627\u0645 \u0625\u062f\u0627\u0631\u0629 \u0627\u0644\u0639\u064a\u0627\u062f\u0627\u062a \u0648\u0627\u0644\u0645\u062c\u0645\u0639\u0627\u062a \u0627\u0644\u0637\u0628\u064a\u0629</div>
+</div><script>window.onload=function(){window.print();window.onafterprint=function(){window.close();}}</script></body></html>`;
+
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (win) { win.document.write(printHtml); win.document.close(); }
   },
 
   sanitize: function(s) {
