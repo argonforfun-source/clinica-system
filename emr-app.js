@@ -1597,8 +1597,12 @@ function generatePatientFileHTML(uid) {
 
       const labArr = Array.isArray(v.labOrders) ? v.labOrders : Object.values(v.labOrders || {});
       const radArr = Array.isArray(v.radOrders) ? v.radOrders : Object.values(v.radOrders || {});
-      const labReqsStr = labArr.map(i => typeof i === 'object' ? i.name : i).join(' ، ');
-      const radReqsStr = radArr.map(i => typeof i === 'object' ? i.name : i).join(' ، ');
+      const getSafeName = (item) => {
+        let n = typeof item === 'object' ? (item.name || item) : item;
+        return typeof n === 'object' ? (n.name || 'عنصر غير معروف') : n;
+      };
+      const labReqsStr = labArr.map(getSafeName).join(' ، ');
+      const radReqsStr = radArr.map(getSafeName).join(' ، ');
 
       // Upgraded Departmental Card stylings
       const isPharmacist = v.docKey === 'pharmacist';
@@ -1671,9 +1675,9 @@ function generatePatientFileHTML(uid) {
     }).join('');
   }
 
-  // Get department specific order lists for this patient
-  const patientLabOrders = Object.entries(_labOrders).filter(([k, o]) => o.patientId === uid || (o.patientPhone && cleanPhone(o.patientPhone) === cleanPhone(info.phone || uid)));
-  const patientRadOrders = Object.entries(_radOrders).filter(([k, o]) => o.patientId === uid || (o.patientPhone && cleanPhone(o.patientPhone) === cleanPhone(info.phone || uid)));
+  // Get department specific order lists for this patient (newest first)
+  const patientLabOrders = Object.entries(_labOrders).filter(([k, o]) => o.patientId === uid || (o.patientPhone && cleanPhone(o.patientPhone) === cleanPhone(info.phone || uid))).reverse();
+  const patientRadOrders = Object.entries(_radOrders).filter(([k, o]) => o.patientId === uid || (o.patientPhone && cleanPhone(o.patientPhone) === cleanPhone(info.phone || uid))).reverse();
 
   let labOrdersHTML = `
     <div style="text-align:center;padding:30px;color:var(--muted)" class="glass-panel">لا يوجد طلبات فحوصات مخبرية مسجلة لهذا المريض</div>`;
@@ -1684,7 +1688,8 @@ function generatePatientFileHTML(uid) {
         if (t.status === 'completed') {
           resStr = `: <b style="color:var(--teal)">${sanitize(t.result)}</b> ${sanitize(t.unit)}`;
         }
-        return `• ${sanitize(t.name)}${resStr}`;
+        const safeName = typeof t.name === 'object' ? (t.name.name || 'فحص') : (t.name || t);
+        return `• ${sanitize(safeName)}${resStr}`;
       }).join('<br>');
       const statusText = o.status === 'completed' ? 'جاهزة ومكتملة ✅' : 'قيد الفحص والتحليل ⏳';
       const statusColor = o.status === 'completed' ? 'var(--green)' : 'var(--amber)';
@@ -1709,7 +1714,10 @@ function generatePatientFileHTML(uid) {
     <div style="text-align:center;padding:30px;color:var(--muted)" class="glass-panel">لا يوجد طلبات تصوير أشعة مسجلة لهذا المريض</div>`;
   if (patientRadOrders.length) {
     radOrdersHTML = patientRadOrders.map(([k, o]) => {
-      const scans = (o.requestedScans || []).map(s => `• ${sanitize(s.name)}`).join('<br>');
+      const scans = (o.requestedScans || []).map(s => {
+        const safeName = typeof s.name === 'object' ? (s.name.name || 'صورة أشعة') : (s.name || s);
+        return `• ${sanitize(safeName)}`;
+      }).join('<br>');
       const statusText = o.status === 'completed' ? 'جاهزة ومكتملة ✅' : 'بانتظار التصوير ⏳';
       const statusColor = o.status === 'completed' ? 'var(--green)' : 'var(--amber)';
 
