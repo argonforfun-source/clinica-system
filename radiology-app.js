@@ -26,6 +26,7 @@ let currentRadFilter = 'waiting';
 let uploadedImages = []; // Array of {imageId, fileName, storagePath, downloadUrl, uploadedAt, uploadedBy}
 let isSubmitting = false;
 let isUploading = false;
+const USE_STORAGE = false; // 🔴 تغيير هذا إلى true عند الترقية إلى خطة Firebase Blaze
 
 window.addEventListener('DOMContentLoaded', () => {
   if (!CID) {
@@ -187,7 +188,7 @@ function openRadDetails(key) {
   document.getElementById('radModal').style.display = 'flex';
 }
 
-// ── ARGON ENTERPRISE: MULTI-IMAGE FIREBASE STORAGE UPLOAD ──
+// ── ARGON ENTERPRISE: MULTI-IMAGE DUAL-MODE UPLOAD ──
 async function handleImageUpload(e) {
   const files = e.target.files;
   if (!files || files.length === 0) return;
@@ -198,40 +199,64 @@ async function handleImageUpload(e) {
   document.getElementById('mrFileLbl').textContent = '⏳ جاري الرفع...';
   toast(`⏳ جاري معالجة ورفع ${files.length} ملف/ملفات...`, 'ok');
 
-  const storageRef = firebase.storage().ref();
   const uploaderName = document.getElementById('topName').textContent.replace('مرحباً، ', '');
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const isImage = file.type.startsWith('image/');
     
-    let fileToUpload = file;
-    if (isImage) {
-      // High Quality 2500px Medical Compression, preserves detail without aggressive downscaling
-      fileToUpload = await processImageHighRes(file, 2500, 0.90);
-    }
-
-    const fileName = `${Date.now()}_${Math.floor(Math.random()*1000)}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
-    const storagePath = `${BASE}/radiology_orders/${activeOrderId}/${fileName}`;
-    const fileRef = storageRef.child(storagePath);
-    
     try {
-      const snapshot = await fileRef.put(fileToUpload);
-      const downloadUrl = await snapshot.ref.getDownloadURL();
-      
-      uploadedImages.push({
-        imageId: 'img_' + Date.now() + '_' + i,
-        fileName: file.name,
-        storagePath: storagePath,
-        downloadUrl: downloadUrl,
-        uploadedAt: new Date().toISOString(),
-        uploadedBy: uploaderName
-      });
+      if (USE_STORAGE) {
+        // ── مسار التخزين السحابي (Firebase Storage) ──
+        let fileToUpload = file;
+        if (isImage) {
+          fileToUpload = await processImageHighRes(file, 2500, 0.90);
+        }
+
+        const storageRef = firebase.storage().ref();
+        const fileName = `${Date.now()}_${Math.floor(Math.random()*1000)}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
+        const storagePath = `${BASE}/radiology_orders/${activeOrderId}/${fileName}`;
+        const fileRef = storageRef.child(storagePath);
+        
+        // Timeout wrapper to prevent forever hang if Storage rules block
+        const snapshot = await Promise.race([
+          fileRef.put(fileToUpload),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 15000))
+        ]);
+        const downloadUrl = await snapshot.ref.getDownloadURL();
+        
+        uploadedImages.push({
+          imageId: 'img_' + Date.now() + '_' + i,
+          fileName: file.name,
+          storagePath: storagePath,
+          downloadUrl: downloadUrl,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: uploaderName
+        });
+      } else {
+        // ── مسار قاعدة البيانات (RTDB Base64) المؤقت ──
+        let base64Data = '';
+        if (isImage) {
+          // استخدام دقة 1500 بكسل في وضع الداتا بيس لمنع تجاوز حد 16MB
+          base64Data = await processImageToBase64(file, 1500, 0.75);
+        } else {
+          base64Data = await readFileAsBase64(file);
+        }
+
+        uploadedImages.push({
+          imageId: 'img_' + Date.now() + '_' + i,
+          fileName: file.name,
+          storagePath: null,
+          downloadUrl: base64Data,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: uploaderName
+        });
+      }
       
       renderRadGallery();
       if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('RAD_UPLOAD', `تم رفع صورة: ${file.name}`, 'RADIOLOGY');
     } catch (err) {
-      console.error('Storage Upload Error', err);
+      console.error('Upload Error', err);
       toast(`❌ فشل رفع الملف: ${file.name}`, 'err');
     }
   }
@@ -242,7 +267,7 @@ async function handleImageUpload(e) {
 }
 
 function processImageHighRes(file, maxW, quality) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = ev => {
       const img = new Image();
@@ -259,11 +284,49 @@ function processImageHighRes(file, maxW, quality) {
           ctx.drawImage(img, 0, 0, w, h);
           canvas.toBlob(blob => resolve(blob), file.type, quality);
         } else {
-          resolve(file); // Don't upscale or re-compress if already smaller
+          resolve(file); 
         }
       };
+      img.onerror = () => reject(new Error("Image load failed"));
       img.src = ev.target.result;
     };
+    reader.onerror = () => reject(new Error("File read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function processImageToBase64(file, maxW, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        if (w > maxW) {
+          h *= maxW / w;
+          w = maxW;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error("Image load failed"));
+      img.src = ev.target.result;
+    };
+    reader.onerror = () => reject(new Error("File read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = ev => resolve(ev.target.result);
+    reader.onerror = () => reject(new Error("File read failed"));
     reader.readAsDataURL(file);
   });
 }
