@@ -1655,7 +1655,7 @@ function generatePatientFileHTML(uid) {
             </div>
             <div class="tl-body">
               ${vitalsSummary}
-              <div style="margin-top:10px"><b>📝 التفاصيل والتقرير:</b><p style="font-size:.82rem;margin-top:4px;line-height:1.6">${notesHTML}</p></div>
+              <div style="margin-top:10px"><b>📝 التفاصيل والتقرير:</b><p style="font-size:.82rem;margin-top:4px;line-height:1.6;white-space:pre-wrap;word-break:break-word">${notesHTML}</p></div>
               
               ${rxList ? `<div style="margin-top:10px"><b>💊 الوصفة الدوائية:</b><p style="font-size:.82rem;margin-top:4px;color:var(--amber);line-height:1.6">${rxList}</p></div>` : ''}
               

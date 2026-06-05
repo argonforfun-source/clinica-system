@@ -280,7 +280,10 @@ function saveLabResults() {
   // 2. Log Laboratory Event inside patient EMR timeline
   const visitId = o.visitId;
   if (visitId) {
-    const resultsSummary = completedTests.map(t => `• ${t.name}: <b>${t.result}</b> ${t.unit}`).join('<br>');
+    const resultsSummary = completedTests.map(t => {
+      const safeName = typeof t.name === 'object' ? (t.name.name || 'غير معروف') : (t.name || 'غير معروف');
+      return `• ${safeName}: <b>${t.result}</b> ${t.unit}`;
+    }).join('<br>');
     const timelineKey = 'lab_' + activeOrderId;
     const timelineObj = {
       date: new Date().toLocaleDateString('en-CA'),
@@ -335,8 +338,9 @@ function saveLabResults() {
             requiresReview = true;
           }
 
+          const safeName = typeof t.name === 'object' ? (t.name.name || 'غير معروف') : (t.name || 'غير معروف');
           newLabItems.push({
-            name: `تحليل: ${sanitize(t.name)}`,
+            name: `تحليل: ${sanitize(safeName)}`,
             price: requiresReview ? 0 : parseFloat(testPrice.toFixed(2)),
             requiresBillingReview: requiresReview,
             billingStatus: requiresReview ? 'pending_review' : 'draft',

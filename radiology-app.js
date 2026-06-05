@@ -431,7 +431,10 @@ function saveRadReport() {
   // 2. Log Radiology Event inside patient EMR timeline
   const visitId = o.visitId;
   if (visitId) {
-    const scansSummary = (o.requestedScans || []).map(s => `• ${s.name}`).join('<br>');
+    const scansSummary = (o.requestedScans || []).map(s => {
+      const safeName = typeof s.name === 'object' ? (s.name.name || 'غير معروف') : (s.name || 'غير معروف');
+      return `• ${safeName}`;
+    }).join('<br>');
     const timelineKey = 'rad_' + activeOrderId;
     
     // Map Storage images to EMR timeline attachments
@@ -496,8 +499,9 @@ function saveRadReport() {
             requiresReview = true;
           }
 
+          const safeName = typeof s.name === 'object' ? (s.name.name || 'غير معروف') : (s.name || 'غير معروف');
           newRadItems.push({
-            name: `تصوير: ${sanitize(s.name)}`,
+            name: `تصوير: ${sanitize(safeName)}`,
             price: requiresReview ? 0 : parseFloat(scanPrice.toFixed(2)),
             requiresBillingReview: requiresReview,
             billingStatus: requiresReview ? 'pending_review' : 'draft',
