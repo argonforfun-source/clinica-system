@@ -3744,6 +3744,7 @@ function completeWorkspaceVisit() {
       updates[`${BASE}/prescriptions/${prescKey}`] = {
         patientId: uid,
         patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
+        patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
         doctorId: (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor',
         docName: (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب',
         medications: activeVisit.rx.map(m => ({

@@ -130,6 +130,7 @@ function renderRadOrders() {
         </div>
         <div style="font-size:0.8rem;color:var(--muted)">
           <div><b>الطبيب المعالج:</b> د. ${sanitize(o.docName)}</div>
+          <div><b>الهاتف:</b> <span dir="ltr">${sanitize(o.patientPhone || o.phone || '—')}</span></div>
           <div><b>الفحوصات المطلوبة:</b> ${sanitize(scanNames)}</div>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;margin-top:4px">

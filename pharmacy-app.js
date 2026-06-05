@@ -151,6 +151,7 @@ function renderPrescriptions() {
         </div>
         <div style="font-size:0.8rem;color:var(--muted)">
           <div><b>الطبيب:</b> د. ${sanitize(p.docName)}</div>
+          <div><b>الهاتف:</b> <span dir="ltr">${sanitize(p.patientPhone || p.phone || '—')}</span></div>
           <div><b>الأدوية الموصوفة:</b> ${sanitize(medNames)}</div>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
