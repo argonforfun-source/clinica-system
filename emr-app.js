@@ -224,9 +224,10 @@ function initEMR() {
       const urlParams = new URLSearchParams(window.location.search);
       const urlPid = urlParams.get('pid');
       const urlPhone = urlParams.get('phone');
+      window._pendingUrlBk = urlParams.get('bk'); // ── ARGON ENTERPRISE ──
 
       const targetId = urlPid || urlPhone;
-      if (targetId && _patients[targetId]) {
+      if (targetId && _patients[targetId] && !window._pendingUrlBk) {
         viewPatientFile(targetId);
         window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
       }
@@ -273,7 +274,15 @@ function initEMR() {
 
     // Debounce the patient list filter so it renders correctly after the initial batch of bookings arrives
     clearTimeout(bookingLoadTimer);
-    bookingLoadTimer = setTimeout(() => filterPatients(), 300);
+    bookingLoadTimer = setTimeout(() => {
+       filterPatients();
+       // ── ARGON ENTERPRISE: Process pending dashboard link ──
+       if (window._pendingUrlBk && _liveBookings[window._pendingUrlBk] && Object.keys(_patients).length > 0) {
+           openPatientFromBooking(window._pendingUrlBk);
+           window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
+           window._pendingUrlBk = null;
+       }
+    }, 300);
   });
   db.ref(BASE + '/bookings').on('child_changed', snap => {
     const oldB = _liveBookings[snap.key] || {};
@@ -920,6 +929,16 @@ if (ArgonNID.isValidNID(_bNID)) {
   if (booking.patientId && _patients[booking.patientId]) {
     const pInfo = _patients[booking.patientId].info || {};
     const patName = (pInfo.name || '').trim().toLowerCase();
+    
+    // ── ARGON ENTERPRISE: Strict NID Conflict Check ──
+    const patNID = ArgonNID.cleanNID(pInfo.nationalId || '');
+    let isPoisoned = false;
+    
+    if (_bNID && patNID && _bNID !== patNID) {
+        isPoisoned = true;
+        toast('🚨 تحذير أمني: تعارض جذري بين الرقم الوطني للحجز والملف المرتبط به. تم إيقاف الدخول التلقائي.', 'err');
+        if (typeof logAudit === 'function') logAudit('CRITICAL_NID_MISMATCH', `منع فتح ملف المريض بسبب تعارض الرقم الوطني. حجز:${_bNID} | ملف:${patNID}`, 'EMR');
+    }
 
     // Strict Check: If names are radically different, the booking system mistakenly linked them due to a shared phone
     let nameMismatch = false;
@@ -935,7 +954,7 @@ if (ArgonNID.isValidNID(_bNID)) {
       }
     }
 
-    if (!nameMismatch) {
+    if (!isPoisoned && !nameMismatch) {
       if (startVisit) {
         sw('newVisit');
         loadVisitForm(booking.patientId, bookingKey);

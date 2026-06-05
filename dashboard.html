@@ -1632,17 +1632,12 @@ const bookingNID_C3 = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
   });
 }
 
-// Open patient file in EMR portal — uses patientId if available, otherwise phone
+// Open patient file in EMR portal — routes through Enterprise Disambiguation Logic
 function openPatientEMR(bookingKey) {
   const b = _bks[bookingKey];
   if (!b) return;
-  const nid = b.patNationalId || b.nationalId || '';
-  const nidParam = nid ? `&nid=${encodeURIComponent(nid)}` : '';
-  if (b.patientId) {
-    window.open(`emr.html?id=${CID}&pid=${encodeURIComponent(b.patientId)}${nidParam}`, '_blank');
-  } else if (b.patPhone) {
-    window.open(`emr.html?id=${CID}&phone=${encodeURIComponent(b.patPhone)}${nidParam}`, '_blank');
-  }
+  // Route through the bk parameter so emr.html enforces CRITICAL_NID_DUPLICATE_DETECTION
+  window.open(`emr.html?id=${CID}&bk=${encodeURIComponent(bookingKey)}`, '_blank');
 }
 
 async function cmpBook(k) {
