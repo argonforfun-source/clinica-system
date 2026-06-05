@@ -1632,7 +1632,10 @@ function generatePatientFileHTML(uid) {
         cardStyle = 'border-right: 4px solid #a855f7; background: rgba(168, 85, 247, 0.03);';
       }
 
-      const notesHTML = (isPharmacist || isLab || isRad || isReferral) ? v.notes : sanitize(v.notes || 'لا يوجد ملاحظات إضافية');
+      let notesHTML = (isPharmacist || isLab || isRad || isReferral) ? v.notes : sanitize(v.notes || 'لا يوجد ملاحظات إضافية');
+      if (notesHTML && typeof notesHTML === 'string') {
+        notesHTML = notesHTML.replace(/\[object Object\]/g, 'فحص مسجل');
+      }
 
       return `
         ${dateGroupDivider}
