@@ -421,6 +421,7 @@ function dispensePrescription() {
         }
       });
     }
+  }
 
   // Apply all updates atomically
   db.ref(BASE).update(updates).then(() => {
