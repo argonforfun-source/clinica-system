@@ -225,6 +225,7 @@ function initEMR() {
       const urlPid = urlParams.get('pid');
       const urlPhone = urlParams.get('phone');
       window._pendingUrlBk = urlParams.get('bk'); // ── ARGON ENTERPRISE ──
+      window._pendingUrlBkExpectedName = decodeURIComponent(urlParams.get('expectedName') || '');
 
       const targetId = urlPid || urlPhone;
       if (targetId && _patients[targetId] && !window._pendingUrlBk) {
@@ -955,15 +956,12 @@ if (ArgonNID.isValidNID(_bNID)) {
     // Strict Check: If names are radically different, the booking system mistakenly linked them due to a shared phone
     let nameMismatch = false;
     if (!bookingName || !patName) {
-      nameMismatch = true; // If one is empty, we can't trust it. It's a mismatch.
+      nameMismatch = false; // إذا أحد الأسماء فاضي، ما نعتبره mismatch
     } else {
-      // Compare first names strictly to avoid family name overlap
-      const bFirstName = bookingName.split(' ')[0];
-      const pFirstName = patName.split(' ')[0];
-
-      if (bFirstName !== pFirstName) {
-        nameMismatch = true;
-      }
+      const normalize = s => s.trim().replace(/\s+/g, ' ').split(' ')[0];
+      const bFirst = normalize(bookingName);
+      const pFirst = normalize(patName);
+      nameMismatch = bFirst.length > 0 && pFirst.length > 0 && bFirst !== pFirst;
     }
 
     if (!isPoisoned && !nameMismatch) {
@@ -1019,8 +1017,32 @@ if (ArgonNID.isValidNID(_bNID)) {
 
   // 4️⃣ If we have exactly 1 match
   if (matched.length === 1) {
-    if (startVisit) { sw('newVisit'); loadVisitForm(matched[0][0], bookingKey); } else { viewPatientFile(matched[0][0]); sw('patFile'); }
-    return;
+    // لو الحجز فيه اسم، نتحقق إنه يطابق المريض المكتشف
+    const foundInfo = _patients[matched[0][0]]?.info || {};
+    const foundName = (foundInfo.name || '').trim().toLowerCase();
+    const incomingName = bookingName.toLowerCase();
+    
+    const normalize = s => s.replace(/\s+/g, ' ').trim().split(' ')[0];
+    const firstName1 = normalize(foundName);
+    const firstName2 = normalize(incomingName);
+    
+    const namesMatch = !firstName1 || !firstName2 || firstName1 === firstName2;
+    
+    if (namesMatch) {
+      if (startVisit) { sw('newVisit'); loadVisitForm(matched[0][0], bookingKey); }
+      else { viewPatientFile(matched[0][0]); sw('patFile'); }
+      return;
+    } else {
+      // الاسم مختلف — لا نفتح تلقائياً، نعرض selector
+      showDoctorProfileSelector(matched, bookingName || phone, (selectedUid) => {
+        if (typeof BASE !== 'undefined' && bookingKey && !bookingKey.includes('walkin')) {
+          db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(selectedUid).catch(() => {});
+        }
+        if (startVisit) { sw('newVisit'); loadVisitForm(selectedUid, bookingKey); }
+        else { viewPatientFile(selectedUid); sw('patFile'); }
+      });
+      return;
+    }
   }
 
   // 5️⃣ Fallback Legacy

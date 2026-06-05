@@ -1636,8 +1636,9 @@ const bookingNID_C3 = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
 function openPatientEMR(bookingKey) {
   const b = _bks[bookingKey];
   if (!b) return;
-  // Route through the bk parameter so emr.html enforces CRITICAL_NID_DUPLICATE_DETECTION
-  window.open(`emr.html?id=${CID}&bk=${encodeURIComponent(bookingKey)}`, '_blank');
+  // أضف patName للـ URL حتى EMR يستخدمه للتحقق
+  const nameParam = encodeURIComponent(b.patName || '');
+  window.open(`emr.html?id=${CID}&bk=${encodeURIComponent(bookingKey)}&expectedName=${nameParam}`, '_blank');
 }
 
 async function cmpBook(k) {
