@@ -23,8 +23,9 @@ let _sets = null;
 let _orders = {};
 let activeOrderId = null;
 let currentRadFilter = 'waiting';
-let uploadedImage = null; // Base64 of radiology scan
+let uploadedImages = []; // Array of {imageId, fileName, storagePath, downloadUrl, uploadedAt, uploadedBy}
 let isSubmitting = false;
+let isUploading = false;
 
 window.addEventListener('DOMContentLoaded', () => {
   if (!CID) {
@@ -140,15 +141,23 @@ function openRadDetails(key) {
   
   document.getElementById('mrReport').value = o.report || '';
   
-  uploadedImage = o.image || null;
-  const prevDiv = document.getElementById('radImagePrev');
-  const prevImg = document.getElementById('prevImg');
-  if (uploadedImage) {
-    prevImg.src = uploadedImage;
-    prevDiv.style.display = 'block';
-    document.getElementById('mrFileLbl').textContent = '✅ تم تحميل صورة الأشعة بنجاح';
+  // ── ARGON ENTERPRISE: MULTI-IMAGE & LEGACY SUPPORT ──
+  uploadedImages = o.images ? [...o.images] : [];
+  if (o.image && uploadedImages.length === 0) {
+    uploadedImages.push({
+      imageId: 'legacy',
+      fileName: 'صورة قديمة.jpg',
+      downloadUrl: o.image,
+      storagePath: null
+    });
+  }
+
+  if (uploadedImages.length > 0) {
+    renderRadGallery();
+    document.getElementById('mrFileLbl').textContent = `✅ يوجد ${uploadedImages.length} مرفقات مسجلة`;
+    if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('RAD_VIEW', `تم عرض صور الأشعة للطلب: ${key}`, 'RADIOLOGY');
   } else {
-    prevDiv.style.display = 'none';
+    document.getElementById('radImageGallery').style.display = 'none';
     document.getElementById('mrFileLbl').textContent = 'اضغط هنا لتحميل صور الأشعة الرقمية';
   }
 
@@ -162,64 +171,146 @@ function openRadDetails(key) {
   const actions = document.getElementById('radActions');
   if (o.status === 'completed') {
     actions.innerHTML = `
-      ${o.image ? `<button class="btn-secondary" onclick="viewLightbox()" style="margin-left:auto"><i class="fas fa-expand-arrows-alt"></i> تكبير الصورة (EMR Lightbox)</button>` : ''}
       <span style="color:var(--green);font-weight:bold;margin-right:auto"><i class="fas fa-check-double"></i> تقارير الأشعة مسجلة ومكتملة</span>
     `;
     document.getElementById('mrReport').readOnly = true;
+    document.getElementById('mrFileInp').disabled = true;
   } else {
     actions.innerHTML = `
-      <button class="btn-primary" onclick="saveRadReport()" style="flex:1;justify-content:center"><i class="fas fa-save"></i> حفظ وتأكيد التقرير وصورة الأشعة</button>
+      <button class="btn-primary" onclick="saveRadReport()" style="flex:1;justify-content:center"><i class="fas fa-save"></i> حفظ وتأكيد التقرير وصور الأشعة</button>
       <button class="btn-secondary" onclick="closeModal('radModal')">إلغاء</button>
     `;
     document.getElementById('mrReport').readOnly = false;
+    document.getElementById('mrFileInp').disabled = false;
   }
 
   document.getElementById('radModal').style.display = 'flex';
 }
 
-// Upload any file type (images get compressed, others stored as Base64)
-function handleImageUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const isImage = file.type.startsWith('image/');
-  toast('⏳ جاري رفع وتهيئة الملف...', 'ok');
-  const reader = new FileReader();
+// ── ARGON ENTERPRISE: MULTI-IMAGE FIREBASE STORAGE UPLOAD ──
+async function handleImageUpload(e) {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+  if (isUploading) return toast('جاري رفع ملفات سابقة، يرجى الانتظار...', 'err');
   
-  reader.onload = ev => {
+  isUploading = true;
+  document.getElementById('radImageGallery').style.display = 'flex';
+  document.getElementById('mrFileLbl').textContent = '⏳ جاري الرفع...';
+  toast(`⏳ جاري معالجة ورفع ${files.length} ملف/ملفات...`, 'ok');
+
+  const storageRef = firebase.storage().ref();
+  const uploaderName = document.getElementById('topName').textContent.replace('مرحباً، ', '');
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const isImage = file.type.startsWith('image/');
+    
+    let fileToUpload = file;
     if (isImage) {
-      // Compress images for optimal RTDB transfer
+      // High Quality 2500px Medical Compression, preserves detail without aggressive downscaling
+      fileToUpload = await processImageHighRes(file, 2500, 0.90);
+    }
+
+    const fileName = `${Date.now()}_${Math.floor(Math.random()*1000)}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
+    const storagePath = `${BASE}/radiology_orders/${activeOrderId}/${fileName}`;
+    const fileRef = storageRef.child(storagePath);
+    
+    try {
+      const snapshot = await fileRef.put(fileToUpload);
+      const downloadUrl = await snapshot.ref.getDownloadURL();
+      
+      uploadedImages.push({
+        imageId: 'img_' + Date.now() + '_' + i,
+        fileName: file.name,
+        storagePath: storagePath,
+        downloadUrl: downloadUrl,
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: uploaderName
+      });
+      
+      renderRadGallery();
+      if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('RAD_UPLOAD', `تم رفع صورة: ${file.name}`, 'RADIOLOGY');
+    } catch (err) {
+      console.error('Storage Upload Error', err);
+      toast(`❌ فشل رفع الملف: ${file.name}`, 'err');
+    }
+  }
+  
+  isUploading = false;
+  document.getElementById('mrFileLbl').textContent = `✅ تم رفع ${uploadedImages.length} ملفات بنجاح`;
+  toast(`✅ اكتملت عملية الرفع`, 'ok');
+}
+
+function processImageHighRes(file, maxW, quality) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = ev => {
       const img = new Image();
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const maxW = 1000;
         let w = img.width;
         let h = img.height;
-        if (w > maxW) { h *= maxW / w; w = maxW; }
-        canvas.width = w;
-        canvas.height = h;
-        ctx.drawImage(img, 0, 0, w, h);
-        
-        uploadedImage = canvas.toDataURL('image/jpeg', 0.65);
-        
-        const prevDiv = document.getElementById('radImagePrev');
-        const prevImg = document.getElementById('prevImg');
-        prevImg.src = uploadedImage;
-        prevDiv.style.display = 'block';
-        document.getElementById('mrFileLbl').textContent = '✅ تم رفع صورة الأشعة بنجاح';
-        toast('✅ تم ضغط ورفع الصورة بنجاح', 'ok');
+        if (w > maxW) {
+          h *= maxW / w;
+          w = maxW;
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(blob => resolve(blob), file.type, quality);
+        } else {
+          resolve(file); // Don't upscale or re-compress if already smaller
+        }
       };
       img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderRadGallery() {
+  const gallery = document.getElementById('radImageGallery');
+  gallery.style.display = 'flex';
+  
+  const isCompleted = _orders[activeOrderId] && _orders[activeOrderId].status === 'completed';
+  
+  gallery.innerHTML = uploadedImages.map((imgObj, i) => {
+    const isPdf = imgObj.fileName.toLowerCase().endsWith('.pdf');
+    const deleteBtn = isCompleted ? '' : `<button onclick="removeRadImage(${i})" style="position:absolute;top:-5px;right:-5px;background:var(--red);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:0.6rem;display:flex;align-items:center;justify-content:center;z-index:10"><i class="fas fa-times"></i></button>`;
+    
+    if (isPdf) {
+      return `<div style="position:relative;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;align-items:center;gap:8px">
+        <a href="${imgObj.downloadUrl}" target="_blank" style="color:inherit;text-decoration:none;display:flex;align-items:center;gap:8px">
+          <i class="fas fa-file-pdf" style="color:var(--red);font-size:1.5rem"></i>
+          <div style="font-size:0.7rem;max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sanitize(imgObj.fileName)}</div>
+        </a>
+        ${deleteBtn}
+      </div>`;
     } else {
-      // Non-image files: store raw Base64
-      uploadedImage = ev.target.result;
-      document.getElementById('radImagePrev').style.display = 'none';
-      document.getElementById('mrFileLbl').textContent = `✅ تم رفع الملف: ${file.name}`;
-      toast(`✅ تم رفع الملف بنجاح (${file.name})`, 'ok');
+      return `<div style="position:relative">
+        <img src="${imgObj.downloadUrl}" loading="lazy" style="height:100px;width:100px;border-radius:8px;object-fit:cover;cursor:pointer;border:1px solid var(--border)" onclick="viewLightbox(${i})">
+        ${deleteBtn}
+      </div>`;
     }
-  };
-  reader.readAsDataURL(file);
+  }).join('');
+}
+
+window.removeRadImage = function(index) {
+  if (confirm('هل أنت متأكد من حذف هذه الصورة؟')) {
+    const imgObj = uploadedImages[index];
+    if (imgObj.storagePath) {
+      firebase.storage().ref(imgObj.storagePath).delete().catch(e => console.error('Failed to delete from storage', e));
+    }
+    uploadedImages.splice(index, 1);
+    renderRadGallery();
+    if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('RAD_DELETE', `تم حذف صورة: ${imgObj.fileName}`, 'RADIOLOGY');
+    
+    if (uploadedImages.length === 0) {
+      document.getElementById('mrFileLbl').textContent = 'اضغط هنا لرفع صور الأشعة';
+    } else {
+      document.getElementById('mrFileLbl').textContent = `✅ تم رفع ${uploadedImages.length} ملفات بنجاح`;
+    }
+  }
 }
 
 // Save Radiology Report
@@ -229,13 +320,17 @@ function saveRadReport() {
   if (!o) return;
   isSubmitting = true;
 
+  if (isUploading) {
+    toast('⏳ يرجى الانتظار حتى اكتمال رفع الصور...', 'err');
+    return;
+  }
   const report = document.getElementById('mrReport').value.trim();
   if (!report) {
     toast('⚠️ الرجاء كتابة التقرير التشخيصي للأشعة أولاً', 'err');
     return;
   }
-  if (!uploadedImage) {
-    toast('⚠️ الرجاء رفع صورة الأشعة الرقمية المصاحبة للتقرير', 'err');
+  if (!uploadedImages || uploadedImages.length === 0) {
+    toast('⚠️ الرجاء رفع صور الأشعة الرقمية المصاحبة للتقرير', 'err');
     return;
   }
 
@@ -244,13 +339,23 @@ function saveRadReport() {
   // 1. Update order in database
   updates[`radiology_orders/${activeOrderId}/status`] = 'completed';
   updates[`radiology_orders/${activeOrderId}/report`] = report;
-  updates[`radiology_orders/${activeOrderId}/image`] = uploadedImage;
+  updates[`radiology_orders/${activeOrderId}/images`] = uploadedImages;
 
   // 2. Log Radiology Event inside patient EMR timeline
   const visitId = o.visitId;
   if (visitId) {
     const scansSummary = (o.requestedScans || []).map(s => `• ${s.name}`).join('<br>');
     const timelineKey = 'rad_' + activeOrderId;
+    
+    // Map Storage images to EMR timeline attachments
+    const timelineAttachments = uploadedImages.map((imgObj, idx) => {
+      return {
+        name: imgObj.fileName || `صورة_الأشعة_${idx+1}.jpg`,
+        type: imgObj.fileName.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image',
+        data: imgObj.downloadUrl
+      };
+    });
+
     const timelineObj = {
       date: new Date().toLocaleDateString('en-CA'),
       time: new Date().toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' }),
@@ -261,7 +366,7 @@ function saveRadReport() {
       notes: `تم إنهاء التصوير التشخيصي للفحوصات التالية:<br>${scansSummary}<br><b>التقرير الطبي المعتمَد:</b><br>${report.replace(/\n/g, '<br>')}`,
       vitals: { temp: null, bp: null, pulse: null },
       prescriptions: [],
-      attachments: [{ name: 'صورة الأشعة الرقمية.jpg', type: 'image', data: uploadedImage }]
+      attachments: timelineAttachments
     };
     updates[`patients/${o.patientId}/visits/${timelineKey}`] = timelineObj;
 
@@ -317,10 +422,15 @@ function saveRadReport() {
 }
 
 // Lightbox full-size viewer
-function viewLightbox() {
-  if (!uploadedImage) return;
+window.viewLightbox = function(index) {
+  if (!uploadedImages || uploadedImages.length === 0) return;
+  const imgObj = uploadedImages[index];
+  if (!imgObj || imgObj.fileName.toLowerCase().endsWith('.pdf')) return;
+  
   const w = window.open();
-  w.document.write(`<body style="margin:0;background:#030b0a;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${uploadedImage}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.7);"></body>`);
+  w.document.write(`<body style="margin:0;background:#030b0a;display:flex;align-items:center;justify-content:center;height:100vh;">
+    <img src="${imgObj.downloadUrl}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.7);">
+  </body>`);
   w.document.close();
 }
 

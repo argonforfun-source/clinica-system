@@ -98,10 +98,9 @@
         <div class="fi" style="height:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;border-style:dashed;cursor:pointer;padding:24px;text-align:center" onclick="document.getElementById('mrFileInp').click()">
           <i class="fas fa-cloud-upload-alt" style="font-size:2rem;margin-bottom:8px;color:var(--sky)" id="uploadIcon"></i>
           <span id="mrFileLbl">اضغط هنا لرفع ملف الأشعة (صورة، PDF، أو أي ملف)</span>
-          <input type="file" id="mrFileInp" style="display:none" onchange="handleImageUpload(event)" accept="*/*">
+          <input type="file" id="mrFileInp" style="display:none" onchange="handleImageUpload(event)" accept="*/*" multiple>
         </div>
-        <div id="radImagePrev" style="margin-top:10px;text-align:center;display:none">
-          <img id="prevImg" src="" style="max-width:100%;max-height:120px;border-radius:10px;border:1px solid var(--border)">
+        <div id="radImageGallery" style="margin-top:10px;display:none;flex-wrap:wrap;gap:10px;justify-content:center;max-height:160px;overflow-y:auto;padding:5px">
         </div>
       </div>
     </div>
