@@ -122,7 +122,10 @@ function renderRadOrders() {
   }
 
   grid.innerHTML = items.map(([k, o]) => {
-    const scanNames = (o.requestedScans || []).map(s => s.name).join(' ، ');
+    const scanNames = (o.requestedScans || []).map(s => {
+      const safeName = typeof s.name === 'object' ? (s.name.name || 'صورة أشعة') : (s.name || s);
+      return safeName;
+    }).join(' ، ');
     const dateStr = o.createdAt ? o.createdAt.substring(0, 16).replace('T', ' ') : 'فوري';
     const relativeTime = window.argonTimeAgo ? window.argonTimeAgo(o.createdAt) : '';
     const badgeClass = o.status === 'completed' ? 'completed' : 'waiting';
@@ -181,11 +184,14 @@ function openRadDetails(key) {
   }
 
   const scansList = document.getElementById('mrScansList');
-  scansList.innerHTML = (o.requestedScans || []).map(s => `
-    <span class="tag blue" style="font-size:0.85rem;background:rgba(14,165,233,0.15);border:1px solid var(--sky);color:var(--sky)">
-      ${sanitize(s.name)} ☢️
-    </span>
-  `).join('');
+  scansList.innerHTML = (o.requestedScans || []).map(s => {
+    const safeName = typeof s.name === 'object' ? (s.name.name || 'صورة أشعة') : (s.name || s);
+    return `
+      <span class="tag blue" style="font-size:0.85rem;background:rgba(14,165,233,0.15);border:1px solid var(--sky);color:var(--sky)">
+        ${sanitize(safeName)} ☢️
+      </span>
+    `;
+  }).join('');
 
   const actions = document.getElementById('radActions');
   if (o.status === 'completed') {

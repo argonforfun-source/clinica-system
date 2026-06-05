@@ -120,7 +120,10 @@ function renderLabOrders() {
   }
 
   grid.innerHTML = items.map(([k, o]) => {
-    const testNames = (o.requestedTests || []).map(t => t.name).join(' ، ');
+    const testNames = (o.requestedTests || []).map(t => {
+      const safeName = typeof t.name === 'object' ? (t.name.name || 'فحص') : (t.name || t);
+      return safeName;
+    }).join(' ، ');
     const dateStr = o.createdAt ? o.createdAt.substring(0, 16).replace('T', ' ') : 'فوري';
     const relativeTime = window.argonTimeAgo ? window.argonTimeAgo(o.createdAt) : '';
     const badgeClass = o.status === 'completed' ? 'completed' : 'waiting';
@@ -162,15 +165,16 @@ function openLabDetails(key) {
 
   const tbody = document.getElementById('mlTestsList');
   tbody.innerHTML = (o.requestedTests || []).map((t, idx) => {
-    const normalRange = getNormalReferenceRange(t.name);
-    const unitHint = getUnitHint(t.name);
+    const safeName = typeof t.name === 'object' ? (t.name.name || 'فحص') : (t.name || t);
+    const normalRange = getNormalReferenceRange(safeName);
+    const unitHint = getUnitHint(safeName);
     
     const resultInput = `<input type="text" id="mlResult_${idx}" class="fi" value="${t.result || ''}" placeholder="أدخل النتيجة" style="height:32px;border-color:var(--teal)">`;
     const unitInput = `<input type="text" id="mlUnit_${idx}" class="fi" value="${t.unit || unitHint}" placeholder="الوحدة" style="height:32px" value="${unitHint}">`;
 
     return `
       <tr>
-        <td><b>${sanitize(t.name)}</b></td>
+        <td><b>${sanitize(safeName)}</b></td>
         <td>${o.status === 'completed' ? `<b>${t.result || '—'}</b>` : resultInput}</td>
         <td>${o.status === 'completed' ? `<span>${t.unit || '—'}</span>` : unitInput}</td>
         <td style="font-size:0.8rem;color:var(--muted)">${normalRange}</td>
