@@ -532,6 +532,123 @@ const ArgonEnterprise = {
             }
             appendSheet(staffData, "طاقم العمل");
 
+            // 6. Invoices Detail (تفاصيل الفواتير)
+            const invData = [];
+            if (data.invoices) {
+                Object.entries(data.invoices).forEach(([invId, inv]) => {
+                    const patName = (data.patients && data.patients[inv.patientId]) ? data.patients[inv.patientId].info?.name : (inv.patientName || '-');
+                    const patPhone = (data.patients && data.patients[inv.patientId]) ? data.patients[inv.patientId].info?.phone : (inv.patientPhone || '-');
+                    const items = inv.items || [];
+                    const invDate = inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('ar-JO') : '-';
+
+                    // Calculate paid for this invoice
+                    let invPaid = 0;
+                    if (data.financial_transactions) {
+                        Object.values(data.financial_transactions).forEach(tx => {
+                            if (tx.invoiceId === invId && tx.status !== 'voided') {
+                                if (tx.type === 'PAYMENT') invPaid += (parseFloat(tx.amount) || 0);
+                                if (tx.type === 'REVERSAL') invPaid -= (parseFloat(tx.amount) || 0);
+                            }
+                        });
+                    }
+                    const invTotal = parseFloat(inv.total) || 0;
+                    const invRemaining = parseFloat((invTotal - invPaid).toFixed(2));
+                    let payStatus = 'غير مدفوعة';
+                    if (invRemaining <= 0) payStatus = 'مدفوعة بالكامل';
+                    else if (invPaid > 0) payStatus = 'دفع جزئي';
+
+                    if (items.length === 0) {
+                        invData.push({
+                            "رقم الفاتورة": invId, "التاريخ": invDate,
+                            "اسم المريض": patName, "الهاتف": patPhone,
+                            "البند": "-", "القسم": "-", "السعر (د.أ)": 0,
+                            "إجمالي الفاتورة": invTotal, "المدفوع": invPaid,
+                            "المتبقي": invRemaining, "حالة الدفع": payStatus
+                        });
+                    } else {
+                        items.forEach((item, idx) => {
+                            const n = (item.name || '').toLowerCase();
+                            let dept = 'أخرى';
+                            if (n.includes('كشفية')) dept = 'كشفية طبية';
+                            else if (n.includes('تحليل')) dept = 'مختبر';
+                            else if (n.includes('تصوير') || n.includes('أشعة')) dept = 'أشعة';
+                            else if (n.includes('صيدل') || n.includes('دواء')) dept = 'صيدلية';
+
+                            invData.push({
+                                "رقم الفاتورة": idx === 0 ? invId : '',
+                                "التاريخ": idx === 0 ? invDate : '',
+                                "اسم المريض": idx === 0 ? patName : '',
+                                "الهاتف": idx === 0 ? patPhone : '',
+                                "البند": item.name || '-',
+                                "القسم": dept,
+                                "السعر (د.أ)": parseFloat(item.price) || 0,
+                                "إجمالي الفاتورة": idx === 0 ? invTotal : '',
+                                "المدفوع": idx === 0 ? invPaid : '',
+                                "المتبقي": idx === 0 ? invRemaining : '',
+                                "حالة الدفع": idx === 0 ? payStatus : ''
+                            });
+                        });
+                    }
+                });
+            }
+            appendSheet(invData, "تفاصيل الفواتير");
+
+            // 7. Unpaid Accounts (الذمم المدينة)
+            const unpaidData = [];
+            if (data.invoices) {
+                const patBal = {};
+                Object.entries(data.invoices).forEach(([invId, inv]) => {
+                    const pid = inv.patientId;
+                    if (!pid) return;
+                    if (!patBal[pid]) {
+                        const pn = (data.patients && data.patients[pid]) ? data.patients[pid].info?.name : (inv.patientName || '-');
+                        const pp = (data.patients && data.patients[pid]) ? data.patients[pid].info?.phone : (inv.patientPhone || '-');
+                        patBal[pid] = { name: pn, phone: pp, total: 0, paid: 0 };
+                    }
+                    patBal[pid].total += parseFloat(inv.total) || 0;
+                    // Calc paid
+                    if (data.financial_transactions) {
+                        Object.values(data.financial_transactions).forEach(tx => {
+                            if (tx.invoiceId === invId && tx.status !== 'voided') {
+                                if (tx.type === 'PAYMENT') patBal[pid].paid += (parseFloat(tx.amount) || 0);
+                                if (tx.type === 'REVERSAL') patBal[pid].paid -= (parseFloat(tx.amount) || 0);
+                            }
+                        });
+                    }
+                });
+                Object.values(patBal).forEach(p => {
+                    const rem = parseFloat((p.total - p.paid).toFixed(2));
+                    if (rem > 0) {
+                        unpaidData.push({
+                            "اسم المريض": p.name, "الهاتف": p.phone,
+                            "إجمالي المطالبات": p.total.toFixed(2),
+                            "المبلغ المدفوع": p.paid.toFixed(2),
+                            "الرصيد المتبقي (ذمة)": rem.toFixed(2),
+                            "الحالة": p.paid > 0 ? "دفع جزئي" : "غير مدفوع"
+                        });
+                    }
+                });
+            }
+            appendSheet(unpaidData.length ? unpaidData : [{"ملاحظة": "لا توجد ذمم مدينة مستحقة"}], "الذمم المدينة");
+
+            // 8. Financial Transactions (الحركات المالية)
+            const txData = [];
+            if (data.financial_transactions) {
+                Object.values(data.financial_transactions).sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || '')).forEach(tx => {
+                    const pn = (data.patients && data.patients[tx.patientId]) ? data.patients[tx.patientId].info?.name : '-';
+                    txData.push({
+                        "التاريخ": tx.timestamp ? new Date(tx.timestamp).toLocaleString('ar-JO') : '-',
+                        "اسم المريض": pn,
+                        "النوع": tx.type === 'PAYMENT' ? 'دفعة' : (tx.type === 'REVERSAL' ? 'إلغاء/استرجاع' : tx.type || '-'),
+                        "المبلغ (د.أ)": parseFloat(tx.amount).toFixed(2),
+                        "رقم الفاتورة": tx.invoiceId || 'بدون فاتورة',
+                        "الملاحظات": tx.reason || '-',
+                        "الحالة": tx.status === 'voided' ? 'ملغاة' : 'نشطة'
+                    });
+                });
+            }
+            appendSheet(txData.length ? txData : [{"ملاحظة": "لا توجد حركات مالية مسجلة"}], "الحركات المالية");
+
             window.XLSX.writeFile(wb, `تقرير_شامل_${clinicName}_${dateStr.replace(/\//g,'-')}.xlsx`);
             if (typeof toast === 'function') toast("تم تصدير التقرير بنجاح!", "ok");
         }
