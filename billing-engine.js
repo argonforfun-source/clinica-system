@@ -70,22 +70,28 @@ const BillingEngine = {
       if (!initialBks) this.generateInvoiceFromVisit(snap.key, snap.val());
     });
 
+    // 2. Observe Lab Orders
     const labRef = db.ref(`${BASE}/lab_orders`);
     labRef.once('value', () => initialLab = false);
     labRef.on('child_added', snap => {
-      if (!initialLab) this.generateInvoiceFromAux(snap.key, snap.val(), 'مختبر', 20);
+      const pLab = (typeof _sets !== 'undefined' && _sets.billingPrices) ? _sets.billingPrices.lab : 20;
+      if (!initialLab) this.generateInvoiceFromAux(snap.key, snap.val(), 'مختبر', pLab || 20);
     });
 
+    // 3. Observe Radiology Orders
     const radRef = db.ref(`${BASE}/radiology_orders`);
     radRef.once('value', () => initialRad = false);
     radRef.on('child_added', snap => {
-      if (!initialRad) this.generateInvoiceFromAux(snap.key, snap.val(), 'أشعة', 30);
+      const pRad = (typeof _sets !== 'undefined' && _sets.billingPrices) ? _sets.billingPrices.rad : 30;
+      if (!initialRad) this.generateInvoiceFromAux(snap.key, snap.val(), 'أشعة', pRad || 30);
     });
 
+    // 4. Observe Pharmacy
     const rxRef = db.ref(`${BASE}/prescriptions`);
     rxRef.once('value', () => initialRx = false);
     rxRef.on('child_added', snap => {
-      if (!initialRx) this.generateInvoiceFromAux(snap.key, snap.val(), 'صيدلية', 15);
+      const pPhar = (typeof _sets !== 'undefined' && _sets.billingPrices) ? _sets.billingPrices.phar : 15;
+      if (!initialRx) this.generateInvoiceFromAux(snap.key, snap.val(), 'صيدلية', pPhar || 15);
     });
   },
 
@@ -408,7 +414,16 @@ const BillingEngine = {
       const remaining = parseFloat((total - paid).toFixed(2));
       const dateStr = inv.createdAt ? new Date(inv.createdAt).toLocaleString('ar-JO') : '—';
       
-      const itemsStr = (inv.items || []).map(i => i.name).join('، ');
+      let itemsHtml = '<div style="display:flex;flex-direction:column;gap:4px;">';
+      (inv.items || []).forEach(i => {
+        itemsHtml += `
+          <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.02);padding:2px 6px;border-radius:4px;border:1px solid var(--border)">
+            <span>${BillingEngine.sanitize(i.name)}</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-weight:bold;color:var(--teal)">${parseFloat(i.price).toFixed(2)} د.أ</span>
+          </div>
+        `;
+      });
+      itemsHtml += '</div>';
 
       let status = '<span style="color:var(--red);font-size:0.7rem">غير مدفوعة</span>';
       if (remaining <= 0) status = '<span style="color:var(--green);font-size:0.7rem">مدفوعة</span>';
@@ -417,8 +432,8 @@ const BillingEngine = {
       invHtml += `
         <tr>
           <td style="font-size:0.75rem">${dateStr}</td>
-          <td style="font-size:0.75rem;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${BillingEngine.sanitize(itemsStr)}">${BillingEngine.sanitize(itemsStr)}</td>
-          <td style="font-weight:bold;font-family:'IBM Plex Mono',monospace">${total.toFixed(2)}</td>
+          <td style="font-size:0.75rem;min-width:200px;">${itemsHtml}</td>
+          <td style="font-weight:bold;font-family:'IBM Plex Mono',monospace;font-size:1.1rem;color:var(--text)">${total.toFixed(2)}</td>
           <td>${status}</td>
         </tr>
       `;
