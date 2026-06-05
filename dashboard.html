@@ -272,6 +272,75 @@
 <div id="connBar" class="cbar"></div>
 
 <!-- LOCK SCREEN -->
+<!-- ═══ BILLING LEDGER MODAL ═══ -->
+<div id="billingModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(8px);z-index:9999;justify-content:center;align-items:center;" onclick="if(event.target===this)closeBillingModal()">
+  <div style="background:var(--surf);border:1px solid var(--border);border-radius:20px;padding:24px;width:800px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.4);position:relative">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:12px">
+      <div>
+        <h3 style="font-weight:900;margin:0" id="blPatName">كشف حساب المريض</h3>
+        <div style="font-size:0.8rem;color:var(--muted);font-family:'IBM Plex Mono',monospace" id="blPatUID">...</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="tbtn" id="blWaBtn" style="background:rgba(37,211,102,.1);color:#25d366;border-color:rgba(37,211,102,.2);font-weight:bold"><i class="fab fa-whatsapp" style="font-size:1.1rem;margin-left:5px"></i>إشعار واتساب</button>
+        <span onclick="closeBillingModal()" style="cursor:pointer;font-weight:bold;font-size:1.2rem;color:var(--muted)">✕</span>
+      </div>
+    </div>
+
+    <!-- Account Summary -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
+      <div style="background:var(--panel);padding:12px;border-radius:10px;border:1px solid var(--border);text-align:center">
+        <div style="font-size:0.7rem;color:var(--muted)">إجمالي المطالبات</div>
+        <div style="font-size:1.2rem;font-weight:900;font-family:'IBM Plex Mono',monospace" id="blLedgerTotal">0.00</div>
+      </div>
+      <div style="background:var(--panel);padding:12px;border-radius:10px;border:1px solid rgba(16,185,129,.3);text-align:center">
+        <div style="font-size:0.7rem;color:var(--green)">المبلغ المسدد</div>
+        <div style="font-size:1.2rem;font-weight:900;font-family:'IBM Plex Mono',monospace;color:var(--green)" id="blLedgerPaid">0.00</div>
+      </div>
+      <div style="background:var(--panel);padding:12px;border-radius:10px;border:1px solid rgba(239,68,68,.3);text-align:center">
+        <div style="font-size:0.7rem;color:var(--red)">الرصيد المتبقي (ذمم)</div>
+        <div style="font-size:1.2rem;font-weight:900;font-family:'IBM Plex Mono',monospace;color:var(--red)" id="blLedgerUnpaid">0.00</div>
+      </div>
+      <div style="background:var(--panel);padding:12px;border-radius:10px;border:1px solid var(--border);text-align:center">
+        <div style="font-size:0.7rem;color:var(--muted)">آخر دفعة مستلمة</div>
+        <div style="font-size:0.9rem;font-weight:900;margin-top:4px" id="blLedgerLastPay">--</div>
+      </div>
+    </div>
+
+    <!-- Ledger Tables -->
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px">
+      
+      <!-- Invoices -->
+      <div>
+        <h4 style="font-size:0.9rem;margin-bottom:10px"><i class="fas fa-file-invoice"></i> المطالبات والفواتير</h4>
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <table style="width:100%">
+            <thead><tr><th>التاريخ</th><th>التفاصيل</th><th>المبلغ</th><th>الحالة</th></tr></thead>
+            <tbody id="blInvoicesBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Payments & Actions -->
+      <div>
+        <h4 style="font-size:0.9rem;margin-bottom:10px"><i class="fas fa-hand-holding-usd"></i> الدفعات المسجلة</h4>
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:15px">
+          <table style="width:100%">
+            <thead><tr><th>التاريخ</th><th>المبلغ</th></tr></thead>
+            <tbody id="blPaymentsBody"></tbody>
+          </table>
+        </div>
+
+        <div style="background:rgba(13,148,136,.05);border:1px solid rgba(13,148,136,.2);padding:15px;border-radius:10px">
+          <h4 style="font-size:0.85rem;margin-bottom:10px;color:var(--teal)">تسجيل دفعة جديدة</h4>
+          <input type="number" id="blPayAmount" class="mfi" placeholder="المبلغ (دينار)" style="margin-bottom:10px">
+          <input type="text" id="blPayReason" class="mfi" placeholder="ملاحظات (مثال: دفعة نقدية)" style="margin-bottom:10px">
+          <button onclick="recordBillingPayment()" style="width:100%;background:var(--teal);color:#fff;border:none;padding:10px;border-radius:8px;font-weight:bold;cursor:pointer">تسجيل وتسديد ✅</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ SET PASSWORD MODAL ═══ -->
 <div id="setPassModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(8px);z-index:9999;justify-content:center;align-items:center;" onclick="if(event.target===this)closeSetPass()">
   <div style="background:var(--surf);border:1px solid var(--border);border-radius:20px;padding:32px 28px;width:340px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.4);text-align:center;position:relative">
@@ -343,6 +412,7 @@
 
       <div class="ni" onclick="sw('docs',this)"><i class="fas fa-user-md"></i>إدارة الأطباء</div>
       <div class="ni" id="mStaff" onclick="sw('staff',this)"><i class="fas fa-users-cog"></i><span>إدارة طاقم العمل</span></div>
+      <div class="ni" id="mBilling" onclick="sw('billing',this)" style="display:none; color:var(--amber); border-right:2px solid var(--amber); background:rgba(245,158,11,.05)"><i class="fas fa-file-invoice-dollar"></i><span>الحسابات والفوترة</span></div>
       <div class="ni" onclick="sw('settings',this)"><i class="fas fa-gear"></i>الإعدادات</div>
     </div>
     <div class="royal-foot">
@@ -539,6 +609,80 @@
       <div class="dgrid2" id="staffGrid"></div>
     </div>
 
+    <!-- BILLING DASHBOARD -->
+    <div id="billing" class="sec">
+      <div class="ph"><div><div class="pt">💰 الحسابات والفوترة</div><div class="ps">إدارة الرسوم والذمم المالية والمدفوعات</div></div></div>
+      
+      <!-- KPI Overview -->
+      <div class="sgrid">
+        <div class="scard" style="--bc:var(--teal)">
+          <div class="scard-top">
+            <div class="sci" style="background:rgba(13,148,136,.1);color:var(--teal)"><i class="fas fa-coins"></i></div>
+          </div>
+          <div class="slb">إجمالي المقبوضات</div>
+          <div class="sv" id="blTotalPaid" style="color:var(--teal)">0.00</div>
+          <div class="scard-sub">دينار أردني</div>
+        </div>
+        <div class="scard" style="--bc:var(--amber)">
+          <div class="scard-top">
+            <div class="sci" style="background:rgba(245,158,11,.1);color:var(--amber)"><i class="fas fa-hand-holding-dollar"></i></div>
+          </div>
+          <div class="slb">إجمالي الذمم (غير محصل)</div>
+          <div class="sv" id="blTotalUnpaid" style="color:var(--amber)">0.00</div>
+          <div class="scard-sub">دينار أردني</div>
+        </div>
+        <div class="scard" style="--bc:var(--purple)">
+          <div class="scard-top">
+            <div class="sci" style="background:rgba(139,92,246,.1);color:var(--purple)"><i class="fas fa-file-invoice"></i></div>
+          </div>
+          <div class="slb">الفواتير المعلقة</div>
+          <div class="sv" id="blCountOpen" style="color:var(--purple)">0</div>
+          <div class="scard-sub">فاتورة تحتاج لتسديد</div>
+        </div>
+        <div class="scard" style="--bc:var(--red)">
+          <div class="scard-top">
+            <div class="sci" style="background:rgba(239,68,68,.1);color:var(--red)"><i class="fas fa-exclamation-circle"></i></div>
+          </div>
+          <div class="slb">الفواتير المتأخرة</div>
+          <div class="sv" id="blCountOverdue" style="color:var(--red)">0</div>
+          <div class="scard-sub">تجاوزت فترة السماح</div>
+        </div>
+      </div>
+
+      <!-- Accounts Receivable Table -->
+      <div class="glass-panel" style="overflow:hidden; border-radius:13px; border:1px solid var(--border);">
+        <div style="padding:16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--surf)">
+          <div style="font-weight:800; font-size:1.1rem">الذمم المدينة (Accounts Receivable)</div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="blSearch" onkeyup="renderReceivables()" placeholder="بحث باسم المريض أو الرقم..." class="mfi" style="width:250px; padding:6px 10px; font-size:0.85rem;">
+            <select id="blFilter" class="mfi" onchange="renderReceivables()" style="width:150px; padding:6px; font-size:0.85rem;">
+              <option value="all">جميع الذمم</option>
+              <option value="unpaid">غير مدفوع كامل</option>
+              <option value="partial">مدفوع جزئي</option>
+              <option value="overdue">متأخر الدفع</option>
+            </select>
+          </div>
+        </div>
+        <div class="htw">
+          <table>
+            <thead>
+              <tr>
+                <th>معرف الفاتورة / المريض</th>
+                <th>إجمالي الفاتورة</th>
+                <th>المبلغ المدفوع</th>
+                <th>الرصيد المتبقي</th>
+                <th>حالة الدفع</th>
+                <th style="text-align:center">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="blTbody">
+              <tr><td colspan="6" style="text-align:center; padding:30px; color:var(--muted)">جاري تحميل الحسابات...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div id="settings" class="sec">
       <div class="ph"><div><div class="pt">⚙️ الإعدادات</div></div></div>
@@ -546,6 +690,13 @@
         <div class="setg"><label class="setl">اسم العيادة</label><input type="text" id="sN" class="seti"></div>
         <div class="setg"><label class="setl">رقم الواتساب</label><input type="text" id="sP" class="seti" placeholder="+962..."></div>
         <div class="setg" style="display:grid;grid-template-columns:1fr;gap:12px">
+          <div>
+            <label class="setl">سياسة الفوترة (Billing Policy)</label>
+            <select id="sBillingPolicy" class="setsel">
+              <option value="unified">فاتورة موحدة (مجمعة عند الاستقبال)</option>
+              <option value="decentralized">فاتورة منفصلة (الدفع عند كل قسم)</option>
+            </select>
+          </div>
           <div style="display:none;">
             <label class="setl">نظام التشغيل (Operational Mode) *</label>
             <select id="sMode" class="setsel" disabled style="opacity: 0.7; cursor: not-allowed; background: rgba(0,0,0,0.15);">
@@ -1101,6 +1252,9 @@ db.ref(BASE+'/settings').on('value', snap => {
   document.getElementById('sSpec').value = s.specialty||'';
   document.getElementById('sSameDay').value = s.sameDayBooking!==false ? 'true' : 'false';
   document.getElementById('sBookingDays').value = s.bookingDays||10;
+  
+  const bp = document.getElementById('sBillingPolicy');
+  if (bp) bp.value = s.billingPolicy || 'unified';
   
   const sMode = document.getElementById('sMode');
   if (sMode) {
@@ -2214,5 +2368,6 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catc
   });
 })();
 </script>
+<script src="billing-engine.js"></script>
 </body>
 </html>
