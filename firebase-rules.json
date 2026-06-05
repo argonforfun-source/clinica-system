@@ -1,99 +1,52 @@
 {
   "rules": {
-    /* 🛡️ ARGON MEDICAL OS — Security Rules v4.0 */
-    ".read": false,
+    ".read": true,
     ".write": false,
-
     "super_admin": {
       ".read": true,
       ".write": true
     },
-
     "clinics": {
-      ".read": true,
-      ".write": true,
       "$clinicId": {
-        "settings": {
-          ".read": true,
-          ".write": true,
-          "passwords": {
-            ".read": false,
-            ".write": true
-          }
-        },
+        ".read": true,
+        ".write": true,
         "patients": {
-          ".read": true,
-          "$patientId": {
-            ".write": "!data.exists()",
-            ".validate": "newData.hasChildren(['info']) || newData.hasChildren(['name'])",
-            "visits": {
-              "$visitId": {
-                ".write": "newData.exists()"
-              }
-            },
-            "$other": {
-              ".write": true
-            }
-          }
+          ".indexOn": [
+            "info/nationalId",
+            "info/phone"
+          ]
         },
-        "appointments": {
-          ".read": true,
-          ".write": true,
-          "$appointmentId": {
-            ".validate": "newData.hasChildren(['patientId', 'date', 'status'])"
-          }
+        "notifications": {
+          ".indexOn": [
+            "createdAt",
+            "isRead"
+          ]
         },
-        "prescriptions": {
-          ".read": true,
-          ".write": true
+        "bookings": {
+          ".indexOn": [
+            "date",
+            "doctorId",
+            "status"
+          ]
         },
-        "pharmacy_inventory": {
-          ".read": true,
-          ".write": true
-        },
-        "lab_requests": {
-          ".read": true,
-          ".write": true
-        },
-        "lab_results": {
-          ".read": true,
-          ".write": true
-        },
-        "radiology_requests": {
-          ".read": true,
-          ".write": true
-        },
-        "radiology_results": {
-          ".read": true,
-          ".write": true
-        },
-        "invoices": {
-          ".read": true,
-          ".write": true
-        },
-        "whatsapp_queue": {
-          ".read": true,
-          ".write": true
-        },
-        "whatsapp_settings": {
-          ".read": true,
-          ".write": true
+        "completedBookings": {
+          ".indexOn": [
+            "date",
+            "doctorId"
+          ]
         },
         "audit_logs": {
-          ".read": true,
-          ".write": true
+          ".indexOn": [
+            "timestamp",
+            "actorId",
+            "eventType"
+          ]
         },
-        "waiting_room": {
-          ".read": true,
-          ".write": true
+        "telemetry": {
+          ".indexOn": [
+            "timestamp"
+          ]
         }
-      }
-    },
-
-    "restaurants": {
-      "$restaurantId": {
-        ".read": true,
-        ".write": true
       }
     }
   }
