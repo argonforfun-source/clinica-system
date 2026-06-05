@@ -252,6 +252,33 @@ const BillingEngine = {
       }
     });
 
+    // Make sure patients with unassigned payments (or missing invoices) are also captured
+    Object.values(this._transactions).forEach(tx => {
+      const pid = tx.patientId;
+      if (!pid || tx.status === 'voided') return;
+
+      if (!patientBalances[pid]) {
+        patientBalances[pid] = {
+          patientId: pid,
+          patientName: pts[pid] ? pts[pid].info?.name : 'مريض غير معروف',
+          patientPhone: pts[pid] ? pts[pid].info?.phone : '',
+          total: 0,
+          paid: 0,
+          lastDate: tx.timestamp || ''
+        };
+      }
+
+      // If this transaction is NOT tied to a known invoice, we must add its value manually here
+      if (!tx.invoiceId || !this._invoices[tx.invoiceId]) {
+        if (tx.type === 'PAYMENT') patientBalances[pid].paid += (parseFloat(tx.amount) || 0);
+        if (tx.type === 'REVERSAL') patientBalances[pid].paid -= (parseFloat(tx.amount) || 0);
+      }
+      
+      if (tx.timestamp && tx.timestamp > patientBalances[pid].lastDate) {
+        patientBalances[pid].lastDate = tx.timestamp;
+      }
+    });
+
     let html = '';
     
     Object.values(patientBalances).forEach(p => {
