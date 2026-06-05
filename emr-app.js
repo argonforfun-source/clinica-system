@@ -24,8 +24,6 @@ let _sets = null;
 let _patients = {};
 let _doctors = {};
 let _depts = {};
-let _labOrders = {};
-let _radOrders = {};
 let _pricingCatalogCache = {};
 let activePatientId = null;
 
