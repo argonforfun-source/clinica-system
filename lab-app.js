@@ -308,54 +308,127 @@ function saveLabResults() {
       });
     } catch(e) { console.error('Notification error', e); }
 
-    // 4. Auto-Billing: Add each test with its price from Pricing Catalog
-    const defaultLabPrice = (_sets && _sets.billingPrices && _sets.billingPrices.lab) ? parseFloat(_sets.billingPrices.lab) : 10;
-    
-    db.ref(`${BASE}/invoices`).orderByChild('visitId').equalTo(visitId).once('value', invSnap => {
-      const invoices = invSnap.val() || {};
-      const invEntry = Object.entries(invoices)[0];
-      if (invEntry) {
-        const [invKey, invVal] = invEntry;
-        const currentItems = invVal.items || [];
+    // 4. Auto-Billing: Strict Enterprise Protocol
+    const bpState = (_sets && _sets.billingPolicy) || { mode: 'legacy' };
+    const labPolicy = (bpState.departments && bpState.departments.lab) || 'unified';
+
+    if (labPolicy === 'free') {
+      if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) {
+        ArgonCore.logAudit('BILLING_FREE', `تجاوز مالي للمختبر حسب سياسة المجمع لطلب: ${k}`, 'LABORATORY');
+      }
+    } else {
+      // Fetch invoices for this visit to handle idempotency and unified appending
+      db.ref(`${BASE}/invoices`).orderByChild('visitId').equalTo(visitId).once('value', invSnap => {
+        const invoices = invSnap.val() || {};
         
+        // Prepare Line Items with strict Revenue Classification
+        const newLabItems = [];
         completedTests.forEach(t => {
+          let testPrice = 0;
+          let requiresReview = false;
+          
           if (t.requiresBillingReview && t.source === 'manual') {
-            // Unpriced manual test, skip auto billing or add as 0
-            currentItems.push({
-              name: `تحليل: ${sanitize(t.name)} (غير مُسعّر / خارجي)`,
-              price: 0
-            });
-            return;
-          }
-
-          let testPrice = defaultLabPrice;
-          if (t.unitPrice !== null) {
-            testPrice = t.unitPrice; // Snapshot Enterprise Mode
+            requiresReview = true;
+          } else if (t.unitPrice !== null && t.unitPrice !== undefined) {
+            testPrice = parseFloat(t.unitPrice);
           } else {
-            // Fallback for legacy requests before snapshotting
-            const normalizedName = (t.name || '').trim().toLowerCase();
-            const catalogEntry = Object.values(_pricingCatalog || {}).find(item => {
-              if (!item.active || item.type !== 'lab') return false;
-              const catName = (item.name || '').trim().toLowerCase();
-              return catName === normalizedName || catName.includes(normalizedName) || normalizedName.includes(catName);
-            });
-            if (catalogEntry && catalogEntry.price !== undefined) testPrice = parseFloat(catalogEntry.price);
+            requiresReview = true;
           }
 
-          currentItems.push({
+          newLabItems.push({
             name: `تحليل: ${sanitize(t.name)}`,
-            price: testPrice
+            price: requiresReview ? 0 : parseFloat(testPrice.toFixed(2)),
+            requiresBillingReview: requiresReview,
+            billingStatus: requiresReview ? 'pending_review' : 'draft',
+            financialBlocked: requiresReview,
+            billingReferenceId: t.id || `lab_${k}_${t.name}`, // IDEMPOTENCY KEY
+            department: 'lab',
+            serviceType: 'test',
+            serviceId: t.serviceId || t.id || 'unknown',
+            invoiceType: labPolicy === 'separate' ? 'lab_invoice' : 'visit_invoice'
           });
         });
 
-        const newTotal = parseFloat(currentItems.reduce((acc, item) => acc + item.price, 0).toFixed(2));
-        
-        const invoiceUpdates = {};
-        invoiceUpdates[`invoices/${invKey}/items`] = currentItems;
-        invoiceUpdates[`invoices/${invKey}/total`] = newTotal;
-        db.ref(BASE).update(invoiceUpdates);
-      }
-    });
+        // 1. Separate Policy (فاتورة مستقلة للمختبر)
+        if (labPolicy === 'separate') {
+          // Idempotency Check: Does a lab invoice for this order already exist?
+          let alreadyBilled = false;
+          Object.values(invoices).forEach(inv => {
+            if (inv.invoiceType === 'lab_invoice' && inv.orderReferenceId === k) alreadyBilled = true;
+          });
+          
+          if (!alreadyBilled && newLabItems.length > 0) {
+            const newInvId = db.ref().child('invoices').push().key;
+            const invTotal = parseFloat(newLabItems.reduce((sum, item) => sum + item.price, 0).toFixed(2));
+            
+            const separateInvoice = {
+              patientId: o.patientId,
+              patientName: o.patientName,
+              visitId: visitId,
+              docName: o.doctorName || 'طبيب غير محدد',
+              items: newLabItems,
+              total: invTotal,
+              status: requiresReview ? 'pending' : 'draft',
+              invoiceType: 'lab_invoice',
+              orderReferenceId: k,
+              billingPolicySnapshot: bpState,
+              createdAt: new Date().toISOString(),
+              // National e-Invoice Prep
+              invoiceNumber: `INV-LAB-${Date.now()}`,
+              issueDate: new Date().toISOString(),
+              currency: 'JOD',
+              sellerTaxNumber: _sets?.taxNumber || '',
+              buyerNationalId: o.nationalId || '',
+              eInvoiceStatus: 'pending'
+            };
+            db.ref(`${BASE}/invoices/${newInvId}`).set(separateInvoice);
+            if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('CREATE_INVOICE', `إنشاء فاتورة مختبر منفصلة للمريض: ${o.patientName}`, 'FINANCE');
+          }
+        } 
+        // 2. Unified Policy (الدمج مع فاتورة الزيارة)
+        else {
+          // Find the main visit invoice
+          const invEntry = Object.entries(invoices).find(([_, v]) => v.invoiceType !== 'lab_invoice' && v.invoiceType !== 'rad_invoice');
+          if (invEntry) {
+            const [invKey, invVal] = invEntry;
+            
+            // Check Invoice Lock Rule
+            if (['paid', 'cancelled', 'refunded'].includes(invVal.status)) {
+              console.warn("Invoice is locked. Cannot auto-append items.");
+              if (typeof toast === 'function') toast('⚠️ الفاتورة مغلقة، يرجى مراجعة المحاسبة لتسجيل الفحوصات', 'err');
+              return;
+            }
+
+            const currentItems = invVal.items || [];
+            let itemsAdded = false;
+
+            newLabItems.forEach(newItem => {
+              // Idempotency: skip if billingReferenceId already exists in this invoice
+              const exists = currentItems.some(existing => existing.billingReferenceId && existing.billingReferenceId === newItem.billingReferenceId);
+              if (!exists) {
+                currentItems.push(newItem);
+                itemsAdded = true;
+              }
+            });
+
+            if (itemsAdded) {
+              const newTotal = parseFloat(currentItems.reduce((acc, item) => acc + (parseFloat(item.price)||0), 0).toFixed(2));
+              const invoiceUpdates = {};
+              invoiceUpdates[`invoices/${invKey}/items`] = currentItems;
+              invoiceUpdates[`invoices/${invKey}/total`] = newTotal;
+              
+              // If we appended a pending_review item, force invoice to pending
+              if (currentItems.some(i => i.requiresBillingReview)) {
+                invoiceUpdates[`invoices/${invKey}/status`] = 'pending';
+              }
+              
+              db.ref(BASE).update(invoiceUpdates);
+              if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('UPDATE_INVOICE', `دمج فحوصات مختبر في الفاتورة الموحدة: ${invKey}`, 'FINANCE');
+            }
+          }
+        }
+      });
+    }
   }
 
   // Apply updates atomically

@@ -419,25 +419,34 @@ const BillingEngine = {
         const sub = items.reduce((a, i) => a + (parseFloat(i.price) || 0), 0);
         return `<div style="margin-bottom:6px">
           <div style="font-size:0.72rem;font-weight:800;color:${color};margin-bottom:3px">${icon} ${label}</div>
-          ${items.map(i => `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.02);padding:2px 6px;border-radius:4px;border:1px solid var(--border);margin-bottom:2px">
-            <span style="font-size:0.78rem">${BillingEngine.sanitize(i.name)}</span>
-            <span style="font-family:'IBM Plex Mono',monospace;font-weight:bold;color:${color};font-size:0.78rem">${parseFloat(i.price).toFixed(2)}</span>
-          </div>`).join('')}
-          <div style="text-align:left;font-size:0.68rem;color:var(--muted);font-family:'IBM Plex Mono',monospace">\u0645\u062c\u0645\u0648\u0639: ${sub.toFixed(2)} \u062f.\u0623</div>
+          ${items.map(i => {
+            const isPending = i.requiresBillingReview;
+            const itemBg = isPending ? 'rgba(239,68,68,0.1)' : 'rgba(0,0,0,0.02)';
+            const itemBorder = isPending ? '1px solid rgba(239,68,68,0.3)' : '1px solid var(--border)';
+            const priceHtml = isPending ? `<span style="color:var(--red);font-size:0.65rem;font-weight:bold">⚠️ قيد المراجعة</span>` : `<span style="font-family:'IBM Plex Mono',monospace;font-weight:bold;color:${color};font-size:0.78rem">${parseFloat(i.price).toFixed(2)}</span>`;
+            return `<div style="display:flex;justify-content:space-between;align-items:center;background:${itemBg};padding:2px 6px;border-radius:4px;border:${itemBorder};margin-bottom:2px">
+              <span style="font-size:0.78rem;${isPending ? 'color:var(--red)' : ''}">${BillingEngine.sanitize(i.name)}</span>
+              ${priceHtml}
+            </div>`;
+          }).join('')}
+          <div style="text-align:left;font-size:0.68rem;color:var(--muted);font-family:'IBM Plex Mono',monospace">مجموع: ${sub.toFixed(2)} د.أ</div>
         </div>`;
       };
 
       let itemsHtml = '<div style="display:flex;flex-direction:column;gap:2px">';
-      itemsHtml += renderCat('\ud83c\udfe5', '\u0643\u0634\u0641\u064a\u0629 \u0627\u0644\u0637\u0628\u064a\u0628', 'var(--teal)', cats.consult);
-      itemsHtml += renderCat('\ud83d\udd2c', '\u0641\u062d\u0648\u0635\u0627\u062a \u0627\u0644\u0645\u062e\u062a\u0628\u0631', 'var(--green)', cats.lab);
-      itemsHtml += renderCat('\ud83e\ude7b', '\u0635\u0648\u0631 \u0627\u0644\u0623\u0634\u0639\u0629', 'var(--sky)', cats.rad);
-      itemsHtml += renderCat('\ud83d\udc8a', '\u0627\u0644\u0635\u064a\u062f\u0644\u064a\u0629', 'var(--amber)', cats.pharm);
-      itemsHtml += renderCat('\ud83d\udccb', '\u062e\u062f\u0645\u0627\u062a \u0623\u062e\u0631\u0649', 'var(--purple)', cats.other);
+      itemsHtml += renderCat('🏥', 'كشفية الطبيب', 'var(--teal)', cats.consult);
+      itemsHtml += renderCat('🔬', 'فحوصات المختبر', 'var(--green)', cats.lab);
+      itemsHtml += renderCat('🩻', 'صور الأشعة', 'var(--sky)', cats.rad);
+      itemsHtml += renderCat('💊', 'الصيدلية', 'var(--amber)', cats.pharm);
+      itemsHtml += renderCat('📋', 'خدمات أخرى', 'var(--purple)', cats.other);
       itemsHtml += '</div>';
 
-      let status = '<span style="color:var(--red);font-size:0.7rem">\u063a\u064a\u0631 \u0645\u062f\u0641\u0648\u0639\u0629</span>';
-      if (remaining <= 0) status = '<span style="color:var(--green);font-size:0.7rem">\u0645\u062f\u0641\u0648\u0639\u0629</span>';
-      else if (paid > 0) status = '<span style="color:var(--amber);font-size:0.7rem">\u062c\u0632\u0626\u064a\u0629</span>';
+      let status = '<span style="color:var(--red);font-size:0.7rem">غير مدفوعة</span>';
+      if (inv.status === 'pending') status = '<span style="color:var(--amber);font-size:0.7rem;font-weight:bold">⚠️ بانتظار التسعير</span>';
+      else if (remaining <= 0 && total > 0) status = '<span style="color:var(--green);font-size:0.7rem">مدفوعة بالكامل</span>';
+      else if (paid > 0) status = '<span style="color:var(--amber);font-size:0.7rem">دفع جزئي</span>';
+      else if (inv.status === 'paid') status = '<span style="color:var(--green);font-size:0.7rem">مدفوعة بالكامل</span>';
+      else if (inv.status === 'cancelled') status = '<span style="color:var(--muted);font-size:0.7rem">ملغاة</span>';
 
       invHtml += `
         <tr>
@@ -600,6 +609,18 @@ function recordBillingPayment() {
     .filter(([k, inv]) => inv.patientId === patientId)
     .sort((a, b) => (a[1].createdAt || '').localeCompare(b[1].createdAt || ''));
 
+  let totalUnallocated = 0;
+  pInvoices.forEach(([_, inv]) => {
+    const t = parseFloat(inv.total) || 0;
+    const p = BillingEngine.calculateInvoicePaid(_);
+    totalUnallocated += (t - p);
+  });
+
+  if (amount > totalUnallocated) {
+    if(typeof toast !== 'undefined') toast('⛔ مرفوض: المبلغ يتجاوز الرصيد المستحق (يمنع الرصيد السالب). المستحق: ' + totalUnallocated.toFixed(2), 'err');
+    return;
+  }
+
   let remainingPayment = amount;
   const updates = {};
   const timestamp = new Date().toISOString();
@@ -626,21 +647,16 @@ function recordBillingPayment() {
         timestamp: timestamp,
         actorId: session.staffId || 'unknown'
       };
+      
+      // Strict Invoice Lock Policy: If fully paid, lock the invoice
+      if (Math.abs(unallocated - allocAmount) < 0.01) {
+        updates[`${BASE}/invoices/${invId}/status`] = 'paid';
+      } else if (allocAmount > 0) {
+        updates[`${BASE}/invoices/${invId}/status`] = 'partial';
+      }
+
       remainingPayment -= allocAmount;
     }
-  }
-
-  if (remainingPayment > 0) {
-    const txId = db.ref().child('financial_transactions').push().key;
-    updates[`${BASE}/financial_transactions/${txId}`] = {
-      invoiceId: '',
-      patientId: patientId,
-      type: 'PAYMENT',
-      amount: parseFloat(remainingPayment.toFixed(2)),
-      reason: (reason ? reason + ' - ' : '') + 'رصيد دائن / زيادة',
-      timestamp: timestamp,
-      actorId: session.staffId || 'unknown'
-    };
   }
 
   db.ref().update(updates).then(() => {

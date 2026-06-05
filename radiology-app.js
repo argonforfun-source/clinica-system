@@ -469,54 +469,127 @@ function saveRadReport() {
       });
     } catch(e) { console.error('Notification error', e); }
 
-    // 4. Auto-Billing: Add each scan with its price from Pricing Catalog
-    const defaultRadPrice = (_sets && _sets.billingPrices && _sets.billingPrices.rad) ? parseFloat(_sets.billingPrices.rad) : 25;
-    
-    db.ref(`${BASE}/invoices`).orderByChild('visitId').equalTo(visitId).once('value', invSnap => {
-      const invoices = invSnap.val() || {};
-      const invEntry = Object.entries(invoices)[0];
-      if (invEntry) {
-        const [invKey, invVal] = invEntry;
-        const currentItems = invVal.items || [];
+    // 4. Auto-Billing: Strict Enterprise Protocol
+    const bpState = (_sets && _sets.billingPolicy) || { mode: 'legacy' };
+    const radPolicy = (bpState.departments && bpState.departments.rad) || 'unified';
+
+    if (radPolicy === 'free') {
+      if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) {
+        ArgonCore.logAudit('BILLING_FREE', `تجاوز مالي للأشعة حسب سياسة المجمع لطلب: ${k}`, 'RADIOLOGY');
+      }
+    } else {
+      // Fetch invoices for this visit to handle idempotency and unified appending
+      db.ref(`${BASE}/invoices`).orderByChild('visitId').equalTo(visitId).once('value', invSnap => {
+        const invoices = invSnap.val() || {};
         
+        // Prepare Line Items with strict Revenue Classification
+        const newRadItems = [];
         (o.requestedScans || []).forEach(s => {
+          let scanPrice = 0;
+          let requiresReview = false;
+          
           if (s.requiresBillingReview && s.source === 'manual') {
-            // Unpriced manual scan, skip auto billing or add as 0
-            currentItems.push({
-              name: `تصوير: ${sanitize(s.name)} (غير مُسعّر / خارجي)`,
-              price: 0
-            });
-            return;
-          }
-
-          let scanPrice = defaultRadPrice;
-          if (typeof s.unitPrice !== 'undefined' && s.unitPrice !== null) {
-            scanPrice = s.unitPrice; // Snapshot Enterprise Mode
+            requiresReview = true;
+          } else if (typeof s.unitPrice !== 'undefined' && s.unitPrice !== null) {
+            scanPrice = parseFloat(s.unitPrice);
           } else {
-            // Fallback for legacy requests before snapshotting
-            const normalizedName = (s.name || '').trim().toLowerCase();
-            const catalogEntry = Object.values(_pricingCatalog || {}).find(item => {
-              if (!item.active || item.type !== 'radiology') return false;
-              const catName = (item.name || '').trim().toLowerCase();
-              return catName === normalizedName || catName.includes(normalizedName) || normalizedName.includes(catName);
-            });
-            if (catalogEntry && catalogEntry.price !== undefined) scanPrice = parseFloat(catalogEntry.price);
+            requiresReview = true;
           }
 
-          currentItems.push({
+          newRadItems.push({
             name: `تصوير: ${sanitize(s.name)}`,
-            price: scanPrice
+            price: requiresReview ? 0 : parseFloat(scanPrice.toFixed(2)),
+            requiresBillingReview: requiresReview,
+            billingStatus: requiresReview ? 'pending_review' : 'draft',
+            financialBlocked: requiresReview,
+            billingReferenceId: s.id || `rad_${k}_${s.name}`, // IDEMPOTENCY KEY
+            department: 'radiology',
+            serviceType: 'scan',
+            serviceId: s.serviceId || s.id || 'unknown',
+            invoiceType: radPolicy === 'separate' ? 'rad_invoice' : 'visit_invoice'
           });
         });
 
-        const newTotal = parseFloat(currentItems.reduce((acc, item) => acc + item.price, 0).toFixed(2));
-        
-        const invoiceUpdates = {};
-        invoiceUpdates[`invoices/${invKey}/items`] = currentItems;
-        invoiceUpdates[`invoices/${invKey}/total`] = newTotal;
-        db.ref(BASE).update(invoiceUpdates);
-      }
-    });
+        // 1. Separate Policy (فاتورة مستقلة للأشعة)
+        if (radPolicy === 'separate') {
+          // Idempotency Check: Does a rad invoice for this order already exist?
+          let alreadyBilled = false;
+          Object.values(invoices).forEach(inv => {
+            if (inv.invoiceType === 'rad_invoice' && inv.orderReferenceId === k) alreadyBilled = true;
+          });
+          
+          if (!alreadyBilled && newRadItems.length > 0) {
+            const newInvId = db.ref().child('invoices').push().key;
+            const invTotal = parseFloat(newRadItems.reduce((sum, item) => sum + item.price, 0).toFixed(2));
+            
+            const separateInvoice = {
+              patientId: o.patientId,
+              patientName: o.patientName,
+              visitId: visitId,
+              docName: o.doctorName || 'طبيب غير محدد',
+              items: newRadItems,
+              total: invTotal,
+              status: requiresReview ? 'pending' : 'draft',
+              invoiceType: 'rad_invoice',
+              orderReferenceId: k,
+              billingPolicySnapshot: bpState,
+              createdAt: new Date().toISOString(),
+              // National e-Invoice Prep
+              invoiceNumber: `INV-RAD-${Date.now()}`,
+              issueDate: new Date().toISOString(),
+              currency: 'JOD',
+              sellerTaxNumber: _sets?.taxNumber || '',
+              buyerNationalId: o.nationalId || '',
+              eInvoiceStatus: 'pending'
+            };
+            db.ref(`${BASE}/invoices/${newInvId}`).set(separateInvoice);
+            if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('CREATE_INVOICE', `إنشاء فاتورة أشعة منفصلة للمريض: ${o.patientName}`, 'FINANCE');
+          }
+        } 
+        // 2. Unified Policy (الدمج مع فاتورة الزيارة)
+        else {
+          // Find the main visit invoice
+          const invEntry = Object.entries(invoices).find(([_, v]) => v.invoiceType !== 'lab_invoice' && v.invoiceType !== 'rad_invoice');
+          if (invEntry) {
+            const [invKey, invVal] = invEntry;
+            
+            // Check Invoice Lock Rule
+            if (['paid', 'cancelled', 'refunded'].includes(invVal.status)) {
+              console.warn("Invoice is locked. Cannot auto-append items.");
+              if (typeof toast === 'function') toast('⚠️ الفاتورة مغلقة، يرجى مراجعة المحاسبة لتسجيل الصور', 'err');
+              return;
+            }
+
+            const currentItems = invVal.items || [];
+            let itemsAdded = false;
+
+            newRadItems.forEach(newItem => {
+              // Idempotency: skip if billingReferenceId already exists in this invoice
+              const exists = currentItems.some(existing => existing.billingReferenceId && existing.billingReferenceId === newItem.billingReferenceId);
+              if (!exists) {
+                currentItems.push(newItem);
+                itemsAdded = true;
+              }
+            });
+
+            if (itemsAdded) {
+              const newTotal = parseFloat(currentItems.reduce((acc, item) => acc + (parseFloat(item.price)||0), 0).toFixed(2));
+              const invoiceUpdates = {};
+              invoiceUpdates[`invoices/${invKey}/items`] = currentItems;
+              invoiceUpdates[`invoices/${invKey}/total`] = newTotal;
+              
+              // If we appended a pending_review item, force invoice to pending
+              if (currentItems.some(i => i.requiresBillingReview)) {
+                invoiceUpdates[`invoices/${invKey}/status`] = 'pending';
+              }
+              
+              db.ref(BASE).update(invoiceUpdates);
+              if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('UPDATE_INVOICE', `دمج تقارير أشعة في الفاتورة الموحدة: ${invKey}`, 'FINANCE');
+            }
+          }
+        }
+      });
+    }
   }
 
   // Apply updates atomically

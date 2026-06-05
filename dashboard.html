@@ -743,11 +743,36 @@
         <div class="setg"><label class="setl">رقم الواتساب</label><input type="text" id="sP" class="seti" placeholder="+962..."></div>
         <div class="setg" style="display:grid;grid-template-columns:1fr;gap:12px">
           <div>
-            <label class="setl">سياسة الفوترة (Billing Policy)</label>
-            <select id="sBillingPolicy" class="setsel" style="margin-bottom:8px">
-              <option value="unified">فاتورة موحدة (مجمعة عند الاستقبال)</option>
-              <option value="decentralized">فاتورة منفصلة (الدفع عند كل قسم)</option>
-            </select>
+            <div style="background:rgba(0,0,0,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
+              <label class="setl" style="color:var(--teal);font-weight:bold;font-size:0.9rem;border-bottom:1px dashed var(--border);padding-bottom:8px;margin-bottom:10px">سياسة الفوترة المؤسسية (Enterprise Billing Policy)</label>
+              
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <span style="font-size:0.8rem;font-weight:600">🔬 سياسة المختبر (Lab)</span>
+                <select id="bpLab" class="setsel" style="width:160px;padding:4px;font-size:0.8rem">
+                  <option value="unified">فاتورة موحدة (استقبال)</option>
+                  <option value="separate">فاتورة منفصلة (المختبر)</option>
+                  <option value="free">معفي من الرسوم (مجاني)</option>
+                </select>
+              </div>
+
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <span style="font-size:0.8rem;font-weight:600">🩻 سياسة الأشعة (Radiology)</span>
+                <select id="bpRad" class="setsel" style="width:160px;padding:4px;font-size:0.8rem">
+                  <option value="unified">فاتورة موحدة (استقبال)</option>
+                  <option value="separate">فاتورة منفصلة (الأشعة)</option>
+                  <option value="free">معفي من الرسوم (مجاني)</option>
+                </select>
+              </div>
+
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:0.8rem;font-weight:600">💊 سياسة الصيدلية (Pharmacy)</span>
+                <select id="bpPharm" class="setsel" style="width:160px;padding:4px;font-size:0.8rem">
+                  <option value="unified">فاتورة موحدة (استقبال)</option>
+                  <option value="separate">فاتورة منفصلة (الصيدلية)</option>
+                  <option value="free">معفي من الرسوم (مجاني)</option>
+                </select>
+              </div>
+            </div>
             <div style="display:flex;gap:8px">
               <button onclick="sw('pricing',document.getElementById('mPricing'))" style="flex:1;background:rgba(14,165,233,.1);color:var(--sky);border:1px solid rgba(14,165,233,.2);padding:6px 10px;border-radius:6px;font-size:0.8rem;cursor:pointer;font-weight:bold"><i class="fas fa-tags"></i> إدارة تسعيرة الفحوصات</button>
               <button onclick="if(confirm('هل أنت متأكد من تصفير ومسح جميع الفواتير والحركات المالية الحالية؟')) { db.ref(BASE + '/invoices').remove(); db.ref(BASE + '/financial_transactions').remove(); toast('تم تصفير الفواتير بنجاح', 'ok'); }" style="background:var(--red);color:white;border:none;padding:6px 10px;border-radius:6px;font-size:0.75rem;cursor:pointer;"><i class="fas fa-trash"></i> مسح الفواتير التجريبية</button>
@@ -1309,8 +1334,18 @@ db.ref(BASE+'/settings').on('value', snap => {
   document.getElementById('sSameDay').value = s.sameDayBooking!==false ? 'true' : 'false';
   document.getElementById('sBookingDays').value = s.bookingDays||10;
   
-  const bp = document.getElementById('sBillingPolicy');
-  if (bp) bp.value = s.billingPolicy || 'unified';
+  const advBp = s.billingPolicy || {};
+  const deptsBp = advBp.departments || {};
+  const bpLab = document.getElementById('bpLab');
+  const bpRad = document.getElementById('bpRad');
+  const bpPharm = document.getElementById('bpPharm');
+  
+  // Backward compatibility: if old string 'unified' or 'decentralized', fallback to unified/separate mapping
+  const legacyFallback = typeof s.billingPolicy === 'string' ? (s.billingPolicy === 'decentralized' ? 'separate' : 'unified') : 'unified';
+  
+  if (bpLab) bpLab.value = deptsBp.lab || legacyFallback;
+  if (bpRad) bpRad.value = deptsBp.rad || legacyFallback;
+  if (bpPharm) bpPharm.value = deptsBp.pharmacy || legacyFallback;
   
   const sMode = document.getElementById('sMode');
   if (sMode) {
@@ -2100,6 +2135,11 @@ async function saveSettings() {
     bill: document.getElementById('waBill').checked
   };
 
+  const currentBp = (_sets && _sets.billingPolicy && typeof _sets.billingPolicy === 'object') ? _sets.billingPolicy : { version: 0 };
+  const bpLabVal = document.getElementById('bpLab') ? document.getElementById('bpLab').value : 'unified';
+  const bpRadVal = document.getElementById('bpRad') ? document.getElementById('bpRad').value : 'unified';
+  const bpPharmVal = document.getElementById('bpPharm') ? document.getElementById('bpPharm').value : 'unified';
+  
   const update={
     name:sanitize(sN),
     phone:sanitize(sP),
@@ -2116,7 +2156,16 @@ async function saveSettings() {
       doctor: document.getElementById('sPassDoc').value.trim()
     },
     whatsapp: whatsappConf,
-    billingPolicy: document.getElementById('sBillingPolicy').value || 'unified',
+    billingPolicy: {
+      mode: 'advanced',
+      version: (currentBp.version || 0) + 1,
+      updatedAt: new Date().toISOString(),
+      departments: {
+        lab: bpLabVal,
+        rad: bpRadVal,
+        pharmacy: bpPharmVal
+      }
+    },
     color
   };
   
@@ -2154,6 +2203,10 @@ async function saveSettings() {
 
   db.ref(`${BASE}/settings`).update(update).then(()=>{
     toast('✅ تم حفظ الإعدادات بنجاح','ok');
+    if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) {
+        ArgonCore.logAudit('UPDATE_BILLING_POLICY', 'تم تحديث سياسة الفوترة المؤسسية للأقسام', 'SETTINGS');
+    }
+
     const p1 = document.getElementById('sPw');
     const p2 = document.getElementById('sPwCurrent');
     if (p1) p1.value = '';

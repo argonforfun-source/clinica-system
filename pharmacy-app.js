@@ -314,32 +314,113 @@ function dispensePrescription() {
     };
     updates[`patients/${p.patientId}/visits/${timelineKey}`] = timelineObj;
 
-    // 3. Automated Billing: find current visit invoice and add drug charges
-    db.ref(`${BASE}/invoices`).orderByChild('visitId').equalTo(visitId).once('value', invSnap => {
-      const invoices = invSnap.val() || {};
-      const invEntry = Object.entries(invoices)[0];
-      if (invEntry) {
-        const [invKey, invVal] = invEntry;
-        const currentItems = invVal.items || [];
+    // 3. Automated Billing: Strict Enterprise Protocol
+    const bpState = (_sets && _sets.billingPolicy) || { mode: 'legacy' };
+    const pharmPolicy = (bpState.departments && bpState.departments.pharmacy) || 'unified';
+
+    if (pharmPolicy === 'free') {
+      if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) {
+        ArgonCore.logAudit('BILLING_FREE', `تجاوز مالي للصيدلية حسب سياسة المجمع لوصفة: ${k}`, 'PHARMACY');
+      }
+    } else {
+      // Fetch invoices for this visit to handle idempotency and unified appending
+      db.ref(`${BASE}/invoices`).orderByChild('visitId').equalTo(visitId).once('value', invSnap => {
+        const invoices = invSnap.val() || {};
         
+        // Prepare Line Items with strict Revenue Classification
+        const newPharmItems = [];
         dispensedMeds.forEach(m => {
           if (m.qty > 0) {
-            currentItems.push({
+            newPharmItems.push({
               name: `علاج: ${m.name} (عدد ${m.qty})`,
-              price: parseFloat((m.qty * m.price).toFixed(2))
+              price: parseFloat((m.qty * m.price).toFixed(2)),
+              requiresBillingReview: false,
+              billingStatus: 'draft',
+              financialBlocked: false,
+              billingReferenceId: m.id || `pharm_${k}_${m.name}`, // IDEMPOTENCY KEY
+              department: 'pharmacy',
+              serviceType: 'drug',
+              serviceId: m.id || 'unknown_drug',
+              invoiceType: pharmPolicy === 'separate' ? 'pharmacy_invoice' : 'visit_invoice'
             });
           }
         });
 
-        const newTotal = parseFloat(currentItems.reduce((acc, item) => acc + item.price, 0).toFixed(2));
-        
-        const invoiceUpdates = {};
-        invoiceUpdates[`invoices/${invKey}/items`] = currentItems;
-        invoiceUpdates[`invoices/${invKey}/total`] = newTotal;
-        db.ref(BASE).update(invoiceUpdates);
-      }
-    });
-  }
+        // 1. Separate Policy (فاتورة مستقلة للصيدلية)
+        if (pharmPolicy === 'separate') {
+          // Idempotency Check: Does a pharm invoice for this dispense order already exist?
+          let alreadyBilled = false;
+          Object.values(invoices).forEach(inv => {
+            if (inv.invoiceType === 'pharmacy_invoice' && inv.orderReferenceId === k) alreadyBilled = true;
+          });
+          
+          if (!alreadyBilled && newPharmItems.length > 0) {
+            const newInvId = db.ref().child('invoices').push().key;
+            const invTotal = parseFloat(newPharmItems.reduce((sum, item) => sum + item.price, 0).toFixed(2));
+            
+            const separateInvoice = {
+              patientId: p.patientId,
+              patientName: p.patientName,
+              visitId: visitId,
+              docName: p.doctorName || 'طبيب غير محدد',
+              items: newPharmItems,
+              total: invTotal,
+              status: 'draft',
+              invoiceType: 'pharmacy_invoice',
+              orderReferenceId: k,
+              billingPolicySnapshot: bpState,
+              createdAt: new Date().toISOString(),
+              // National e-Invoice Prep
+              invoiceNumber: `INV-PHX-${Date.now()}`,
+              issueDate: new Date().toISOString(),
+              currency: 'JOD',
+              sellerTaxNumber: _sets?.taxNumber || '',
+              buyerNationalId: p.nationalId || '',
+              eInvoiceStatus: 'pending'
+            };
+            db.ref(`${BASE}/invoices/${newInvId}`).set(separateInvoice);
+            if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('CREATE_INVOICE', `إنشاء فاتورة صيدلية منفصلة للمريض: ${p.patientName}`, 'FINANCE');
+          }
+        } 
+        // 2. Unified Policy (الدمج مع فاتورة الزيارة)
+        else {
+          // Find the main visit invoice
+          const invEntry = Object.entries(invoices).find(([_, v]) => v.invoiceType !== 'lab_invoice' && v.invoiceType !== 'rad_invoice' && v.invoiceType !== 'pharmacy_invoice');
+          if (invEntry) {
+            const [invKey, invVal] = invEntry;
+            
+            // Check Invoice Lock Rule
+            if (['paid', 'cancelled', 'refunded'].includes(invVal.status)) {
+              console.warn("Invoice is locked. Cannot auto-append items.");
+              if (typeof toast === 'function') toast('⚠️ الفاتورة مغلقة، يرجى مراجعة المحاسبة لتسجيل الأدوية', 'err');
+              return;
+            }
+
+            const currentItems = invVal.items || [];
+            let itemsAdded = false;
+
+            newPharmItems.forEach(newItem => {
+              // Idempotency: skip if billingReferenceId already exists in this invoice
+              const exists = currentItems.some(existing => existing.billingReferenceId && existing.billingReferenceId === newItem.billingReferenceId);
+              if (!exists) {
+                currentItems.push(newItem);
+                itemsAdded = true;
+              }
+            });
+
+            if (itemsAdded) {
+              const newTotal = parseFloat(currentItems.reduce((acc, item) => acc + (parseFloat(item.price)||0), 0).toFixed(2));
+              const invoiceUpdates = {};
+              invoiceUpdates[`invoices/${invKey}/items`] = currentItems;
+              invoiceUpdates[`invoices/${invKey}/total`] = newTotal;
+              
+              db.ref(BASE).update(invoiceUpdates);
+              if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('UPDATE_INVOICE', `دمج أدوية في الفاتورة الموحدة: ${invKey}`, 'FINANCE');
+            }
+          }
+        }
+      });
+    }
 
   // Apply all updates atomically
   db.ref(BASE).update(updates).then(() => {
