@@ -228,6 +228,18 @@ function initEMR() {
 
       const targetId = urlPid || urlPhone;
       if (targetId && _patients[targetId] && !window._pendingUrlBk) {
+        
+        // ── ARGON ENTERPRISE: Block Legacy Poisoned Links from Old Dashboard Tabs ──
+        const targetNid = typeof ArgonNID !== 'undefined' ? ArgonNID.cleanNID(urlParams.get('nid') || '') : '';
+        const actualNid = typeof ArgonNID !== 'undefined' ? ArgonNID.cleanNID(_patients[targetId].info?.nationalId || '') : '';
+        
+        if (targetNid && actualNid && targetNid !== actualNid) {
+           toast('🚨 تحذير أمني: تعارض بين الرقم الوطني في رابط الدخول وملف المريض المرتبط. تم إيقاف الدخول التلقائي لحماية السجلات.', 'err');
+           if (typeof logAudit === 'function') logAudit('CRITICAL_NID_MISMATCH', `منع فتح ملف المريض المباشر بسبب تعارض الرقم الوطني. مطلوب:${targetNid} | موجود:${actualNid}`, 'EMR');
+           window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
+           return; // Block the automatic open
+        }
+
         viewPatientFile(targetId);
         window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
       }
