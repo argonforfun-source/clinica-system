@@ -474,18 +474,31 @@ function saveRadReport() {
         const currentItems = invVal.items || [];
         
         (o.requestedScans || []).forEach(s => {
-          // Lookup price from pricing catalog by scan name
+          if (s.requiresBillingReview && s.source === 'manual') {
+            // Unpriced manual scan, skip auto billing or add as 0
+            currentItems.push({
+              name: `تصوير: ${sanitize(s.name)} (غير مُسعّر / خارجي)`,
+              price: 0
+            });
+            return;
+          }
+
           let scanPrice = defaultRadPrice;
-          const normalizedName = (s.name || '').trim().toLowerCase();
-          const catalogEntry = Object.values(_pricingCatalog).find(item => {
-            if (!item.active || item.type !== 'radiology') return false;
-            const catName = (item.name || '').trim().toLowerCase();
-            return catName === normalizedName || catName.includes(normalizedName) || normalizedName.includes(catName);
-          });
-          if (catalogEntry) scanPrice = parseFloat(catalogEntry.price);
+          if (typeof s.unitPrice !== 'undefined' && s.unitPrice !== null) {
+            scanPrice = s.unitPrice; // Snapshot Enterprise Mode
+          } else {
+            // Fallback for legacy requests before snapshotting
+            const normalizedName = (s.name || '').trim().toLowerCase();
+            const catalogEntry = Object.values(_pricingCatalog || {}).find(item => {
+              if (!item.active || item.type !== 'radiology') return false;
+              const catName = (item.name || '').trim().toLowerCase();
+              return catName === normalizedName || catName.includes(normalizedName) || normalizedName.includes(catName);
+            });
+            if (catalogEntry && catalogEntry.price !== undefined) scanPrice = parseFloat(catalogEntry.price);
+          }
 
           currentItems.push({
-            name: `تصوير: ${s.name}`,
+            name: `تصوير: ${sanitize(s.name)}`,
             price: scanPrice
           });
         });

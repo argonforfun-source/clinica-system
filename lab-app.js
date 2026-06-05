@@ -249,6 +249,10 @@ function saveLabResults() {
       
       completedTests.push({
         name: t.name,
+        serviceId: t.serviceId || 'external',
+        unitPrice: typeof t.unitPrice !== 'undefined' ? t.unitPrice : null,
+        source: t.source || 'manual',
+        requiresBillingReview: t.requiresBillingReview || false,
         result: resVal,
         unit: unitVal,
         status: 'completed'
@@ -311,18 +315,31 @@ function saveLabResults() {
         const currentItems = invVal.items || [];
         
         completedTests.forEach(t => {
-          // Lookup price from pricing catalog by test name
+          if (t.requiresBillingReview && t.source === 'manual') {
+            // Unpriced manual test, skip auto billing or add as 0
+            currentItems.push({
+              name: `تحليل: ${sanitize(t.name)} (غير مُسعّر / خارجي)`,
+              price: 0
+            });
+            return;
+          }
+
           let testPrice = defaultLabPrice;
-          const normalizedName = (t.name || '').trim().toLowerCase();
-          const catalogEntry = Object.values(_pricingCatalog).find(item => {
-            if (!item.active || item.type !== 'lab') return false;
-            const catName = (item.name || '').trim().toLowerCase();
-            return catName === normalizedName || catName.includes(normalizedName) || normalizedName.includes(catName);
-          });
-          if (catalogEntry) testPrice = parseFloat(catalogEntry.price);
+          if (t.unitPrice !== null) {
+            testPrice = t.unitPrice; // Snapshot Enterprise Mode
+          } else {
+            // Fallback for legacy requests before snapshotting
+            const normalizedName = (t.name || '').trim().toLowerCase();
+            const catalogEntry = Object.values(_pricingCatalog || {}).find(item => {
+              if (!item.active || item.type !== 'lab') return false;
+              const catName = (item.name || '').trim().toLowerCase();
+              return catName === normalizedName || catName.includes(normalizedName) || normalizedName.includes(catName);
+            });
+            if (catalogEntry && catalogEntry.price !== undefined) testPrice = parseFloat(catalogEntry.price);
+          }
 
           currentItems.push({
-            name: `تحليل: ${t.name}`,
+            name: `تحليل: ${sanitize(t.name)}`,
             price: testPrice
           });
         });

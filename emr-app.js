@@ -24,6 +24,9 @@ let _sets = null;
 let _patients = {};
 let _doctors = {};
 let _depts = {};
+let _labOrders = {};
+let _radOrders = {};
+let _pricingCatalogCache = {};
 let activePatientId = null;
 
 window.EMRContext = {
@@ -208,6 +211,12 @@ window.addEventListener('DOMContentLoaded', () => {
     if (activePatientId && _patients[activePatientId]) {
       refreshPatientFileUI(activePatientId);
     }
+  });
+
+  // Load Pricing Catalog for Autocomplete
+  db.ref(BASE + '/pricing_catalog').on('value', snap => {
+    _pricingCatalogCache = snap.val() || {};
+    if (typeof renderDynamicCatalogTags === 'function') renderDynamicCatalogTags();
   });
 });
 // EMR Initialization
@@ -1590,8 +1599,8 @@ function generatePatientFileHTML(uid) {
 
       const labArr = Array.isArray(v.labOrders) ? v.labOrders : Object.values(v.labOrders || {});
       const radArr = Array.isArray(v.radOrders) ? v.radOrders : Object.values(v.radOrders || {});
-      const labReqsStr = labArr.join(' ، ');
-      const radReqsStr = radArr.join(' ، ');
+      const labReqsStr = labArr.map(i => typeof i === 'object' ? i.name : i).join(' ، ');
+      const radReqsStr = radArr.map(i => typeof i === 'object' ? i.name : i).join(' ، ');
 
       // Upgraded Departmental Card stylings
       const isPharmacist = v.docKey === 'pharmacist';
@@ -2119,15 +2128,13 @@ function loadVisitForm(uid, bookingId = null) {
         <!-- Lab Section -->
         <div style="border-left:1px dashed var(--border);padding-left:14px">
           <div class="vform-title" style="margin-bottom:8px;color:var(--teal)"><i class="fas fa-microscope"></i> الفحوصات المخبرية المطلوبة (Lab Orders)</div>
-          <div style="display:flex;gap:6px;margin-bottom:8px">
-            <input id="labTestInput" class="fi" style="height:36px;font-size:0.8rem;flex:1" placeholder="فحص مخبري جديد (مثل: CBC, HbA1c)">
+          <div style="position:relative;display:flex;gap:6px;margin-bottom:8px">
+            <input id="labTestInput" class="fi" style="height:36px;font-size:0.8rem;flex:1" placeholder="فحص مخبري جديد (مثل: CBC, HbA1c)" onkeyup="searchCatalog('lab')" onfocus="searchCatalog('lab')" autocomplete="off">
             <button type="button" class="btn-primary" onclick="addLabOrderTest()" style="height:36px;padding:0 12px;background:var(--teal);border:none;border-radius:8px;cursor:pointer"><i class="fas fa-plus"></i></button>
+            <div id="labCatalogDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:220px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px" id="commonLabTests">
-            <span class="tag" style="cursor:pointer;font-size:0.72rem" onclick="addQuickLab('CBC')">CBC 🩸</span>
-            <span class="tag" style="cursor:pointer;font-size:0.72rem" onclick="addQuickLab('HbA1c')">HbA1c 🍬</span>
-            <span class="tag" style="cursor:pointer;font-size:0.72rem" onclick="addQuickLab('Lipid Profile')">Lipid Profile 🧪</span>
-            <span class="tag" style="cursor:pointer;font-size:0.72rem" onclick="addQuickLab('Kidney Functions')">وظائف كلى 🔬</span>
+            <!-- Populated Dynamically -->
           </div>
           <div id="labOrderList" style="display:flex;flex-wrap:wrap;gap:6px;background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;border:1px solid var(--border);min-height:45px;align-items:center">
             <span style="color:var(--muted);font-size:0.75rem" id="labPlaceholder">لا توجد فحوصات مطلوبة</span>
@@ -2137,15 +2144,13 @@ function loadVisitForm(uid, bookingId = null) {
         <!-- Radiology Section -->
         <div>
           <div class="vform-title" style="margin-bottom:8px;color:var(--sky)"><i class="fas fa-x-ray"></i> صور الأشعة المطلوبة (Radiology Orders)</div>
-          <div style="display:flex;gap:6px;margin-bottom:8px">
-            <input id="radScanInput" class="fi" style="height:36px;font-size:0.8rem;flex:1" placeholder="صورة أشعة جديدة (مثل: Chest X-Ray)">
+          <div style="position:relative;display:flex;gap:6px;margin-bottom:8px">
+            <input id="radScanInput" class="fi" style="height:36px;font-size:0.8rem;flex:1" placeholder="صورة أشعة جديدة (مثل: Chest X-Ray)" onkeyup="searchCatalog('radiology')" onfocus="searchCatalog('radiology')" autocomplete="off">
             <button type="button" class="btn-primary" onclick="addRadOrderScan()" style="height:36px;padding:0 12px;background:var(--sky);border:none;border-radius:8px;cursor:pointer"><i class="fas fa-plus"></i></button>
+            <div id="radCatalogDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:220px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px" id="commonRadScans">
-            <span class="tag blue" style="cursor:pointer;font-size:0.72rem" onclick="addQuickRad('Chest X-Ray')">Chest X-Ray 🩻</span>
-            <span class="tag blue" style="cursor:pointer;font-size:0.72rem" onclick="addQuickRad('Brain MRI')">Brain MRI 🧠</span>
-            <span class="tag blue" style="cursor:pointer;font-size:0.72rem" onclick="addQuickRad('Abdominal US')">سونار بطن 🤰</span>
-            <span class="tag blue" style="cursor:pointer;font-size:0.72rem" onclick="addQuickRad('CT Brain')">CT Brain 🌀</span>
+            <!-- Populated Dynamically -->
           </div>
           <div id="radOrderList" style="display:flex;flex-wrap:wrap;gap:6px;background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;border:1px solid var(--border);min-height:45px;align-items:center">
             <span style="color:var(--muted);font-size:0.75rem" id="radPlaceholder">لا توجد صور أشعة مطلوبة</span>
@@ -2369,7 +2374,73 @@ document.addEventListener('click', (e) => {
   const dd2 = document.getElementById('rxWorkspaceDropdown');
   const inp2 = document.getElementById('rxDrug');
   if (dd2 && inp2 && e.target !== inp2 && !dd2.contains(e.target)) dd2.style.display = 'none';
+
+  const dd3 = document.getElementById('labCatalogDropdown');
+  const inp3 = document.getElementById('labTestInput');
+  if (dd3 && inp3 && e.target !== inp3 && !dd3.contains(e.target)) dd3.style.display = 'none';
+
+  const dd4 = document.getElementById('radCatalogDropdown');
+  const inp4 = document.getElementById('radScanInput');
+  if (dd4 && inp4 && e.target !== inp4 && !dd4.contains(e.target)) dd4.style.display = 'none';
 });
+
+// ── SMART PRICING CATALOG AUTOCOMPLETE ENGINE ──
+function _searchCatalogLogic(query, type) {
+  const items = Object.entries(_pricingCatalogCache || {}).map(([key, val]) => ({...val, serviceId: key}));
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+
+  return items.filter(item => {
+    if (item.type !== type || item.active === false) return false;
+    return (item.name && item.name.toLowerCase().includes(q));
+  });
+}
+
+function _buildCatalogDropdownHTML(matched, query, type) {
+  if (!matched.length) {
+    return `<div style="padding:10px;font-size:0.8rem;color:var(--muted);text-align:center">لم يتم العثور على "${sanitize(query)}" في الكتالوج.<br>إذا أضفته سيتم إرساله كفحص خارجي (غير مُسعّر) ويحتاج مراجعة مالية ⚠️</div>`;
+  }
+
+  return matched.map(m => {
+    return `<div onclick="selectCatalogItem('${type}', '${m.serviceId}', '${m.name.replace(/'/g, "\\'")}', ${m.price})" style="padding:10px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:0.2s" onmouseover="this.style.background='rgba(13,148,136,0.1)'" onmouseout="this.style.background='transparent'">
+      <div>
+        <div style="font-weight:700;font-size:0.85rem;color:var(--text)">${sanitize(m.name)}</div>
+      </div>
+      <div style="text-align:left">
+        <span style="font-size:0.75rem;font-family:'IBM Plex Mono',monospace;color:var(--teal);font-weight:700">${m.price} د.أ</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function searchCatalog(type) {
+  const inpId = type === 'lab' ? 'labTestInput' : 'radScanInput';
+  const ddId = type === 'lab' ? 'labCatalogDropdown' : 'radCatalogDropdown';
+  const inp = document.getElementById(inpId);
+  const dd = document.getElementById(ddId);
+  if (!inp || !dd) return;
+  
+  const q = inp.value.trim();
+  if (!q) { dd.style.display = 'none'; return; }
+  dd.innerHTML = _buildCatalogDropdownHTML(_searchCatalogLogic(q, type), q, type);
+  dd.style.display = 'block';
+}
+
+function selectCatalogItem(type, serviceId, name, price) {
+  const inpId = type === 'lab' ? 'labTestInput' : 'radScanInput';
+  const ddId = type === 'lab' ? 'labCatalogDropdown' : 'radCatalogDropdown';
+  const inp = document.getElementById(inpId);
+  const dd = document.getElementById(ddId);
+  
+  if (inp) {
+    inp.value = name;
+    // Store selected snapshot metadata temporarily on the element
+    inp.dataset.serviceId = serviceId;
+    inp.dataset.unitPrice = price;
+    inp.dataset.lastSelectedName = name;
+  }
+  if (dd) dd.style.display = 'none';
+}
 
 // Attachments Handling
 function handleAttachment(e) {
@@ -2491,17 +2562,35 @@ function saveVisit() {
   }
 
   // Auto-capture pending Lab
-  const pendingLab = document.getElementById('labTestInput')?.value.trim();
-  if (pendingLab && !labTestsList.includes(pendingLab)) {
-    labTestsList.push(pendingLab);
-    visitObj.labOrders.push(pendingLab);
+  const pendingLabInp = document.getElementById('labTestInput');
+  const pendingLab = pendingLabInp ? pendingLabInp.value.trim() : '';
+  if (pendingLab && !labTestsList.some(x => x.name === pendingLab)) {
+    const sId = pendingLabInp.dataset.serviceId;
+    const sPrice = pendingLabInp.dataset.unitPrice;
+    let newObj;
+    if (sId && pendingLabInp.dataset.lastSelectedName === pendingLab) {
+      newObj = { name: pendingLab, serviceId: sId, unitPrice: parseFloat(sPrice), source: 'pricing_catalog', requiresBillingReview: false };
+    } else {
+      newObj = { name: pendingLab, serviceId: 'external', unitPrice: 0, source: 'manual', requiresBillingReview: true };
+    }
+    labTestsList.push(newObj);
+    visitObj.labOrders.push(newObj);
   }
 
   // Auto-capture pending Radiology
-  const pendingRad = document.getElementById('radScanInput')?.value.trim();
-  if (pendingRad && !radScansList.includes(pendingRad)) {
-    radScansList.push(pendingRad);
-    visitObj.radOrders.push(pendingRad);
+  const pendingRadInp = document.getElementById('radScanInput');
+  const pendingRad = pendingRadInp ? pendingRadInp.value.trim() : '';
+  if (pendingRad && !radScansList.some(x => x.name === pendingRad)) {
+    const sId = pendingRadInp.dataset.serviceId;
+    const sPrice = pendingRadInp.dataset.unitPrice;
+    let newObj;
+    if (sId && pendingRadInp.dataset.lastSelectedName === pendingRad) {
+      newObj = { name: pendingRad, serviceId: sId, unitPrice: parseFloat(sPrice), source: 'pricing_catalog', requiresBillingReview: false };
+    } else {
+      newObj = { name: pendingRad, serviceId: 'external', unitPrice: 0, source: 'manual', requiresBillingReview: true };
+    }
+    radScansList.push(newObj);
+    visitObj.radOrders.push(newObj);
   }
 
   const patientName = _patients[activePatientId]?.info?.name || 'مريض';
@@ -2541,7 +2630,16 @@ function saveVisit() {
           patientName: patientName,
           doctorId: docKey,
           docName: doctorDisplayName,
-          requestedTests: labTestsList.map(t => ({ name: t, result: '', unit: '', status: 'waiting' })),
+          requestedTests: labTestsList.map(t => ({ 
+            name: t.name, 
+            serviceId: t.serviceId || 'external',
+            unitPrice: t.unitPrice || 0,
+            source: t.source || 'manual',
+            requiresBillingReview: t.requiresBillingReview || false,
+            result: '', 
+            unit: '', 
+            status: 'waiting' 
+          })),
           status: 'waiting',
           visitId,
           orgId: CID,
@@ -2565,7 +2663,14 @@ function saveVisit() {
           patientName: patientName,
           doctorId: docKey,
           docName: doctorDisplayName,
-          requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
+          requestedScans: radScansList.map(s => ({ 
+            name: s.name, 
+            serviceId: s.serviceId || 'external',
+            unitPrice: s.unitPrice || 0,
+            source: s.source || 'manual',
+            requiresBillingReview: s.requiresBillingReview || false,
+            status: 'waiting' 
+          })),
           status: 'waiting',
           visitId,
           orgId: CID,
@@ -2940,17 +3045,28 @@ function addLabOrderTest() {
   const input = document.getElementById('labTestInput');
   const val = input.value.trim();
   if (val) {
-    addQuickLab(val);
+    const sId = input.dataset.serviceId;
+    const sPrice = input.dataset.unitPrice;
+    
+    // Check if the user selected from the catalog or typed manually
+    if (sId && input.dataset.lastSelectedName === val) {
+      addQuickLab(val, sId, parseFloat(sPrice), 'pricing_catalog');
+    } else {
+      addQuickLab(val, 'external', 0, 'manual');
+    }
     input.value = '';
+    delete input.dataset.serviceId;
+    delete input.dataset.unitPrice;
+    delete input.dataset.lastSelectedName;
   }
 }
-function addQuickLab(name) {
-  if (labTestsList.includes(name)) return;
-  labTestsList.push(name);
+function addQuickLab(name, serviceId = 'external', unitPrice = 0, source = 'manual') {
+  if (labTestsList.some(x => x.name === name)) return;
+  labTestsList.push({ name, serviceId, unitPrice, source, requiresBillingReview: source === 'manual' });
   renderLabOrderChips();
 }
 function removeLabTest(name) {
-  labTestsList = labTestsList.filter(x => x !== name);
+  labTestsList = labTestsList.filter(x => x.name !== name);
   renderLabOrderChips();
 }
 function renderLabOrderChips() {
@@ -2963,7 +3079,7 @@ function renderLabOrderChips() {
   }
   div.innerHTML = labTestsList.map(t => `
     <span class="tag" style="background:rgba(13,148,136,0.15);border:1px solid var(--teal);color:var(--teal)">
-      ${sanitize(t)} <span onclick="removeLabTest('${t}')" style="cursor:pointer;margin-right:6px;font-weight:bold;color:var(--red)">✕</span>
+      ${sanitize(t.name)} ${t.source === 'manual' ? '<i class="fas fa-exclamation-triangle" style="color:var(--amber);margin-right:4px" title="فحص خارجي غير مسعر"></i>' : ''} <span onclick="removeLabTest('${sanitize(t.name).replace(/'/g,"\\'")}')" style="cursor:pointer;margin-right:6px;font-weight:bold;color:var(--red)">✕</span>
     </span>
   `).join('');
 }
@@ -2972,17 +3088,27 @@ function addRadOrderScan() {
   const input = document.getElementById('radScanInput');
   const val = input.value.trim();
   if (val) {
-    addQuickRad(val);
+    const sId = input.dataset.serviceId;
+    const sPrice = input.dataset.unitPrice;
+    
+    if (sId && input.dataset.lastSelectedName === val) {
+      addQuickRad(val, sId, parseFloat(sPrice), 'pricing_catalog');
+    } else {
+      addQuickRad(val, 'external', 0, 'manual');
+    }
     input.value = '';
+    delete input.dataset.serviceId;
+    delete input.dataset.unitPrice;
+    delete input.dataset.lastSelectedName;
   }
 }
-function addQuickRad(name) {
-  if (radScansList.includes(name)) return;
-  radScansList.push(name);
+function addQuickRad(name, serviceId = 'external', unitPrice = 0, source = 'manual') {
+  if (radScansList.some(x => x.name === name)) return;
+  radScansList.push({ name, serviceId, unitPrice, source, requiresBillingReview: source === 'manual' });
   renderRadOrderChips();
 }
 function removeRadScan(name) {
-  radScansList = radScansList.filter(x => x !== name);
+  radScansList = radScansList.filter(x => x.name !== name);
   renderRadOrderChips();
 }
 function renderRadOrderChips() {
@@ -2995,9 +3121,35 @@ function renderRadOrderChips() {
   }
   div.innerHTML = radScansList.map(t => `
     <span class="tag blue" style="background:rgba(14,165,233,0.15);border:1px solid var(--sky);color:var(--sky)">
-      ${sanitize(t)} <span onclick="removeRadScan('${t}')" style="cursor:pointer;margin-right:6px;font-weight:bold;color:var(--red)">✕</span>
+      ${sanitize(t.name)} ${t.source === 'manual' ? '<i class="fas fa-exclamation-triangle" style="color:var(--amber);margin-right:4px" title="تصوير خارجي غير مسعر"></i>' : ''} <span onclick="removeRadScan('${sanitize(t.name).replace(/'/g,"\\'")}')" style="cursor:pointer;margin-right:6px;font-weight:bold;color:var(--red)">✕</span>
     </span>
   `).join('');
+}
+
+// Generate dynamic tags from Pricing Catalog for EMR quick selection
+function renderDynamicCatalogTags() {
+  const labDiv = document.getElementById('commonLabTests');
+  const radDiv = document.getElementById('commonRadScans');
+  
+  const items = Object.entries(_pricingCatalogCache || {}).map(([key, val]) => ({...val, serviceId: key})).filter(i => i.active !== false);
+  
+  if (labDiv) {
+    const labItems = items.filter(i => i.type === 'lab').slice(0, 10);
+    if (labItems.length) {
+      labDiv.innerHTML = labItems.map(i => `<span class="tag" style="cursor:pointer;font-size:0.72rem" onclick="addQuickLab('${i.name.replace(/'/g, "\\'")}', '${i.serviceId}', ${i.price || 0}, 'pricing_catalog')">${sanitize(i.name)} 🩸</span>`).join('');
+    } else {
+      labDiv.innerHTML = '<span style="font-size:0.7rem;color:var(--muted)">لا توجد فحوصات في الكتالوج لتسريع الاختيار</span>';
+    }
+  }
+  
+  if (radDiv) {
+    const radItems = items.filter(i => i.type === 'radiology').slice(0, 10);
+    if (radItems.length) {
+      radDiv.innerHTML = radItems.map(i => `<span class="tag blue" style="cursor:pointer;font-size:0.72rem" onclick="addQuickRad('${i.name.replace(/'/g, "\\'")}', '${i.serviceId}', ${i.price || 0}, 'pricing_catalog')">${sanitize(i.name)} 🩻</span>`).join('');
+    } else {
+      radDiv.innerHTML = '<span style="font-size:0.7rem;color:var(--muted)">لا توجد صور أشعة في الكتالوج لتسريع الاختيار</span>';
+    }
+  }
 }
 
 // Sanitization
