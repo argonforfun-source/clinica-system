@@ -1686,11 +1686,11 @@ function generatePatientFileHTML(uid) {
       const tests = (o.requestedTests || []).map(t => {
         let resStr = '';
         if (t.status === 'completed') {
-          resStr = `: <b style="color:var(--teal)">${sanitize(t.result)}</b> ${sanitize(t.unit)}`;
+          resStr = `: <b style="color:var(--teal)">${sanitize(t.result)}</b> <span dir="auto" style="display:inline-block">${sanitize(t.unit)}</span>`;
         }
         const safeName = typeof t.name === 'object' ? (t.name.name || 'فحص') : (t.name || t);
-        return `• ${sanitize(safeName)}${resStr}`;
-      }).join('<br>');
+        return `<li style="margin-bottom:4px"><span dir="auto" style="display:inline-block">${sanitize(safeName)}</span>${resStr}</li>`;
+      }).join('');
       const statusText = o.status === 'completed' ? 'جاهزة ومكتملة ✅' : 'قيد الفحص والتحليل ⏳';
       const statusColor = o.status === 'completed' ? 'var(--green)' : 'var(--amber)';
 
@@ -1700,8 +1700,10 @@ function generatePatientFileHTML(uid) {
             <span style="font-size:0.75rem;color:var(--muted)">تاريخ الطلب: ${(o.createdAt || '').substring(0, 10)} <span style="color:var(--teal);margin-right:8px;font-weight:bold"><i class="far fa-clock"></i> ${window.argonTimeAgo(o.createdAt)}</span></span>
             <span style="font-size:0.75rem;color:${statusColor};font-weight:800">${statusText}</span>
           </div>
-          <div style="font-size:0.82rem;margin-bottom:6px"><b>🔬 الفحوصات:</b><br>${tests}</div>
-          ${o.notes ? `<div style="font-size:0.78rem;color:var(--muted);background:rgba(255,255,255,0.02);padding:6px;border-radius:6px;margin-top:4px"><b>ملاحظات الفني:</b> ${sanitize(o.notes)}</div>` : ''}
+          <div style="font-size:0.85rem;margin-bottom:8px"><b>🔬 الفحوصات:</b>
+            <ul style="margin:6px 0 0 0; padding-right:24px; color:var(--text); list-style-type:disc;">${tests}</ul>
+          </div>
+          ${o.notes ? `<div style="font-size:0.8rem;color:var(--muted);background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;margin-top:8px;line-height:1.6;white-space:pre-wrap;word-break:break-word;"><b>ملاحظات الفني:</b><br>${sanitize(o.notes)}</div>` : ''}
           ${o.attachment ? `
             <div style="margin-top:8px;text-align:left">
               <button class="btn-secondary btn-sm" onclick="openAttachment('${o.attachment}','pdf')"><i class="fas fa-file-pdf"></i> عرض تقرير الـ PDF المرفق</button>
@@ -1716,8 +1718,8 @@ function generatePatientFileHTML(uid) {
     radOrdersHTML = patientRadOrders.map(([k, o]) => {
       const scans = (o.requestedScans || []).map(s => {
         const safeName = typeof s.name === 'object' ? (s.name.name || 'صورة أشعة') : (s.name || s);
-        return `• ${sanitize(safeName)}`;
-      }).join('<br>');
+        return `<li style="margin-bottom:4px"><span dir="auto" style="display:inline-block">${sanitize(safeName)}</span></li>`;
+      }).join('');
       const statusText = o.status === 'completed' ? 'جاهزة ومكتملة ✅' : 'بانتظار التصوير ⏳';
       const statusColor = o.status === 'completed' ? 'var(--green)' : 'var(--amber)';
 
@@ -1727,8 +1729,10 @@ function generatePatientFileHTML(uid) {
             <span style="font-size:0.75rem;color:var(--muted)">تاريخ الطلب: ${(o.createdAt || '').substring(0, 10)} <span style="color:var(--sky);margin-right:8px;font-weight:bold"><i class="far fa-clock"></i> ${window.argonTimeAgo(o.createdAt)}</span></span>
             <span style="font-size:0.75rem;color:${statusColor};font-weight:800">${statusText}</span>
           </div>
-          <div style="font-size:0.82rem;margin-bottom:6px"><b>🩻 صور الأشعة المطلوبة:</b><br>${scans}</div>
-          ${o.report ? `<div style="font-size:0.8rem;background:rgba(255,255,255,0.02);padding:8px;border-radius:6px;margin-top:4px;color:var(--text)"><b>📝 التقرير الطبي للأشعة:</b><br>${o.report.replace(/\n/g, '<br>')}</div>` : ''}
+          <div style="font-size:0.85rem;margin-bottom:8px"><b>🩻 صور الأشعة المطلوبة:</b>
+            <ul style="margin:6px 0 0 0; padding-right:24px; color:var(--text); list-style-type:disc;">${scans}</ul>
+          </div>
+          ${o.report ? `<div style="font-size:0.8rem;background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;margin-top:8px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word;"><b>📝 التقرير الطبي للأشعة:</b><br>${sanitize(o.report)}</div>` : ''}
           ${o.image ? `
             <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
               <span style="font-size:0.7rem;color:var(--sky);cursor:pointer" onclick="openAttachment('${o.image}','image')"><i class="fas fa-expand-arrows-alt"></i> اضغط لتكبير الصورة التشخيصية</span>
