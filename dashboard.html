@@ -1605,30 +1605,12 @@ const bookingNID_C3 = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
     }
   }
 
-  db.ref(`${BASE}/patients`).once('value', snap => {
-    const pats = snap.val() || {};
-    const bookingNameLower = bookingName.toLowerCase();
-
-    
-    // Check if patient already exists by phone AND name
-    const found = Object.entries(pats).find(([uid, p]) => {
-      const pPhone = (p.info && p.info.phone || '').replace(/\D/g, '');
-      const phoneMatch = (pPhone === cleanPhone || pPhone.endsWith(cleanPhone));
-      if (!phoneMatch) return false;
-      
-      const patName = (p.info && p.info.name || '').trim().toLowerCase();
-      // Only link if names are somewhat similar to prevent family member crossover
-      if (bookingNameLower && patName) {
-        if (bookingNameLower !== patName && !patName.includes(bookingNameLower) && !bookingNameLower.includes(patName)) {
-           return false; // Name mismatch, do NOT link
-        }
-      }
-      return true; // Phone matched and name is similar or one is empty
-    });
-
-    if (found) {
+  // ── ARGON ENTERPRISE: High-Speed Indexed NID Query (Replaces Slow Full Scan) ──
+  db.ref(`${BASE}/patients`).orderByChild('info/nationalId').equalTo(bookingNID_C3).once('value', snap => {
+    if (snap.exists()) {
       // Link existing patient
-      db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(found[0]).then(callback);
+      const foundKey = Object.keys(snap.val())[0];
+      db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(foundKey).then(callback);
     } else {
       // Create new patient record (either completely new phone, or same phone but different name)
       const newRef = db.ref(`${BASE}/patients`).push();
@@ -1721,22 +1703,10 @@ async function cmpBook(k) {
       }
     }
 
-    db.ref(`${BASE}/patients`).once('value', snap => {
-      const pats = snap.val() || {};
-      const bookingNameLower = bookingName.toLowerCase();
-      const exists = Object.values(pats).some(p => {
-        const pPhone = (p.info && p.info.phone || '').replace(/\D/g, '');
-        const isPhoneMatch = (pPhone === patPhone || pPhone.endsWith(patPhone));
-        if (!isPhoneMatch) return false;
-        
-        const patName = (p.info && p.info.name || '').trim().toLowerCase();
-        if (bookingNameLower && patName) {
-           if (bookingNameLower !== patName && !patName.includes(bookingNameLower) && !bookingNameLower.includes(patName)) {
-              return false; // Name mismatch, they are different patients
-           }
-        }
-        return true;
-      });
+    // ── ARGON ENTERPRISE: High-Speed Indexed NID Query (Replaces Slow Full Scan) ──
+    const bookingNID_cmp = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
+    db.ref(`${BASE}/patients`).orderByChild('info/nationalId').equalTo(bookingNID_cmp).once('value', snap => {
+      const exists = snap.exists();
       
       if (!exists) {
         const newRef = db.ref(`${BASE}/patients`).push();
