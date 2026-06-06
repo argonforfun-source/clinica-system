@@ -2478,6 +2478,51 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catc
   });
 })();
 </script>
+<!-- مودال محرر الفواتير (Admin Only) -->
+<div id="invoiceEditorModal" class="modal">
+  <div class="mcont" style="max-width:600px;">
+    <button class="mclose" onclick="document.getElementById('invoiceEditorModal').style.display='none'"><i class="fas fa-times"></i></button>
+    <h2 style="color:var(--teal); margin-bottom:15px; font-weight:800;"><i class="fas fa-file-invoice-dollar"></i> محرر الفاتورة <span id="invEdId" style="font-size:0.8rem;color:var(--muted);margin-right:8px;font-family:'IBM Plex Mono',monospace"></span></h2>
+    <div id="invEdStatus" style="margin-bottom:15px; font-weight:bold; font-size:0.85rem;"></div>
+    
+    <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+      <table style="width:100%; border-collapse:collapse; text-align:right;">
+        <thead style="background:rgba(13,148,136,0.1); border-bottom:1px solid var(--border);">
+          <tr>
+            <th style="padding:10px;">البند</th>
+            <th style="padding:10px; width:100px;">السعر (د.أ)</th>
+            <th style="padding:10px; width:50px;"></th>
+          </tr>
+        </thead>
+        <tbody id="invEdItemsBody">
+          <!-- Items will be injected here -->
+        </tbody>
+        <tfoot style="border-top:1px dashed var(--border); background:rgba(0,0,0,0.01);">
+          <tr>
+            <td style="padding:8px;"><input type="text" id="invEdNewName" class="mfi" placeholder="اسم البند الجديد..." style="padding:6px; font-size:0.8rem; margin:0;"></td>
+            <td style="padding:8px;"><input type="number" id="invEdNewPrice" class="mfi" placeholder="0.00" step="0.01" style="padding:6px; font-size:0.8rem; margin:0; font-family:'IBM Plex Mono',monospace;"></td>
+            <td style="padding:8px;"><button class="tbtn" onclick="BillingEngine.addInvoiceItemUI()" style="background:var(--teal); color:white; padding:4px 8px;"><i class="fas fa-plus"></i></button></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px; padding:10px; background:rgba(14,165,233,0.05); border-radius:8px; border:1px solid rgba(14,165,233,0.2);">
+      <div>
+        <button class="tbtn" onclick="BillingEngine.addTax16UI()" style="background:rgba(14,165,233,0.1); color:var(--sky); border:1px solid rgba(14,165,233,0.3); font-size:0.8rem;"><i class="fas fa-percentage"></i> إضافة ضريبة 16%</button>
+        <button class="tbtn" onclick="BillingEngine.voidInvoiceUI()" style="background:rgba(239,68,68,0.1); color:var(--red); border:1px solid rgba(239,68,68,0.3); font-size:0.8rem; margin-right:5px;"><i class="fas fa-ban"></i> إبطال الفاتورة</button>
+      </div>
+      <div style="font-size:1.1rem; font-weight:800; font-family:'IBM Plex Mono',monospace;">الإجمالي: <span id="invEdTotal">0.00</span> د.أ</div>
+    </div>
+
+    <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+      <button class="tbtn" onclick="document.getElementById('invoiceEditorModal').style.display='none'" style="color:var(--text); border:1px solid var(--border);">إلغاء</button>
+      <button class="tbtn" onclick="BillingEngine.saveEditedInvoice()" style="background:linear-gradient(135deg, var(--teal), var(--sky)); color:#fff; font-weight:bold; padding:8px 20px;"><i class="fas fa-save" style="margin-left:6px;"></i> حفظ التعديلات</button>
+    </div>
+  </div>
+</div>
+<!-- نهاية مودال محرر الفواتير -->
+
 <script src="billing-engine.js?v=2.0"></script>
 </body>
 </html>

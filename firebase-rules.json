@@ -1,51 +1,41 @@
 {
   "rules": {
-    ".read": true,
-    ".write": false,
-    "super_admin": {
-      ".read": true,
-      ".write": true
-    },
     "clinics": {
-      "$clinicId": {
-        ".read": true,
-        ".write": true,
-        "patients": {
-          ".indexOn": [
-            "info/nationalId",
-            "info/phone"
-          ]
-        },
-        "notifications": {
-          ".indexOn": [
-            "createdAt",
-            "isRead"
-          ]
-        },
-        "bookings": {
-          ".indexOn": [
-            "date",
-            "doctorId",
-            "status"
-          ]
-        },
-        "completedBookings": {
-          ".indexOn": [
-            "date",
-            "doctorId"
-          ]
+      "$clinic_id": {
+        // By default, allow read/write for the clinic level
+        ".read": "true",
+        ".write": "true",
+
+        // FINANCIAL PROTECTIONS (Strict No-Delete Policy)
+        "invoices": {
+          "$invoice_id": {
+            // Allows creation and updating, but strictly prevents deletion of any invoice.
+            // newData.exists() ensures that the new data is not null (which means deletion).
+            ".write": "!data.exists() || newData.exists()"
+          }
         },
         "audit_logs": {
-          ".indexOn": [
-            "timestamp",
-            "actorId",
-            "eventType"
-          ]
+          "$log_id": {
+            // Audit logs are append-only. Once written, they cannot be modified or deleted.
+            ".write": "!data.exists()"
+          }
         },
-        "telemetry": {
-          ".indexOn": [
-            "timestamp"
-          ]
+        "ledger": {
+          "$ledger_entry_id": {
+            ".write": "!data.exists() || newData.exists()"
+          }
+        },
+        "financial_transactions": {
+          "$tx_id": {
+            ".write": "!data.exists() || newData.exists()"
+          }
+        },
+        
+        // Ensure that completed bookings (which represent history) cannot be deleted.
+        "completedBookings": {
+           "$booking_id": {
+              ".write": "!data.exists() || newData.exists()"
+           }
         }
       }
     }

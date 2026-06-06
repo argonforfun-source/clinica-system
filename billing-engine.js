@@ -455,12 +455,17 @@ const BillingEngine = {
       itemsHtml += renderCat('📋', 'خدمات أخرى', 'var(--purple)', cats.other);
       itemsHtml += '</div>';
 
+      let isLocked = false;
       let status = '<span style="color:var(--red);font-size:0.7rem">غير مدفوعة</span>';
       if (inv.status === 'pending') status = '<span style="color:var(--amber);font-size:0.7rem;font-weight:bold">⚠️ بانتظار التسعير</span>';
-      else if (remaining <= 0 && total > 0) status = '<span style="color:var(--green);font-size:0.7rem">مدفوعة بالكامل</span>';
-      else if (paid > 0) status = '<span style="color:var(--amber);font-size:0.7rem">دفع جزئي</span>';
-      else if (inv.status === 'paid') status = '<span style="color:var(--green);font-size:0.7rem">مدفوعة بالكامل</span>';
-      else if (inv.status === 'cancelled') status = '<span style="color:var(--muted);font-size:0.7rem">ملغاة</span>';
+      else if (remaining <= 0 && total > 0) { status = '<span style="color:var(--green);font-size:0.7rem">مدفوعة بالكامل</span>'; isLocked = true; }
+      else if (paid > 0) { status = '<span style="color:var(--amber);font-size:0.7rem">دفع جزئي</span>'; isLocked = true; }
+      else if (inv.status === 'paid') { status = '<span style="color:var(--green);font-size:0.7rem">مدفوعة بالكامل</span>'; isLocked = true; }
+      else if (inv.status === 'cancelled' || inv.status === 'voided') { status = '<span style="color:var(--muted);font-size:0.7rem">ملغاة</span>'; isLocked = true; }
+
+      const editBtn = isLocked 
+        ? `<button class="tbtn" disabled style="background:rgba(156,163,175,0.1);color:var(--muted);border-color:rgba(156,163,175,0.2);cursor:not-allowed" title="فاتورة مقفلة مالياً 🔒"><i class="fas fa-lock"></i></button>`
+        : `<button class="tbtn" onclick="BillingEngine.openInvoiceEditor('${k}')" style="background:rgba(14,165,233,.1);color:var(--sky);border-color:rgba(14,165,233,.2)" title="تعديل الفاتورة"><i class="fas fa-edit"></i></button>`;
 
       invHtml += `
         <tr>
@@ -468,6 +473,7 @@ const BillingEngine = {
           <td style="font-size:0.75rem;min-width:240px;">${itemsHtml}</td>
           <td style="font-weight:bold;font-family:'IBM Plex Mono',monospace;font-size:1.1rem;color:var(--text)">${total.toFixed(2)}</td>
           <td>${status}</td>
+          <td style="text-align:center;">${editBtn}</td>
         </tr>
       `;
     });
@@ -651,6 +657,155 @@ tbody td{font-size:0.9rem;}
 
     const win = window.open('', '_blank', 'width=900,height=700');
     if (win) { win.document.write(printHtml); win.document.close(); }
+  },
+
+  // ── INVOICE EDITOR (Admin Only) ──
+  activeEditInvId: null,
+  activeEditItems: [],
+
+  openInvoiceEditor: function(invId) {
+    if (sessionStorage.getItem('clinica_auth_' + CID) !== '1') {
+      return toast('⚠️ صلاحيات الإدارة العليا فقط', 'err');
+    }
+    const inv = this._invoices[invId];
+    if (!inv) return;
+
+    if (inv.status === 'paid' || inv.status === 'voided' || inv.status === 'cancelled') {
+      return toast('🔒 الفاتورة مقفلة مالياً. لا يمكن التعديل', 'err');
+    }
+
+    this.activeEditInvId = invId;
+    this.activeEditItems = JSON.parse(JSON.stringify(inv.items || []));
+    
+    document.getElementById('invEdId').textContent = invId;
+    document.getElementById('invEdStatus').innerHTML = inv.status === 'pending' ? '<span style="color:var(--amber)">⚠️ بانتظار التسعير</span>' : '<span style="color:var(--sky)">قيد المراجعة</span>';
+    
+    this.renderInvoiceEditorItems();
+    document.getElementById('invoiceEditorModal').style.display = 'flex';
+  },
+
+  renderInvoiceEditorItems: function() {
+    const tbody = document.getElementById('invEdItemsBody');
+    let html = '';
+    let total = 0;
+
+    this.activeEditItems.forEach((item, idx) => {
+      const price = parseFloat(item.price || 0);
+      total += price;
+      html += `
+        <tr style="border-bottom:1px solid rgba(0,0,0,0.05)">
+          <td style="padding:6px 10px;">
+            <input type="text" class="mfi" value="${this.sanitize(item.name)}" onchange="BillingEngine.updateInvoiceItemName(${idx}, this.value)" style="padding:4px; font-size:0.8rem; margin:0; border:none; background:transparent;">
+          </td>
+          <td style="padding:6px 10px;">
+            <input type="number" class="mfi" value="${price.toFixed(2)}" step="0.01" onchange="BillingEngine.updateInvoiceItemPrice(${idx}, this.value)" style="padding:4px; font-size:0.8rem; margin:0; font-family:'IBM Plex Mono',monospace; border:none; background:transparent;">
+          </td>
+          <td style="padding:6px 10px; text-align:center;">
+             <!-- No delete allowed per rules, only voiding whole invoice or setting price to 0 -->
+          </td>
+        </tr>
+      `;
+    });
+
+    if (this.activeEditItems.length === 0) {
+      html = '<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--muted)">لا توجد بنود</td></tr>';
+    }
+
+    tbody.innerHTML = html;
+    document.getElementById('invEdTotal').textContent = total.toFixed(2);
+  },
+
+  updateInvoiceItemName: function(idx, newName) {
+    if(this.activeEditItems[idx]) this.activeEditItems[idx].name = newName.trim();
+  },
+
+  updateInvoiceItemPrice: function(idx, newPrice) {
+    if(this.activeEditItems[idx]) {
+      this.activeEditItems[idx].price = parseFloat(newPrice) || 0;
+      this.renderInvoiceEditorItems();
+    }
+  },
+
+  addInvoiceItemUI: function() {
+    const nameInp = document.getElementById('invEdNewName');
+    const priceInp = document.getElementById('invEdNewPrice');
+    const name = nameInp.value.trim();
+    const price = parseFloat(priceInp.value) || 0;
+
+    if (!name) return toast('أدخل اسم البند', 'err');
+    
+    this.activeEditItems.push({
+      id: 'ITM-' + Date.now(),
+      name: name,
+      price: price
+    });
+
+    nameInp.value = '';
+    priceInp.value = '';
+    this.renderInvoiceEditorItems();
+  },
+
+  addTax16UI: function() {
+    const total = this.activeEditItems.reduce((acc, itm) => acc + (parseFloat(itm.price) || 0), 0);
+    const tax = total * 0.16;
+    this.activeEditItems.push({
+      id: 'ITM-TAX-' + Date.now(),
+      name: 'ضريبة مبيعات 16%',
+      price: parseFloat(tax.toFixed(2))
+    });
+    this.renderInvoiceEditorItems();
+  },
+
+  voidInvoiceUI: function() {
+    if (!confirm('هل أنت متأكد من إبطال هذه الفاتورة؟ ستصبح قيمتها 0.')) return;
+    const invId = this.activeEditInvId;
+    const inv = this._invoices[invId];
+    
+    db.ref(`${BASE}/invoices/${invId}`).update({
+      status: 'voided',
+      total: 0
+    }).then(() => {
+      // Create Audit Log
+      const logRef = db.ref(`${BASE}/audit_logs`).push();
+      logRef.set({
+        invoiceId: invId,
+        action: 'VOID_INVOICE',
+        editedBy: 'Admin',
+        timestamp: new Date().toISOString()
+      });
+      toast('تم إبطال الفاتورة', 'ok');
+      document.getElementById('invoiceEditorModal').style.display = 'none';
+    });
+  },
+
+  saveEditedInvoice: function() {
+    const invId = this.activeEditInvId;
+    const inv = this._invoices[invId];
+    if (!inv) return;
+
+    const newTotal = this.activeEditItems.reduce((acc, itm) => acc + (parseFloat(itm.price) || 0), 0);
+    const oldTotal = parseFloat(inv.total || 0);
+    
+    db.ref(`${BASE}/invoices/${invId}`).update({
+      items: this.activeEditItems,
+      total: newTotal,
+      status: newTotal > 0 ? 'unpaid' : 'unpaid'
+    }).then(() => {
+      // Save Delta Audit Log
+      const logRef = db.ref(`${BASE}/audit_logs`).push();
+      logRef.set({
+        invoiceId: invId,
+        action: 'EDIT_INVOICE_ITEMS',
+        field: 'total',
+        oldValue: oldTotal,
+        newValue: newTotal,
+        editedBy: 'Admin',
+        timestamp: new Date().toISOString()
+      });
+      
+      toast('تم حفظ الفاتورة بنجاح', 'ok');
+      document.getElementById('invoiceEditorModal').style.display = 'none';
+    });
   },
 
   sanitize: function (s) {
