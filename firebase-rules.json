@@ -20,6 +20,11 @@
             ".write": "!data.exists()"
           }
         },
+        "billing_refs": {
+          "$ref_id": {
+            ".write": "!data.exists()"
+          }
+        },
         "ledger": {
           "$ledger_entry_id": {
             ".write": "!data.exists() || newData.exists()"

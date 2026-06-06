@@ -60,6 +60,11 @@ const BillingEngine = {
         this._pricingCatalog = snap.val() || {};
       });
 
+      // 2.5 Listen for Billing Policy Settings
+      db.ref(`${BASE}/clinic_settings/billingPolicy/departments`).on('value', snap => {
+        this._clinicSettingsPolicy = snap.val() || null;
+      });
+
       // 3. Additive Observer — ONLY for Visit Fee (كشفية الطبيب)
       // Lab, Radiology, Pharmacy add their own detailed items when they complete services.
       // This prevents double billing.
@@ -82,6 +87,129 @@ const BillingEngine = {
     });
 
     return entry ? parseFloat(entry.price) : null;
+  },
+
+  // ── ENTERPRISE BILLING ENGINE V1.5 ──
+  getBillingPolicy: function (dept) {
+    const defaults = { lab: 'separate', rad: 'separate', pharmacy: 'dispense' };
+    if (this._clinicSettingsPolicy && this._clinicSettingsPolicy[dept]) {
+      return this._clinicSettingsPolicy[dept];
+    }
+    return defaults[dept] || 'separate';
+  },
+
+  isDuplicateCharge: function (billingRefId) {
+    for (const invKey in this._invoices) {
+      const inv = this._invoices[invKey];
+      if (inv.items && inv.items.find(i => i.billingReferenceId === billingRefId)) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  findVisitInvoice: function (visitId) {
+    for (const invKey in this._invoices) {
+      const inv = this._invoices[invKey];
+      if (inv.visitId === visitId && inv.invoiceType !== 'lab_invoice' && inv.invoiceType !== 'rad_invoice' && inv.invoiceType !== 'pharmacy_invoice') {
+        return { id: invKey, ...inv };
+      }
+    }
+    return null;
+  },
+
+  addCharge: function (eventData) {
+    /* eventData: { patientId, patientName, visitId, department, serviceId, customName, docName } */
+    const policy = this.getBillingPolicy(eventData.department);
+    const billingRefId = `${CID}-${eventData.visitId}-${eventData.serviceId}-${eventData.department.toUpperCase()}`;
+
+    // 1. Duplicate Prevention
+    if (this.isDuplicateCharge(billingRefId)) {
+      if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('DUPLICATE_PREVENTED', `منع فوترة مزدوجة: ${billingRefId}`, 'FINANCE');
+      console.warn('ABORT: Duplicate Charge Detected -', billingRefId);
+      return false; // ABORT
+    }
+
+    // 2. Pricing Source
+    const priceInfo = this.lookupPrice(eventData.serviceId, eventData.department);
+    let price = priceInfo;
+    let requiresReview = false;
+    let status = 'unpaid';
+
+    if (price === null) {
+      price = 0;
+      requiresReview = true;
+      status = 'pending_review';
+      if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('MISSING_PRICE', `خدمة غير مسعرة: ${eventData.serviceId}`, 'FINANCE');
+    }
+
+    const item = {
+      serviceId: eventData.serviceId,
+      name: eventData.customName || eventData.serviceId,
+      price: price,
+      billingReferenceId: billingRefId
+    };
+
+    // 3. Apply Policy
+    if (policy === 'free') {
+      if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('FREE_SERVICE', `خدمة مجانية مرت بدون فوترة: ${item.name}`, 'FINANCE');
+      return true;
+    }
+
+    if (policy === 'unified') {
+      const visitInv = this.findVisitInvoice(eventData.visitId);
+      if (visitInv) {
+        if (visitInv.status === 'paid' || visitInv.status === 'partial' || visitInv.status === 'voided' || visitInv.locked) {
+           this.createSeparateInvoice(eventData, [item], status, requiresReview, visitInv.id);
+           return true;
+        } else {
+           const currentItems = visitInv.items || [];
+           if (currentItems.find(i => i.billingReferenceId === billingRefId)) return false;
+           currentItems.push(item);
+           let newTotal = currentItems.reduce((acc, curr) => acc + curr.price, 0);
+           let newStatus = visitInv.status;
+           if (requiresReview) newStatus = 'pending_review';
+           db.ref(`${BASE}/invoices/${visitInv.id}`).update({
+             items: currentItems,
+             total: newTotal,
+             status: newStatus
+           });
+           if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('INVOICE_UPDATED', `تحديث فاتورة موحدة: إضافة ${item.name}`, 'FINANCE');
+           return true;
+        }
+      } else {
+        this.createSeparateInvoice(eventData, [item], status, requiresReview, null);
+        return true;
+      }
+    }
+
+    this.createSeparateInvoice(eventData, [item], status, requiresReview, null);
+    return true;
+  },
+
+  createSeparateInvoice: function (eventData, items, status, requiresReview, linkedInvoiceId) {
+    const newInvId = db.ref().child('invoices').push().key;
+    const invTotal = items.reduce((sum, item) => sum + item.price, 0);
+    
+    const invoice = {
+      patientId: eventData.patientId,
+      patientName: eventData.patientName || 'غير معروف',
+      visitId: eventData.visitId,
+      docName: eventData.docName || 'طبيب غير محدد',
+      items: items,
+      total: invTotal,
+      status: requiresReview ? 'pending_review' : 'unpaid',
+      invoiceType: `${eventData.department}_invoice`,
+      createdAt: new Date().toISOString()
+    };
+
+    if (linkedInvoiceId) {
+      invoice.linkedInvoiceId = linkedInvoiceId;
+      if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('LINKED_INVOICE_CREATED', `فاتورة تابعة للموحدة المدفوعة: ${linkedInvoiceId}`, 'FINANCE');
+    }
+
+    db.ref(`${BASE}/invoices/${newInvId}`).set(invoice);
+    if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('INVOICE_CREATED', `إنشاء فاتورة قسم: ${eventData.department}`, 'FINANCE');
   },
 
   // ── VISIT FEE OBSERVER (كشفية الطبيب فقط) ──
@@ -760,10 +888,15 @@ tbody td{font-size:0.9rem;}
     if (!confirm('هل أنت متأكد من إبطال هذه الفاتورة؟ ستصبح قيمتها 0.')) return;
     const invId = this.activeEditInvId;
     const inv = this._invoices[invId];
-    
+    const session = window.ArgonSession ? window.ArgonSession.get() : {};
     db.ref(`${BASE}/invoices/${invId}`).update({
       status: 'voided',
-      total: 0
+      locked: true,
+      originalTotal: inv.total || 0,
+      voidAmount: inv.total || 0,
+      voidedAt: new Date().toISOString(),
+      voidedBy: session.staffId || 'Admin',
+      voidReason: prompt('سبب الإبطال:', 'إلغاء') || 'إلغاء'
     }).then(() => {
       // Create Audit Log
       const logRef = db.ref(`${BASE}/audit_logs`).push();
@@ -827,6 +960,13 @@ function recordBillingPayment() {
     return;
   }
 
+  // Task 4: Prevent payment collection if any invoice is financialBlocked
+  const hasBlocked = Object.values(BillingEngine._invoices).some(inv => inv.patientId === patientId && inv.financialBlocked);
+  if (hasBlocked) {
+    if (typeof toast !== 'undefined') toast('⛔ لا يمكن تحصيل الدفعات: يوجد فواتير قيد المراجعة المالية', 'err');
+    return;
+  }
+
   const pInvoices = Object.entries(BillingEngine._invoices)
     .filter(([k, inv]) => inv.patientId === patientId)
     .sort((a, b) => (a[1].createdAt || '').localeCompare(b[1].createdAt || ''));
@@ -873,6 +1013,7 @@ function recordBillingPayment() {
       // Strict Invoice Lock Policy: If fully paid, lock the invoice
       if (Math.abs(unallocated - allocAmount) < 0.01) {
         updates[`${BASE}/invoices/${invId}/status`] = 'paid';
+        updates[`${BASE}/invoices/${invId}/locked`] = true;
       } else if (allocAmount > 0) {
         updates[`${BASE}/invoices/${invId}/status`] = 'partial';
       }

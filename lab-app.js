@@ -324,143 +324,128 @@ function saveLabResults() {
       db.ref(`${BASE}/invoices`).orderByChild('visitId').equalTo(visitId).once('value', invSnap => {
         const invoices = invSnap.val() || {};
         
-        // Prepare Line Items with strict Revenue Classification
-        const newLabItems = [];
-        completedTests.forEach(t => {
-          let testPrice = 0;
-          let requiresReview = false;
-          
-          if (t.requiresBillingReview && t.source === 'manual') {
-            requiresReview = true;
-          } else if (t.unitPrice !== null && t.unitPrice !== undefined && parseFloat(t.unitPrice) > 0) {
-            testPrice = parseFloat(t.unitPrice);
-          } else {
-            testPrice = 0; 
-            requiresReview = true;
-          }
+        // 1. Determine Default Policy
+        const bp = (_sets && _sets.billingPolicy && _sets.billingPolicy.departments) ? _sets.billingPolicy.departments : {};
+        const labPolicy = bp.lab || 'separate';
 
-          const safeName = typeof t.name === 'object' ? (t.name.name || 'غير معروف') : (t.name || 'غير معروف');
-          newLabItems.push({
-            name: `تحليل: ${sanitize(safeName)}`,
-            price: requiresReview ? 0 : parseFloat(testPrice.toFixed(2)),
-            requiresBillingReview: requiresReview,
-            billingStatus: requiresReview ? 'pending_review' : 'unpaid',
-            financialBlocked: requiresReview,
-            billingReferenceId: t.id || `lab_${k}_${t.name}`, // IDEMPOTENCY KEY
-            department: 'lab',
-            serviceType: 'test',
-            serviceId: t.serviceId || t.id || 'unknown',
-            invoiceType: labPolicy === 'separate' ? 'lab_invoice' : 'visit_invoice'
+        const transactionPromises = completedTests.map(t => {
+          const serviceId = t.serviceId || t.id || 'unknown';
+          const billingRefId = `${CID}-${visitId}-${serviceId}-LAB`;
+          
+          return db.ref(`${BASE}/billing_refs/${billingRefId}`).transaction(currentData => {
+            if (currentData === null) return { timestamp: Date.now(), serviceId: serviceId };
+            return; // Abort
+          }).then(result => {
+             return { test: t, committed: result.committed, billingRefId: billingRefId, serviceId: serviceId };
           });
         });
 
-        // 1. Separate Policy (فاتورة مستقلة للمختبر)
-        if (labPolicy === 'separate') {
-          // Idempotency Check: Does a lab invoice for this order already exist?
-          let alreadyBilled = false;
-          Object.values(invoices).forEach(inv => {
-            if (inv.invoiceType === 'lab_invoice' && inv.orderReferenceId === k) alreadyBilled = true;
-          });
-          
-          if (!alreadyBilled && newLabItems.length > 0) {
-            const newInvId = db.ref().child('invoices').push().key;
-            const invTotal = parseFloat(newLabItems.reduce((sum, item) => sum + item.price, 0).toFixed(2));
+        Promise.all(transactionPromises).then(results => {
+          const newLabItems = [];
+          results.forEach(res => {
+            if (!res.committed) {
+               if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('DUPLICATE_PREVENTED_RACE', `منع تكرار فوترة مختبر: ${res.billingRefId}`, 'FINANCE');
+               return; // Skip this test
+            }
+
+            const t = res.test;
+            const serviceId = res.serviceId;
+            const billingRefId = res.billingRefId;
+
+            // 4. Strict Pricing from Catalog
+            let testPrice = 0;
+            let requiresReview = false;
             
-            const separateInvoice = {
-              patientId: o.patientId,
-              patientName: o.patientName,
-              visitId: visitId,
-              docName: o.doctorName || 'طبيب غير محدد',
-              items: newLabItems,
-              total: invTotal,
-              status: requiresReview ? 'pending' : 'unpaid',
-              invoiceType: 'lab_invoice',
-              orderReferenceId: k,
-              billingPolicySnapshot: bpState,
-              createdAt: new Date().toISOString(),
-              // National e-Invoice Prep
-              invoiceNumber: `INV-LAB-${Date.now()}`,
-              issueDate: new Date().toISOString(),
-              currency: 'JOD',
-              sellerTaxNumber: _sets?.taxNumber || '',
-              buyerNationalId: o.nationalId || '',
-              eInvoiceStatus: 'pending'
-            };
-            db.ref(`${BASE}/invoices/${newInvId}`).set(separateInvoice);
-            if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('CREATE_INVOICE', `إنشاء فاتورة مختبر منفصلة للمريض: ${o.patientName}`, 'FINANCE');
+            let catalogItem = null;
+            if (typeof _pricingCatalog !== 'undefined') {
+               catalogItem = _pricingCatalog[serviceId];
+            }
+
+            if (catalogItem && catalogItem.price !== undefined && catalogItem.price !== null) {
+               testPrice = parseFloat(catalogItem.price);
+            } else {
+               requiresReview = true;
+               if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('MISSING_PRICE', `خدمة مختبر غير مسعرة: ${serviceId}`, 'FINANCE');
+            }
+
+            const safeName = typeof t.name === 'object' ? (t.name.name || 'غير معروف') : (t.name || 'غير معروف');
+            newLabItems.push({
+              name: `تحليل: ${sanitize(safeName)}`,
+              price: requiresReview ? 0 : parseFloat(testPrice.toFixed(2)),
+              requiresBillingReview: requiresReview,
+              billingStatus: requiresReview ? 'pending_review' : 'unpaid',
+              financialBlocked: requiresReview,
+              billingReferenceId: billingRefId,
+              department: 'lab',
+              serviceType: 'test',
+              serviceId: serviceId,
+              invoiceType: labPolicy === 'separate' ? 'lab_invoice' : 'visit_invoice'
+            });
+          });
+
+          if (newLabItems.length === 0) return;
+
+          // 5. Apply Policy
+          if (labPolicy === 'free') {
+             return;
           }
-        } 
-        // 2. Unified Policy (الدمج مع فاتورة الزيارة)
-        else {
-          const createSeparateInvoiceFallback = () => {
-            const newInvId = db.ref().child('invoices').push().key;
-            const invTotal = parseFloat(newLabItems.reduce((sum, item) => sum + item.price, 0).toFixed(2));
-            const separateInvoice = {
-              patientId: o.patientId,
-              patientName: o.patientName,
-              visitId: visitId,
-              docName: o.doctorName || 'طبيب غير محدد',
-              items: newLabItems,
-              total: invTotal,
-              status: requiresReview ? 'pending' : 'unpaid',
-              invoiceType: 'lab_invoice',
-              orderReferenceId: k,
-              billingPolicySnapshot: bpState,
-              createdAt: new Date().toISOString(),
-              invoiceNumber: `INV-LAB-${Date.now()}`,
-              issueDate: new Date().toISOString(),
-              currency: 'JOD',
-              sellerTaxNumber: _sets?.taxNumber || '',
-              buyerNationalId: o.nationalId || '',
-              eInvoiceStatus: 'pending'
-            };
-            db.ref(`${BASE}/invoices/${newInvId}`).set(separateInvoice);
-            if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('CREATE_INVOICE', `إنشاء فاتورة مختبر منفصلة للمريض (Fallback): ${o.patientName}`, 'FINANCE');
+
+          const createSeparateInvoiceFallback = (linkedId = null) => {
+              const newInvId = db.ref().child('invoices').push().key;
+              const invTotal = parseFloat(newLabItems.reduce((sum, item) => sum + item.price, 0).toFixed(2));
+              const hasPending = newLabItems.some(i => i.requiresBillingReview);
+              const separateInvoice = {
+                patientId: o.patientId,
+                patientName: o.patientName,
+                visitId: visitId,
+                docName: o.doctorName || 'طبيب غير محدد',
+                items: newLabItems,
+                total: invTotal,
+                status: hasPending ? 'pending_review' : 'unpaid',
+                invoiceType: 'lab_invoice',
+                orderReferenceId: k,
+                createdAt: new Date().toISOString(),
+                invoiceNumber: `INV-LAB-${Date.now()}`
+              };
+              
+              if (linkedId) {
+                 separateInvoice.linkedInvoiceId = linkedId;
+                 if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('LINKED_INVOICE_CREATED', `إنشاء فاتورة تابعة للمختبر: ${newInvId} للأصل ${linkedId}`, 'FINANCE');
+              }
+
+              db.ref(`${BASE}/invoices/${newInvId}`).set(separateInvoice);
+              if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('INVOICE_CREATED', `إنشاء فاتورة مختبر: ${newInvId}`, 'FINANCE');
           };
 
-          // Find the main visit invoice
-          const invEntry = Object.entries(invoices).find(([_, v]) => v.invoiceType !== 'lab_invoice' && v.invoiceType !== 'rad_invoice');
-          if (invEntry) {
-            const [invKey, invVal] = invEntry;
-            
-            // Check Invoice Lock Rule
-            if (['paid', 'cancelled', 'refunded'].includes(invVal.status)) {
-              console.warn("Invoice is locked. Creating a separate invoice instead.");
+          if (labPolicy === 'separate' || labPolicy === 'on_result') {
               createSeparateInvoiceFallback();
-              return;
-            }
-
-            const currentItems = invVal.items || [];
-            let itemsAdded = false;
-
-            newLabItems.forEach(newItem => {
-              // Idempotency: skip if billingReferenceId already exists in this invoice
-              const exists = currentItems.some(existing => existing.billingReferenceId && existing.billingReferenceId === newItem.billingReferenceId);
-              if (!exists) {
-                currentItems.push(newItem);
-                itemsAdded = true;
+          } else if (labPolicy === 'unified') {
+              const invEntry = Object.entries(invoices).find(([_, v]) => v.invoiceType !== 'lab_invoice' && v.invoiceType !== 'rad_invoice' && v.invoiceType !== 'pharmacy_invoice');
+              if (invEntry) {
+                  const [invKey, invVal] = invEntry;
+                  // Remove 'partial' from soft freeze list to allow adding to partial invoices
+                  if (['paid', 'cancelled', 'refunded', 'voided'].includes(invVal.status) || invVal.locked) {
+                      createSeparateInvoiceFallback(invKey);
+                  } else {
+                      const currentItems = invVal.items || [];
+                      newLabItems.forEach(newItem => currentItems.push(newItem));
+                      
+                      const newTotal = parseFloat(currentItems.reduce((acc, item) => acc + (parseFloat(item.price)||0), 0).toFixed(2));
+                      const hasPending = currentItems.some(i => i.requiresBillingReview);
+                      
+                      const invoiceUpdates = {};
+                      invoiceUpdates[`invoices/${invKey}/items`] = currentItems;
+                      invoiceUpdates[`invoices/${invKey}/total`] = newTotal;
+                      if (hasPending) invoiceUpdates[`invoices/${invKey}/status`] = 'pending_review';
+                      
+                      db.ref(BASE).update(invoiceUpdates);
+                      if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('INVOICE_UPDATED', `تحديث فاتورة موحدة: ${invKey}`, 'FINANCE');
+                  }
+              } else {
+                  createSeparateInvoiceFallback();
               }
-            });
-
-            if (itemsAdded) {
-              const newTotal = parseFloat(currentItems.reduce((acc, item) => acc + (parseFloat(item.price)||0), 0).toFixed(2));
-              const invoiceUpdates = {};
-              invoiceUpdates[`invoices/${invKey}/items`] = currentItems;
-              invoiceUpdates[`invoices/${invKey}/total`] = newTotal;
-              
-              // If we appended a pending_review item, force invoice to pending
-              if (currentItems.some(i => i.requiresBillingReview)) {
-                invoiceUpdates[`invoices/${invKey}/status`] = 'pending';
-              }
-              
-              db.ref(BASE).update(invoiceUpdates);
-              if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('UPDATE_INVOICE', `دمج فحوصات مختبر في الفاتورة الموحدة: ${invKey}`, 'FINANCE');
-            }
-          } else {
-            // Main invoice doesn't exist (e.g. created by completeWorkspaceVisit without invoice)
-            createSeparateInvoiceFallback();
           }
-        }
+        });
       });
     }
   }

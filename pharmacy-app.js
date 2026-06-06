@@ -327,98 +327,130 @@ function dispensePrescription() {
       db.ref(`${BASE}/invoices`).orderByChild('visitId').equalTo(visitId).once('value', invSnap => {
         const invoices = invSnap.val() || {};
         
-        // Prepare Line Items with strict Revenue Classification
-        const newPharmItems = [];
-        dispensedMeds.forEach(m => {
-          if (m.qty > 0) {
-            newPharmItems.push({
-              name: `علاج: ${m.name} (عدد ${m.qty})`,
-              price: parseFloat((m.qty * m.price).toFixed(2)),
-              requiresBillingReview: false,
-              billingStatus: 'unpaid',
-              financialBlocked: false,
-              billingReferenceId: m.id || `pharm_${k}_${m.name}`, // IDEMPOTENCY KEY
-              department: 'pharmacy',
-              serviceType: 'drug',
-              serviceId: m.id || 'unknown_drug',
-              invoiceType: pharmPolicy === 'separate' ? 'pharmacy_invoice' : 'visit_invoice'
-            });
-          }
+        // 1. Determine Default Policy
+        const bp = (_sets && _sets.billingPolicy && _sets.billingPolicy.departments) ? _sets.billingPolicy.departments : {};
+        const pharmPolicy = bp.pharmacy || 'dispense';
+
+        const validMeds = dispensedMeds.filter(m => m.qty > 0);
+        if (validMeds.length === 0) return;
+
+        const transactionPromises = validMeds.map(m => {
+          const serviceId = m.id || 'unknown_drug';
+          const billingRefId = `${CID}-${visitId}-${serviceId}-PHARM`;
+          
+          return db.ref(`${BASE}/billing_refs/${billingRefId}`).transaction(currentData => {
+            if (currentData === null) return { timestamp: Date.now(), serviceId: serviceId };
+            return; // Abort
+          }).then(result => {
+             return { med: m, committed: result.committed, billingRefId: billingRefId, serviceId: serviceId };
+          });
         });
 
-        // 1. Separate Policy (فاتورة مستقلة للصيدلية)
-        if (pharmPolicy === 'separate') {
-          // Idempotency Check: Does a pharm invoice for this dispense order already exist?
-          let alreadyBilled = false;
-          Object.values(invoices).forEach(inv => {
-            if (inv.invoiceType === 'pharmacy_invoice' && inv.orderReferenceId === k) alreadyBilled = true;
-          });
-          
-          if (!alreadyBilled && newPharmItems.length > 0) {
-            const newInvId = db.ref().child('invoices').push().key;
-            const invTotal = parseFloat(newPharmItems.reduce((sum, item) => sum + item.price, 0).toFixed(2));
-            
-            const separateInvoice = {
-              patientId: p.patientId,
-              patientName: p.patientName,
-              visitId: visitId,
-              docName: p.doctorName || 'طبيب غير محدد',
-              items: newPharmItems,
-              total: invTotal,
-              status: 'unpaid',
-              invoiceType: 'pharmacy_invoice',
-              orderReferenceId: k,
-              billingPolicySnapshot: bpState,
-              createdAt: new Date().toISOString(),
-              // National e-Invoice Prep
-              invoiceNumber: `INV-PHX-${Date.now()}`,
-              issueDate: new Date().toISOString(),
-              currency: 'JOD',
-              sellerTaxNumber: _sets?.taxNumber || '',
-              buyerNationalId: p.nationalId || '',
-              eInvoiceStatus: 'pending'
-            };
-            db.ref(`${BASE}/invoices/${newInvId}`).set(separateInvoice);
-            if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('CREATE_INVOICE', `إنشاء فاتورة صيدلية منفصلة للمريض: ${p.patientName}`, 'FINANCE');
-          }
-        } 
-        // 2. Unified Policy (الدمج مع فاتورة الزيارة)
-        else {
-          // Find the main visit invoice
-          const invEntry = Object.entries(invoices).find(([_, v]) => v.invoiceType !== 'lab_invoice' && v.invoiceType !== 'rad_invoice' && v.invoiceType !== 'pharmacy_invoice');
-          if (invEntry) {
-            const [invKey, invVal] = invEntry;
-            
-            // Check Invoice Lock Rule
-            if (['paid', 'cancelled', 'refunded'].includes(invVal.status)) {
-              console.warn("Invoice is locked. Cannot auto-append items.");
-              if (typeof toast === 'function') toast('⚠️ الفاتورة مغلقة، يرجى مراجعة المحاسبة لتسجيل الأدوية', 'err');
-              return;
+        Promise.all(transactionPromises).then(results => {
+          const newPharmItems = [];
+          results.forEach(res => {
+            if (!res.committed) {
+               if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('DUPLICATE_PREVENTED_RACE', `منع تكرار فوترة صيدلية: ${res.billingRefId}`, 'FINANCE');
+               return; // Skip this drug
             }
 
-            const currentItems = invVal.items || [];
-            let itemsAdded = false;
+            const m = res.med;
+            const serviceId = res.serviceId;
+            const billingRefId = res.billingRefId;
 
-            newPharmItems.forEach(newItem => {
-              // Idempotency: skip if billingReferenceId already exists in this invoice
-              const exists = currentItems.some(existing => existing.billingReferenceId && existing.billingReferenceId === newItem.billingReferenceId);
-              if (!exists) {
-                currentItems.push(newItem);
-                itemsAdded = true;
-              }
+            // 4. Strict Pricing from Pharmacy Inventory
+            let unitPrice = 0;
+            let requiresReview = false;
+            
+            let inventoryItem = null;
+            if (typeof _inventory !== 'undefined') {
+               inventoryItem = _inventory[serviceId];
+            }
+
+            if (inventoryItem && inventoryItem.sellPrice !== undefined && inventoryItem.sellPrice !== null) {
+               unitPrice = parseFloat(inventoryItem.sellPrice);
+            } else {
+               requiresReview = true;
+               if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('MISSING_PRICE', `دواء غير مسعر: ${serviceId}`, 'FINANCE');
+            }
+
+            newPharmItems.push({
+              name: `علاج: ${m.name} (عدد ${m.qty})`,
+              price: requiresReview ? 0 : parseFloat((m.qty * unitPrice).toFixed(2)),
+              requiresBillingReview: requiresReview,
+              billingStatus: requiresReview ? 'pending_review' : 'unpaid',
+              financialBlocked: requiresReview,
+              billingReferenceId: billingRefId,
+              department: 'pharmacy',
+              serviceType: 'drug',
+              serviceId: serviceId,
+              invoiceType: pharmPolicy === 'separate' || pharmPolicy === 'dispense' ? 'pharmacy_invoice' : 'visit_invoice'
             });
+          });
 
-            if (itemsAdded) {
-              const newTotal = parseFloat(currentItems.reduce((acc, item) => acc + (parseFloat(item.price)||0), 0).toFixed(2));
-              const invoiceUpdates = {};
-              invoiceUpdates[`invoices/${invKey}/items`] = currentItems;
-              invoiceUpdates[`invoices/${invKey}/total`] = newTotal;
-              
-              db.ref(BASE).update(invoiceUpdates);
-              if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('UPDATE_INVOICE', `دمج أدوية في الفاتورة الموحدة: ${invKey}`, 'FINANCE');
-            }
+          if (newPharmItems.length === 0) return;
+
+          // 5. Apply Policy
+          if (pharmPolicy === 'free') {
+             return;
           }
-        }
+
+          const createSeparateInvoiceFallback = (linkedId = null) => {
+              const newInvId = db.ref().child('invoices').push().key;
+              const invTotal = parseFloat(newPharmItems.reduce((sum, item) => sum + item.price, 0).toFixed(2));
+              const hasPending = newPharmItems.some(i => i.requiresBillingReview);
+              const separateInvoice = {
+                patientId: p.patientId,
+                patientName: p.patientName,
+                visitId: visitId,
+                docName: p.doctorName || 'طبيب غير محدد',
+                items: newPharmItems,
+                total: invTotal,
+                status: hasPending ? 'pending_review' : 'unpaid',
+                invoiceType: 'pharmacy_invoice',
+                orderReferenceId: k,
+                createdAt: new Date().toISOString(),
+                invoiceNumber: `INV-PHX-${Date.now()}`
+              };
+              
+              if (linkedId) {
+                 separateInvoice.linkedInvoiceId = linkedId;
+                 if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('LINKED_INVOICE_CREATED', `إنشاء فاتورة تابعة للصيدلية: ${newInvId} للأصل ${linkedId}`, 'FINANCE');
+              }
+
+              db.ref(`${BASE}/invoices/${newInvId}`).set(separateInvoice);
+              if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('INVOICE_CREATED', `إنشاء فاتورة صيدلية: ${newInvId}`, 'FINANCE');
+          };
+
+          if (pharmPolicy === 'separate' || pharmPolicy === 'dispense') {
+              createSeparateInvoiceFallback();
+          } else if (pharmPolicy === 'unified') {
+              const invEntry = Object.entries(invoices).find(([_, v]) => v.invoiceType !== 'lab_invoice' && v.invoiceType !== 'rad_invoice' && v.invoiceType !== 'pharmacy_invoice');
+              if (invEntry) {
+                  const [invKey, invVal] = invEntry;
+                  // Remove 'partial' from soft freeze list to allow adding to partial invoices
+                  if (['paid', 'cancelled', 'refunded', 'voided'].includes(invVal.status) || invVal.locked) {
+                      createSeparateInvoiceFallback(invKey);
+                  } else {
+                      const currentItems = invVal.items || [];
+                      newPharmItems.forEach(newItem => currentItems.push(newItem));
+                      
+                      const newTotal = parseFloat(currentItems.reduce((acc, item) => acc + (parseFloat(item.price)||0), 0).toFixed(2));
+                      const hasPending = currentItems.some(i => i.requiresBillingReview);
+                      
+                      const invoiceUpdates = {};
+                      invoiceUpdates[`invoices/${invKey}/items`] = currentItems;
+                      invoiceUpdates[`invoices/${invKey}/total`] = newTotal;
+                      if (hasPending) invoiceUpdates[`invoices/${invKey}/status`] = 'pending_review';
+                      
+                      db.ref(BASE).update(invoiceUpdates);
+                      if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('INVOICE_UPDATED', `تحديث فاتورة موحدة: ${invKey}`, 'FINANCE');
+                  }
+              } else {
+                  createSeparateInvoiceFallback();
+              }
+          }
+        });
       });
     }
   }
