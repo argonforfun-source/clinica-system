@@ -378,8 +378,13 @@ const BillingEngine = {
           patientPhone: pts[pid] ? pts[pid].info?.phone : (inv.patientPhone || ''),
           total: 0,
           paid: 0,
+          hasPendingReview: false,
           lastDate: inv.createdAt || ''
         };
+      }
+
+      if (inv.status === 'pending_review' || inv.financialBlocked) {
+        patientBalances[pid].hasPendingReview = true;
       }
 
       patientBalances[pid].total += parseFloat(inv.total) || 0;
@@ -426,7 +431,10 @@ const BillingEngine = {
       let status = 'unpaid';
       let statusBadge = '<span style="color:var(--red);background:rgba(239,68,68,0.1);padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:bold">غير مدفوع</span>';
 
-      if (remaining <= 0) {
+      if (p.hasPendingReview) {
+        status = 'pending_review';
+        statusBadge = '<span style="color:#d97706;background:rgba(245,158,11,0.15);padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:bold;border:1px solid rgba(245,158,11,0.4)"><i class="fas fa-exclamation-triangle"></i> بانتظار التسعير</span>';
+      } else if (remaining <= 0) {
         status = 'paid';
         statusBadge = '<span style="color:var(--green);background:rgba(16,185,129,0.1);padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:bold">مسدد بالكامل</span>';
       } else if (p.paid > 0) {
@@ -441,7 +449,7 @@ const BillingEngine = {
       }
 
       if (filterQ !== 'all') {
-        if (filterQ === 'unpaid' && status !== 'unpaid') return;
+        if (filterQ === 'unpaid' && status !== 'unpaid' && status !== 'pending_review') return;
         if (filterQ === 'partial' && status !== 'partial') return;
         if (filterQ === 'overdue' && status !== 'overdue') return;
       }

@@ -490,8 +490,13 @@ function saveRadReport() {
         const radPolicy = bp.rad || 'separate';
 
         const transactionPromises = (o.requestedScans || []).map(s => {
-          const serviceId = s.serviceId || s.id || 'unknown';
-          const billingRefId = `${CID}-${visitId}-${serviceId}-RAD`;
+          let serviceId = s.serviceId || s.id || 'external';
+          if (serviceId === 'external' || serviceId === 'unknown') {
+             const rawName = typeof s.name === 'object' ? (s.name.name || '') : (s.name || '');
+             serviceId = 'ext_' + btoa(encodeURIComponent(rawName)).replace(/[^a-zA-Z0-9]/g, '').substring(0, 12) + '_' + Math.floor(Math.random()*1000);
+          }
+          const safeServiceId = serviceId.replace(/[\.\#\$\[\]\/]/g, '_');
+          const billingRefId = `${typeof CID !== 'undefined' ? CID : '0'}-${visitId}-${safeServiceId}-RAD`;
           
           return db.ref(`${BASE}/billing_refs/${billingRefId}`).transaction(currentData => {
             if (currentData === null) return { timestamp: Date.now(), serviceId: serviceId };

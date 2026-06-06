@@ -335,8 +335,13 @@ function dispensePrescription() {
         if (validMeds.length === 0) return;
 
         const transactionPromises = validMeds.map(m => {
-          const serviceId = m.id || 'unknown_drug';
-          const billingRefId = `${CID}-${visitId}-${serviceId}-PHARM`;
+          let serviceId = m.id || 'unknown_drug';
+          if (serviceId === 'unknown_drug') {
+             const rawName = typeof m.name === 'object' ? (m.name.name || '') : (m.name || '');
+             serviceId = 'ext_' + btoa(encodeURIComponent(rawName)).replace(/[^a-zA-Z0-9]/g, '').substring(0, 12) + '_' + Math.floor(Math.random()*1000);
+          }
+          const safeServiceId = serviceId.replace(/[\.\#\$\[\]\/]/g, '_');
+          const billingRefId = `${typeof CID !== 'undefined' ? CID : '0'}-${visitId}-${safeServiceId}-PHARM`;
           
           return db.ref(`${BASE}/billing_refs/${billingRefId}`).transaction(currentData => {
             if (currentData === null) return { timestamp: Date.now(), serviceId: serviceId };

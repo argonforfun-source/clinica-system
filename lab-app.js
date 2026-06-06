@@ -329,8 +329,13 @@ function saveLabResults() {
         const labPolicy = bp.lab || 'separate';
 
         const transactionPromises = completedTests.map(t => {
-          const serviceId = t.serviceId || t.id || 'unknown';
-          const billingRefId = `${CID}-${visitId}-${serviceId}-LAB`;
+          let serviceId = t.serviceId || t.id || 'external';
+          if (serviceId === 'external' || serviceId === 'unknown') {
+             const rawName = typeof t.name === 'object' ? (t.name.name || '') : (t.name || '');
+             serviceId = 'ext_' + btoa(encodeURIComponent(rawName)).replace(/[^a-zA-Z0-9]/g, '').substring(0, 12) + '_' + Math.floor(Math.random()*1000);
+          }
+          const safeServiceId = serviceId.replace(/[\.\#\$\[\]\/]/g, '_');
+          const billingRefId = `${typeof CID !== 'undefined' ? CID : '0'}-${visitId}-${safeServiceId}-LAB`;
           
           return db.ref(`${BASE}/billing_refs/${billingRefId}`).transaction(currentData => {
             if (currentData === null) return { timestamp: Date.now(), serviceId: serviceId };
