@@ -86,12 +86,26 @@ const BillingEngine = {
 
   // ── VISIT FEE OBSERVER (كشفية الطبيب فقط) ──
   initVisitFeeObserver: function () {
-    let initialBks = true;
+    // 1. Listen to Completed Bookings (Fallback/Legacy)
+    let initialCmp = true;
+    const cmpRef = db.ref(`${BASE}/completedBookings`);
+    cmpRef.once('value', () => initialCmp = false);
+    cmpRef.on('child_added', snap => {
+      if (!initialCmp) this.generateVisitInvoice(snap.key, snap.val());
+    });
 
-    const bksRef = db.ref(`${BASE}/completedBookings`);
+    // 2. Listen to Active Bookings (Real-time generation)
+    let initialBks = true;
+    const bksRef = db.ref(`${BASE}/bookings`);
     bksRef.once('value', () => initialBks = false);
+    
     bksRef.on('child_added', snap => {
       if (!initialBks) this.generateVisitInvoice(snap.key, snap.val());
+    });
+    
+    // Crucial: Generates invoice the moment patientId is attached to the active booking
+    bksRef.on('child_changed', snap => {
+      this.generateVisitInvoice(snap.key, snap.val());
     });
   },
 
