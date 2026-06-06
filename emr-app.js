@@ -1765,8 +1765,17 @@ function generatePatientFileHTML(uid) {
   }
 
   // Get department specific order lists for this patient (newest first)
-  const patientLabOrders = Object.entries(_labOrders).filter(([k, o]) => o.patientId === uid || (o.patientPhone && cleanPhone(o.patientPhone) === cleanPhone(info.phone || uid))).reverse();
-  const patientRadOrders = Object.entries(_radOrders).filter(([k, o]) => o.patientId === uid || (o.patientPhone && cleanPhone(o.patientPhone) === cleanPhone(info.phone || uid))).reverse();
+  const cPatPhone = info.phone ? cleanPhone(info.phone) : '';
+  const patientLabOrders = Object.entries(_labOrders).filter(([k, o]) => {
+    if (o.patientId === uid) return true;
+    const cOrdPhone = o.patientPhone ? cleanPhone(o.patientPhone) : '';
+    return cOrdPhone && cPatPhone && cOrdPhone === cPatPhone;
+  }).reverse();
+  const patientRadOrders = Object.entries(_radOrders).filter(([k, o]) => {
+    if (o.patientId === uid) return true;
+    const cOrdPhone = o.patientPhone ? cleanPhone(o.patientPhone) : '';
+    return cOrdPhone && cPatPhone && cOrdPhone === cPatPhone;
+  }).reverse();
 
   let labOrdersHTML = `
     <div style="text-align:center;padding:30px;color:var(--muted)" class="glass-panel">لا يوجد طلبات فحوصات مخبرية مسجلة لهذا المريض</div>`;
