@@ -335,7 +335,7 @@ function dispensePrescription() {
               name: `علاج: ${m.name} (عدد ${m.qty})`,
               price: parseFloat((m.qty * m.price).toFixed(2)),
               requiresBillingReview: false,
-              billingStatus: 'draft',
+              billingStatus: 'unpaid',
               financialBlocked: false,
               billingReferenceId: m.id || `pharm_${k}_${m.name}`, // IDEMPOTENCY KEY
               department: 'pharmacy',
@@ -365,7 +365,7 @@ function dispensePrescription() {
               docName: p.doctorName || 'طبيب غير محدد',
               items: newPharmItems,
               total: invTotal,
-              status: 'draft',
+              status: 'unpaid',
               invoiceType: 'pharmacy_invoice',
               orderReferenceId: k,
               billingPolicySnapshot: bpState,
