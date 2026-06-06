@@ -369,7 +369,7 @@ const BillingEngine = {
 
     Object.entries(this._invoices).forEach(([k, inv]) => {
       const pid = inv.patientId;
-      if (!pid) return;
+      if (!pid || inv.status === 'voided' || inv.status === 'cancelled') return;
 
       if (!patientBalances[pid]) {
         patientBalances[pid] = {
@@ -968,7 +968,7 @@ function recordBillingPayment() {
   }
 
   const pInvoices = Object.entries(BillingEngine._invoices)
-    .filter(([k, inv]) => inv.patientId === patientId)
+    .filter(([k, inv]) => inv.patientId === patientId && inv.status !== 'voided' && inv.status !== 'cancelled')
     .sort((a, b) => (a[1].createdAt || '').localeCompare(b[1].createdAt || ''));
 
   let totalUnallocated = 0;
