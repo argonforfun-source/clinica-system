@@ -1822,11 +1822,24 @@ function generatePatientFileHTML(uid) {
             <ul style="margin:6px 0 0 0; padding-right:24px; color:var(--text); list-style-type:disc;">${scans}</ul>
           </div>
           ${o.report ? `<div style="font-size:0.8rem;background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;margin-top:8px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word;"><b>📝 التقرير الطبي للأشعة:</b><br>${sanitize(o.report)}</div>` : ''}
-          ${o.image ? `
-            <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
-              <span style="font-size:0.7rem;color:var(--sky);cursor:pointer" onclick="openAttachment('${o.image}','image')"><i class="fas fa-expand-arrows-alt"></i> اضغط لتكبير الصورة التشخيصية</span>
-              <button class="btn-secondary btn-sm" onclick="openAttachment('${o.image}','image')"><i class="fas fa-eye"></i> عرض صورة الأشعة</button>
-            </div>` : ''}
+          ${(o.images && o.images.length > 0) ? `
+            <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px; background:rgba(0,0,0,0.15); padding:10px; border-radius:8px;">
+              <div style="font-size:0.8rem; font-weight:bold; color:var(--sky); margin-bottom:4px;">🖼️ المرفقات والصور التشخيصية:</div>
+              ${o.images.map(img => {
+                const isPdf = (img.fileName || '').toLowerCase().endsWith('.pdf') || (img.downloadUrl || '').toLowerCase().includes('.pdf');
+                const type = isPdf ? 'pdf' : 'image';
+                const icon = isPdf ? 'fa-file-pdf' : 'fa-image';
+                return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                  <span style="font-size:0.75rem; color:var(--text);"><i class="fas ${icon}" style="margin-left:6px; color:var(--sky);"></i>${sanitize(img.fileName || 'صورة أشعة')}</span>
+                  <button class="btn-secondary btn-sm" onclick="openAttachment('${img.downloadUrl}', '${type}')" style="font-size:0.7rem; padding:4px 10px; background:rgba(14,165,233,0.1); color:var(--sky); border:1px solid rgba(14,165,233,0.3);"><i class="fas fa-eye"></i> عرض</button>
+                </div>`;
+              }).join('')}
+            </div>
+          ` : (o.image ? `
+            <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.15);padding:10px;border-radius:8px;">
+              <span style="font-size:0.7rem;color:var(--sky);cursor:pointer" onclick="openAttachment('${o.image}','image')"><i class="fas fa-image"></i> صورة الأشعة المرفقة</span>
+              <button class="btn-secondary btn-sm" onclick="openAttachment('${o.image}','image')" style="font-size:0.7rem; padding:4px 10px; background:rgba(14,165,233,0.1); color:var(--sky); border:1px solid rgba(14,165,233,0.3);"><i class="fas fa-eye"></i> عرض الصورة</button>
+            </div>` : '')}
         </div>`;
     }).join('');
   }
