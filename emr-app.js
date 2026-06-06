@@ -617,7 +617,7 @@ async function migratePhoneKeyedPatients() {
     // Check if a UUID-keyed record already exists for this phone AND NAME
     // This prevents merging different family members who share a phone number.
     const existingUuid = Object.entries(allPatients).find(([k, p]) => {
-      const isMatchPhone = k.startsWith('-') && cleanPhone(p.info?.phone || '') === phone;
+      const isMatchPhone = phone && k.startsWith('-') && cleanPhone(p.info?.phone || '') === phone;
       if (!isMatchPhone) return false;
 
       const legacyName = (patientData.info?.name || '').trim().toLowerCase();
@@ -2037,7 +2037,7 @@ async function safeViewPatientFile(phoneOrUid) {
   if (!_patients[uid]) {
     const cleanP = cleanPhone(phoneOrUid);
     const matched = Object.entries(_patients).filter(([k, p]) => {
-      return (p.info && cleanPhone(p.info.phone) === cleanP) || k === cleanP;
+      return cleanP && ((p.info && cleanPhone(p.info.phone) === cleanP) || k === cleanP);
     });
 
     if (matched.length === 1) {
@@ -3770,7 +3770,7 @@ function resolvePatientUid(rawUid, expectedName = '') {
   // Otherwise search by phone number (legacy bookings)
   const phone = cleanPhone(rawUid);
   const matched = Object.entries(_patients).filter(([k, p]) => {
-    return cleanPhone(p.info?.phone || '') === phone;
+    return phone && cleanPhone(p.info?.phone || '') === phone;
   });
 
   if (!matched.length) return null;
