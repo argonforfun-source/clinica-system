@@ -22,37 +22,20 @@ if (typeof firebase !== 'undefined' && !firebase.apps.length) {
 const _argonDb = typeof firebase !== 'undefined' ? firebase.database() : null;
 
 // ── Global Time Formatter ──
-window.argonTimeAgo = function(isoDate) {
-  if (!isoDate) return '';
-  const diff = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000);
-  if (diff < 10) return 'وصل للتو ⚡';
-  if (diff < 60) return `قبل ${diff} ثانية`;
-  const mins = Math.floor(diff / 60);
-  if (mins === 1) return 'قبل دقيقة';
-  if (mins < 60) return `قبل ${mins} دقيقة`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs === 1) return 'قبل ساعة';
-  if (hrs < 24) return `قبل ${hrs} ساعات`;
-  const days = Math.floor(hrs / 24);
-  if (days === 1) return 'أمس';
-  return `قبل ${days} أيام`;
-};
-
-// ── Strict Enterprise Finance Utilities (Zero-Error Mode) ──
-window.ArgonFinance = {
-    // Convert Jordanian Dinar (JD) to Fils (Minor Units)
-    // Example: 12.50 JD -> 12500 Fils
-    toMinor: function(jdAmount) {
-        if (!jdAmount || isNaN(jdAmount)) return 0;
-        // Multiply by 1000 and round to nearest integer to eliminate JS float issues
-        return Math.round(parseFloat(jdAmount) * 1000);
-    },
-    // Convert Fils (Minor Units) back to formatted JD string
-    // Example: 12500 Fils -> 12.50
-    fromMinor: function(filsAmount) {
-        if (!filsAmount || isNaN(filsAmount)) return "0.00";
-        return (parseInt(filsAmount, 10) / 1000).toFixed(2);
-    }
+window.argonTimeAgo = function (isoDate) {
+    if (!isoDate) return '';
+    const diff = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000);
+    if (diff < 10) return 'وصل للتو ⚡';
+    if (diff < 60) return `قبل ${diff} ثانية`;
+    const mins = Math.floor(diff / 60);
+    if (mins === 1) return 'قبل دقيقة';
+    if (mins < 60) return `قبل ${mins} دقيقة`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs === 1) return 'قبل ساعة';
+    if (hrs < 24) return `قبل ${hrs} ساعات`;
+    const days = Math.floor(hrs / 24);
+    if (days === 1) return 'أمس';
+    return `قبل ${days} أيام`;
 };
 
 
@@ -63,171 +46,171 @@ if (urlParams.get('id')) localStorage.setItem('argon_id', CLINIC_ID);
 const CLINIC_BASE = 'clinics/' + CLINIC_ID;
 
 window.ArgonCore = {
-  
-  // ── 1. MEDICAL AUDIT LOG ──
-  logAudit: function(action, details, moduleName = 'SYSTEM') {
-    if (!_argonDb) return;
-    const auditRef = _argonDb.ref(`${CLINIC_BASE}/audit_logs`).push();
-    const logEntry = {
-      action: action,
-      details: details,
-      module: moduleName,
-      timestamp: firebase.database.ServerValue.TIMESTAMP,
-      userAgent: navigator.userAgent,
-      platform: navigator.platform
-    };
-    auditRef.set(logEntry).catch(err => {
-      console.warn("ArgonCore: Failed to write audit log (will retry if offline).", err);
-    });
-  },
 
-  // ── 2. ZERO DATA LOSS (AUTO-SAVE) ──
-  AutoSave: {
-    saveDraft: function(draftKey, dataObj) {
-      try {
-        const payload = JSON.stringify({ data: dataObj, savedAt: new Date().toISOString() });
-        localStorage.setItem(`argon_draft_${draftKey}`, payload);
-      } catch (e) {
-        console.error("ArgonCore AutoSave: Quota exceeded or error", e);
-      }
-    },
-    loadDraft: function(draftKey) {
-      try {
-        const payload = localStorage.getItem(`argon_draft_${draftKey}`);
-        return payload ? JSON.parse(payload) : null;
-      } catch (e) { return null; }
-    },
-    clearDraft: function(draftKey) {
-      localStorage.removeItem(`argon_draft_${draftKey}`);
-    }
-  },
-
-  // ── 3. BACKGROUND SYNC MANAGER ──
-  SyncManager: {
-    init: function() {
-      window.addEventListener('online', () => {
-        console.log("🟢 ArgonCore: Network is ONLINE.");
-        if(typeof toast === 'function') toast('عاد الاتصال بالإنترنت. جاري مزامنة البيانات...', 'ok');
-      });
-      window.addEventListener('offline', () => {
-        console.warn("🔴 ArgonCore: Network is OFFLINE.");
-        if(typeof toast === 'function') toast('⚠️ انقطع الاتصال! النظام يحفظ بياناتك محلياً بشكل آمن.', 'err');
-      });
-    }
-  },
-
-  // ── 4. SMART NOTIFICATION CENTER ──
-  NotificationCenter: {
-    init: function() {
-      if (!_argonDb) return;
-      const notificationsRef = _argonDb.ref(`${CLINIC_BASE}/notifications`);
-      const now = new Date().toISOString();
-      notificationsRef.orderByChild('createdAt').startAt(now).on('child_added', snap => {
-        const notif = snap.val();
-        if (notif) {
-          const session = window.ArgonSession ? window.ArgonSession.get() : null;
-          if (!session) return;
-          
-          let shouldNotify = false;
-          if (session.role === 'doctor' && notif.role === 'doctor' && notif.docKey === session.staffId) {
-            shouldNotify = true;
-          } else if (session.role === 'lab' && notif.role === 'lab') {
-            shouldNotify = true;
-          } else if (session.role === 'radiology' && notif.role === 'radiology') {
-            shouldNotify = true;
-          } else if (session.role === 'pharmacist' && notif.role === 'pharmacist') {
-            shouldNotify = true;
-          } else if (session.role === 'admin') {
-            shouldNotify = true;
-          }
-          
-          if (shouldNotify) {
-            ArgonCore.NotificationCenter.playMedicalBeep();
-            ArgonCore.NotificationCenter.flashScreen();
-            if(typeof toast === 'function') {
-              toast(`🔔 إشعار: ${notif.title}\n${notif.message}`, 'ok');
-            }
-          }
-        }
-      });
-    },
-    playMedicalBeep: function() {
-      try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
-        const playTone = (freq, startTime, duration) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
-          gain.gain.setValueAtTime(0, ctx.currentTime + startTime);
-          gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + startTime + 0.05);
-          gain.gain.setValueAtTime(0.5, ctx.currentTime + startTime + duration - 0.05);
-          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + startTime + duration);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(ctx.currentTime + startTime);
-          osc.stop(ctx.currentTime + startTime + duration);
+    // ── 1. MEDICAL AUDIT LOG ──
+    logAudit: function (action, details, moduleName = 'SYSTEM') {
+        if (!_argonDb) return;
+        const auditRef = _argonDb.ref(`${CLINIC_BASE}/audit_logs`).push();
+        const logEntry = {
+            action: action,
+            details: details,
+            module: moduleName,
+            timestamp: firebase.database.ServerValue.TIMESTAMP,
+            userAgent: navigator.userAgent,
+            platform: navigator.platform
         };
-        playTone(880, 0, 0.15);
-        playTone(1046.5, 0.2, 0.2);
-      } catch(e) { console.log("Audio blocked by browser."); }
+        auditRef.set(logEntry).catch(err => {
+            console.warn("ArgonCore: Failed to write audit log (will retry if offline).", err);
+        });
     },
-    flashScreen: function() {
-      const flash = document.createElement('div');
-      flash.style.position = 'fixed';
-      flash.style.top = '0'; flash.style.left = '0';
-      flash.style.width = '100vw'; flash.style.height = '100vh';
-      flash.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
-      flash.style.pointerEvents = 'none'; flash.style.zIndex = '999999';
-      flash.style.transition = 'opacity 0.5s ease-out';
-      document.body.appendChild(flash);
-      setTimeout(() => {
-        flash.style.opacity = '0';
-        setTimeout(() => document.body.removeChild(flash), 500);
-      }, 300);
+
+    // ── 2. ZERO DATA LOSS (AUTO-SAVE) ──
+    AutoSave: {
+        saveDraft: function (draftKey, dataObj) {
+            try {
+                const payload = JSON.stringify({ data: dataObj, savedAt: new Date().toISOString() });
+                localStorage.setItem(`argon_draft_${draftKey}`, payload);
+            } catch (e) {
+                console.error("ArgonCore AutoSave: Quota exceeded or error", e);
+            }
+        },
+        loadDraft: function (draftKey) {
+            try {
+                const payload = localStorage.getItem(`argon_draft_${draftKey}`);
+                return payload ? JSON.parse(payload) : null;
+            } catch (e) { return null; }
+        },
+        clearDraft: function (draftKey) {
+            localStorage.removeItem(`argon_draft_${draftKey}`);
+        }
+    },
+
+    // ── 3. BACKGROUND SYNC MANAGER ──
+    SyncManager: {
+        init: function () {
+            window.addEventListener('online', () => {
+                console.log("🟢 ArgonCore: Network is ONLINE.");
+                if (typeof toast === 'function') toast('عاد الاتصال بالإنترنت. جاري مزامنة البيانات...', 'ok');
+            });
+            window.addEventListener('offline', () => {
+                console.warn("🔴 ArgonCore: Network is OFFLINE.");
+                if (typeof toast === 'function') toast('⚠️ انقطع الاتصال! النظام يحفظ بياناتك محلياً بشكل آمن.', 'err');
+            });
+        }
+    },
+
+    // ── 4. SMART NOTIFICATION CENTER ──
+    NotificationCenter: {
+        init: function () {
+            if (!_argonDb) return;
+            const notificationsRef = _argonDb.ref(`${CLINIC_BASE}/notifications`);
+            const now = new Date().toISOString();
+            notificationsRef.orderByChild('createdAt').startAt(now).on('child_added', snap => {
+                const notif = snap.val();
+                if (notif) {
+                    const session = window.ArgonSession ? window.ArgonSession.get() : null;
+                    if (!session) return;
+
+                    let shouldNotify = false;
+                    if (session.role === 'doctor' && notif.role === 'doctor' && notif.docKey === session.staffId) {
+                        shouldNotify = true;
+                    } else if (session.role === 'lab' && notif.role === 'lab') {
+                        shouldNotify = true;
+                    } else if (session.role === 'radiology' && notif.role === 'radiology') {
+                        shouldNotify = true;
+                    } else if (session.role === 'pharmacist' && notif.role === 'pharmacist') {
+                        shouldNotify = true;
+                    } else if (session.role === 'admin') {
+                        shouldNotify = true;
+                    }
+
+                    if (shouldNotify) {
+                        ArgonCore.NotificationCenter.playMedicalBeep();
+                        ArgonCore.NotificationCenter.flashScreen();
+                        if (typeof toast === 'function') {
+                            toast(`🔔 إشعار: ${notif.title}\n${notif.message}`, 'ok');
+                        }
+                    }
+                }
+            });
+        },
+        playMedicalBeep: function () {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const playTone = (freq, startTime, duration) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
+                    gain.gain.setValueAtTime(0, ctx.currentTime + startTime);
+                    gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + startTime + 0.05);
+                    gain.gain.setValueAtTime(0.5, ctx.currentTime + startTime + duration - 0.05);
+                    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + startTime + duration);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime + startTime);
+                    osc.stop(ctx.currentTime + startTime + duration);
+                };
+                playTone(880, 0, 0.15);
+                playTone(1046.5, 0.2, 0.2);
+            } catch (e) { console.log("Audio blocked by browser."); }
+        },
+        flashScreen: function () {
+            const flash = document.createElement('div');
+            flash.style.position = 'fixed';
+            flash.style.top = '0'; flash.style.left = '0';
+            flash.style.width = '100vw'; flash.style.height = '100vh';
+            flash.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            flash.style.pointerEvents = 'none'; flash.style.zIndex = '999999';
+            flash.style.transition = 'opacity 0.5s ease-out';
+            document.body.appendChild(flash);
+            setTimeout(() => {
+                flash.style.opacity = '0';
+                setTimeout(() => document.body.removeChild(flash), 500);
+            }, 300);
+        }
     }
-  }
 };
 
 // ── 5. SESSION MANAGEMENT & SECURITY ──
 // ── 5. SESSION MANAGEMENT & ENTERPRISE SECURITY (V8.4) ──
 window.ArgonSession = {
     KEY: 'argon_auth_session',
-    start: function(payload) {
+    start: function (payload) {
         payload.issuedAt = Date.now();
         payload.deviceFingerprint = navigator.userAgent + "|" + window.screen.colorDepth;
         sessionStorage.setItem(this.KEY, JSON.stringify(payload));
     },
-    get: function() {
-        try { return JSON.parse(sessionStorage.getItem(this.KEY)); } catch(e) { return null; }
+    get: function () {
+        try { return JSON.parse(sessionStorage.getItem(this.KEY)); } catch (e) { return null; }
     },
-    isValid: function(requiredRole = null) {
+    isValid: function (requiredRole = null) {
         const s = this.get();
         if (!s || s.clinicId !== CLINIC_ID) return false;
         if (Date.now() - s.issuedAt > 8 * 3600000) { this.clear(); return false; } // 8 hours
         if (requiredRole && s.role !== requiredRole && s.role !== 'admin') return false;
         return true;
     },
-    clear: function() {
+    clear: function () {
         sessionStorage.removeItem(this.KEY);
     },
-    logout: function() {
+    logout: function () {
         this.clear();
         window.location.assign(window.location.pathname + window.location.search);
     }
 };
 
 window.ArgonEnterpriseAuth = {
-    hashPassword: async function(rawPassword) {
+    hashPassword: async function (rawPassword) {
         const encoder = new TextEncoder();
         const data = encoder.encode(rawPassword + "ARGON_SALT");
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     },
-    setStaffCredentials: async function(uid, rawPassword, isDoctor = false) {
+    setStaffCredentials: async function (uid, rawPassword, isDoctor = false) {
         const hash = await this.hashPassword(rawPassword);
         const basePath = isDoctor ? `${CLINIC_BASE}/doctors/${uid}` : `${CLINIC_BASE}/staff/${uid}`;
         await _argonDb.ref(`${basePath}/enterpriseAuth`).update({
@@ -237,7 +220,7 @@ window.ArgonEnterpriseAuth = {
         });
         ArgonCore.logAudit('PASSWORD_CHANGED', `Password updated for ${uid}`, 'AUTH');
     },
-    login: async function(uid, rawPassword, role, isDoctor = false) {
+    login: async function (uid, rawPassword, role, isDoctor = false) {
         const basePath = isDoctor ? `${CLINIC_BASE}/doctors/${uid}` : `${CLINIC_BASE}/staff/${uid}`;
         const snap = await _argonDb.ref(basePath).once('value');
         const user = snap.val();
@@ -247,16 +230,16 @@ window.ArgonEnterpriseAuth = {
         }
 
         const inputHash = await this.hashPassword(rawPassword);
-        
+
         if (!user.enterpriseAuth || !user.enterpriseAuth.passwordHash) {
-             ArgonCore.logAudit('LOGIN_FAILED', `No enterprise auth setup for: ${uid}`, 'AUTH');
-             return false;
+            ArgonCore.logAudit('LOGIN_FAILED', `No enterprise auth setup for: ${uid}`, 'AUTH');
+            return false;
         }
 
         if (user.enterpriseAuth.passwordHash === inputHash) {
             ArgonCore.logAudit('LOGIN_SUCCESS', `User logged in: ${uid}`, 'AUTH');
             ArgonSession.start({
-                sessionId: 'sess_' + Date.now() + Math.floor(Math.random()*1000),
+                sessionId: 'sess_' + Date.now() + Math.floor(Math.random() * 1000),
                 staffId: uid,
                 role: role,
                 displayName: user.displayName || user.name || uid,
@@ -272,7 +255,7 @@ window.ArgonEnterpriseAuth = {
 };
 
 window.ArgonPortalACL = {
-    authorizePortal: function(portalName) {
+    authorizePortal: function (portalName) {
         let requiredRole = null;
         if (portalName === 'emr') requiredRole = 'doctor';
         else if (portalName === 'pharmacy') requiredRole = 'pharmacist';
@@ -286,16 +269,16 @@ window.ArgonPortalACL = {
 };
 
 window.ArgonPortalRuntime = {
-    init: function(portalName) {
+    init: function (portalName) {
         const isAuth = ArgonPortalACL.authorizePortal(portalName);
         if (!isAuth) {
             this.injectEnterpriseLoginOverlay(portalName);
-            return false; 
+            return false;
         }
         ArgonCore.logAudit('PORTAL_ENTRY', `Entered portal ${portalName}`, 'AUTH');
-        return true; 
+        return true;
     },
-    injectEnterpriseLoginOverlay: function(portalName) {
+    injectEnterpriseLoginOverlay: function (portalName) {
         let overlay = document.getElementById('enterprise-login-overlay');
         if (overlay) return;
 
@@ -313,7 +296,7 @@ window.ArgonPortalRuntime = {
             background: rgba(3, 11, 10, 0.95); z-index: 999999; display: flex;
             align-items: center; justify-content: center; font-family: 'Tajawal', sans-serif; direction: rtl;
         `;
-        
+
         const isDepartment = ['pharmacy', 'lab', 'radiology', 'reception'].includes(portalName);
         let contentHtml = '';
 
@@ -354,7 +337,7 @@ window.ArgonPortalRuntime = {
                 </div>
             </div>`;
         }
-        
+
         overlay.innerHTML = contentHtml;
         document.body.appendChild(overlay);
 
@@ -368,13 +351,13 @@ window.ArgonPortalRuntime = {
 
         const reqRole = portalName === 'emr' ? 'doctor' : (portalName === 'pharmacy' ? 'pharmacist' : (portalName === 'lab' ? 'lab' : 'radiology'));
         const basePath = isDoctor ? `${CLINIC_BASE}/doctors` : `${CLINIC_BASE}/staff`;
-        
+
         _argonDb.ref(basePath).once('value', snap => {
             const data = snap.val() || {};
             const select = document.getElementById('entUserSelect');
             select.innerHTML = '<option value="">-- اختر هويتك --</option>';
-            select.innerHTML += '<option value="admin">الإدارة (Admin)</option>'; 
-            
+            select.innerHTML += '<option value="admin">الإدارة (Admin)</option>';
+
             Object.entries(data).forEach(([id, user]) => {
                 if (!isDoctor && user.role !== reqRole) return;
                 const name = user.displayName || user.name || id;
@@ -382,7 +365,7 @@ window.ArgonPortalRuntime = {
             });
         });
     },
-    nextStep: function() {
+    nextStep: function () {
         const select = document.getElementById('entUserSelect');
         if (!select.value) return;
         const name = select.options[select.selectedIndex].text;
@@ -391,13 +374,13 @@ window.ArgonPortalRuntime = {
         document.getElementById('entLoginStep2').style.display = 'block';
         document.getElementById('entPass').focus();
     },
-    prevStep: function() {
+    prevStep: function () {
         document.getElementById('entLoginStep2').style.display = 'none';
         document.getElementById('entLoginStep1').style.display = 'block';
         document.getElementById('entErr').style.display = 'none';
         document.getElementById('entPass').value = '';
     },
-    doLogin: async function(portalName, isDoctor) {
+    doLogin: async function (portalName, isDoctor) {
         const pass = document.getElementById('entPass').value;
         const reqRole = portalName === 'emr' ? 'doctor' : (portalName === 'pharmacy' ? 'pharmacist' : (portalName === 'lab' ? 'lab' : 'radiology'));
 
@@ -408,7 +391,7 @@ window.ArgonPortalRuntime = {
             const snap = await _argonDb.ref(`${CLINIC_BASE}/settings/portalPasswords/${portalName}`).once('value');
             const storedHash = snap.val();
             const inputHash = await ArgonEnterpriseAuth.hashPassword(pass);
-            
+
             if (storedHash === inputHash || (!storedHash && pass === '1122')) {
                 let deptName = portalName === 'pharmacy' ? 'الصيدلية المركزية' : (portalName === 'lab' ? 'المختبرات الطبية' : 'قسم الأشعة');
                 ArgonSession.start({
@@ -429,7 +412,7 @@ window.ArgonPortalRuntime = {
         } else {
             const select = document.getElementById('entUserSelect');
             const uid = select ? select.value : 'admin';
-            
+
             if (uid === 'admin') {
                 const snap = await _argonDb.ref(`${CLINIC_BASE}/settings/password`).once('value');
                 if (snap.val() === pass) {
@@ -457,13 +440,13 @@ window.ArgonPortalRuntime = {
     }
 };
 
-window.waitForArgonReady = function(portalName) {
+window.waitForArgonReady = function (portalName) {
     return new Promise((resolve) => {
         if (typeof _argonDb !== 'undefined' && ArgonPortalRuntime.init(portalName)) {
             resolve(ArgonSession.get());
             return;
         }
-        
+
         window.addEventListener('argon-ready', () => {
             resolve(ArgonSession.get());
         }, { once: true });
@@ -473,7 +456,7 @@ window.waitForArgonReady = function(portalName) {
 // ── 6. LICENSE ENGINE (Single vs Complex) ──
 window.ArgonLicense = {
     type: 'single', // default
-    init: function(callback) {
+    init: function (callback) {
         if (!_argonDb) return;
         _argonDb.ref(`${CLINIC_BASE}/settings/type`).on('value', snap => {
             const t = snap.val();
@@ -485,18 +468,18 @@ window.ArgonLicense = {
             }
         });
     },
-    isComplex: function() { return this.type === 'complex'; }
+    isComplex: function () { return this.type === 'complex'; }
 };
 
 // ── 7. MAINTENANCE LOCKOUT ENGINE ──
 window.ArgonMaintenance = {
-    init: function() {
+    init: function () {
         if (!_argonDb) return;
-        const isInternalApp = window.location.pathname.includes('dashboard') || 
-                              window.location.pathname.includes('emr') || 
-                              window.location.pathname.includes('pharmacy') || 
-                              window.location.pathname.includes('lab') || 
-                              window.location.pathname.includes('radiology');
+        const isInternalApp = window.location.pathname.includes('dashboard') ||
+            window.location.pathname.includes('emr') ||
+            window.location.pathname.includes('pharmacy') ||
+            window.location.pathname.includes('lab') ||
+            window.location.pathname.includes('radiology');
         if (!isInternalApp) return;
 
         _argonDb.ref(`${CLINIC_BASE}/settings/status`).on('value', snap => {
@@ -508,7 +491,7 @@ window.ArgonMaintenance = {
             }
         });
     },
-    showLockoutScreen: function(status) {
+    showLockoutScreen: function (status) {
         let overlay = document.getElementById('argon-lockout-overlay');
         if (!overlay) {
             overlay = document.createElement('div');
@@ -544,7 +527,7 @@ window.ArgonMaintenance = {
         }
         overlay.style.display = 'flex';
     },
-    hideLockoutScreen: function() {
+    hideLockoutScreen: function () {
         const overlay = document.getElementById('argon-lockout-overlay');
         if (overlay) overlay.style.display = 'none';
     }
@@ -552,7 +535,7 @@ window.ArgonMaintenance = {
 
 // Initialize Core Systems
 document.addEventListener('DOMContentLoaded', () => {
-  ArgonCore.SyncManager.init();
-  ArgonCore.NotificationCenter.init();
-  ArgonMaintenance.init();
+    ArgonCore.SyncManager.init();
+    ArgonCore.NotificationCenter.init();
+    ArgonMaintenance.init();
 });

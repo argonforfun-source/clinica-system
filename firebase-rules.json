@@ -46,16 +46,6 @@
           ".indexOn": [
             "timestamp"
           ]
-        },
-        "invoices": {
-          "$invoiceId": {
-            ".write": "newData.exists() || root.child('super_admin').child(auth.uid).exists()"
-          }
-        },
-        "financial_transactions": {
-          "$txId": {
-            ".write": "newData.exists() || root.child('super_admin').child(auth.uid).exists()"
-          }
         }
       }
     }

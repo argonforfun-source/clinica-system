@@ -9,7 +9,7 @@ const BillingEngine = {
   _patientsRef: null,
   activePatientId: null,
 
-  init: function() {
+  init: function () {
     let isAuthorized = false;
 
     // Check if we are in dashboard.html (which sets clinica_auth_CID)
@@ -63,16 +63,16 @@ const BillingEngine = {
       // 3. Additive Observer — ONLY for Visit Fee (كشفية الطبيب)
       // Lab, Radiology, Pharmacy add their own detailed items when they complete services.
       // This prevents double billing.
-      // Observer removed in favor of transactional generation in EMR
+      this.initVisitFeeObserver();
     }
   },
 
   // ── Pricing Catalog Lookup ──
   // Used by lab-app.js and radiology-app.js to get prices per service name
-  lookupPrice: function(serviceName, serviceType) {
+  lookupPrice: function (serviceName, serviceType) {
     const catalog = this._pricingCatalog || {};
     const normalizedName = (serviceName || '').trim().toLowerCase();
-    
+
     // Search by exact match or partial match on service name
     const entry = Object.values(catalog).find(item => {
       if (!item.active) return false;
@@ -84,12 +84,47 @@ const BillingEngine = {
     return entry ? parseFloat(entry.price) : null;
   },
 
-  // Legacy invoice generators removed. Invoices now generated synchronously from EMR.
+  // ── VISIT FEE OBSERVER (كشفية الطبيب فقط) ──
+  initVisitFeeObserver: function () {
+    let initialBks = true;
 
-  saveInvoice: function(invId, patientId, visitId, items, patName, patPhone) {
+    const bksRef = db.ref(`${BASE}/completedBookings`);
+    bksRef.once('value', () => initialBks = false);
+    bksRef.on('child_added', snap => {
+      if (!initialBks) this.generateVisitInvoice(snap.key, snap.val());
+    });
+  },
+
+  generateVisitInvoice: function (visitId, visitData) {
+    if (!visitData || !visitData.patientId) return;
+    const invId = `INV-${visitId}`;
+
+    let fee = 15;
+    if (typeof _docs !== 'undefined' && _docs[visitData.docId] && _docs[visitData.docId].fee) {
+      fee = parseFloat(_docs[visitData.docId].fee);
+    }
+    const visitItem = { name: 'كشفية الطبيب', price: fee };
+
+    if (this._invoices[invId]) {
+      const currentItems = this._invoices[invId].items || [];
+      const exists = currentItems.find(i => i.name === visitItem.name);
+      if (!exists) {
+        currentItems.push(visitItem);
+        let newTotal = currentItems.reduce((acc, curr) => acc + curr.price, 0);
+        db.ref(`${BASE}/invoices/${invId}`).update({
+          items: currentItems,
+          total: newTotal
+        });
+      }
+    } else {
+      this.saveInvoice(invId, visitData.patientId, visitId, [visitItem], visitData.patName, visitData.patPhone);
+    }
+  },
+
+  saveInvoice: function (invId, patientId, visitId, items, patName, patPhone) {
     const total = items.reduce((acc, curr) => acc + curr.price, 0);
     const ts = new Date().toISOString();
-    
+
     const invoiceData = {
       patientId: patientId,
       patientName: patName || '',
@@ -108,7 +143,7 @@ const BillingEngine = {
   },
 
   // ── MATH UTILS ──
-  calculateInvoicePaid: function(invoiceId) {
+  calculateInvoicePaid: function (invoiceId) {
     let paid = 0;
     Object.values(this._transactions).forEach(tx => {
       if (tx.invoiceId === invoiceId && tx.status !== 'voided') {
@@ -119,14 +154,14 @@ const BillingEngine = {
     return parseFloat(paid.toFixed(2));
   },
 
-  calculatePatientFinancials: function(patientId) {
+  calculatePatientFinancials: function (patientId) {
     let totalBilled = 0;
     let totalPaid = 0;
 
     const patientInvoices = Object.entries(this._invoices).filter(([k, inv]) => inv.patientId === patientId);
-    
+
     patientInvoices.forEach(([k, inv]) => {
-      totalBilled += typeof inv.totalMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(inv.totalMinor) : (inv.totalMinor/1000)) : (parseFloat(inv.total) || 0);
+      totalBilled += (parseFloat(inv.total) || 0);
       totalPaid += this.calculateInvoicePaid(k);
     });
 
@@ -145,14 +180,14 @@ const BillingEngine = {
   },
 
   // ── RENDERING ──
-  renderKPIs: function() {
+  renderKPIs: function () {
     let totalReceivables = 0;
     let totalCollected = 0;
     let openCount = 0;
     let overdueCount = 0;
 
     Object.entries(this._invoices).forEach(([k, inv]) => {
-      const total = typeof inv.totalMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(inv.totalMinor) : (inv.totalMinor/1000)) : (parseFloat(inv.total) || 0);
+      const total = parseFloat(inv.total) || 0;
       const paid = this.calculateInvoicePaid(k);
       const remaining = parseFloat((total - paid).toFixed(2));
 
@@ -180,7 +215,7 @@ const BillingEngine = {
     if (elOverdue) elOverdue.textContent = overdueCount;
   },
 
-  renderReceivables: function() {
+  renderReceivables: function () {
     const tbody = document.getElementById('blTbody');
     if (!tbody) return;
 
@@ -205,7 +240,7 @@ const BillingEngine = {
         };
       }
 
-      patientBalances[pid].total += typeof inv.totalMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(inv.totalMinor) : (inv.totalMinor/1000)) : (parseFloat(inv.total) || 0);
+      patientBalances[pid].total += parseFloat(inv.total) || 0;
       patientBalances[pid].paid += this.calculateInvoicePaid(k);
       if (inv.createdAt && inv.createdAt > patientBalances[pid].lastDate) {
         patientBalances[pid].lastDate = inv.createdAt;
@@ -233,14 +268,14 @@ const BillingEngine = {
         if (tx.type === 'PAYMENT') patientBalances[pid].paid += (parseFloat(tx.amount) || 0);
         if (tx.type === 'REVERSAL') patientBalances[pid].paid -= (parseFloat(tx.amount) || 0);
       }
-      
+
       if (tx.timestamp && tx.timestamp > patientBalances[pid].lastDate) {
         patientBalances[pid].lastDate = tx.timestamp;
       }
     });
 
     let html = '';
-    
+
     Object.values(patientBalances).forEach(p => {
       p.total = parseFloat(p.total.toFixed(2));
       p.paid = parseFloat(p.paid.toFixed(2));
@@ -248,7 +283,7 @@ const BillingEngine = {
 
       let status = 'unpaid';
       let statusBadge = '<span style="color:var(--red);background:rgba(239,68,68,0.1);padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:bold">غير مدفوع</span>';
-      
+
       if (remaining <= 0) {
         status = 'paid';
         statusBadge = '<span style="color:var(--green);background:rgba(16,185,129,0.1);padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:bold">مسدد بالكامل</span>';
@@ -280,7 +315,7 @@ const BillingEngine = {
         <tr>
           <td>
             <div style="font-weight:800;color:var(--teal)">${BillingEngine.sanitize(p.patientName)}</div>
-            <div style="font-size:0.7rem;color:var(--muted);font-family:'IBM Plex Mono',monospace">${p.patientId.substring(0,8)}...</div>
+            <div style="font-size:0.7rem;color:var(--muted);font-family:'IBM Plex Mono',monospace">${p.patientId.substring(0, 8)}...</div>
           </td>
           <td style="font-weight:bold">${p.total.toFixed(2)}</td>
           <td style="color:var(--green);font-weight:bold">${p.paid.toFixed(2)}</td>
@@ -300,13 +335,13 @@ const BillingEngine = {
     }
   },
 
-  openPatientLedger: function(patientId) {
+  openPatientLedger: function (patientId) {
     this.activePatientId = patientId;
     const pts = this._patientsRef || {};
-    
+
     let patName = 'مريض غير معروف';
     let patPhone = '';
-    
+
     if (pts[patientId]) {
       patName = pts[patientId].info?.name;
       patPhone = pts[patientId].info?.phone;
@@ -317,18 +352,18 @@ const BillingEngine = {
         patPhone = inv.patientPhone || '';
       }
     }
-    
+
     document.getElementById('blPatName').textContent = patName;
     document.getElementById('blPatUID').textContent = 'UID: ' + patientId;
-    
+
     const waBtn = document.getElementById('blWaBtn');
     if (waBtn) {
       if (patPhone) {
         waBtn.style.display = 'flex';
         waBtn.onclick = () => {
           let num = patPhone.replace(/\D/g, '');
-          if(num.startsWith('07')) num = '962' + num.substring(1);
-          
+          if (num.startsWith('07')) num = '962' + num.substring(1);
+
           const rem = this.calculatePatientFinancials(patientId);
           if (rem.unpaid <= 0) {
             alert('المريض لا يملك ذمم مسجلة.');
@@ -337,8 +372,8 @@ const BillingEngine = {
 
           const msg = encodeURIComponent(`السلام عليكم السيد/ة ${patName}،\nنود تذكيركم بوجود رصيد مستحق بقيمة ${rem.unpaid.toFixed(2)} دينار.\nيرجى مراجعة العيادة لتسوية الرصيد.\nشكراً لتعاونكم.`);
           window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
-          
-          if(typeof ArgonCore !== 'undefined') ArgonCore.logAudit('WA_REMINDER', `إرسال تذكير مالي للمريض ${patName}`, 'BILLING');
+
+          if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('WA_REMINDER', `إرسال تذكير مالي للمريض ${patName}`, 'BILLING');
         };
       } else {
         waBtn.style.display = 'none';
@@ -349,7 +384,7 @@ const BillingEngine = {
     document.getElementById('billingModal').style.display = 'flex';
   },
 
-  renderPatientLedger: function(patientId) {
+  renderPatientLedger: function (patientId) {
     const fin = this.calculatePatientFinancials(patientId);
     document.getElementById('blLedgerTotal').textContent = fin.total.toFixed(2);
     document.getElementById('blLedgerPaid').textContent = fin.paid.toFixed(2);
@@ -357,17 +392,17 @@ const BillingEngine = {
 
     const invBody = document.getElementById('blInvoicesBody');
     let invHtml = '';
-    
+
     const pInvoices = Object.entries(this._invoices)
       .filter(([k, inv]) => inv.patientId === patientId)
       .sort((a, b) => (b[1].createdAt || '').localeCompare(a[1].createdAt || ''));
 
     pInvoices.forEach(([k, inv]) => {
-      const total = typeof inv.totalMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(inv.totalMinor) : (inv.totalMinor/1000)) : (parseFloat(inv.total) || 0);
+      const total = parseFloat(inv.total) || 0;
       const paid = this.calculateInvoicePaid(k);
       const remaining = parseFloat((total - paid).toFixed(2));
       const dateStr = inv.createdAt ? new Date(inv.createdAt).toLocaleString('ar-JO') : '\u2014';
-      
+
       // Categorize items by department
       const cats = { consult: [], lab: [], rad: [], pharm: [], other: [] };
       (inv.items || []).forEach(i => {
@@ -381,20 +416,19 @@ const BillingEngine = {
 
       const renderCat = (icon, label, color, items) => {
         if (!items.length) return '';
-        const sub = items.reduce((a, i) => a + (typeof i.unitPriceMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(i.unitPriceMinor) : (i.unitPriceMinor/1000)) : (parseFloat(i.price) || 0)), 0);
+        const sub = items.reduce((a, i) => a + (parseFloat(i.price) || 0), 0);
         return `<div style="margin-bottom:6px">
           <div style="font-size:0.72rem;font-weight:800;color:${color};margin-bottom:3px">${icon} ${label}</div>
           ${items.map(i => {
-            const isPending = i.requiresBillingReview;
-            const itemBg = isPending ? 'rgba(239,68,68,0.1)' : 'rgba(0,0,0,0.02)';
-            const itemBorder = isPending ? '1px solid rgba(239,68,68,0.3)' : '1px solid var(--border)';
-            const itemPrice = typeof i.unitPriceMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(i.unitPriceMinor) : (i.unitPriceMinor/1000)) : (parseFloat(i.price) || 0);
-            const priceHtml = isPending ? `<span style="color:var(--red);font-size:0.65rem;font-weight:bold">⚠️ قيد المراجعة</span>` : `<span style="font-family:'IBM Plex Mono',monospace;font-weight:bold;color:${color};font-size:0.78rem">${itemPrice.toFixed(2)}</span>`;
-            return `<div style="display:flex;justify-content:space-between;align-items:center;background:${itemBg};padding:2px 6px;border-radius:4px;border:${itemBorder};margin-bottom:2px">
+          const isPending = i.requiresBillingReview;
+          const itemBg = isPending ? 'rgba(239,68,68,0.1)' : 'rgba(0,0,0,0.02)';
+          const itemBorder = isPending ? '1px solid rgba(239,68,68,0.3)' : '1px solid var(--border)';
+          const priceHtml = isPending ? `<span style="color:var(--red);font-size:0.65rem;font-weight:bold">⚠️ قيد المراجعة</span>` : `<span style="font-family:'IBM Plex Mono',monospace;font-weight:bold;color:${color};font-size:0.78rem">${parseFloat(i.price).toFixed(2)}</span>`;
+          return `<div style="display:flex;justify-content:space-between;align-items:center;background:${itemBg};padding:2px 6px;border-radius:4px;border:${itemBorder};margin-bottom:2px">
               <span style="font-size:0.78rem;${isPending ? 'color:var(--red)' : ''}">${BillingEngine.sanitize(i.name)}</span>
               ${priceHtml}
             </div>`;
-          }).join('')}
+        }).join('')}
           <div style="text-align:left;font-size:0.68rem;color:var(--muted);font-family:'IBM Plex Mono',monospace">مجموع: ${sub.toFixed(2)} د.أ</div>
         </div>`;
       };
@@ -423,7 +457,7 @@ const BillingEngine = {
         </tr>
       `;
     });
-    
+
     invBody.innerHTML = invHtml || '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u0637\u0627\u0644\u0628\u0627\u062a</td></tr>';
 
     const payBody = document.getElementById('blPaymentsBody');
@@ -440,7 +474,7 @@ const BillingEngine = {
       const isRev = tx.type === 'REVERSAL';
       const color = isRev ? 'var(--red)' : 'var(--green)';
       const sign = isRev ? '-' : '+';
-      
+
       payHtml += `
         <tr>
           <td style="font-size:0.75rem">
@@ -457,7 +491,7 @@ const BillingEngine = {
   },
 
   // ── ENTERPRISE PRINT INVOICE (JOFOTARA-Ready) ──
-  printPatientInvoice: function() {
+  printPatientInvoice: function () {
     const pid = this.activePatientId;
     if (!pid) return;
 
@@ -490,13 +524,12 @@ const BillingEngine = {
         else if (n.includes('\u062a\u062d\u0644\u064a\u0644') || n.includes('lab')) dept = '\u0645\u062e\u062a\u0628\u0631';
         else if (n.includes('\u062a\u0635\u0648\u064a\u0631') || n.includes('\u0623\u0634\u0639\u0629') || n.includes('rad')) dept = '\u0623\u0634\u0639\u0629';
         else if (n.includes('\u0635\u064a\u062f\u0644') || n.includes('\u062f\u0648\u0627\u0621') || n.includes('pharm')) dept = '\u0635\u064a\u062f\u0644\u064a\u0629';
-        const itemPrice = typeof i.unitPriceMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(i.unitPriceMinor) : (i.unitPriceMinor/1000)) : (parseFloat(i.price) || 0);
-        allItems.push({ idx: counter++, name: BillingEngine.sanitize(i.name), dept, price: itemPrice });
+        allItems.push({ idx: counter++, name: BillingEngine.sanitize(i.name), dept, price: parseFloat(i.price) || 0 });
       });
     });
 
-    const dateNow = new Date().toLocaleDateString('ar-JO', { year:'numeric', month:'2-digit', day:'2-digit' });
-    const timeNow = new Date().toLocaleTimeString('ar-JO', { hour:'2-digit', minute:'2-digit' });
+    const dateNow = new Date().toLocaleDateString('ar-JO', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    const timeNow = new Date().toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
     const invNum = 'INV-' + (pid || '').substring(0, 8).toUpperCase();
 
     const rowsHtml = allItems.map(i => `
@@ -538,7 +571,7 @@ thead th{padding:10px;font-weight:700;font-size:0.85rem}
 <body><div class="inv">
 <div class="hdr"><div class="hdr-right">${logoHtml}<div><h1>${BillingEngine.sanitize(clinicName)}</h1><p style="color:#64748b;font-size:0.85rem">${BillingEngine.sanitize(clinicAddr)}</p><p style="color:#64748b;font-size:0.85rem">\u0647\u0627\u062a\u0641: <span dir="ltr">${BillingEngine.sanitize(clinicPhone)}</span></p></div></div>
 <div class="hdr-left"><h2>\u0641\u0627\u062a\u0648\u0631\u0629 \u0637\u0628\u064a\u0629</h2><p style="color:#64748b;font-size:0.85rem">\u0631\u0642\u0645: ${invNum}</p><p style="color:#64748b;font-size:0.85rem">\u0627\u0644\u062a\u0627\u0631\u064a\u062e: ${dateNow}</p><p style="color:#64748b;font-size:0.85rem">\u0627\u0644\u0648\u0642\u062a: ${timeNow}</p></div></div>
-<div class="pat-box"><div><b>\u0627\u0633\u0645 \u0627\u0644\u0645\u0631\u064a\u0636:</b> ${BillingEngine.sanitize(patName)}</div><div><b>\u0627\u0644\u0647\u0627\u062a\u0641:</b> <span dir="ltr">${BillingEngine.sanitize(patPhone)}</span></div><div><b>\u0627\u0644\u0631\u0642\u0645 \u0627\u0644\u0648\u0637\u0646\u064a:</b> ${BillingEngine.sanitize(patNID) || '\u2014'}</div><div><b>\u0631\u0642\u0645 \u0627\u0644\u0645\u0644\u0641:</b> <span dir="ltr" style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem">${(pid||'').substring(0,12)}</span></div></div>
+<div class="pat-box"><div><b>\u0627\u0633\u0645 \u0627\u0644\u0645\u0631\u064a\u0636:</b> ${BillingEngine.sanitize(patName)}</div><div><b>\u0627\u0644\u0647\u0627\u062a\u0641:</b> <span dir="ltr">${BillingEngine.sanitize(patPhone)}</span></div><div><b>\u0627\u0644\u0631\u0642\u0645 \u0627\u0644\u0648\u0637\u0646\u064a:</b> ${BillingEngine.sanitize(patNID) || '\u2014'}</div><div><b>\u0631\u0642\u0645 \u0627\u0644\u0645\u0644\u0641:</b> <span dir="ltr" style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem">${(pid || '').substring(0, 12)}</span></div></div>
 <table><thead><tr><th>#</th><th>\u0627\u0644\u0628\u064a\u0627\u0646</th><th>\u0627\u0644\u0642\u0633\u0645</th><th>\u0627\u0644\u0643\u0645\u064a\u0629</th><th>\u0627\u0644\u0633\u0639\u0631 (\u062f.\u0623)</th><th>\u0627\u0644\u0645\u062c\u0645\u0648\u0639 (\u062f.\u0623)</th></tr></thead><tbody>${rowsHtml}</tbody></table>
 <div class="summary"><div class="summary-box">
 <div class="summary-row"><span>\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a</span><span style="font-family:'IBM Plex Mono',monospace">${fin.total.toFixed(2)} \u062f.\u0623</span></div>
@@ -553,7 +586,7 @@ thead th{padding:10px;font-weight:700;font-size:0.85rem}
     if (win) { win.document.write(printHtml); win.document.close(); }
   },
 
-  sanitize: function(s) {
+  sanitize: function (s) {
     return String(s || '').replace(/[<>"']/g, '').trim();
   }
 };
@@ -568,7 +601,7 @@ function recordBillingPayment() {
   const reason = reasonInput.value.trim();
 
   if (isNaN(amount) || amount <= 0) {
-    if(typeof toast !== 'undefined') toast('⚠️ يرجى إدخال مبلغ صحيح', 'err');
+    if (typeof toast !== 'undefined') toast('⚠️ يرجى إدخال مبلغ صحيح', 'err');
     return;
   }
 
@@ -578,13 +611,13 @@ function recordBillingPayment() {
 
   let totalUnallocated = 0;
   pInvoices.forEach(([_, inv]) => {
-    const t = typeof inv.totalMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(inv.totalMinor) : (inv.totalMinor/1000)) : (parseFloat(inv.total) || 0);
+    const t = parseFloat(inv.total) || 0;
     const p = BillingEngine.calculateInvoicePaid(_);
     totalUnallocated += (t - p);
   });
 
   if (amount > totalUnallocated) {
-    if(typeof toast !== 'undefined') toast('⛔ مرفوض: المبلغ يتجاوز الرصيد المستحق (يمنع الرصيد السالب). المستحق: ' + totalUnallocated.toFixed(2), 'err');
+    if (typeof toast !== 'undefined') toast('⛔ مرفوض: المبلغ يتجاوز الرصيد المستحق (يمنع الرصيد السالب). المستحق: ' + totalUnallocated.toFixed(2), 'err');
     return;
   }
 
@@ -598,7 +631,7 @@ function recordBillingPayment() {
     if (remainingPayment <= 0) break;
 
     const [invId, inv] = pInvoices[i];
-    const total = typeof inv.totalMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(inv.totalMinor) : (inv.totalMinor/1000)) : (parseFloat(inv.total) || 0);
+    const total = parseFloat(inv.total) || 0;
     const paid = BillingEngine.calculateInvoicePaid(invId);
     const unallocated = total - paid;
 
@@ -614,7 +647,7 @@ function recordBillingPayment() {
         timestamp: timestamp,
         actorId: session.staffId || 'unknown'
       };
-      
+
       // Strict Invoice Lock Policy: If fully paid, lock the invoice
       if (Math.abs(unallocated - allocAmount) < 0.01) {
         updates[`${BASE}/invoices/${invId}/status`] = 'paid';
@@ -627,16 +660,16 @@ function recordBillingPayment() {
   }
 
   db.ref().update(updates).then(() => {
-    if(typeof toast !== 'undefined') toast('✅ تم تسجيل وتوثيق الدفعة بنجاح', 'ok');
+    if (typeof toast !== 'undefined') toast('✅ تم تسجيل وتوثيق الدفعة بنجاح', 'ok');
     amountInput.value = '';
     reasonInput.value = '';
-    
-    if(typeof ArgonCore !== 'undefined') {
+
+    if (typeof ArgonCore !== 'undefined') {
       const pName = document.getElementById('blPatName').textContent;
       ArgonCore.logAudit('PAYMENT_RECORD', `استلام مبلغ ${amount} من المريض ${pName}`, 'BILLING');
     }
   }).catch(e => {
-    if(typeof toast !== 'undefined') toast('❌ حدث خطأ أثناء توثيق الدفعة', 'err');
+    if (typeof toast !== 'undefined') toast('❌ حدث خطأ أثناء توثيق الدفعة', 'err');
     console.error(e);
   });
 }
@@ -766,11 +799,11 @@ function savePricingItem() {
   }
 
   const ref = key ? db.ref(`${BASE}/pricing_catalog/${key}`) : db.ref(`${BASE}/pricing_catalog`).push();
-  
+
   ref.set(itemData).then(() => {
     toast(key ? '✅ تم تحديث السعر بنجاح' : '✅ تم إضافة الخدمة وتسعيرها بنجاح', 'ok');
     document.getElementById('pricingModal').style.display = 'none';
-    
+
     if (!key && typeof ArgonCore !== 'undefined') {
       ArgonCore.logAudit('PRICE_ADD', `إضافة خدمة جديدة "${name}" بسعر ${price} د.أ`, 'BILLING');
     }
@@ -783,7 +816,7 @@ function savePricingItem() {
 function togglePricingItem(key, newState) {
   const item = _pricingCatalog[key];
   if (!item) return;
-  
+
   db.ref(`${BASE}/pricing_catalog/${key}/active`).set(newState === 'true' || newState === true).then(() => {
     toast(newState ? '✅ تم تفعيل الخدمة' : '⏸️ تم تعطيل الخدمة', 'ok');
     if (typeof ArgonCore !== 'undefined') {
@@ -811,44 +844,6 @@ function renderReceivables() {
     BillingEngine.renderReceivables();
   }
 }
-
-
-// ── IMMUTABLE AUDIT LOGIC (ZERO-ERROR) ──
-window.voidInvoice = function(invoiceId, reason) {
-  if (!invoiceId) return;
-  if (!reason || reason.trim().length < 5) {
-    if(typeof toast === 'function') toast('يرجى إدخال سبب مقنع لإلغاء الفاتورة (5 أحرف على الأقل).', 'err');
-    return;
-  }
-  if (!confirm('تحذير: إلغاء الفاتورة سيجعلها غير صالحة ولا يمكن التراجع عن هذا الإجراء. هل أنت متأكد؟')) return;
-
-  const session = window.ArgonSession ? window.ArgonSession.get() : {};
-  const updates = {};
-  updates[`${BASE}/invoices/${invoiceId}/status`] = 'voided';
-  updates[`${BASE}/invoices/${invoiceId}/voidReason`] = reason;
-  updates[`${BASE}/invoices/${invoiceId}/voidedBy`] = session.staffId || 'unknown';
-  updates[`${BASE}/invoices/${invoiceId}/voidedAt`] = new Date().toISOString();
-
-  // Create an offset transaction for accounting reconciliation
-  const txId = db.ref().child('financial_transactions').push().key;
-  updates[`${BASE}/financial_transactions/${txId}`] = {
-    invoiceId: invoiceId,
-    type: 'VOID_OFFSET',
-    reason: reason,
-    timestamp: new Date().toISOString(),
-    actorId: session.staffId || 'unknown'
-  };
-
-  db.ref().update(updates).then(() => {
-    if (typeof toast === 'function') toast('✅ تم إلغاء الفاتورة بنجاح', 'ok');
-    if (typeof ArgonCore !== 'undefined') {
-      ArgonCore.logAudit('INVOICE_VOIDED', `تم إلغاء الفاتورة ${invoiceId} بسبب: ${reason}`, 'BILLING');
-    }
-  }).catch(e => {
-    if (typeof toast === 'function') toast('❌ حدث خطأ أثناء الإلغاء', 'err');
-    console.error(e);
-  });
-};
 
 // Hook into Dashboard initialization
 document.addEventListener('DOMContentLoaded', () => {

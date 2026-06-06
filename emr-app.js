@@ -44,6 +44,90 @@ window.AuditAPI = {
   }
 };
 
+// ── RECENT PATIENTS TRACKING (LOCAL STORAGE) ──
+function trackRecentPatient(patientId, name, phone) {
+  const session = window.ArgonSession ? ArgonSession.get() : {};
+  const doctorId = session?.staffId || 'unknown';
+  const key = `argon_recent_patients_${doctorId}`;
+  
+  let recent = JSON.parse(localStorage.getItem(key) || '[]');
+  
+  // Remove if exists
+  recent = recent.filter(p => p.patientId !== patientId);
+  
+  // Add to start
+  recent.unshift({
+    patientId: patientId,
+    name: name,
+    phone: phone || '',
+    openedAt: Date.now()
+  });
+  
+  // Keep only 10
+  if (recent.length > 10) recent = recent.slice(0, 10);
+  
+  localStorage.setItem(key, JSON.stringify(recent));
+}
+
+function toggleRecentPatientsDropdown() {
+  const dd = document.getElementById('recentPatientsDropdown');
+  if (!dd) return;
+  if (dd.style.display === 'none') {
+    renderRecentPatientsDropdown();
+    dd.style.display = 'block';
+  } else {
+    dd.style.display = 'none';
+  }
+}
+
+function renderRecentPatientsDropdown() {
+  const dd = document.getElementById('recentPatientsDropdown');
+  if (!dd) return;
+  
+  const session = window.ArgonSession ? ArgonSession.get() : {};
+  const doctorId = session?.staffId || 'unknown';
+  const key = `argon_recent_patients_${doctorId}`;
+  const recent = JSON.parse(localStorage.getItem(key) || '[]');
+  
+  if (recent.length === 0) {
+    dd.innerHTML = `<div style="padding:20px;text-align:center;color:var(--muted)">لا يوجد ملفات تم فتحها مؤخراً</div>`;
+    return;
+  }
+  
+  let html = `<div style="padding:12px; border-bottom:1px solid var(--border); font-weight:bold; color:var(--teal)">أحدث 10 ملفات تم فتحها</div>`;
+  html += `<div style="display:flex; flex-direction:column; gap:4px; padding:8px;">`;
+  
+  recent.forEach(p => {
+    const timeAgoMs = Date.now() - p.openedAt;
+    const timeAgoMins = Math.floor(timeAgoMs / 60000);
+    const timeStr = timeAgoMins === 0 ? 'الآن' : timeAgoMins < 60 ? `منذ ${timeAgoMins} دقيقة` : `منذ ${Math.floor(timeAgoMins/60)} ساعة`;
+    
+    html += `
+      <div onclick="toggleRecentPatientsDropdown(); viewPatientFile('${p.patientId}')" style="display:flex; align-items:center; padding:10px 12px; border-radius:8px; cursor:pointer; background:rgba(0,0,0,0.02); transition:all 0.2s;" onmouseover="this.style.background='rgba(13,148,136,0.1)'" onmouseout="this.style.background='rgba(0,0,0,0.02)'">
+        <div style="flex:1;">
+          <div style="font-weight:700; color:#000;">${p.name}</div>
+          <div style="font-size:0.75rem; color:var(--muted);">${p.phone || 'بدون هاتف'}</div>
+        </div>
+        <div style="font-size:0.7rem; color:var(--teal); background:rgba(13,148,136,0.1); padding:2px 6px; border-radius:6px;">${timeStr}</div>
+      </div>
+    `;
+  });
+  
+  html += `</div>`;
+  dd.innerHTML = html;
+}
+
+// Close dropdown if clicked outside
+document.addEventListener('click', (e) => {
+  const dd = document.getElementById('recentPatientsDropdown');
+  if (dd && dd.style.display === 'block') {
+    const isClickInside = dd.contains(e.target) || e.target.closest('button[onclick="toggleRecentPatientsDropdown()"]');
+    if (!isClickInside) {
+      dd.style.display = 'none';
+    }
+  }
+});
+
 // ── SOFT LOCK CLEANUP ON TAB CLOSE ──
 window.addEventListener('beforeunload', () => {
   if (window.EMRContext && window.EMRContext.activePatientId && typeof BASE !== 'undefined') {
@@ -236,16 +320,16 @@ function initEMR() {
 
       const targetId = urlPid || urlPhone;
       if (targetId && _patients[targetId] && !window._pendingUrlBk) {
-        
+
         // ── ARGON ENTERPRISE: Block Legacy Poisoned Links from Old Dashboard Tabs ──
         const targetNid = typeof ArgonNID !== 'undefined' ? ArgonNID.cleanNID(urlParams.get('nid') || '') : '';
         const actualNid = typeof ArgonNID !== 'undefined' ? ArgonNID.cleanNID(_patients[targetId].info?.nationalId || '') : '';
-        
+
         if (targetNid && actualNid && targetNid !== actualNid) {
-           toast('🚨 تحذير أمني: تعارض بين الرقم الوطني في رابط الدخول وملف المريض المرتبط. تم إيقاف الدخول التلقائي لحماية السجلات.', 'err');
-           if (typeof logAudit === 'function') logAudit('CRITICAL_NID_MISMATCH', `منع فتح ملف المريض المباشر بسبب تعارض الرقم الوطني. مطلوب:${targetNid} | موجود:${actualNid}`, 'EMR');
-           window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
-           return; // Block the automatic open
+          toast('🚨 تحذير أمني: تعارض بين الرقم الوطني في رابط الدخول وملف المريض المرتبط. تم إيقاف الدخول التلقائي لحماية السجلات.', 'err');
+          if (typeof logAudit === 'function') logAudit('CRITICAL_NID_MISMATCH', `منع فتح ملف المريض المباشر بسبب تعارض الرقم الوطني. مطلوب:${targetNid} | موجود:${actualNid}`, 'EMR');
+          window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
+          return; // Block the automatic open
         }
 
         viewPatientFile(targetId);
@@ -295,13 +379,13 @@ function initEMR() {
     // Debounce the patient list filter so it renders correctly after the initial batch of bookings arrives
     clearTimeout(bookingLoadTimer);
     bookingLoadTimer = setTimeout(() => {
-       filterPatients();
-       // ── ARGON ENTERPRISE: Process pending dashboard link ──
-       if (window._pendingUrlBk && _liveBookings[window._pendingUrlBk] && Object.keys(_patients).length > 0) {
-           openPatientFromBooking(window._pendingUrlBk);
-           window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
-           window._pendingUrlBk = null;
-       }
+      filterPatients();
+      // ── ARGON ENTERPRISE: Process pending dashboard link ──
+      if (window._pendingUrlBk && _liveBookings[window._pendingUrlBk] && Object.keys(_patients).length > 0) {
+        openPatientFromBooking(window._pendingUrlBk);
+        window.history.replaceState({}, document.title, window.location.pathname + '?id=' + CID);
+        window._pendingUrlBk = null;
+      }
     }, 300);
   });
   db.ref(BASE + '/bookings').on('child_changed', snap => {
@@ -348,7 +432,7 @@ function initEMR() {
                 // Play a subtle notification chime
                 const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
                 audio.play().catch(e => console.log('Audio autoplay blocked'));
-              } catch (e) {}
+              } catch (e) { }
             }
           }
         }
@@ -363,7 +447,7 @@ function initEMR() {
     _myNotifications = [];
     renderDoctorNotifications();
     toast('✅ تم مسح الإشعارات بنجاح', 'ok');
-    
+
     const badge = document.getElementById('notifBadge');
     if (badge) badge.style.display = 'none';
   };
@@ -668,7 +752,7 @@ function renderPatientsList(entries) {
     const ageStr = info.age ? `${info.age} سنة` : '';
     const genderStr = info.gender || '';
     const ageGender = [ageStr, genderStr].filter(Boolean).join(' · ');
-        const _nidStatus = ArgonNID.isValidNID(info.nationalId || '')
+    const _nidStatus = ArgonNID.isValidNID(info.nationalId || '')
       ? `<span style="
            font-size:10px;color:var(--teal,#0d9488);font-family:monospace;
            background:rgba(13,148,136,.08);padding:1px 7px;border-radius:5px;
@@ -844,40 +928,40 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
   const rawUid = booking.patientId || booking.patPhone;
   const bookingName = (booking.patName || '').trim();
 
-// B4-A: استخراج NID من بيانات الحجز
-const _bNID = ArgonNID.cleanNID(
-  booking.patNationalId || booking.nationalId || ''
-);
+  // B4-A: استخراج NID من بيانات الحجز
+  const _bNID = ArgonNID.cleanNID(
+    booking.patNationalId || booking.nationalId || ''
+  );
 
-// B4-B: إذا في NID في الحجز ← بحث مباشر وسريع بدون Firebase
-if (ArgonNID.isValidNID(_bNID)) {
-  const nidMatches = Object.entries(_patients).filter(([uid, p]) => ArgonNID.cleanNID(p.info?.nationalId||'') === _bNID);
-  
-  if (nidMatches.length > 1) {
-    // ── ARGON ENTERPRISE: CRITICAL NID DUPLICATE DETECTION ──
-    toast('🚨 خطأ أمني: يوجد أكثر من ملف طبي يحمل نفس الرقم الوطني. تم إيقاف الدخول لحماية السجلات.', 'err');
-    if (typeof logAudit === 'function') {
-      logAudit('CRITICAL_NID_DUPLICATE_DETECTION', `تم إيقاف الدخول لملف المريض من الحجز. تطابق الرقم الوطني (${_bNID}) لعدة مرضى.`, 'EMR');
+  // B4-B: إذا في NID في الحجز ← بحث مباشر وسريع بدون Firebase
+  if (ArgonNID.isValidNID(_bNID)) {
+    const nidMatches = Object.entries(_patients).filter(([uid, p]) => ArgonNID.cleanNID(p.info?.nationalId || '') === _bNID);
+
+    if (nidMatches.length > 1) {
+      // ── ARGON ENTERPRISE: CRITICAL NID DUPLICATE DETECTION ──
+      toast('🚨 خطأ أمني: يوجد أكثر من ملف طبي يحمل نفس الرقم الوطني. تم إيقاف الدخول لحماية السجلات.', 'err');
+      if (typeof logAudit === 'function') {
+        logAudit('CRITICAL_NID_DUPLICATE_DETECTION', `تم إيقاف الدخول لملف المريض من الحجز. تطابق الرقم الوطني (${_bNID}) لعدة مرضى.`, 'EMR');
+      }
+      return; // أوقف الفتح بالكامل — يحتاج مراجعة إدارية
+    } else if (nidMatches.length === 1) {
+      const _nidHit = { uid: nidMatches[0][0], info: nidMatches[0][1].info || {} };
+      // ✅ EXACT فوري — فتح مباشر
+      if (window.ArgonMedical?.ShadowLog?.log) {
+        window.ArgonMedical.ShadowLog.log(CID, {
+          result: 'EXACT', confidence: 1.0,
+          matchedId: _nidHit.uid, matchedName: _nidHit.info.name,
+          reason: '🔒 NID direct hit from booking — instant open, zero ambiguity'
+        }, {
+          source: 'doctor_wr_nid_direct',
+          userId: (ArgonSession.get() || {}).staffId || ''
+        }, db);
+      }
+      if (startVisit) { sw('newVisit'); loadVisitForm(_nidHit.uid, bookingKey); }
+      else { viewPatientFile(_nidHit.uid); sw('patFile'); }
+      return; // ← أوقف كل المنطق الآخر
     }
-    return; // أوقف الفتح بالكامل — يحتاج مراجعة إدارية
-  } else if (nidMatches.length === 1) {
-    const _nidHit = { uid: nidMatches[0][0], info: nidMatches[0][1].info || {} };
-    // ✅ EXACT فوري — فتح مباشر
-    if (window.ArgonMedical?.ShadowLog?.log) {
-      window.ArgonMedical.ShadowLog.log(CID, {
-        result: 'EXACT', confidence: 1.0,
-        matchedId: _nidHit.uid, matchedName: _nidHit.info.name,
-        reason: '🔒 NID direct hit from booking — instant open, zero ambiguity'
-      }, {
-        source: 'doctor_wr_nid_direct',
-        userId: (ArgonSession.get()||{}).staffId || ''
-      }, db);
-    }
-    if (startVisit) { sw('newVisit'); loadVisitForm(_nidHit.uid, bookingKey); }
-    else             { viewPatientFile(_nidHit.uid); sw('patFile'); }
-    return; // ← أوقف كل المنطق الآخر
   }
-}
   const bookingPhone = booking.patPhone || rawUid;
 
   if (!rawUid) {
@@ -898,8 +982,10 @@ if (ArgonNID.isValidNID(_bNID)) {
     await window.ArgonMedical.ShadowLog.log(
       CID,
       matchResult,
-      { source: "doctor_waiting_room", userId: currentDoctorId,
-        incoming: { name: bookingName, phone: bookingPhone } },
+      {
+        source: "doctor_waiting_room", userId: currentDoctorId,
+        incoming: { name: bookingName, phone: bookingPhone }
+      },
       db
     );
 
@@ -917,7 +1003,7 @@ if (ArgonNID.isValidNID(_bNID)) {
       }
       if (matchResult.result === "POSSIBLE") {
         // أضف البيانات الواردة للنتيجة حتى تظهر في نافذة المقارنة
-        matchResult._incomingName  = bookingName;
+        matchResult._incomingName = bookingName;
         matchResult._incomingPhone = booking.patPhone || rawUid;
 
         window.ArgonMedical.showMatchDialog(
@@ -932,7 +1018,7 @@ if (ArgonNID.isValidNID(_bNID)) {
               sw('patFile');
             }
             // اربط الحجز بالملف الصحيح
-            db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(existingId).catch(() => {});
+            db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(existingId).catch(() => { });
           },
           // 👨👩👧 المستخدم قال: فرد عائلة جديد — سكمّل المنطق القديم
           () => {
@@ -949,15 +1035,15 @@ if (ArgonNID.isValidNID(_bNID)) {
   if (booking.patientId && _patients[booking.patientId]) {
     const pInfo = _patients[booking.patientId].info || {};
     const patName = (pInfo.name || '').trim().toLowerCase();
-    
+
     // ── ARGON ENTERPRISE: Strict NID Conflict Check ──
     const patNID = ArgonNID.cleanNID(pInfo.nationalId || '');
     let isPoisoned = false;
-    
+
     if (_bNID && patNID && _bNID !== patNID) {
-        isPoisoned = true;
-        toast('🚨 تحذير أمني: تعارض جذري بين الرقم الوطني للحجز والملف المرتبط به. تم إيقاف الدخول التلقائي.', 'err');
-        if (typeof logAudit === 'function') logAudit('CRITICAL_NID_MISMATCH', `منع فتح ملف المريض بسبب تعارض الرقم الوطني. حجز:${_bNID} | ملف:${patNID}`, 'EMR');
+      isPoisoned = true;
+      toast('🚨 تحذير أمني: تعارض جذري بين الرقم الوطني للحجز والملف المرتبط به. تم إيقاف الدخول التلقائي.', 'err');
+      if (typeof logAudit === 'function') logAudit('CRITICAL_NID_MISMATCH', `منع فتح ملف المريض بسبب تعارض الرقم الوطني. حجز:${_bNID} | ملف:${patNID}`, 'EMR');
     }
 
     // Strict Check: If names are radically different, the booking system mistakenly linked them due to a shared phone
@@ -991,7 +1077,7 @@ if (ArgonNID.isValidNID(_bNID)) {
   if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
     toast('⚠️ لا يمكن مطابقة ملف المريض تلقائياً بدون رقم وطني مؤكد. يرجى طلب تحديث بيانات المريض من الاستقبال أو البحث يدوياً.', 'err');
     if (window.ArgonMedical && window.ArgonMedical.ShadowLog) {
-      window.ArgonMedical.ShadowLog.log(CID, {result: "BLOCKED", reason: "Zero auto-merge policy enforced. Missing NID."}, {source: "doctor_wr_fallback", incoming: {name: bookingName}}, db);
+      window.ArgonMedical.ShadowLog.log(CID, { result: "BLOCKED", reason: "Zero auto-merge policy enforced. Missing NID." }, { source: "doctor_wr_fallback", incoming: { name: bookingName } }, db);
     }
     return;
   }
@@ -1014,10 +1100,10 @@ if (ArgonNID.isValidNID(_bNID)) {
       // ✅ الطبيب اختار المريض يدوياً بناءً على الهوية الصريحة
       if (typeof BASE !== 'undefined' && bookingKey && !bookingKey.includes('walkin')) {
         // نحدث الحجز بالمعرف الصحيح لتأكيد الربط
-        db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(selectedUid).catch(()=>{});
+        db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(selectedUid).catch(() => { });
       }
       if (startVisit) { sw('newVisit'); loadVisitForm(selectedUid, bookingKey); }
-      else            { viewPatientFile(selectedUid); sw('patFile'); }
+      else { viewPatientFile(selectedUid); sw('patFile'); }
     });
     return;
   }
@@ -1028,13 +1114,13 @@ if (ArgonNID.isValidNID(_bNID)) {
     const foundInfo = _patients[matched[0][0]]?.info || {};
     const foundName = (foundInfo.name || '').trim().toLowerCase();
     const incomingName = bookingName.toLowerCase();
-    
+
     const normalize = s => s.replace(/\s+/g, ' ').trim().split(' ')[0];
     const firstName1 = normalize(foundName);
     const firstName2 = normalize(incomingName);
-    
+
     const namesMatch = !firstName1 || !firstName2 || firstName1 === firstName2;
-    
+
     if (namesMatch) {
       if (startVisit) { sw('newVisit'); loadVisitForm(matched[0][0], bookingKey); }
       else { viewPatientFile(matched[0][0]); sw('patFile'); }
@@ -1043,7 +1129,7 @@ if (ArgonNID.isValidNID(_bNID)) {
       // الاسم مختلف — لا نفتح تلقائياً، نعرض selector
       showDoctorProfileSelector(matched, bookingName || phone, (selectedUid) => {
         if (typeof BASE !== 'undefined' && bookingKey && !bookingKey.includes('walkin')) {
-          db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(selectedUid).catch(() => {});
+          db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(selectedUid).catch(() => { });
         }
         if (startVisit) { sw('newVisit'); loadVisitForm(selectedUid, bookingKey); }
         else { viewPatientFile(selectedUid); sw('patFile'); }
@@ -1061,13 +1147,13 @@ if (ArgonNID.isValidNID(_bNID)) {
  */
 async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = false) {
   const _legacyNID = ArgonNID.cleanNID(booking.patNationalId || booking.nationalId || '');
-  
+
   // ── ARGON ENTERPRISE: Block creation without NID ──
   if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
     if (!ArgonNID.isValidNID(_legacyNID)) {
       toast('⚠️ لا يمكن إنشاء ملف مريض جديد بدون رقم وطني (أو جواز سفر). يرجى إضافته من نافذة الحجز.', 'err');
       if (window.ArgonMedical && window.ArgonMedical.ShadowLog) {
-        window.ArgonMedical.ShadowLog.log(CID, {result: "BLOCKED", reason: "Missing NID for new file creation"}, {source: "legacy_booking_guard", incoming: {name: booking.patName}}, db);
+        window.ArgonMedical.ShadowLog.log(CID, { result: "BLOCKED", reason: "Missing NID for new file creation" }, { source: "legacy_booking_guard", incoming: { name: booking.patName } }, db);
       }
       return;
     }
@@ -1103,14 +1189,14 @@ async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = f
 
   const patObj = {
     info: {
-      name:       booking.patName || 'مريض',
-      phone:      cleanPhoneStr,
+      name: booking.patName || 'مريض',
+      phone: cleanPhoneStr,
       nationalId: booking.patNationalId || booking.nationalId || '',
-      age:        booking.patAge ? parseInt(booking.patAge) : null,
-      gender:     booking.patGender || '',
-      mrn:        'MRN-' + Math.floor(100000 + Math.random() * 900000),
-      createdAt:  new Date().toISOString(),
-      createdBy:  loggedInDoctorId
+      age: booking.patAge ? parseInt(booking.patAge) : null,
+      gender: booking.patGender || '',
+      mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
+      createdAt: new Date().toISOString(),
+      createdBy: loggedInDoctorId
     }
   };
 
@@ -1200,7 +1286,7 @@ function saveEditPatient() {
   const name = document.getElementById('epName').value.trim();
   const phone = cleanPhone(document.getElementById('epPhone').value);
   const nationalId = document.getElementById('epNationalId').value.trim();
-  const _dob_ep    = (document.getElementById('epDob')?.value || '').trim();
+  const _dob_ep = (document.getElementById('epDob')?.value || '').trim();
   const _dobChk_ep = _dob_ep ? window.ArgonValidateDOB(_dob_ep) : { ok: true };
   if (_dob_ep && !_dobChk_ep.ok) {
     toast('⚠️ ' + _dobChk_ep.msg, 'err');
@@ -1210,7 +1296,7 @@ function saveEditPatient() {
   const blood = document.getElementById('epBlood').value;
   const allergies = document.getElementById('epAllergies').value.trim().split(/[،,]/).map(s => s.trim()).filter(Boolean);
   const chronic = document.getElementById('epChronic').value.trim().split(/[،,]/).map(s => s.trim()).filter(Boolean);
-  
+
   const oldInfo = _patients[uid]?.info || {};
 
   // Wave 2 Diffing
@@ -1226,7 +1312,7 @@ function saveEditPatient() {
     const diffClinical = (oldArray, newStrings) => {
       const currentList = ArgonClinicalParser.getClinicalList(oldInfo, oldArray);
       const newValues = new Set(newStrings);
-      
+
       // 1. Mark missing as revoked
       currentList.forEach(item => {
         if (item.status === 'active' && !newValues.has(item.value)) {
@@ -1242,7 +1328,7 @@ function saveEditPatient() {
       newStrings.forEach(val => {
         if (!existingValues.has(val)) {
           currentList.push({
-            entryId: 'entry_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
+            entryId: 'entry_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
             schemaVersion: 2,
             sourceType: 'doctor_entry',
             value: val,
@@ -1297,7 +1383,7 @@ function saveEditPatient() {
   const protectedFields = ['name', 'phone', 'nationalId', 'dob', 'age'];
   const pendingIdentityChanges = {};
   let hasIdentityChanges = false;
-  
+
   if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
     protectedFields.forEach(field => {
       if (changes[field]) {
@@ -1344,7 +1430,7 @@ function saveEditPatient() {
     if (Object.keys(changes).length) {
       logAudit('EDIT_PATIENT', `تعديل بيانات سريرية للمريض (${uid})`, 'EMR');
     }
-    
+
     closeModal('editPatModal');
     if (activePatientId === uid) {
       viewPatientFile(uid);
@@ -1364,8 +1450,8 @@ async function saveNewPatient() {
   const name = document.getElementById('npName').value.trim();
   const phone = cleanPhone(document.getElementById('npPhone').value);
   const nationalId = document.getElementById('npNationalId').value.trim();
-  const _dob_np     = (document.getElementById('npDob')?.value || '').trim();
-  const _dobChk_np  = _dob_np ? window.ArgonValidateDOB(_dob_np) : { ok: true };
+  const _dob_np = (document.getElementById('npDob')?.value || '').trim();
+  const _dobChk_np = _dob_np ? window.ArgonValidateDOB(_dob_np) : { ok: true };
   const _calcAge_np = _dob_np ? window.ArgonCalcAge(_dob_np) : null;
   if (_dob_np && !_dobChk_np.ok) {
     toast('⚠️ ' + _dobChk_np.msg, 'err');
@@ -1506,28 +1592,28 @@ function generatePatientFileHTML(uid) {
   if (window.ArgonClinicalParser && window.ARGON_FEATURES && window.ARGON_FEATURES.ENABLE_CLINICAL_VERSIONING) {
     const algList = ArgonClinicalParser.getClinicalList(info, 'allergies');
     const chrList = ArgonClinicalParser.getClinicalList(info, 'chronicDiseases');
-    
+
     const resolveStaffName = (sId) => {
       if (!sId || sId === 'Legacy' || sId === 'unknown') return 'طبيب سابق';
       if (window.ArgonSession && ArgonSession.get()?.staffId === sId) return ArgonSession.get()?.displayName || 'طبيب';
       if (p.visits) {
-         for (const vk in p.visits) {
-            if (p.visits[vk].doctorId === sId && p.visits[vk].docName) return p.visits[vk].docName;
-         }
+        for (const vk in p.visits) {
+          if (p.visits[vk].doctorId === sId && p.visits[vk].docName) return p.visits[vk].docName;
+        }
       }
       return 'طبيب مختص';
     };
 
     allergiesHTML = algList.filter(a => a.status === 'active').map(a => `<span class="tag" style="padding: 4px 8px;" title="Added by: ${sanitize(a.addedBy || 'Legacy')}">${sanitize(a.value)} <span style="font-size:0.65rem; opacity:0.7; margin-right:4px;">(د. ${sanitize(resolveStaffName(a.addedBy))})</span></span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
     chronicHTML = chrList.filter(a => a.status === 'active').map(a => `<span class="tag blue" style="padding: 4px 8px;" title="Added by: ${sanitize(a.addedBy || 'Legacy')}">${sanitize(a.value)} <span style="font-size:0.65rem; opacity:0.7; margin-right:4px;">(د. ${sanitize(resolveStaffName(a.addedBy))})</span></span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
-    
+
     const revokedAlg = algList.filter(a => a.status === 'revoked');
     if (revokedAlg.length > 0) {
-       allergiesHTML += `<div style="font-size:10px; color:#94a3b8; margin-top:4px;">أبطلت: ` + revokedAlg.map(a => `<span style="text-decoration:line-through" title="Revoked by: ${sanitize(a.revokedBy)} - ${sanitize(a.reason)}">${sanitize(a.value)}</span> <span style="font-size:8px;">(د. ${sanitize(resolveStaffName(a.revokedBy))})</span>`).join(', ') + `</div>`;
+      allergiesHTML += `<div style="font-size:10px; color:#94a3b8; margin-top:4px;">أبطلت: ` + revokedAlg.map(a => `<span style="text-decoration:line-through" title="Revoked by: ${sanitize(a.revokedBy)} - ${sanitize(a.reason)}">${sanitize(a.value)}</span> <span style="font-size:8px;">(د. ${sanitize(resolveStaffName(a.revokedBy))})</span>`).join(', ') + `</div>`;
     }
     const revokedChr = chrList.filter(a => a.status === 'revoked');
     if (revokedChr.length > 0) {
-       chronicHTML += `<div style="font-size:10px; color:#94a3b8; margin-top:4px;">أبطلت: ` + revokedChr.map(a => `<span style="text-decoration:line-through" title="Revoked by: ${sanitize(a.revokedBy)} - ${sanitize(a.reason)}">${sanitize(a.value)}</span> <span style="font-size:8px;">(د. ${sanitize(resolveStaffName(a.revokedBy))})</span>`).join(', ') + `</div>`;
+      chronicHTML += `<div style="font-size:10px; color:#94a3b8; margin-top:4px;">أبطلت: ` + revokedChr.map(a => `<span style="text-decoration:line-through" title="Revoked by: ${sanitize(a.revokedBy)} - ${sanitize(a.reason)}">${sanitize(a.value)}</span> <span style="font-size:8px;">(د. ${sanitize(resolveStaffName(a.revokedBy))})</span>`).join(', ') + `</div>`;
     }
   } else {
     allergiesHTML = (info.allergies || []).map(a => `<span class="tag">${sanitize(a)}</span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
@@ -1539,10 +1625,10 @@ function generatePatientFileHTML(uid) {
     let lastDate = null;
     visitsTimelineHTML = visits.map(([vk, v]) => {
       // ── VISIT LOCK & ARCHIVE STATUS ──
-      const session       = window.ArgonSession ? window.ArgonSession.get() : {};
-      const canEdit       = window.ArgonPermissions ? window.ArgonPermissions.canEditVisit(v, session.staffId) : false;
-      const isArchived    = v.status === 'archived';
-      const isSigned      = v.status === 'signed' || v.signedOff;
+      const session = window.ArgonSession ? window.ArgonSession.get() : {};
+      const canEdit = window.ArgonPermissions ? window.ArgonPermissions.canEditVisit(v, session.staffId) : false;
+      const isArchived = v.status === 'archived';
+      const isSigned = v.status === 'signed' || v.signedOff;
 
       const lockBadge = !canEdit
         ? `<span style="background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;margin-right:6px">🔒 قراءة فقط</span>`
@@ -1554,15 +1640,15 @@ function generatePatientFileHTML(uid) {
       } else if (isSigned) {
         stateBadge = `<span style="background:rgba(16,185,129,0.1);color:var(--green);border:1px solid rgba(16,185,129,0.2);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;margin-right:6px">✍️ موقعة إلكترونياً</span>`;
       }
-      
+
       const archiveBadge = stateBadge; // for compatibility with legacy variable below
       const archivedStyle = isArchived ? 'opacity:0.5;' : '';
-      
+
       // أزرار التحكم تظهر إذا كان يملك الصلاحية
       const archiveBtn = (!isArchived && canEdit)
         ? `<button class="btn-secondary btn-sm" onclick="event.stopPropagation();archiveVisit('${uid}','${vk}')" style="color:var(--muted);border-color:rgba(239,68,68,0.3)"><i class="fas fa-archive"></i> أرشفة</button>`
         : '';
-        
+
       const signOffBtn = (!isArchived && !isSigned && canEdit)
         ? `<button class="btn-secondary btn-sm" onclick="event.stopPropagation();signOffVisit('${uid}','${vk}')" style="color:var(--teal);border-color:rgba(13,148,136,0.3)"><i class="fas fa-file-signature"></i> توقيع وإقفال</button>`
         : '';
@@ -1778,18 +1864,18 @@ function generatePatientFileHTML(uid) {
        <div class="pfl" style="color:#dc2626; font-weight:bold;">⚠️ تنبيهات حرجة</div>
        <div style="margin-top:4px; display:flex; flex-direction:column; gap:4px;">
          ${info.criticalAlerts.filter(a => a.status === 'active').map(a => {
-            const resolveStaffName = (sId) => {
-              if (!sId || sId === 'Legacy' || sId === 'unknown') return 'طبيب سابق';
-              if (window.ArgonSession && ArgonSession.get()?.staffId === sId) return ArgonSession.get()?.displayName || 'طبيب';
-              if (p.visits) {
-                 for (const vk in p.visits) {
-                    if (p.visits[vk].doctorId === sId && p.visits[vk].docName) return p.visits[vk].docName;
-                 }
-              }
-              return 'طبيب مختص';
-            };
-            return `<div style="color:#b91c1c; font-size:0.85rem;">• ${a.value} <span style="background:#dc2626; color:white; padding:1px 4px; border-radius:3px; font-size:0.7rem; margin-right:4px;">${a.severity}</span> <span style="color:#94a3b8; font-size:0.75rem; margin-right:6px;">(بواسطة: د. ${sanitize(resolveStaffName(a.addedBy))})</span></div>`;
-         }).join('')}
+    const resolveStaffName = (sId) => {
+      if (!sId || sId === 'Legacy' || sId === 'unknown') return 'طبيب سابق';
+      if (window.ArgonSession && ArgonSession.get()?.staffId === sId) return ArgonSession.get()?.displayName || 'طبيب';
+      if (p.visits) {
+        for (const vk in p.visits) {
+          if (p.visits[vk].doctorId === sId && p.visits[vk].docName) return p.visits[vk].docName;
+        }
+      }
+      return 'طبيب مختص';
+    };
+    return `<div style="color:#b91c1c; font-size:0.85rem;">• ${a.value} <span style="background:#dc2626; color:white; padding:1px 4px; border-radius:3px; font-size:0.7rem; margin-right:4px;">${a.severity}</span> <span style="color:#94a3b8; font-size:0.75rem; margin-right:6px;">(بواسطة: د. ${sanitize(resolveStaffName(a.addedBy))})</span></div>`;
+  }).join('')}
        </div>
     </div>
     ` : ''}
@@ -1880,7 +1966,7 @@ function viewPatientFile(phoneOrUid) {
 }
 
 // ── ARGON ENTERPRISE: Lock Takeover Function ──
-window.executeLockTakeover = async function(uid, prevDoctorId, prevDoctorName) {
+window.executeLockTakeover = async function (uid, prevDoctorId, prevDoctorName) {
   const session = window.ArgonSession ? ArgonSession.get() : {};
   const currentDoctorId = session?.staffId || 'unknown';
   const currentDoctorName = session?.displayName || 'طبيب';
@@ -1899,9 +1985,9 @@ window.executeLockTakeover = async function(uid, prevDoctorId, prevDoctorName) {
       takeoverReason: 'Expired Session (> 30 mins)'
     });
   }
-  
+
   toast('✅ تم الاستيلاء على الجلسة بنجاح.', 'ok');
-  
+
   // Re-run viewPatientFile to load the UI now that we own the lock
   viewPatientFile(uid);
 };
@@ -1968,21 +2054,21 @@ async function safeViewPatientFile(phoneOrUid) {
 
         let isEmergencyGranted = false;
         if (window.ARGON_FEATURES && window.ARGON_FEATURES.ENABLE_BREAK_GLASS) {
-           const grant = lockData.emergencyGrants ? lockData.emergencyGrants[loggedInDoctorId] : null;
-           if (grant && Date.now() < grant.expiresAt) {
-              isEmergencyGranted = true;
-           }
+          const grant = lockData.emergencyGrants ? lockData.emergencyGrants[loggedInDoctorId] : null;
+          if (grant && Date.now() < grant.expiresAt) {
+            isEmergencyGranted = true;
+          }
         }
-        
+
         if (!isEmergencyGranted) {
           toast(`الملف الطبي مفتوح لتعديله بواسطة ${lockData.doctorName}`, 'err');
-          
+
           if (window.ARGON_FEATURES && window.ARGON_FEATURES.ENABLE_BREAK_GLASS) {
-             // Show Break Glass Button in UI
-             const tl = document.getElementById('timelineList');
-             if (tl) tl.innerHTML = `<div style="text-align:center; padding: 40px;"><p>الملف مقفل بواسطة ${lockData.doctorName}</p><button class="btn-primary" onclick="requestBreakGlass('${uid}')" style="background:#dc2626; border-color:#b91c1c;">🚨 تفعيل وصول الطوارئ (Break Glass)</button></div>`;
+            // Show Break Glass Button in UI
+            const tl = document.getElementById('timelineList');
+            if (tl) tl.innerHTML = `<div style="text-align:center; padding: 40px;"><p>الملف مقفل بواسطة ${lockData.doctorName}</p><button class="btn-primary" onclick="requestBreakGlass('${uid}')" style="background:#dc2626; border-color:#b91c1c;">🚨 تفعيل وصول الطوارئ (Break Glass)</button></div>`;
           }
-          
+
           if (window.AuditAPI) window.AuditAPI.log('PATIENT_FILE_LOCKED_CONFLICT', { patientId: uid, lockedBy: lockData.doctorId });
           return;
         } else {
@@ -2012,53 +2098,53 @@ async function safeViewPatientFile(phoneOrUid) {
     window.AuditAPI.log('SESSION_LOCK_TRIGGERED', { patientId: uid });
     window.AuditAPI.log('PATIENT_FILE_OPENED', { patientId: uid });
   }
-  
+
   // ── ARGON ENTERPRISE: Server Audit for File Access ──
   if (typeof logAudit === 'function') {
     logAudit('OPEN_FILE', `تم فتح ملف المريض (${uid})`, 'EMR');
   }
 
 
-const _patData = _patients[uid];
-window.EMRContext = window.EMRContext || {};
-window.EMRContext.bypassedPatients = window.EMRContext.bypassedPatients || {};
+  const _patData = _patients[uid];
+  window.EMRContext = window.EMRContext || {};
+  window.EMRContext.bypassedPatients = window.EMRContext.bypassedPatients || {};
 
-const _hasBypass = window.EMRContext.bypassedPatients[uid];
-const _hasNID    = ArgonNID.isValidNID(_patData?.info?.nationalId || '') || _hasBypass;
+  const _hasBypass = window.EMRContext.bypassedPatients[uid];
+  const _hasNID = ArgonNID.isValidNID(_patData?.info?.nationalId || '') || _hasBypass;
 
-if (!_hasNID) {
-  // أفرج عن القفل مؤقتاً
-  window.EMRContext.sessionLock = false;
-  if (typeof BASE !== 'undefined')
-    db.ref(`${BASE}/active_sessions/${uid}`).remove();
+  if (!_hasNID) {
+    // أفرج عن القفل مؤقتاً
+    window.EMRContext.sessionLock = false;
+    if (typeof BASE !== 'undefined')
+      db.ref(`${BASE}/active_sessions/${uid}`).remove();
 
-  const session = window.ArgonSession ? ArgonSession.get() : {};
+    const session = window.ArgonSession ? ArgonSession.get() : {};
 
-  ArgonNID.showGate({
-    patientName:   _patData?.info?.name || 'المريض',
-    patientId:     uid,
-    db,
-    basePath:      BASE,
-    doctorId:      session.staffId   || 'unknown',
-    doctorName:    session.displayName || 'الطبيب',
-    patientsCache: _patients,
-    currentInvalidNID: _patData?.info?.nationalId || new URLSearchParams(window.location.search).get('nid') || '',
+    ArgonNID.showGate({
+      patientName: _patData?.info?.name || 'المريض',
+      patientId: uid,
+      db,
+      basePath: BASE,
+      doctorId: session.staffId || 'unknown',
+      doctorName: session.displayName || 'الطبيب',
+      patientsCache: _patients,
+      currentInvalidNID: _patData?.info?.nationalId || new URLSearchParams(window.location.search).get('nid') || '',
 
-    onComplete: (patientId, result) => {
-      // سواء أدخل الرقم أو تجاوز — نفتح الملف في الحالتين
-      if (_patients[patientId]?.info && result.nid) {
-        // حدّث الكاش المحلي فوراً
-        _patients[patientId].info.nationalId = result.nid;
+      onComplete: (patientId, result) => {
+        // سواء أدخل الرقم أو تجاوز — نفتح الملف في الحالتين
+        if (_patients[patientId]?.info && result.nid) {
+          // حدّث الكاش المحلي فوراً
+          _patients[patientId].info.nationalId = result.nid;
+        }
+        if (result.bypassed) {
+          window.EMRContext.bypassedPatients[patientId] = true;
+        }
+        // أعد المحاولة — الآن إما عنده NID أو عنده bypass مسجّل
+        safeViewPatientFile(patientId);
       }
-      if (result.bypassed) {
-        window.EMRContext.bypassedPatients[patientId] = true;
-      }
-      // أعد المحاولة — الآن إما عنده NID أو عنده bypass مسجّل
-      safeViewPatientFile(patientId);
-    }
-  });
-  return;
-}
+    });
+    return;
+  }
 
   activePatientId = uid;
   const p = _patients[uid];
@@ -2071,6 +2157,11 @@ if (!_hasNID) {
   if (!p) {
     window.EMRContext.sessionLock = false;
     return;
+  }
+
+  // Record this patient in recent patients list (Local Storage)
+  if (typeof trackRecentPatient === 'function') {
+    trackRecentPatient(uid, p.info?.name || 'مريض', p.info?.phone || '');
   }
 
   document.getElementById('patFileContent').innerHTML = generatePatientFileHTML(uid);
@@ -2399,7 +2490,7 @@ document.addEventListener('click', (e) => {
 
 // ── SMART PRICING CATALOG AUTOCOMPLETE ENGINE ──
 function _searchCatalogLogic(query, type) {
-  const items = Object.entries(_pricingCatalogCache || {}).map(([key, val]) => ({...val, serviceId: key}));
+  const items = Object.entries(_pricingCatalogCache || {}).map(([key, val]) => ({ ...val, serviceId: key }));
   const q = query.trim().toLowerCase();
   if (!q) return [];
 
@@ -2432,7 +2523,7 @@ function searchCatalog(type) {
   const inp = document.getElementById(inpId);
   const dd = document.getElementById(ddId);
   if (!inp || !dd) return;
-  
+
   const q = inp.value.trim();
   if (!q) { dd.style.display = 'none'; return; }
   dd.innerHTML = _buildCatalogDropdownHTML(_searchCatalogLogic(q, type), q, type);
@@ -2444,7 +2535,7 @@ function selectCatalogItem(type, serviceId, name, price) {
   const ddId = type === 'lab' ? 'labCatalogDropdown' : 'radCatalogDropdown';
   const inp = document.getElementById(inpId);
   const dd = document.getElementById(ddId);
-  
+
   if (inp) {
     inp.value = name;
     // Store selected snapshot metadata temporarily on the element
@@ -2643,15 +2734,15 @@ function saveVisit() {
           patientName: patientName,
           doctorId: docKey,
           docName: doctorDisplayName,
-          requestedTests: labTestsList.map(t => ({ 
-            name: t.name, 
+          requestedTests: labTestsList.map(t => ({
+            name: t.name,
             serviceId: t.serviceId || 'external',
             unitPrice: t.unitPrice || 0,
             source: t.source || 'manual',
             requiresBillingReview: t.requiresBillingReview || false,
-            result: '', 
-            unit: '', 
-            status: 'waiting' 
+            result: '',
+            unit: '',
+            status: 'waiting'
           })),
           status: 'waiting',
           visitId,
@@ -2676,13 +2767,13 @@ function saveVisit() {
           patientName: patientName,
           doctorId: docKey,
           docName: doctorDisplayName,
-          requestedScans: radScansList.map(s => ({ 
-            name: s.name, 
+          requestedScans: radScansList.map(s => ({
+            name: s.name,
             serviceId: s.serviceId || 'external',
             unitPrice: s.unitPrice || 0,
             source: s.source || 'manual',
             requiresBillingReview: s.requiresBillingReview || false,
-            status: 'waiting' 
+            status: 'waiting'
           })),
           status: 'waiting',
           visitId,
@@ -3060,7 +3151,7 @@ function addLabOrderTest() {
   if (val) {
     const sId = input.dataset.serviceId;
     const sPrice = input.dataset.unitPrice;
-    
+
     // Check if the user selected from the catalog or typed manually
     if (sId && input.dataset.lastSelectedName === val) {
       addQuickLab(val, sId, parseFloat(sPrice), 'pricing_catalog');
@@ -3092,7 +3183,7 @@ function renderLabOrderChips() {
   }
   div.innerHTML = labTestsList.map(t => `
     <span class="tag" style="background:rgba(13,148,136,0.15);border:1px solid var(--teal);color:var(--teal)">
-      ${sanitize(t.name)} ${t.source === 'manual' ? '<i class="fas fa-exclamation-triangle" style="color:var(--amber);margin-right:4px" title="فحص خارجي غير مسعر"></i>' : ''} <span onclick="removeLabTest('${sanitize(t.name).replace(/'/g,"\\'")}')" style="cursor:pointer;margin-right:6px;font-weight:bold;color:var(--red)">✕</span>
+      ${sanitize(t.name)} ${t.source === 'manual' ? '<i class="fas fa-exclamation-triangle" style="color:var(--amber);margin-right:4px" title="فحص خارجي غير مسعر"></i>' : ''} <span onclick="removeLabTest('${sanitize(t.name).replace(/'/g, "\\'")}')" style="cursor:pointer;margin-right:6px;font-weight:bold;color:var(--red)">✕</span>
     </span>
   `).join('');
 }
@@ -3103,7 +3194,7 @@ function addRadOrderScan() {
   if (val) {
     const sId = input.dataset.serviceId;
     const sPrice = input.dataset.unitPrice;
-    
+
     if (sId && input.dataset.lastSelectedName === val) {
       addQuickRad(val, sId, parseFloat(sPrice), 'pricing_catalog');
     } else {
@@ -3134,7 +3225,7 @@ function renderRadOrderChips() {
   }
   div.innerHTML = radScansList.map(t => `
     <span class="tag blue" style="background:rgba(14,165,233,0.15);border:1px solid var(--sky);color:var(--sky)">
-      ${sanitize(t.name)} ${t.source === 'manual' ? '<i class="fas fa-exclamation-triangle" style="color:var(--amber);margin-right:4px" title="تصوير خارجي غير مسعر"></i>' : ''} <span onclick="removeRadScan('${sanitize(t.name).replace(/'/g,"\\'")}')" style="cursor:pointer;margin-right:6px;font-weight:bold;color:var(--red)">✕</span>
+      ${sanitize(t.name)} ${t.source === 'manual' ? '<i class="fas fa-exclamation-triangle" style="color:var(--amber);margin-right:4px" title="تصوير خارجي غير مسعر"></i>' : ''} <span onclick="removeRadScan('${sanitize(t.name).replace(/'/g, "\\'")}')" style="cursor:pointer;margin-right:6px;font-weight:bold;color:var(--red)">✕</span>
     </span>
   `).join('');
 }
@@ -3143,9 +3234,9 @@ function renderRadOrderChips() {
 function renderDynamicCatalogTags() {
   const labDiv = document.getElementById('commonLabTests');
   const radDiv = document.getElementById('commonRadScans');
-  
-  const items = Object.entries(_pricingCatalogCache || {}).map(([key, val]) => ({...val, serviceId: key})).filter(i => i.active !== false);
-  
+
+  const items = Object.entries(_pricingCatalogCache || {}).map(([key, val]) => ({ ...val, serviceId: key })).filter(i => i.active !== false);
+
   if (labDiv) {
     const labItems = items.filter(i => i.type === 'lab').slice(0, 10);
     if (labItems.length) {
@@ -3154,7 +3245,7 @@ function renderDynamicCatalogTags() {
       labDiv.innerHTML = '<span style="font-size:0.7rem;color:var(--muted)">لا توجد فحوصات في الكتالوج لتسريع الاختيار</span>';
     }
   }
-  
+
   if (radDiv) {
     const radItems = items.filter(i => i.type === 'radiology').slice(0, 10);
     if (radItems.length) {
@@ -3373,7 +3464,7 @@ function showDoctorProfileSelector(matchedPats, originalSearchTerm, onSelectCall
     const genderIcon = info.gender === 'ذكر' ? '👨' : info.gender === 'أنثى' ? '👩' : '👤';
     const ageStr = info.age ? `${info.age} سنة` : 'العمر غير مسجل';
     const regDate = info.createdAt ? new Date(info.createdAt).toLocaleDateString('ar-JO') : '—';
-    
+
     // Default action if no callback is provided
     let clickAction = `document.getElementById('doctorProfileSelectorOverlay').remove(); viewPatientFile('${uid}'); sw('patFile');`;
     if (onSelectCallback) {
@@ -3389,7 +3480,7 @@ function showDoctorProfileSelector(matchedPats, originalSearchTerm, onSelectCall
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.78rem; color: var(--muted); margin-top: 6px;">
             <div><i class="far fa-id-badge" style="width:14px; color:var(--sky)"></i> الرقم الطبي: <span style="font-family: monospace; font-weight: bold; color:var(--text);">${info.mrn || '—'}</span></div>
-            <div><i class="fas fa-fingerprint" style="width:14px; color:var(--teal)"></i> Patient UID: <span style="font-family: monospace; font-size: 0.65rem;">${uid.substring(0,8)}...</span></div>
+            <div><i class="fas fa-fingerprint" style="width:14px; color:var(--teal)"></i> Patient UID: <span style="font-family: monospace; font-size: 0.65rem;">${uid.substring(0, 8)}...</span></div>
             
             <div style="grid-column: 1 / -1; ${info.nationalId ? 'color:var(--amber); font-weight:bold;' : ''}"><i class="far fa-id-card" style="width:14px;"></i> الرقم الوطني: ${info.nationalId || 'غير مسجل'}</div>
             
@@ -3812,60 +3903,39 @@ function completeWorkspaceVisit() {
     renderWorkspaceRx();
   }
 
-  const pendingLabInp = document.getElementById('labTestInput');
-  const pendingLab = pendingLabInp ? pendingLabInp.value.trim() : '';
-  if (pendingLab && !labTestsList.some(x => x.name === pendingLab)) {
-    const sId = pendingLabInp.dataset.serviceId;
-    const sPrice = pendingLabInp.dataset.unitPrice;
-    let newObj;
-    if (sId && pendingLabInp.dataset.lastSelectedName === pendingLab) {
-      newObj = { name: pendingLab, serviceId: sId, unitPrice: parseFloat(sPrice), source: 'pricing_catalog', requiresBillingReview: false };
-    } else {
-      newObj = { name: pendingLab, serviceId: 'external', unitPrice: 0, source: 'manual', requiresBillingReview: true };
-    }
-    labTestsList.push(newObj);
-    if(typeof renderLabOrderTags === 'function') renderLabOrderTags();
+  const pendingLab = document.getElementById('labTestInput')?.value.trim();
+  if (pendingLab && !labTestsList.includes(pendingLab)) {
+    labTestsList.push(pendingLab);
+    renderLabOrderTags();
   }
 
-  const pendingRadInp = document.getElementById('radScanInput');
-  const pendingRad = pendingRadInp ? pendingRadInp.value.trim() : '';
-  if (pendingRad && !radScansList.some(x => x.name === pendingRad)) {
-    const sId = pendingRadInp.dataset.serviceId;
-    const sPrice = pendingRadInp.dataset.unitPrice;
-    let newObj;
-    if (sId && pendingRadInp.dataset.lastSelectedName === pendingRad) {
-      newObj = { name: pendingRad, serviceId: sId, unitPrice: parseFloat(sPrice), source: 'pricing_catalog', requiresBillingReview: false };
-    } else {
-      newObj = { name: pendingRad, serviceId: 'external', unitPrice: 0, source: 'manual', requiresBillingReview: true };
-    }
-    radScansList.push(newObj);
-    if(typeof renderRadOrderTags === 'function') renderRadOrderTags();
+  const pendingRad = document.getElementById('radScanInput')?.value.trim();
+  if (pendingRad && !radScansList.includes(pendingRad)) {
+    radScansList.push(pendingRad);
+    renderRadOrderTags();
   }
 
-  // Determine Patient ID and Timeline Key EARLY
-  let finalUid = uid;
-  let isNewPatient = false;
-  if (!uid || !_patients[uid]) {
-    finalUid = db.ref(`${BASE}/patients`).push().key;
-    isNewPatient = true;
-  }
-  const timelineKey = db.ref(`${BASE}/patients/${finalUid}/visits`).push().key;
-
+  // Build visit object with field names matching what the Timeline renderer reads
   const now = new Date();
-  const session = window.ArgonSession ? ArgonSession.get() : null;
   const visitObj = {
+    // Date/Time — timeline uses v.date and v.time
     date: now.toISOString().split('T')[0],
     time: now.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' }),
-    docName: session?.displayName || 'طبيب',
-    docKey: session?.staffId || 'doctor',
+    // Doctor identity
+    docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
+    docKey: 'doctor',
+    // Complaint — timeline reads v.complaint
     complaint: comp || '—',
+    // Diagnosis — timeline reads v.diagnosis
     diagnosis: diag || '—',
+    // Vitals — timeline reads v.vitals.temp, v.vitals.bp, v.vitals.pulse
     vitals: {
       temp: document.getElementById('vTemp').value.trim(),
       bp: document.getElementById('vBp').value.trim(),
-      pulse: document.getElementById('vHr').value.trim(),
+      pulse: document.getElementById('vHr').value.trim(),  // hr → pulse
       o2: document.getElementById('vO2').value.trim()
     },
+    // Prescriptions — timeline reads v.prescriptions[].name / .dose / .freq
     prescriptions: activeVisit.rx.map(r => ({
       name: r.drug,
       dose: r.dose,
@@ -3873,180 +3943,167 @@ function completeWorkspaceVisit() {
     }))
   };
 
+  // Lab / Radiology orders — timeline reads v.labOrders[] and v.radOrders[]
   if (labTestsList && labTestsList.length) visitObj.labOrders = [...labTestsList];
   if (radScansList && radScansList.length) visitObj.radOrders = [...radScansList];
 
   const updates = {};
-  const booking = bookingId ? (_liveBookings[bookingId] || {}) : {};
-  const patientName = isNewPatient ? (booking.patName || activeVisit.name || 'مريض') : (_patients[finalUid]?.info?.name || activeVisit.name || 'مريض');
-  const patientPhone = isNewPatient ? (booking.patPhone || activeVisit.phone || '') : (_patients[finalUid]?.info?.phone || activeVisit.phone || '');
 
-  // ── Enterprise Billing Engine: Build Invoice (Zero-Error Mode) ──
-  const invItems = [];
-  let reqReview = false;
-  let missingReasons = [];
-  
-  // 1. Doctor Fee
-  let docFeeMinor = null;
-  let docServiceId = 'doc-consult';
-  let docServiceName = 'كشفية الطبيب';
-  
-  if (typeof _pricingCatalogCache !== 'undefined' && _pricingCatalogCache) {
-      let docEntry = Object.values(_pricingCatalogCache).find(i => i.type === 'consultation' && i.active && i.doctorId === session?.staffId);
-      if (!docEntry) docEntry = Object.values(_pricingCatalogCache).find(i => i.type === 'consultation' && i.active && !i.doctorId);
-      
-      if (docEntry && typeof docEntry.price !== 'undefined' && docEntry.price !== '') {
-          docFeeMinor = window.ArgonFinance ? ArgonFinance.toMinor(docEntry.price) : Math.round(parseFloat(docEntry.price) * 1000);
-          docServiceId = docEntry.id || 'doc-consult';
-          docServiceName = docEntry.name || 'كشفية الطبيب';
+  // --- Case 1: Patient is registered with a UUID ---
+  if (uid && _patients[uid]) {
+    const timelineKey = db.ref(`${BASE}/patients/${uid}/visits`).push().key;
+    updates[`${BASE}/patients/${uid}/visits/${timelineKey}`] = visitObj;
+    if (bookingId) {
+      const b = _liveBookings[bookingId];
+      if (b) {
+        updates[`${BASE}/completedBookings/${bookingId}`] = { ...b, status: 'done', completedAt: new Date().toISOString() };
+        updates[`${BASE}/bookings/${bookingId}`] = null;
+      } else {
+        updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
       }
-  }
-  
-  if (docFeeMinor === null) {
-      reqReview = true;
-      missingReasons.push('Doctor consultation fee not found in pricing catalog.');
-  } else {
-      invItems.push({
-          serviceId: docServiceId,
-          name: docServiceName,
-          unitPriceMinor: docFeeMinor,
-          billingReferenceId: `consult-${timelineKey}`,
-          snapshotAt: now.toISOString()
-      });
-  }
-
-  // 2. Lab Tests
-  if (labTestsList && labTestsList.length) {
-      labTestsList.forEach((t, idx) => {
-          if (t.requiresBillingReview || typeof t.unitPrice === 'undefined' || isNaN(t.unitPrice) || t.unitPrice === '') {
-              reqReview = true;
-              missingReasons.push(`Lab test missing price: ${t.name}`);
-          }
-          invItems.push({
-              serviceId: t.serviceId || `lab-ext-${idx}`,
-              name: t.name,
-              unitPriceMinor: window.ArgonFinance ? ArgonFinance.toMinor(t.unitPrice || 0) : Math.round(parseFloat(t.unitPrice || 0) * 1000),
-              billingReferenceId: `lab-${timelineKey}-${idx}`,
-              snapshotAt: now.toISOString()
-          });
-      });
-  }
-
-  // 3. Radiology Scans
-  if (radScansList && radScansList.length) {
-      radScansList.forEach((s, idx) => {
-          if (s.requiresBillingReview || typeof s.unitPrice === 'undefined' || isNaN(s.unitPrice) || s.unitPrice === '') {
-              reqReview = true;
-              missingReasons.push(`Radiology scan missing price: ${s.name}`);
-          }
-          invItems.push({
-              serviceId: s.serviceId || `rad-ext-${idx}`,
-              name: s.name,
-              unitPriceMinor: window.ArgonFinance ? ArgonFinance.toMinor(s.unitPrice || 0) : Math.round(parseFloat(s.unitPrice || 0) * 1000),
-              billingReferenceId: `rad-${timelineKey}-${idx}`,
-              snapshotAt: now.toISOString()
-          });
-      });
-  }
-
-  const invId = `INV-${timelineKey}`;
-  updates[`${BASE}/invoices/${invId}`] = {
-      patientId: finalUid,
-      patientName: patientName,
-      patientPhone: patientPhone,
-      visitId: timelineKey,
-      items: invItems,
-      totalMinor: invItems.reduce((acc, curr) => acc + (curr.unitPriceMinor || 0), 0),
-      createdAt: now.toISOString(),
-      status: reqReview ? 'pending_review' : 'unpaid',
-      requiresBillingReview: reqReview,
-      reviewReasons: missingReasons,
-      docName: visitObj.docName
-  };
-  // ── End Enterprise Billing Engine ──
-
-  // Write Medical Records
-  updates[`${BASE}/patients/${finalUid}/visits/${timelineKey}`] = visitObj;
-
-  if (bookingId) {
-    if (booking.status) {
-      updates[`${BASE}/completedBookings/${bookingId}`] = { ...booking, status: 'done', completedAt: now.toISOString() };
-      updates[`${BASE}/bookings/${bookingId}`] = null;
-    } else {
-      updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
     }
-  }
 
-  // Create actual lab and radiology orders
-  if (labTestsList && labTestsList.length > 0) {
-    const labKey = db.ref(`${BASE}/lab_orders`).push().key;
-    updates[`${BASE}/lab_orders/${labKey}`] = {
-      patientId: finalUid,
-      patientName: patientName,
-      patientPhone: patientPhone,
-      doctorId: session?.staffId || 'doctor',
-      docName: session?.displayName || 'طبيب',
-      createdAt: now.toISOString(),
-      requestedTests: labTestsList.map(t => ({ name: t.name, serviceId: t.serviceId || '', status: 'waiting' })),
-      status: 'waiting',
-      visitId: timelineKey
-    };
-  }
+    // Create actual lab and radiology orders
+    if (labTestsList && labTestsList.length > 0) {
+      const labKey = db.ref(`${BASE}/lab_orders`).push().key;
+      updates[`${BASE}/lab_orders/${labKey}`] = {
+        patientId: uid,
+        patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
+        patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
+        doctorId: (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor',
+        docName: (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب',
+        createdAt: new Date().toISOString(),
+        requestedTests: labTestsList.map(t => ({ name: t, status: 'waiting' })),
+        status: 'waiting',
+        visitId: timelineKey
+      };
+    }
 
-  if (radScansList && radScansList.length > 0) {
-    const radKey = db.ref(`${BASE}/radiology_orders`).push().key;
-    updates[`${BASE}/radiology_orders/${radKey}`] = {
-      patientId: finalUid,
-      patientName: patientName,
-      patientPhone: patientPhone,
-      doctorId: session?.staffId || 'doctor',
-      docName: session?.displayName || 'طبيب',
-      createdAt: now.toISOString(),
-      requestedScans: radScansList.map(s => ({ name: s.name, serviceId: s.serviceId || '', status: 'waiting' })),
-      status: 'waiting',
-      visitId: timelineKey
-    };
-  }
+    if (radScansList && radScansList.length > 0) {
+      const radKey = db.ref(`${BASE}/radiology_orders`).push().key;
+      updates[`${BASE}/radiology_orders/${radKey}`] = {
+        patientId: uid,
+        patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
+        patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
+        doctorId: (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor',
+        docName: (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب',
+        createdAt: new Date().toISOString(),
+        requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
+        status: 'waiting',
+        visitId: timelineKey
+      };
+    }
 
-  // Create prescription order for pharmacy
-  if (activeVisit.rx && activeVisit.rx.length > 0) {
-    const prescKey = db.ref(`${BASE}/prescriptions`).push().key;
-    updates[`${BASE}/prescriptions/${prescKey}`] = {
-      patientId: finalUid,
-      patientName: patientName,
-      patientPhone: patientPhone,
-      doctorId: session?.staffId || 'doctor',
-      docName: session?.displayName || 'طبيب',
-      medications: activeVisit.rx.map(m => ({
-        name: m.drug,
-        dose: m.dose,
-        freq: '',
-        dur: '',
-        note: '',
-        status: 'waiting'
-      })),
-      status: 'waiting',
-      visitId: timelineKey,
-      orgId: CID,
-      createdAt: now.toISOString()
-    };
-  }
+    // Create prescription order for pharmacy
+    if (activeVisit.rx && activeVisit.rx.length > 0) {
+      const prescKey = db.ref(`${BASE}/prescriptions`).push().key;
+      updates[`${BASE}/prescriptions/${prescKey}`] = {
+        patientId: uid,
+        patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
+        patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
+        doctorId: (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor',
+        docName: (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب',
+        medications: activeVisit.rx.map(m => ({
+          name: m.drug,
+          dose: m.dose,
+          freq: '',
+          dur: '',
+          note: '',
+          status: 'waiting'
+        })),
+        status: 'waiting',
+        visitId: timelineKey,
+        orgId: CID,
+        createdAt: new Date().toISOString()
+      };
+    }
 
-  if (isNewPatient) {
+    _writeVisitUpdates(updates, diag);
+  }
+  // --- Case 2: Unregistered patient — auto-register then save ---
+  else {
+    const booking = _liveBookings[bookingId] || {};
+    const newRef = db.ref(`${BASE}/patients`).push();
+    const newUid = newRef.key;
     const mrn = genMRN();
-    updates[`${BASE}/patients/${finalUid}/info`] = {
-      name: patientName,
-      phone: patientPhone,
+    updates[`${BASE}/patients/${newUid}/info`] = {
+      name: booking.patName || activeVisit.name || 'مريض',
+      phone: booking.patPhone || activeVisit.phone || '',
       mrn,
       gender: '',
       age: '',
-      createdAt: now.toISOString()
+      createdAt: new Date().toISOString()
     };
-    activeVisit.uid = finalUid;
+    const timelineKey = db.ref(`${BASE}/patients/${newUid}/visits`).push().key;
+    updates[`${BASE}/patients/${newUid}/visits/${timelineKey}`] = visitObj;
+    if (bookingId) {
+      const b = _liveBookings[bookingId];
+      if (b) {
+        updates[`${BASE}/completedBookings/${bookingId}`] = { ...b, status: 'done', completedAt: new Date().toISOString() };
+        updates[`${BASE}/bookings/${bookingId}`] = null;
+      } else {
+        updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
+      }
+    }
+
+    // Create actual lab and radiology orders
+    if (labTestsList && labTestsList.length > 0) {
+      const labKey = db.ref(`${BASE}/lab_orders`).push().key;
+      updates[`${BASE}/lab_orders/${labKey}`] = {
+        patientId: newUid,
+        patientName: booking.patName || activeVisit.name || 'مريض',
+        patientPhone: booking.patPhone || activeVisit.phone || '',
+        doctorId: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'doctor',
+        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
+        createdAt: new Date().toISOString(),
+        requestedTests: labTestsList.map(t => ({ name: t, status: 'waiting' })),
+        status: 'waiting',
+        visitId: timelineKey
+      };
+    }
+
+    if (radScansList && radScansList.length > 0) {
+      const radKey = db.ref(`${BASE}/radiology_orders`).push().key;
+      updates[`${BASE}/radiology_orders/${radKey}`] = {
+        patientId: newUid,
+        patientName: booking.patName || activeVisit.name || 'مريض',
+        patientPhone: booking.patPhone || activeVisit.phone || '',
+        doctorId: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'doctor',
+        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
+        createdAt: new Date().toISOString(),
+        requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
+        status: 'waiting',
+        visitId: timelineKey
+      };
+    }
+
+    // Create prescription order for pharmacy
+    if (activeVisit.rx && activeVisit.rx.length > 0) {
+      const prescKey = db.ref(`${BASE}/prescriptions`).push().key;
+      updates[`${BASE}/prescriptions/${prescKey}`] = {
+        patientId: newUid,
+        patientName: booking.patName || activeVisit.name || 'مريض',
+        doctorId: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'doctor',
+        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
+        medications: activeVisit.rx.map(m => ({
+          name: m.drug,
+          dose: m.dose,
+          freq: '',
+          dur: '',
+          note: '',
+          status: 'waiting'
+        })),
+        status: 'waiting',
+        visitId: timelineKey,
+        orgId: CID,
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    activeVisit.uid = newUid;
+    _writeVisitUpdates(updates, diag);
     toast('تم تسجيل المريض تلقائياً في النظام', 'ok');
   }
-
-  _writeVisitUpdates(updates, diag);
 }
 
 function _writeVisitUpdates(updates, diag) {
@@ -4061,7 +4118,7 @@ function _writeVisitUpdates(updates, diag) {
 }
 
 // ── CLINICAL INTEGRITY: SOFT DELETE / ARCHIVE ──
-window.archiveVisit = function(patientId, visitKey) {
+window.archiveVisit = function (patientId, visitKey) {
   const session = ArgonSession.get() || {};
   if (!confirm('⚠️ هل أنت متأكد من أرشفة (حذف) هذا السجل الطبي؟ لا يمكن التراجع عن هذه العملية.')) return;
 
@@ -4086,49 +4143,49 @@ window.archiveVisit = function(patientId, visitKey) {
   });
 };
 // ── Break Glass Access ──
-window.requestBreakGlass = async function(uid) {
+window.requestBreakGlass = async function (uid) {
   const reason = prompt('⚠️ وصول الطوارئ مراقب بالكامل. الرجاء إدخال سبب الدخول الطارئ (إلزامي):');
   if (!reason || reason.trim().length < 5) {
-     toast('❌ سبب غير كافٍ. تم إلغاء العملية.', 'err');
-     return;
+    toast('❌ سبب غير كافٍ. تم إلغاء العملية.', 'err');
+    return;
   }
-  
+
   const session = ArgonSession.get() || {};
   const lockRef = db.ref(`${BASE}/active_sessions/${uid}`);
   const lockSnap = await lockRef.once('value');
-  
+
   if (lockSnap.exists()) {
-     const updates = {};
-     updates[`emergencyGrants/${session.staffId}`] = {
-        reason: reason.trim(),
-        grantedAt: firebase.database.ServerValue.TIMESTAMP,
-        expiresAt: Date.now() + (30 * 60 * 1000) // 30 mins
-     };
-     
-     await lockRef.update(updates);
-     
-     if (window.ArgonAuditLog) {
-        window.ArgonAuditLog.log('PATIENT', uid, 'BREAK_GLASS', null, { reason: reason }, 'Emergency Override');
-     }
-     
-     toast('✅ تم منح وصول الطوارئ لمدة 30 دقيقة.', 'ok');
-     viewPatientFile(uid);
+    const updates = {};
+    updates[`emergencyGrants/${session.staffId}`] = {
+      reason: reason.trim(),
+      grantedAt: firebase.database.ServerValue.TIMESTAMP,
+      expiresAt: Date.now() + (30 * 60 * 1000) // 30 mins
+    };
+
+    await lockRef.update(updates);
+
+    if (window.ArgonAuditLog) {
+      window.ArgonAuditLog.log('PATIENT', uid, 'BREAK_GLASS', null, { reason: reason }, 'Emergency Override');
+    }
+
+    toast('✅ تم منح وصول الطوارئ لمدة 30 دقيقة.', 'ok');
+    viewPatientFile(uid);
   }
 };
 
 window._tempCriticalAlerts = [];
 
-window.addCriticalAlertUI = function() {
+window.addCriticalAlertUI = function () {
   const nameInput = document.getElementById('epCriticalAlertName');
   const severitySelect = document.getElementById('epCriticalAlertSeverity');
   const name = nameInput.value.trim();
   const severity = severitySelect.value;
-  
+
   if (!name) return toast('الرجاء إدخال اسم التنبيه', 'err');
   if (!severity) return toast('الرجاء اختيار الحدة (Severity) - إجباري', 'err');
-  
+
   window._tempCriticalAlerts.push({
-    entryId: 'alert_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
+    entryId: 'alert_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
     schemaVersion: 2,
     sourceType: 'doctor_entry',
     type: 'critical_alert',
@@ -4138,28 +4195,28 @@ window.addCriticalAlertUI = function() {
     addedBy: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'unknown',
     addedAt: new Date().toISOString()
   });
-  
+
   nameInput.value = '';
   severitySelect.value = '';
   renderCriticalAlertsUI();
 };
 
-window.removeCriticalAlertUI = function(entryId) {
-   const alert = window._tempCriticalAlerts.find(a => a.entryId === entryId);
-   if (alert) {
-      alert.status = 'revoked';
-      alert.revokedBy = (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'unknown';
-      alert.revokedAt = new Date().toISOString();
-      alert.reason = 'Removed via UI';
-   }
-   renderCriticalAlertsUI();
+window.removeCriticalAlertUI = function (entryId) {
+  const alert = window._tempCriticalAlerts.find(a => a.entryId === entryId);
+  if (alert) {
+    alert.status = 'revoked';
+    alert.revokedBy = (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'unknown';
+    alert.revokedAt = new Date().toISOString();
+    alert.reason = 'Removed via UI';
+  }
+  renderCriticalAlertsUI();
 };
 
-window.renderCriticalAlertsUI = function() {
-   const container = document.getElementById('epCriticalAlertsList');
-   if (!container) return;
-   
-   container.innerHTML = window._tempCriticalAlerts.filter(a => a.status === 'active').map(a => `
+window.renderCriticalAlertsUI = function () {
+  const container = document.getElementById('epCriticalAlertsList');
+  if (!container) return;
+
+  container.innerHTML = window._tempCriticalAlerts.filter(a => a.status === 'active').map(a => `
       <span style="background:#fee2e2; color:#b91c1c; padding:4px 8px; border-radius:4px; font-size:0.8rem; display:flex; align-items:center; gap:6px;">
          <span>${a.value} (${a.severity})</span>
          <i class="fas fa-times" style="cursor:pointer" onclick="removeCriticalAlertUI('${a.entryId}')"></i>

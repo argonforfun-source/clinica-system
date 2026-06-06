@@ -73,7 +73,17 @@
     <div id="patList" class="sec on">
       <div class="ph">
         <div><div class="pt">👥 قائمة المرضى</div><div class="ps">جميع المرضى المسجلين في النظام</div></div>
-        <button class="btn-primary btn-sm" onclick="openNewPatient()"><i class="fas fa-user-plus"></i> مريض جديد</button>
+        <div style="display:flex; gap:8px;">
+          <div style="position:relative;">
+            <button class="btn-secondary btn-sm" style="border:1px solid var(--teal);color:var(--teal);background:rgba(13,148,136,0.05)" onclick="toggleRecentPatientsDropdown()">
+              <i class="fas fa-history"></i> أحدث الملفات
+            </button>
+            <div id="recentPatientsDropdown" style="display:none; position:absolute; top:calc(100% + 6px); left:0; width:320px; background:rgba(255,255,255,0.98); backdrop-filter:blur(12px); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 32px rgba(0,0,0,0.15); z-index:9999; max-height:350px; overflow-y:auto;">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+          <button class="btn-primary btn-sm" onclick="openNewPatient()"><i class="fas fa-user-plus"></i> مريض جديد</button>
+        </div>
       </div>
       <div class="search-box">
         <i class="fas fa-search"></i>
