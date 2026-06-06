@@ -63,7 +63,7 @@ const BillingEngine = {
       // 3. Additive Observer — ONLY for Visit Fee (كشفية الطبيب)
       // Lab, Radiology, Pharmacy add their own detailed items when they complete services.
       // This prevents double billing.
-      this.initVisitFeeObserver();
+      // Observer removed in favor of transactional generation in EMR
     }
   },
 
@@ -84,42 +84,7 @@ const BillingEngine = {
     return entry ? parseFloat(entry.price) : null;
   },
 
-  // ── VISIT FEE OBSERVER (كشفية الطبيب فقط) ──
-  initVisitFeeObserver: function() {
-    let initialBks = true;
-    
-    const bksRef = db.ref(`${BASE}/completedBookings`);
-    bksRef.once('value', () => initialBks = false);
-    bksRef.on('child_added', snap => {
-      if (!initialBks) this.generateVisitInvoice(snap.key, snap.val());
-    });
-  },
-
-  generateVisitInvoice: function(visitId, visitData) {
-    if(!visitData || !visitData.patientId) return;
-    const invId = `INV-${visitId}`;
-
-    let fee = 15;
-    if (typeof _docs !== 'undefined' && _docs[visitData.docId] && _docs[visitData.docId].fee) {
-      fee = parseFloat(_docs[visitData.docId].fee);
-    }
-    const visitItem = {name: 'كشفية الطبيب', price: fee};
-
-    if (this._invoices[invId]) {
-      const currentItems = this._invoices[invId].items || [];
-      const exists = currentItems.find(i => i.name === visitItem.name);
-      if(!exists) {
-        currentItems.push(visitItem);
-        let newTotal = currentItems.reduce((acc, curr) => acc + curr.price, 0);
-        db.ref(`${BASE}/invoices/${invId}`).update({
-          items: currentItems,
-          total: newTotal
-        });
-      }
-    } else {
-      this.saveInvoice(invId, visitData.patientId, visitId, [visitItem], visitData.patName, visitData.patPhone);
-    }
-  },
+  // Legacy invoice generators removed. Invoices now generated synchronously from EMR.
 
   saveInvoice: function(invId, patientId, visitId, items, patName, patPhone) {
     const total = items.reduce((acc, curr) => acc + curr.price, 0);
@@ -161,7 +126,7 @@ const BillingEngine = {
     const patientInvoices = Object.entries(this._invoices).filter(([k, inv]) => inv.patientId === patientId);
     
     patientInvoices.forEach(([k, inv]) => {
-      totalBilled += (parseFloat(inv.total) || 0);
+      totalBilled += typeof inv.totalMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(inv.totalMinor) : (inv.totalMinor/1000)) : (parseFloat(inv.total) || 0);
       totalPaid += this.calculateInvoicePaid(k);
     });
 
@@ -187,7 +152,7 @@ const BillingEngine = {
     let overdueCount = 0;
 
     Object.entries(this._invoices).forEach(([k, inv]) => {
-      const total = parseFloat(inv.total) || 0;
+      const total = typeof inv.totalMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(inv.totalMinor) : (inv.totalMinor/1000)) : (parseFloat(inv.total) || 0);
       const paid = this.calculateInvoicePaid(k);
       const remaining = parseFloat((total - paid).toFixed(2));
 
@@ -240,7 +205,7 @@ const BillingEngine = {
         };
       }
 
-      patientBalances[pid].total += parseFloat(inv.total) || 0;
+      patientBalances[pid].total += typeof inv.totalMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(inv.totalMinor) : (inv.totalMinor/1000)) : (parseFloat(inv.total) || 0);
       patientBalances[pid].paid += this.calculateInvoicePaid(k);
       if (inv.createdAt && inv.createdAt > patientBalances[pid].lastDate) {
         patientBalances[pid].lastDate = inv.createdAt;
@@ -398,7 +363,7 @@ const BillingEngine = {
       .sort((a, b) => (b[1].createdAt || '').localeCompare(a[1].createdAt || ''));
 
     pInvoices.forEach(([k, inv]) => {
-      const total = parseFloat(inv.total) || 0;
+      const total = typeof inv.totalMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(inv.totalMinor) : (inv.totalMinor/1000)) : (parseFloat(inv.total) || 0);
       const paid = this.calculateInvoicePaid(k);
       const remaining = parseFloat((total - paid).toFixed(2));
       const dateStr = inv.createdAt ? new Date(inv.createdAt).toLocaleString('ar-JO') : '\u2014';
@@ -416,14 +381,15 @@ const BillingEngine = {
 
       const renderCat = (icon, label, color, items) => {
         if (!items.length) return '';
-        const sub = items.reduce((a, i) => a + (parseFloat(i.price) || 0), 0);
+        const sub = items.reduce((a, i) => a + (typeof i.unitPriceMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(i.unitPriceMinor) : (i.unitPriceMinor/1000)) : (parseFloat(i.price) || 0)), 0);
         return `<div style="margin-bottom:6px">
           <div style="font-size:0.72rem;font-weight:800;color:${color};margin-bottom:3px">${icon} ${label}</div>
           ${items.map(i => {
             const isPending = i.requiresBillingReview;
             const itemBg = isPending ? 'rgba(239,68,68,0.1)' : 'rgba(0,0,0,0.02)';
             const itemBorder = isPending ? '1px solid rgba(239,68,68,0.3)' : '1px solid var(--border)';
-            const priceHtml = isPending ? `<span style="color:var(--red);font-size:0.65rem;font-weight:bold">⚠️ قيد المراجعة</span>` : `<span style="font-family:'IBM Plex Mono',monospace;font-weight:bold;color:${color};font-size:0.78rem">${parseFloat(i.price).toFixed(2)}</span>`;
+            const itemPrice = typeof i.unitPriceMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(i.unitPriceMinor) : (i.unitPriceMinor/1000)) : (parseFloat(i.price) || 0);
+            const priceHtml = isPending ? `<span style="color:var(--red);font-size:0.65rem;font-weight:bold">⚠️ قيد المراجعة</span>` : `<span style="font-family:'IBM Plex Mono',monospace;font-weight:bold;color:${color};font-size:0.78rem">${itemPrice.toFixed(2)}</span>`;
             return `<div style="display:flex;justify-content:space-between;align-items:center;background:${itemBg};padding:2px 6px;border-radius:4px;border:${itemBorder};margin-bottom:2px">
               <span style="font-size:0.78rem;${isPending ? 'color:var(--red)' : ''}">${BillingEngine.sanitize(i.name)}</span>
               ${priceHtml}
@@ -524,7 +490,8 @@ const BillingEngine = {
         else if (n.includes('\u062a\u062d\u0644\u064a\u0644') || n.includes('lab')) dept = '\u0645\u062e\u062a\u0628\u0631';
         else if (n.includes('\u062a\u0635\u0648\u064a\u0631') || n.includes('\u0623\u0634\u0639\u0629') || n.includes('rad')) dept = '\u0623\u0634\u0639\u0629';
         else if (n.includes('\u0635\u064a\u062f\u0644') || n.includes('\u062f\u0648\u0627\u0621') || n.includes('pharm')) dept = '\u0635\u064a\u062f\u0644\u064a\u0629';
-        allItems.push({ idx: counter++, name: BillingEngine.sanitize(i.name), dept, price: parseFloat(i.price) || 0 });
+        const itemPrice = typeof i.unitPriceMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(i.unitPriceMinor) : (i.unitPriceMinor/1000)) : (parseFloat(i.price) || 0);
+        allItems.push({ idx: counter++, name: BillingEngine.sanitize(i.name), dept, price: itemPrice });
       });
     });
 
@@ -611,7 +578,7 @@ function recordBillingPayment() {
 
   let totalUnallocated = 0;
   pInvoices.forEach(([_, inv]) => {
-    const t = parseFloat(inv.total) || 0;
+    const t = typeof inv.totalMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(inv.totalMinor) : (inv.totalMinor/1000)) : (parseFloat(inv.total) || 0);
     const p = BillingEngine.calculateInvoicePaid(_);
     totalUnallocated += (t - p);
   });
@@ -631,7 +598,7 @@ function recordBillingPayment() {
     if (remainingPayment <= 0) break;
 
     const [invId, inv] = pInvoices[i];
-    const total = parseFloat(inv.total) || 0;
+    const total = typeof inv.totalMinor !== 'undefined' ? parseFloat(window.ArgonFinance ? ArgonFinance.fromMinor(inv.totalMinor) : (inv.totalMinor/1000)) : (parseFloat(inv.total) || 0);
     const paid = BillingEngine.calculateInvoicePaid(invId);
     const unallocated = total - paid;
 
@@ -844,6 +811,44 @@ function renderReceivables() {
     BillingEngine.renderReceivables();
   }
 }
+
+
+// ── IMMUTABLE AUDIT LOGIC (ZERO-ERROR) ──
+window.voidInvoice = function(invoiceId, reason) {
+  if (!invoiceId) return;
+  if (!reason || reason.trim().length < 5) {
+    if(typeof toast === 'function') toast('يرجى إدخال سبب مقنع لإلغاء الفاتورة (5 أحرف على الأقل).', 'err');
+    return;
+  }
+  if (!confirm('تحذير: إلغاء الفاتورة سيجعلها غير صالحة ولا يمكن التراجع عن هذا الإجراء. هل أنت متأكد؟')) return;
+
+  const session = window.ArgonSession ? window.ArgonSession.get() : {};
+  const updates = {};
+  updates[`${BASE}/invoices/${invoiceId}/status`] = 'voided';
+  updates[`${BASE}/invoices/${invoiceId}/voidReason`] = reason;
+  updates[`${BASE}/invoices/${invoiceId}/voidedBy`] = session.staffId || 'unknown';
+  updates[`${BASE}/invoices/${invoiceId}/voidedAt`] = new Date().toISOString();
+
+  // Create an offset transaction for accounting reconciliation
+  const txId = db.ref().child('financial_transactions').push().key;
+  updates[`${BASE}/financial_transactions/${txId}`] = {
+    invoiceId: invoiceId,
+    type: 'VOID_OFFSET',
+    reason: reason,
+    timestamp: new Date().toISOString(),
+    actorId: session.staffId || 'unknown'
+  };
+
+  db.ref().update(updates).then(() => {
+    if (typeof toast === 'function') toast('✅ تم إلغاء الفاتورة بنجاح', 'ok');
+    if (typeof ArgonCore !== 'undefined') {
+      ArgonCore.logAudit('INVOICE_VOIDED', `تم إلغاء الفاتورة ${invoiceId} بسبب: ${reason}`, 'BILLING');
+    }
+  }).catch(e => {
+    if (typeof toast === 'function') toast('❌ حدث خطأ أثناء الإلغاء', 'err');
+    console.error(e);
+  });
+};
 
 // Hook into Dashboard initialization
 document.addEventListener('DOMContentLoaded', () => {

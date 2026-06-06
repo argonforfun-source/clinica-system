@@ -38,6 +38,23 @@ window.argonTimeAgo = function(isoDate) {
   return `قبل ${days} أيام`;
 };
 
+// ── Strict Enterprise Finance Utilities (Zero-Error Mode) ──
+window.ArgonFinance = {
+    // Convert Jordanian Dinar (JD) to Fils (Minor Units)
+    // Example: 12.50 JD -> 12500 Fils
+    toMinor: function(jdAmount) {
+        if (!jdAmount || isNaN(jdAmount)) return 0;
+        // Multiply by 1000 and round to nearest integer to eliminate JS float issues
+        return Math.round(parseFloat(jdAmount) * 1000);
+    },
+    // Convert Fils (Minor Units) back to formatted JD string
+    // Example: 12500 Fils -> 12.50
+    fromMinor: function(filsAmount) {
+        if (!filsAmount || isNaN(filsAmount)) return "0.00";
+        return (parseInt(filsAmount, 10) / 1000).toFixed(2);
+    }
+};
+
 
 // ── Context (Tenant Identification) ──
 const urlParams = new URLSearchParams(window.location.search);

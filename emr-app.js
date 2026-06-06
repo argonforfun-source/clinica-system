@@ -3812,39 +3812,60 @@ function completeWorkspaceVisit() {
     renderWorkspaceRx();
   }
 
-  const pendingLab = document.getElementById('labTestInput')?.value.trim();
-  if (pendingLab && !labTestsList.includes(pendingLab)) {
-    labTestsList.push(pendingLab);
-    renderLabOrderTags();
+  const pendingLabInp = document.getElementById('labTestInput');
+  const pendingLab = pendingLabInp ? pendingLabInp.value.trim() : '';
+  if (pendingLab && !labTestsList.some(x => x.name === pendingLab)) {
+    const sId = pendingLabInp.dataset.serviceId;
+    const sPrice = pendingLabInp.dataset.unitPrice;
+    let newObj;
+    if (sId && pendingLabInp.dataset.lastSelectedName === pendingLab) {
+      newObj = { name: pendingLab, serviceId: sId, unitPrice: parseFloat(sPrice), source: 'pricing_catalog', requiresBillingReview: false };
+    } else {
+      newObj = { name: pendingLab, serviceId: 'external', unitPrice: 0, source: 'manual', requiresBillingReview: true };
+    }
+    labTestsList.push(newObj);
+    if(typeof renderLabOrderTags === 'function') renderLabOrderTags();
   }
 
-  const pendingRad = document.getElementById('radScanInput')?.value.trim();
-  if (pendingRad && !radScansList.includes(pendingRad)) {
-    radScansList.push(pendingRad);
-    renderRadOrderTags();
+  const pendingRadInp = document.getElementById('radScanInput');
+  const pendingRad = pendingRadInp ? pendingRadInp.value.trim() : '';
+  if (pendingRad && !radScansList.some(x => x.name === pendingRad)) {
+    const sId = pendingRadInp.dataset.serviceId;
+    const sPrice = pendingRadInp.dataset.unitPrice;
+    let newObj;
+    if (sId && pendingRadInp.dataset.lastSelectedName === pendingRad) {
+      newObj = { name: pendingRad, serviceId: sId, unitPrice: parseFloat(sPrice), source: 'pricing_catalog', requiresBillingReview: false };
+    } else {
+      newObj = { name: pendingRad, serviceId: 'external', unitPrice: 0, source: 'manual', requiresBillingReview: true };
+    }
+    radScansList.push(newObj);
+    if(typeof renderRadOrderTags === 'function') renderRadOrderTags();
   }
 
-  // Build visit object with field names matching what the Timeline renderer reads
+  // Determine Patient ID and Timeline Key EARLY
+  let finalUid = uid;
+  let isNewPatient = false;
+  if (!uid || !_patients[uid]) {
+    finalUid = db.ref(`${BASE}/patients`).push().key;
+    isNewPatient = true;
+  }
+  const timelineKey = db.ref(`${BASE}/patients/${finalUid}/visits`).push().key;
+
   const now = new Date();
+  const session = window.ArgonSession ? ArgonSession.get() : null;
   const visitObj = {
-    // Date/Time — timeline uses v.date and v.time
     date: now.toISOString().split('T')[0],
     time: now.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' }),
-    // Doctor identity
-    docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
-    docKey: 'doctor',
-    // Complaint — timeline reads v.complaint
+    docName: session?.displayName || 'طبيب',
+    docKey: session?.staffId || 'doctor',
     complaint: comp || '—',
-    // Diagnosis — timeline reads v.diagnosis
     diagnosis: diag || '—',
-    // Vitals — timeline reads v.vitals.temp, v.vitals.bp, v.vitals.pulse
     vitals: {
       temp: document.getElementById('vTemp').value.trim(),
       bp: document.getElementById('vBp').value.trim(),
-      pulse: document.getElementById('vHr').value.trim(),  // hr → pulse
+      pulse: document.getElementById('vHr').value.trim(),
       o2: document.getElementById('vO2').value.trim()
     },
-    // Prescriptions — timeline reads v.prescriptions[].name / .dose / .freq
     prescriptions: activeVisit.rx.map(r => ({
       name: r.drug,
       dose: r.dose,
@@ -3852,167 +3873,180 @@ function completeWorkspaceVisit() {
     }))
   };
 
-  // Lab / Radiology orders — timeline reads v.labOrders[] and v.radOrders[]
   if (labTestsList && labTestsList.length) visitObj.labOrders = [...labTestsList];
   if (radScansList && radScansList.length) visitObj.radOrders = [...radScansList];
 
   const updates = {};
+  const booking = bookingId ? (_liveBookings[bookingId] || {}) : {};
+  const patientName = isNewPatient ? (booking.patName || activeVisit.name || 'مريض') : (_patients[finalUid]?.info?.name || activeVisit.name || 'مريض');
+  const patientPhone = isNewPatient ? (booking.patPhone || activeVisit.phone || '') : (_patients[finalUid]?.info?.phone || activeVisit.phone || '');
 
-  // --- Case 1: Patient is registered with a UUID ---
-  if (uid && _patients[uid]) {
-    const timelineKey = db.ref(`${BASE}/patients/${uid}/visits`).push().key;
-    updates[`${BASE}/patients/${uid}/visits/${timelineKey}`] = visitObj;
-    if (bookingId) {
-      const b = _liveBookings[bookingId];
-      if (b) {
-        updates[`${BASE}/completedBookings/${bookingId}`] = { ...b, status: 'done', completedAt: new Date().toISOString() };
-        updates[`${BASE}/bookings/${bookingId}`] = null;
-      } else {
-        updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
+  // ── Enterprise Billing Engine: Build Invoice (Zero-Error Mode) ──
+  const invItems = [];
+  let reqReview = false;
+  let missingReasons = [];
+  
+  // 1. Doctor Fee
+  let docFeeMinor = null;
+  let docServiceId = 'doc-consult';
+  let docServiceName = 'كشفية الطبيب';
+  
+  if (typeof _pricingCatalogCache !== 'undefined' && _pricingCatalogCache) {
+      let docEntry = Object.values(_pricingCatalogCache).find(i => i.type === 'consultation' && i.active && i.doctorId === session?.staffId);
+      if (!docEntry) docEntry = Object.values(_pricingCatalogCache).find(i => i.type === 'consultation' && i.active && !i.doctorId);
+      
+      if (docEntry && typeof docEntry.price !== 'undefined' && docEntry.price !== '') {
+          docFeeMinor = window.ArgonFinance ? ArgonFinance.toMinor(docEntry.price) : Math.round(parseFloat(docEntry.price) * 1000);
+          docServiceId = docEntry.id || 'doc-consult';
+          docServiceName = docEntry.name || 'كشفية الطبيب';
       }
-    }
-
-    // Create actual lab and radiology orders
-    if (labTestsList && labTestsList.length > 0) {
-      const labKey = db.ref(`${BASE}/lab_orders`).push().key;
-      updates[`${BASE}/lab_orders/${labKey}`] = {
-        patientId: uid,
-        patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
-        patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
-        doctorId: (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor',
-        docName: (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب',
-        createdAt: new Date().toISOString(),
-        requestedTests: labTestsList.map(t => ({ name: t, status: 'waiting' })),
-        status: 'waiting',
-        visitId: timelineKey
-      };
-    }
-
-    if (radScansList && radScansList.length > 0) {
-      const radKey = db.ref(`${BASE}/radiology_orders`).push().key;
-      updates[`${BASE}/radiology_orders/${radKey}`] = {
-        patientId: uid,
-        patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
-        patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
-        doctorId: (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor',
-        docName: (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب',
-        createdAt: new Date().toISOString(),
-        requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
-        status: 'waiting',
-        visitId: timelineKey
-      };
-    }
-
-    // Create prescription order for pharmacy
-    if (activeVisit.rx && activeVisit.rx.length > 0) {
-      const prescKey = db.ref(`${BASE}/prescriptions`).push().key;
-      updates[`${BASE}/prescriptions/${prescKey}`] = {
-        patientId: uid,
-        patientName: _patients[uid]?.info?.name || activeVisit.name || 'مريض',
-        patientPhone: _patients[uid]?.info?.phone || activeVisit.phone || '',
-        doctorId: (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor',
-        docName: (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب',
-        medications: activeVisit.rx.map(m => ({
-          name: m.drug,
-          dose: m.dose,
-          freq: '',
-          dur: '',
-          note: '',
-          status: 'waiting'
-        })),
-        status: 'waiting',
-        visitId: timelineKey,
-        orgId: CID,
-        createdAt: new Date().toISOString()
-      };
-    }
-
-    _writeVisitUpdates(updates, diag);
   }
-  // --- Case 2: Unregistered patient — auto-register then save ---
-  else {
-    const booking = _liveBookings[bookingId] || {};
-    const newRef = db.ref(`${BASE}/patients`).push();
-    const newUid = newRef.key;
+  
+  if (docFeeMinor === null) {
+      reqReview = true;
+      missingReasons.push('Doctor consultation fee not found in pricing catalog.');
+  } else {
+      invItems.push({
+          serviceId: docServiceId,
+          name: docServiceName,
+          unitPriceMinor: docFeeMinor,
+          billingReferenceId: `consult-${timelineKey}`,
+          snapshotAt: now.toISOString()
+      });
+  }
+
+  // 2. Lab Tests
+  if (labTestsList && labTestsList.length) {
+      labTestsList.forEach((t, idx) => {
+          if (t.requiresBillingReview || typeof t.unitPrice === 'undefined' || isNaN(t.unitPrice) || t.unitPrice === '') {
+              reqReview = true;
+              missingReasons.push(`Lab test missing price: ${t.name}`);
+          }
+          invItems.push({
+              serviceId: t.serviceId || `lab-ext-${idx}`,
+              name: t.name,
+              unitPriceMinor: window.ArgonFinance ? ArgonFinance.toMinor(t.unitPrice || 0) : Math.round(parseFloat(t.unitPrice || 0) * 1000),
+              billingReferenceId: `lab-${timelineKey}-${idx}`,
+              snapshotAt: now.toISOString()
+          });
+      });
+  }
+
+  // 3. Radiology Scans
+  if (radScansList && radScansList.length) {
+      radScansList.forEach((s, idx) => {
+          if (s.requiresBillingReview || typeof s.unitPrice === 'undefined' || isNaN(s.unitPrice) || s.unitPrice === '') {
+              reqReview = true;
+              missingReasons.push(`Radiology scan missing price: ${s.name}`);
+          }
+          invItems.push({
+              serviceId: s.serviceId || `rad-ext-${idx}`,
+              name: s.name,
+              unitPriceMinor: window.ArgonFinance ? ArgonFinance.toMinor(s.unitPrice || 0) : Math.round(parseFloat(s.unitPrice || 0) * 1000),
+              billingReferenceId: `rad-${timelineKey}-${idx}`,
+              snapshotAt: now.toISOString()
+          });
+      });
+  }
+
+  const invId = `INV-${timelineKey}`;
+  updates[`${BASE}/invoices/${invId}`] = {
+      patientId: finalUid,
+      patientName: patientName,
+      patientPhone: patientPhone,
+      visitId: timelineKey,
+      items: invItems,
+      totalMinor: invItems.reduce((acc, curr) => acc + (curr.unitPriceMinor || 0), 0),
+      createdAt: now.toISOString(),
+      status: reqReview ? 'pending_review' : 'unpaid',
+      requiresBillingReview: reqReview,
+      reviewReasons: missingReasons,
+      docName: visitObj.docName
+  };
+  // ── End Enterprise Billing Engine ──
+
+  // Write Medical Records
+  updates[`${BASE}/patients/${finalUid}/visits/${timelineKey}`] = visitObj;
+
+  if (bookingId) {
+    if (booking.status) {
+      updates[`${BASE}/completedBookings/${bookingId}`] = { ...booking, status: 'done', completedAt: now.toISOString() };
+      updates[`${BASE}/bookings/${bookingId}`] = null;
+    } else {
+      updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
+    }
+  }
+
+  // Create actual lab and radiology orders
+  if (labTestsList && labTestsList.length > 0) {
+    const labKey = db.ref(`${BASE}/lab_orders`).push().key;
+    updates[`${BASE}/lab_orders/${labKey}`] = {
+      patientId: finalUid,
+      patientName: patientName,
+      patientPhone: patientPhone,
+      doctorId: session?.staffId || 'doctor',
+      docName: session?.displayName || 'طبيب',
+      createdAt: now.toISOString(),
+      requestedTests: labTestsList.map(t => ({ name: t.name, serviceId: t.serviceId || '', status: 'waiting' })),
+      status: 'waiting',
+      visitId: timelineKey
+    };
+  }
+
+  if (radScansList && radScansList.length > 0) {
+    const radKey = db.ref(`${BASE}/radiology_orders`).push().key;
+    updates[`${BASE}/radiology_orders/${radKey}`] = {
+      patientId: finalUid,
+      patientName: patientName,
+      patientPhone: patientPhone,
+      doctorId: session?.staffId || 'doctor',
+      docName: session?.displayName || 'طبيب',
+      createdAt: now.toISOString(),
+      requestedScans: radScansList.map(s => ({ name: s.name, serviceId: s.serviceId || '', status: 'waiting' })),
+      status: 'waiting',
+      visitId: timelineKey
+    };
+  }
+
+  // Create prescription order for pharmacy
+  if (activeVisit.rx && activeVisit.rx.length > 0) {
+    const prescKey = db.ref(`${BASE}/prescriptions`).push().key;
+    updates[`${BASE}/prescriptions/${prescKey}`] = {
+      patientId: finalUid,
+      patientName: patientName,
+      patientPhone: patientPhone,
+      doctorId: session?.staffId || 'doctor',
+      docName: session?.displayName || 'طبيب',
+      medications: activeVisit.rx.map(m => ({
+        name: m.drug,
+        dose: m.dose,
+        freq: '',
+        dur: '',
+        note: '',
+        status: 'waiting'
+      })),
+      status: 'waiting',
+      visitId: timelineKey,
+      orgId: CID,
+      createdAt: now.toISOString()
+    };
+  }
+
+  if (isNewPatient) {
     const mrn = genMRN();
-    updates[`${BASE}/patients/${newUid}/info`] = {
-      name: booking.patName || activeVisit.name || 'مريض',
-      phone: booking.patPhone || activeVisit.phone || '',
+    updates[`${BASE}/patients/${finalUid}/info`] = {
+      name: patientName,
+      phone: patientPhone,
       mrn,
       gender: '',
       age: '',
-      createdAt: new Date().toISOString()
+      createdAt: now.toISOString()
     };
-    const timelineKey = db.ref(`${BASE}/patients/${newUid}/visits`).push().key;
-    updates[`${BASE}/patients/${newUid}/visits/${timelineKey}`] = visitObj;
-    if (bookingId) {
-      const b = _liveBookings[bookingId];
-      if (b) {
-        updates[`${BASE}/completedBookings/${bookingId}`] = { ...b, status: 'done', completedAt: new Date().toISOString() };
-        updates[`${BASE}/bookings/${bookingId}`] = null;
-      } else {
-        updates[`${BASE}/bookings/${bookingId}/status`] = 'completed';
-      }
-    }
-
-    // Create actual lab and radiology orders
-    if (labTestsList && labTestsList.length > 0) {
-      const labKey = db.ref(`${BASE}/lab_orders`).push().key;
-      updates[`${BASE}/lab_orders/${labKey}`] = {
-        patientId: newUid,
-        patientName: booking.patName || activeVisit.name || 'مريض',
-        patientPhone: booking.patPhone || activeVisit.phone || '',
-        doctorId: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'doctor',
-        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
-        createdAt: new Date().toISOString(),
-        requestedTests: labTestsList.map(t => ({ name: t, status: 'waiting' })),
-        status: 'waiting',
-        visitId: timelineKey
-      };
-    }
-
-    if (radScansList && radScansList.length > 0) {
-      const radKey = db.ref(`${BASE}/radiology_orders`).push().key;
-      updates[`${BASE}/radiology_orders/${radKey}`] = {
-        patientId: newUid,
-        patientName: booking.patName || activeVisit.name || 'مريض',
-        patientPhone: booking.patPhone || activeVisit.phone || '',
-        doctorId: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'doctor',
-        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
-        createdAt: new Date().toISOString(),
-        requestedScans: radScansList.map(s => ({ name: s, status: 'waiting' })),
-        status: 'waiting',
-        visitId: timelineKey
-      };
-    }
-
-    // Create prescription order for pharmacy
-    if (activeVisit.rx && activeVisit.rx.length > 0) {
-      const prescKey = db.ref(`${BASE}/prescriptions`).push().key;
-      updates[`${BASE}/prescriptions/${prescKey}`] = {
-        patientId: newUid,
-        patientName: booking.patName || activeVisit.name || 'مريض',
-        doctorId: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'doctor',
-        docName: (window.ArgonSession ? ArgonSession.get()?.displayName : null) || 'طبيب',
-        medications: activeVisit.rx.map(m => ({
-          name: m.drug,
-          dose: m.dose,
-          freq: '',
-          dur: '',
-          note: '',
-          status: 'waiting'
-        })),
-        status: 'waiting',
-        visitId: timelineKey,
-        orgId: CID,
-        createdAt: new Date().toISOString()
-      };
-    }
-
-    activeVisit.uid = newUid;
-    _writeVisitUpdates(updates, diag);
+    activeVisit.uid = finalUid;
     toast('تم تسجيل المريض تلقائياً في النظام', 'ok');
   }
+
+  _writeVisitUpdates(updates, diag);
 }
 
 function _writeVisitUpdates(updates, diag) {
