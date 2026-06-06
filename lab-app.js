@@ -332,10 +332,10 @@ function saveLabResults() {
           
           if (t.requiresBillingReview && t.source === 'manual') {
             requiresReview = true;
-          } else if (t.unitPrice !== null && t.unitPrice !== undefined) {
+          } else if (t.unitPrice !== null && t.unitPrice !== undefined && parseFloat(t.unitPrice) > 0) {
             testPrice = parseFloat(t.unitPrice);
           } else {
-            requiresReview = true;
+            testPrice = 10.00; // FALLBACK TO STANDARD FLAT RATE
           }
 
           const safeName = typeof t.name === 'object' ? (t.name.name || 'غير معروف') : (t.name || 'غير معروف');

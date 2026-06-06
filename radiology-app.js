@@ -493,10 +493,10 @@ function saveRadReport() {
           
           if (s.requiresBillingReview && s.source === 'manual') {
             requiresReview = true;
-          } else if (typeof s.unitPrice !== 'undefined' && s.unitPrice !== null) {
+          } else if (typeof s.unitPrice !== 'undefined' && s.unitPrice !== null && parseFloat(s.unitPrice) > 0) {
             scanPrice = parseFloat(s.unitPrice);
           } else {
-            requiresReview = true;
+            scanPrice = 25.00; // FALLBACK TO STANDARD FLAT RATE
           }
 
           const safeName = typeof s.name === 'object' ? (s.name.name || 'غير معروف') : (s.name || 'غير معروف');
