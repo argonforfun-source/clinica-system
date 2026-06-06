@@ -552,6 +552,32 @@ function saveRadReport() {
         } 
         // 2. Unified Policy (الدمج مع فاتورة الزيارة)
         else {
+          const createSeparateInvoiceFallback = () => {
+            const newInvId = db.ref().child('invoices').push().key;
+            const invTotal = parseFloat(newRadItems.reduce((sum, item) => sum + item.price, 0).toFixed(2));
+            const separateInvoice = {
+              patientId: o.patientId,
+              patientName: o.patientName,
+              visitId: visitId,
+              docName: o.doctorName || 'طبيب غير محدد',
+              items: newRadItems,
+              total: invTotal,
+              status: requiresReview ? 'pending' : 'draft',
+              invoiceType: 'rad_invoice',
+              orderReferenceId: k,
+              billingPolicySnapshot: bpState,
+              createdAt: new Date().toISOString(),
+              invoiceNumber: `INV-RAD-${Date.now()}`,
+              issueDate: new Date().toISOString(),
+              currency: 'JOD',
+              sellerTaxNumber: _sets?.taxNumber || '',
+              buyerNationalId: o.nationalId || '',
+              eInvoiceStatus: 'pending'
+            };
+            db.ref(`${BASE}/invoices/${newInvId}`).set(separateInvoice);
+            if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('CREATE_INVOICE', `إنشاء فاتورة أشعة منفصلة للمريض (Fallback): ${o.patientName}`, 'FINANCE');
+          };
+
           // Find the main visit invoice
           const invEntry = Object.entries(invoices).find(([_, v]) => v.invoiceType !== 'lab_invoice' && v.invoiceType !== 'rad_invoice');
           if (invEntry) {
@@ -559,8 +585,8 @@ function saveRadReport() {
             
             // Check Invoice Lock Rule
             if (['paid', 'cancelled', 'refunded'].includes(invVal.status)) {
-              console.warn("Invoice is locked. Cannot auto-append items.");
-              if (typeof toast === 'function') toast('⚠️ الفاتورة مغلقة، يرجى مراجعة المحاسبة لتسجيل الصور', 'err');
+              console.warn("Invoice is locked. Creating a separate invoice instead.");
+              createSeparateInvoiceFallback();
               return;
             }
 
@@ -590,6 +616,9 @@ function saveRadReport() {
               db.ref(BASE).update(invoiceUpdates);
               if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('UPDATE_INVOICE', `دمج تقارير أشعة في الفاتورة الموحدة: ${invKey}`, 'FINANCE');
             }
+          } else {
+            // Main invoice doesn't exist (e.g. created by completeWorkspaceVisit without invoice)
+            createSeparateInvoiceFallback();
           }
         }
       });
