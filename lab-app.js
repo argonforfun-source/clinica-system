@@ -335,7 +335,8 @@ function saveLabResults() {
           } else if (t.unitPrice !== null && t.unitPrice !== undefined && parseFloat(t.unitPrice) > 0) {
             testPrice = parseFloat(t.unitPrice);
           } else {
-            testPrice = 10.00; // FALLBACK TO STANDARD FLAT RATE
+            testPrice = 0; 
+            requiresReview = true;
           }
 
           const safeName = typeof t.name === 'object' ? (t.name.name || 'غير معروف') : (t.name || 'غير معروف');

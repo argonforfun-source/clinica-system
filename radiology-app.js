@@ -496,7 +496,8 @@ function saveRadReport() {
           } else if (typeof s.unitPrice !== 'undefined' && s.unitPrice !== null && parseFloat(s.unitPrice) > 0) {
             scanPrice = parseFloat(s.unitPrice);
           } else {
-            scanPrice = 25.00; // FALLBACK TO STANDARD FLAT RATE
+            scanPrice = 0;
+            requiresReview = true;
           }
 
           const safeName = typeof s.name === 'object' ? (s.name.name || 'غير معروف') : (s.name || 'غير معروف');

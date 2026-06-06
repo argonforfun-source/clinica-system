@@ -909,7 +909,13 @@ let _pricingCatalog = {};
 
 function initPricingCatalog() {
   db.ref(`${BASE}/pricing_catalog`).on('value', snap => {
-    _pricingCatalog = snap.val() || {};
+    const data = snap.val() || {};
+    _pricingCatalog = {};
+    for (let k in data) {
+      if (!data[k].deleted) {
+        _pricingCatalog[k] = data[k];
+      }
+    }
     renderPricingTables();
   });
 
@@ -1048,14 +1054,14 @@ function togglePricingItem(key, newState) {
 }
 
 function deletePricingItem(key, itemName) {
-  if (confirm(`تحذير: هل أنت متأكد من حذف الفحص والتسعيرة "${itemName}" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`)) {
-    db.ref(`${BASE}/pricing_catalog/${key}`).remove().then(() => {
-      toast('🗑️ تم الحذف بنجاح', 'ok');
+  if (confirm(`تحذير: هل أنت متأكد من أرشفة الفحص والتسعيرة "${itemName}" نهائياً؟`)) {
+    db.ref(`${BASE}/pricing_catalog/${key}/deleted`).set(true).then(() => {
+      toast('🗑️ تم أرشفة الخدمة بنجاح', 'ok');
       if (typeof ArgonCore !== 'undefined') {
-        ArgonCore.logAudit('PRICE_DELETE', `حذف خدمة وتسعيرة "${itemName}" نهائياً`, 'BILLING');
+        ArgonCore.logAudit('PRICE_DELETE', `أرشفة خدمة وتسعيرة "${itemName}" نهائياً`, 'BILLING');
       }
     }).catch(e => {
-      toast('❌ فشل الحذف', 'err');
+      toast('❌ فشل الأرشفة', 'err');
       console.error(e);
     });
   }
