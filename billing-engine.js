@@ -91,11 +91,8 @@ const BillingEngine = {
 
   // ── ENTERPRISE BILLING ENGINE V1.5 ──
   getBillingPolicy: function (dept) {
-    const defaults = { lab: 'separate', rad: 'separate', pharmacy: 'dispense' };
-    if (this._clinicSettingsPolicy && this._clinicSettingsPolicy[dept]) {
-      return this._clinicSettingsPolicy[dept];
-    }
-    return defaults[dept] || 'separate';
+    // 🔒 STRICT POLICY: ALWAYS UNIFIED (One Master Invoice per Visit)
+    return 'unified';
   },
 
   isDuplicateCharge: function (billingRefId) {
@@ -109,6 +106,11 @@ const BillingEngine = {
   },
 
   findVisitInvoice: function (visitId) {
+    const invId = `INV-${visitId}`;
+    if (this._invoices[invId]) {
+      return { id: invId, ...this._invoices[invId] };
+    }
+    // Fallback: search by visitId if the key format is different
     for (const invKey in this._invoices) {
       const inv = this._invoices[invKey];
       if (inv.visitId === visitId && inv.invoiceType !== 'lab_invoice' && inv.invoiceType !== 'rad_invoice' && inv.invoiceType !== 'pharmacy_invoice') {
@@ -120,7 +122,6 @@ const BillingEngine = {
 
   addCharge: function (eventData) {
     /* eventData: { patientId, patientName, visitId, department, serviceId, customName, docName } */
-    const policy = this.getBillingPolicy(eventData.department);
     const billingRefId = `${CID}-${eventData.visitId}-${eventData.serviceId}-${eventData.department.toUpperCase()}`;
 
     // 1. Duplicate Prevention
@@ -134,12 +135,10 @@ const BillingEngine = {
     const priceInfo = this.lookupPrice(eventData.serviceId, eventData.department);
     let price = priceInfo;
     let requiresReview = false;
-    let status = 'unpaid';
 
     if (price === null) {
       price = 0;
       requiresReview = true;
-      status = 'pending_review';
       if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('MISSING_PRICE', `خدمة غير مسعرة: ${eventData.serviceId}`, 'FINANCE');
     }
 
@@ -147,69 +146,62 @@ const BillingEngine = {
       serviceId: eventData.serviceId,
       name: eventData.customName || eventData.serviceId,
       price: price,
-      billingReferenceId: billingRefId
+      billingReferenceId: billingRefId,
+      requiresBillingReview: requiresReview,
+      department: eventData.department
     };
 
-    // 3. Apply Policy
-    if (policy === 'free') {
-      if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('FREE_SERVICE', `خدمة مجانية مرت بدون فوترة: ${item.name}`, 'FINANCE');
-      return true;
-    }
-
-    if (policy === 'unified') {
-      const visitInv = this.findVisitInvoice(eventData.visitId);
-      if (visitInv) {
-        if (visitInv.status === 'paid' || visitInv.status === 'partial' || visitInv.status === 'voided' || visitInv.locked) {
-           this.createSeparateInvoice(eventData, [item], status, requiresReview, visitInv.id);
-           return true;
-        } else {
-           const currentItems = visitInv.items || [];
-           if (currentItems.find(i => i.billingReferenceId === billingRefId)) return false;
-           currentItems.push(item);
-           let newTotal = currentItems.reduce((acc, curr) => acc + curr.price, 0);
-           let newStatus = visitInv.status;
-           if (requiresReview) newStatus = 'pending_review';
-           db.ref(`${BASE}/invoices/${visitInv.id}`).update({
-             items: currentItems,
-             total: newTotal,
-             status: newStatus
-           });
-           if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('INVOICE_UPDATED', `تحديث فاتورة موحدة: إضافة ${item.name}`, 'FINANCE');
-           return true;
-        }
-      } else {
-        this.createSeparateInvoice(eventData, [item], status, requiresReview, null);
-        return true;
-      }
-    }
-
-    this.createSeparateInvoice(eventData, [item], status, requiresReview, null);
-    return true;
-  },
-
-  createSeparateInvoice: function (eventData, items, status, requiresReview, linkedInvoiceId) {
-    const newInvId = db.ref().child('invoices').push().key;
-    const invTotal = items.reduce((sum, item) => sum + item.price, 0);
+    // 3. MASTER INVOICE ENFORCEMENT (One Invoice per Visit)
+    let visitInv = this.findVisitInvoice(eventData.visitId);
     
-    const invoice = {
-      patientId: eventData.patientId,
-      patientName: eventData.patientName || 'غير معروف',
-      visitId: eventData.visitId,
-      docName: eventData.docName || 'طبيب غير محدد',
-      items: items,
-      total: invTotal,
-      status: requiresReview ? 'pending_review' : 'unpaid',
-      invoiceType: `${eventData.department}_invoice`,
-      createdAt: new Date().toISOString()
-    };
-
-    if (linkedInvoiceId) {
-      invoice.linkedInvoiceId = linkedInvoiceId;
-      if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('LINKED_INVOICE_CREATED', `فاتورة تابعة للموحدة المدفوعة: ${linkedInvoiceId}`, 'FINANCE');
+    // 3.1 Network / Timing Recovery: If the master invoice hasn't been created yet, create it atomically!
+    if (!visitInv) {
+      const invId = `INV-${eventData.visitId}`;
+      const ts = new Date().toISOString();
+      const invoiceData = {
+        patientId: eventData.patientId,
+        patientName: eventData.patientName || 'غير معروف',
+        visitId: eventData.visitId,
+        items: [],
+        total: 0,
+        createdAt: ts,
+        status: "unpaid"
+      };
+      // We do a set instead of push to guarantee the ID.
+      db.ref(`${BASE}/invoices/${invId}`).set(invoiceData);
+      visitInv = { id: invId, ...invoiceData };
+      if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('MASTER_INVOICE_RECOVERED', `إنشاء فاتورة رئيسية مفقودة للزيارة: ${eventData.visitId}`, 'FINANCE');
     }
 
-    db.ref(`${BASE}/invoices/${newInvId}`).set(invoice);
-    if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('INVOICE_CREATED', `إنشاء فاتورة قسم: ${eventData.department}`, 'FINANCE');
+    // 3.2 Atomic Append to Master Invoice
+    const currentItems = visitInv.items || [];
+    if (currentItems.find(i => i.billingReferenceId === billingRefId)) return false; // Double check
+    
+    currentItems.push(item);
+    let newTotal = currentItems.reduce((acc, curr) => acc + curr.price, 0);
+    
+    // Adjust status dynamically if it was previously paid but now has new charges
+    let newStatus = visitInv.status;
+    if (requiresReview) {
+      newStatus = 'pending_review';
+    } else if (newStatus === 'paid' || newStatus === 'voided' || visitInv.locked) {
+      newStatus = 'partial'; // Because we added a new unpaid item
+    }
+
+    let updates = {
+      items: currentItems,
+      total: parseFloat(newTotal.toFixed(2)),
+      status: newStatus,
+      locked: false // Ensure it's unlocked for further processing
+    };
+    if (requiresReview) {
+      updates.financialBlocked = true;
+    }
+
+    db.ref(`${BASE}/invoices/${visitInv.id}`).update(updates);
+
+    if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('INVOICE_UPDATED', `تحديث فاتورة موحدة: إضافة ${item.name}`, 'FINANCE');
+    return true;
   },
 
   // ── VISIT FEE OBSERVER (كشفية الطبيب فقط) ──
@@ -303,7 +295,9 @@ const BillingEngine = {
     const patientInvoices = Object.entries(this._invoices).filter(([k, inv]) => inv.patientId === patientId);
 
     patientInvoices.forEach(([k, inv]) => {
-      totalBilled += (parseFloat(inv.total) || 0);
+      if (inv.status !== 'voided' && inv.status !== 'cancelled') {
+        totalBilled += (parseFloat(inv.total) || 0);
+      }
       totalPaid += this.calculateInvoicePaid(k);
     });
 
@@ -329,6 +323,7 @@ const BillingEngine = {
     let overdueCount = 0;
 
     Object.entries(this._invoices).forEach(([k, inv]) => {
+      if (inv.status === 'voided' || inv.status === 'cancelled') return;
       const total = parseFloat(inv.total) || 0;
       const paid = this.calculateInvoicePaid(k);
       const remaining = parseFloat((total - paid).toFixed(2));
@@ -369,7 +364,7 @@ const BillingEngine = {
 
     Object.entries(this._invoices).forEach(([k, inv]) => {
       const pid = inv.patientId;
-      if (!pid || inv.status === 'voided' || inv.status === 'cancelled') return;
+      if (!pid) return;
 
       if (!patientBalances[pid]) {
         patientBalances[pid] = {
@@ -378,16 +373,13 @@ const BillingEngine = {
           patientPhone: pts[pid] ? pts[pid].info?.phone : (inv.patientPhone || ''),
           total: 0,
           paid: 0,
-          hasPendingReview: false,
           lastDate: inv.createdAt || ''
         };
       }
 
-      if (inv.status === 'pending_review' || inv.financialBlocked) {
-        patientBalances[pid].hasPendingReview = true;
+      if (inv.status !== 'voided' && inv.status !== 'cancelled') {
+        patientBalances[pid].total += parseFloat(inv.total) || 0;
       }
-
-      patientBalances[pid].total += parseFloat(inv.total) || 0;
       patientBalances[pid].paid += this.calculateInvoicePaid(k);
       if (inv.createdAt && inv.createdAt > patientBalances[pid].lastDate) {
         patientBalances[pid].lastDate = inv.createdAt;
@@ -431,10 +423,7 @@ const BillingEngine = {
       let status = 'unpaid';
       let statusBadge = '<span style="color:var(--red);background:rgba(239,68,68,0.1);padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:bold">غير مدفوع</span>';
 
-      if (p.hasPendingReview) {
-        status = 'pending_review';
-        statusBadge = '<span style="color:#d97706;background:rgba(245,158,11,0.15);padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:bold;border:1px solid rgba(245,158,11,0.4)"><i class="fas fa-exclamation-triangle"></i> بانتظار التسعير</span>';
-      } else if (remaining <= 0) {
+      if (remaining <= 0) {
         status = 'paid';
         statusBadge = '<span style="color:var(--green);background:rgba(16,185,129,0.1);padding:4px 8px;border-radius:6px;font-size:0.7rem;font-weight:bold">مسدد بالكامل</span>';
       } else if (p.paid > 0) {
@@ -449,7 +438,7 @@ const BillingEngine = {
       }
 
       if (filterQ !== 'all') {
-        if (filterQ === 'unpaid' && status !== 'unpaid' && status !== 'pending_review') return;
+        if (filterQ === 'unpaid' && status !== 'unpaid') return;
         if (filterQ === 'partial' && status !== 'partial') return;
         if (filterQ === 'overdue' && status !== 'overdue') return;
       }
@@ -671,128 +660,94 @@ const BillingEngine = {
       .filter(([k, inv]) => inv.patientId === pid)
       .sort((a, b) => (a[1].createdAt || '').localeCompare(b[1].createdAt || ''));
 
-    // Categorize items
-    const cats = { consult: [], lab: [], rad: [], pharm: [], other: [] };
+    let docNames = new Set();
+    let visitIds = new Set();
+    let isVoided = false;
+    let isPending = false;
+
+    const allItems = [];
+
     pInvoices.forEach(([k, inv]) => {
+      if (inv.status === 'voided') isVoided = true;
+      if (inv.status === 'pending_review' || inv.status === 'pending') isPending = true;
+      if (inv.visitId) visitIds.add(inv.visitId);
+      if (inv.docName) docNames.add(inv.docName);
+      
       (inv.items || []).forEach(i => {
-        const n = (i.name || '').toLowerCase();
-        const price = parseFloat(i.price) || 0;
-        const item = { name: BillingEngine.sanitize(i.name), price: price, date: inv.createdAt };
-        if (n.includes('كشفية') || n.includes('consultation')) cats.consult.push(item);
-        else if (n.includes('تحليل') || n.includes('lab')) cats.lab.push(item);
-        else if (n.includes('تصوير') || n.includes('أشعة') || n.includes('rad') || n.includes('x-ray') || n.includes('mri') || n.includes('ct')) cats.rad.push(item);
-        else if (n.includes('صيدل') || n.includes('دواء') || n.includes('pharm')) cats.pharm.push(item);
-        else cats.other.push(item);
+         const n = (i.name || '').toLowerCase();
+         let type = 'other';
+         if (n.includes('كشف') || n.includes('استشار')) type = 'exam';
+         else if (n.includes('تحليل') || n.includes('lab') || inv.department === 'lab') type = 'lab';
+         else if (n.includes('أشعة') || n.includes('rad') || n.includes('x-ray') || inv.department === 'radiology') type = 'radiology';
+         else if (n.includes('دواء') || n.includes('pharm') || inv.department === 'pharmacy') type = 'pharmacy';
+
+         allItems.push({
+            name: i.name || 'خدمة غير مسماة',
+            type: type,
+            qty: i.qty || 1,
+            price: i.price || 0,
+            note: `فاتورة: ${k.substring(0,8)}`
+         });
       });
     });
 
-    let itemCounter = 1;
-    const renderRows = (arr, deptName) => {
-      return arr.map(i => `
-        <tr>
-          <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">${itemCounter++}</td>
-          <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-weight:700">${i.name}</td>
-          <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center;color:#64748b">${deptName}</td>
-          <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center">1</td>
-          <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center;font-family:'IBM Plex Mono',monospace">${i.price.toFixed(2)}</td>
-          <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:bold;font-family:'IBM Plex Mono',monospace">${i.price.toFixed(2)}</td>
-        </tr>
-      `).join('');
+    const allPayments = [];
+    Object.values(this._transactions || {}).forEach(tx => {
+      if (tx.patientId === pid && (tx.type === 'payment' || tx.type === 'PAYMENT' || tx.type === 'credit') && tx.status !== 'voided') {
+        allPayments.push({
+          date: tx.date || new Date(tx.createdAt || Date.now()).toLocaleDateString('ar-JO'),
+          amount: tx.amount || 0,
+          note: tx.note || 'دفعة مالية'
+        });
+      }
+    });
+
+    const invNum = 'STMT-' + (pid || '').substring(0, 8).toUpperCase();
+    let status = fin.unpaid <= 0 && fin.total > 0 ? 'paid' : (fin.paid > 0 ? 'partial' : 'unpaid');
+    if (isVoided) status = 'voided';
+    if (isPending) status = 'unpaid';
+
+    const masterInv = {
+      id: invNum,
+      visitId: Array.from(visitIds).join(', ') || '—',
+      status: status,
+      patientName: patName,
+      patientNID: patNID || '—',
+      patientPhone: patPhone || '—',
+      patientAge: info.age || '—',
+      patientGender: info.gender || '—',
+      patientMRN: info.mrn || '—',
+      docName: Array.from(docNames).join('، ') || '—',
+      docSpec: '—',
+      visitTime: new Date().toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' }),
+      department: 'متعدد',
+      createdAt: new Date().toISOString(),
+      paidAt: fin.unpaid <= 0 ? new Date().toISOString() : null,
+      paidAmount: fin.paid,
+      discount: 0,
+      tax: 0,
+      items: allItems,
+      payments: allPayments,
+      notes: `كشف حساب شامل للمريض. الإجمالي: ${fin.total.toFixed(2)} د.أ · المسدد: ${fin.paid.toFixed(2)} د.أ · الرصيد المتبقي: ${fin.unpaid.toFixed(2)} د.أ`
     };
 
-    let rowsHtml = '';
-    rowsHtml += renderRows(cats.consult, 'كشفية طبية');
-    rowsHtml += renderRows(cats.lab, 'مختبر');
-    rowsHtml += renderRows(cats.rad, 'أشعة');
-    rowsHtml += renderRows(cats.pharm, 'صيدلية');
-    rowsHtml += renderRows(cats.other, 'أخرى');
-    
-    if(!rowsHtml) {
-        rowsHtml = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">لا توجد خدمات طبية مسجلة في هذه الفاتورة</td></tr>';
+    const settings = {
+        name: clinicName,
+        phone: clinicPhone,
+        logoUrl: clinicLogo,
+        emoji: '🏥'
+    };
+
+    const payload = { invoice: masterInv, settings: settings };
+    try {
+        localStorage.setItem('argon_invoice_payload', JSON.stringify(payload));
+        const base = window.location.pathname.replace(/\\/[^/]*$/, '') || '';
+        window.open(`${base}/invoice-print.html?id=${encodeURIComponent(typeof CID !== 'undefined' ? CID : '1')}`, '_blank');
+        setTimeout(() => localStorage.removeItem('argon_invoice_payload'), 30000);
+    } catch (e) {
+        console.error('Failed to open print page:', e);
+        if(typeof toast === 'function') toast('❌ فشل تحضير الفاتورة للطباعة', 'err');
     }
-
-    const dateNow = new Date().toLocaleDateString('ar-JO', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    const timeNow = new Date().toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
-    const invNum = 'INV-' + (pid || '').substring(0, 8).toUpperCase();
-
-    // QR Code data (JOFOTARA Standard simplified)
-    const qrData = encodeURIComponent(`العيادة: ${clinicName}\nالرقم الضريبي: ${clinicTax}\nرقم الفاتورة: ${invNum}\nالتاريخ: ${dateNow} ${timeNow}\nالإجمالي: ${fin.total.toFixed(2)} JOD`);
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${qrData}`;
-
-    const logoHtml = clinicLogo ? `<img src="${clinicLogo}" style="max-height:70px;max-width:120px;object-fit:contain;border-radius:8px" crossorigin="anonymous">` : '<div style="width:70px;height:70px;background:#f1f5f9;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:2rem;border:2px dashed #cbd5e1">🏥</div>';
-
-    const printHtml = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
-<title>فاتورة طبية ضريبية - ${BillingEngine.sanitize(patName)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
-<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Tajawal',sans-serif;color:#1e293b;background:#fff;direction:rtl;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-@page{size:A4;margin:15mm 12mm}
-.inv{max-width:780px;margin:0 auto;padding:20px}
-.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0d9488;padding-bottom:18px;margin-bottom:18px}
-.hdr-right{display:flex;align-items:center;gap:14px}
-.hdr h1{font-size:1.6rem;color:#0d9488;font-weight:900;margin-bottom:4px}
-.hdr-left{text-align:left; display:flex; gap: 15px; align-items:flex-start;}
-.hdr-left h2{font-size:1.1rem;color:#334155;margin-bottom:4px;font-weight:900;}
-.qr-code { width: 90px; height: 90px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px; }
-.pat-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pat-box b{color:#475569}
-table{width:100%;border-collapse:collapse;margin-bottom:16px}
-thead tr{background:#0d9488;color:#fff}
-thead th{padding:10px;font-weight:700;font-size:0.85rem;border:1px solid #0f766e;}
-tbody td{font-size:0.9rem;}
-.summary{display:flex;justify-content:flex-end;margin-bottom:20px}
-.summary-box{width:320px;border:2px solid #0d9488;border-radius:10px;overflow:hidden}
-.summary-row{display:flex;justify-content:space-between;padding:8px 14px;font-size:0.9rem;border-bottom:1px solid #e2e8f0}
-.summary-row:last-child{border-bottom:none;background:#0d9488;color:#fff;font-weight:900;font-size:1.1rem}
-.stamp-area{margin-top:30px;display:flex;justify-content:space-between;align-items:flex-end}
-.stamp-box{width:200px;text-align:center}
-.stamp-box .line{border-bottom:2px dashed #94a3b8;height:60px;margin-bottom:8px}
-.stamp-box .label{color:#475569;font-weight:700;font-size:0.85rem}
-.footer{margin-top:30px;text-align:center;color:#94a3b8;font-size:0.75rem;border-top:1px solid #e2e8f0;padding-top:14px}
-@media print{body{background:#fff}.inv{padding:0}}</style></head>
-<body><div class="inv">
-<div class="hdr">
-  <div class="hdr-right">${logoHtml}<div>
-    <h1>${BillingEngine.sanitize(clinicName)}</h1>
-    <p style="color:#64748b;font-size:0.85rem">${BillingEngine.sanitize(clinicAddr)}</p>
-    <p style="color:#64748b;font-size:0.85rem">هاتف: <span dir="ltr">${BillingEngine.sanitize(clinicPhone)}</span></p>
-    <p style="color:#64748b;font-size:0.85rem;font-weight:bold;margin-top:2px;">الرقم الضريبي: ${BillingEngine.sanitize(clinicTax)}</p>
-  </div></div>
-  <div class="hdr-left">
-    <div>
-      <h2>فاتورة طبية ضريبية</h2>
-      <p style="color:#64748b;font-size:0.85rem">رقم الفاتورة: ${invNum}</p>
-      <p style="color:#64748b;font-size:0.85rem">التاريخ: ${dateNow}</p>
-      <p style="color:#64748b;font-size:0.85rem">الوقت: ${timeNow}</p>
-    </div>
-    <img src="${qrUrl}" alt="QR Code" class="qr-code" onerror="this.style.display='none'">
-  </div>
-</div>
-<div class="pat-box">
-  <div><b>اسم المريض:</b> ${BillingEngine.sanitize(patName)}</div>
-  <div><b>رقم الهاتف:</b> <span dir="ltr">${BillingEngine.sanitize(patPhone) || '—'}</span></div>
-  <div><b>الرقم الوطني:</b> ${BillingEngine.sanitize(patNID) || '—'}</div>
-  <div><b>الرقم المرجعي (UID):</b> <span dir="ltr" style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem">${(pid || '').substring(0, 12)}</span></div>
-</div>
-<table>
-  <thead>
-    <tr><th>#</th><th>البيان (اسم الخدمة)</th><th>القسم الطبي</th><th>الكمية</th><th>السعر الإفرادي</th><th>المجموع (د.أ)</th></tr>
-  </thead>
-  <tbody>${rowsHtml}</tbody>
-</table>
-<div class="summary"><div class="summary-box">
-  <div class="summary-row"><span>المجموع الإجمالي</span><span style="font-family:'IBM Plex Mono',monospace">${fin.total.toFixed(2)} د.أ</span></div>
-  <div class="summary-row"><span>المدفوع مسبقاً</span><span style="font-family:'IBM Plex Mono',monospace;color:#10b981">${fin.paid.toFixed(2)} د.أ</span></div>
-  <div class="summary-row"><span>الرصيد المستحق (الذمم)</span><span style="font-family:'IBM Plex Mono',monospace">${fin.unpaid.toFixed(2)} د.أ</span></div>
-</div></div>
-<div class="stamp-area">
-  <div style="color:#94a3b8;font-size:0.82rem">ملاحظة: هذه الفاتورة صادرة إلكترونياً من النظام الطبي ومطابقة لمعايير الفوترة الأردنية.<br>يرجى الاحتفاظ بها لأغراض المراجعة والتأمين.</div>
-  <div class="stamp-box"><div class="line"></div><div class="label">ختم العيادة والتوقيع</div></div>
-</div>
-<div class="footer">تم إصدار هذه الفاتورة بواسطة ARGON Medical OS — نظام إدارة العيادات والمجمعات الطبية</div>
-</div><script>window.onload=function(){setTimeout(function(){window.print();}, 500); window.onafterprint=function(){window.close();}}</script></body></html>`;
-
-    const win = window.open('', '_blank', 'width=900,height=700');
-    if (win) { win.document.write(printHtml); win.document.close(); }
   },
 
   // ── INVOICE EDITOR (Admin Only) ──
@@ -930,7 +885,8 @@ tbody td{font-size:0.9rem;}
     db.ref(`${BASE}/invoices/${invId}`).update({
       items: this.activeEditItems,
       total: newTotal,
-      status: newTotal > 0 ? 'unpaid' : 'unpaid'
+      status: newTotal > 0 ? 'unpaid' : 'unpaid',
+      financialBlocked: null // Remove financial block once priced by admin
     }).then(() => {
       // Save Delta Audit Log
       const logRef = db.ref(`${BASE}/audit_logs`).push();
@@ -976,7 +932,7 @@ function recordBillingPayment() {
   }
 
   const pInvoices = Object.entries(BillingEngine._invoices)
-    .filter(([k, inv]) => inv.patientId === patientId && inv.status !== 'voided' && inv.status !== 'cancelled')
+    .filter(([k, inv]) => inv.patientId === patientId)
     .sort((a, b) => (a[1].createdAt || '').localeCompare(b[1].createdAt || ''));
 
   let totalUnallocated = 0;
