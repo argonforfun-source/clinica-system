@@ -139,10 +139,10 @@ const BillingEngine = {
 
     // 2. Pricing Source
     const priceInfo = this.lookupPrice(eventData.serviceId, eventData.department);
-    let price = priceInfo;
+    let price = eventData.price !== undefined ? parseFloat(eventData.price) : priceInfo;
     let requiresReview = false;
 
-    if (price === null) {
+    if (price === null || isNaN(price)) {
       price = 0;
       requiresReview = true;
       if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('MISSING_PRICE', `خدمة غير مسعرة: ${eventData.serviceId}`, 'FINANCE');
