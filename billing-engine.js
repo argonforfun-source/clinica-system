@@ -653,10 +653,16 @@ const BillingEngine = {
         const phoneDigits = (p.patientPhone || '').replace(/\D/g, '');
         let invMatch = false;
         if (this._invoices) {
-          invMatch = Object.values(this._invoices).some(inv => 
-            inv && inv.patientId === p.patientId && 
-            ( (inv.displayId && inv.displayId.toLowerCase().includes(searchQ)) || (inv.id && inv.id.toLowerCase().includes(searchQ)) )
-          );
+          invMatch = Object.entries(this._invoices).some(([invK, inv]) => {
+            if (!inv || inv.patientId !== p.patientId) return false;
+            let dId = inv.displayId;
+            if (!dId) {
+              let hash = 0;
+              for (let i = 0; i < invK.length; i++) { hash = (hash << 5) - hash + invK.charCodeAt(i); hash |= 0; }
+              dId = 'INV-' + String(Math.abs(hash)).padStart(6, '1').substring(0, 6);
+            }
+            return dId.toLowerCase().includes(searchQ) || invK.toLowerCase().includes(searchQ);
+          });
         }
         if (!p.patientName.toLowerCase().includes(searchQ) && !phoneDigits.includes(searchQ) && !invMatch) continue;
       }
@@ -966,10 +972,17 @@ const BillingEngine = {
       if (specs.size > 0) dSpec = [...specs].join('، ');
     }
 
+    let dispId = inv.displayId;
+    if (!dispId) {
+      let hash = 0;
+      for (let i = 0; i < invId.length; i++) { hash = (hash << 5) - hash + invId.charCodeAt(i); hash |= 0; }
+      dispId = 'INV-' + String(Math.abs(hash)).padStart(6, '1').substring(0, 6);
+    }
+
     const payload = {
       invoice: {
         id: invId,
-        displayId: inv.displayId || null,
+        displayId: dispId,
         visitId: [...visitIds].join(', ') || '—',
         status: isPending ? 'pending_review' : inv.status,
         patientName: inv.patientName || info.name || 'مريض غير معروف',
@@ -1004,7 +1017,7 @@ const BillingEngine = {
     try {
       localStorage.setItem('argon_invoice_payload', JSON.stringify(payload));
       const base = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) || '';
-      window.open(`${base}/invoice-print.html?v=14&id=${encodeURIComponent(typeof CID !== 'undefined' ? CID : '1')}`, '_blank');
+      window.open(`${base}/invoice-print.html?v=15&id=${encodeURIComponent(typeof CID !== 'undefined' ? CID : '1')}`, '_blank');
       setTimeout(() => localStorage.removeItem('argon_invoice_payload'), 30000);
       _B.audit('INVOICE_PRINTED', `طباعة الفاتورة ${invId}`);
     } catch (e) {

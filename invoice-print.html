@@ -783,9 +783,13 @@ function renderInvoice(inv, settings) {
   }
 
   // ── Invoice meta ──
-  let invId = inv.displayId || inv.id || INV_KEY || `${Date.now()}`;
-  if (invId.startsWith('-')) invId = invId.substring(1);
-  if (invId.startsWith('INV-')) invId = invId.substring(4);
+  let invId = inv.displayId;
+  if (!invId) {
+    let raw = inv.id || INV_KEY || String(Date.now());
+    let hash = 0;
+    for (let i = 0; i < raw.length; i++) { hash = (hash << 5) - hash + raw.charCodeAt(i); hash |= 0; }
+    invId = 'INV-' + String(Math.abs(hash)).padStart(6, '1').substring(0, 6);
+  }
   document.getElementById('invNumber').textContent = sanitize(invId);
   document.getElementById('invMeta').innerHTML =
     `التاريخ: ${invDate}<br>الزيارة: ${sanitize(inv.visitId || '—')}`;
