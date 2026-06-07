@@ -161,14 +161,20 @@ const BillingEngine = {
   // ════════════════════════════════════════════
 
   lookupPrice: function (serviceName, serviceType) {
-    const norm = (serviceName || '').trim().toLowerCase();
+    const normalizeArabic = (text) => {
+      return (text || '').toLowerCase().trim()
+        .replace(/[أإآ]/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/[\u064B-\u065F]/g, ''); // إزالة التشكيل
+    };
+    const norm = normalizeArabic(serviceName);
     if (!norm) return null;
 
     // صيدلية: ابحث في المخزون أولاً
     if (serviceType === 'pharmacy' && this._pharmacyInventory) {
       const drug = Object.values(this._pharmacyInventory).find(v => {
-        const n = (v.name || '').toLowerCase().trim();
-        if (!n) return false;
+        const n = normalizeArabic(v.name);
+        if (!n || n.length < 3) return false; // منع تطابق الكلمات القصيرة جداً بالخطأ
         return n === norm || n.includes(norm) || norm.includes(n);
       });
       if (drug) {
@@ -181,8 +187,8 @@ const BillingEngine = {
     const entry = Object.values(this._pricingCatalog).find(item => {
       if (!item.active) return false;
       if (serviceType && item.type !== serviceType) return false;
-      const n = (item.name || '').trim().toLowerCase();
-      if (!n) return false;
+      const n = normalizeArabic(item.name);
+      if (!n || n.length < 3) return false;
       return n === norm || n.includes(norm) || norm.includes(n);
     });
     return entry ? parseFloat(entry.price) : null;
