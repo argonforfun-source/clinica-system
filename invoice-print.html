@@ -943,56 +943,20 @@ async function loadAndRender() {
     } catch (e) { console.warn('localStorage parse failed:', e); }
   }
 
-  // 3. Fallback demo data
+// ── NO DEMO FALLBACK ──
   if (!inv) {
-    inv = DEMO_INVOICE;
-    settings = DEMO_SETTINGS;
+    document.body.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#f8fafc;font-family:'Tajawal',sans-serif;color:var(--text);text-align:center;">
+        <i class="fas fa-exclamation-triangle" style="font-size:4rem;color:var(--amber);margin-bottom:20px;"></i>
+        <h2 style="font-weight:900;margin-bottom:10px;">انتهت صلاحية جلسة الطباعة</h2>
+        <p style="color:var(--muted);max-width:400px;line-height:1.6;">لأسباب أمنية وحماية خصوصية المرضى، تنتهي صلاحية الرابط بعد 30 ثانية من فتحه. الرجاء العودة إلى النظام والضغط على زر الطباعة مرة أخرى.</p>
+        <button onclick="window.close()" style="margin-top:20px;padding:10px 20px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;">إغلاق الصفحة</button>
+      </div>
+    `;
+    return;
   }
 
-  // Firebase fetch removed to prevent hanging
-
   renderInvoice(inv, settings);
-}
-
-// ── DEMO FALLBACK DATA ──
-const DEMO_SETTINGS = {
-  name: 'عيادة الشفاء التخصصية',
-  phone: '+962 79 000 0000',
-  emoji: '🏥',
-  logoUrl: null
-};
-
-const DEMO_INVOICE = {
-  id: 'INV-2026-00847',
-  visitId: 'BK-00312',
-  status: 'paid',
-  patientName: 'أحمد محمد العلي',
-  patientNID: '9831045271',
-  patientPhone: '+962791234567',
-  patientAge: 34,
-  patientGender: 'ذكر',
-  patientMRN: 'MRN-293847',
-  docName: 'سارة الخالد',
-  docSpec: 'أمراض الجهاز الهضمي',
-  visitTime: '10:30 ص · الثلاثاء',
-  department: 'العيادات الخارجية',
-  createdAt: new Date().toISOString(),
-  paidAt: new Date().toISOString(),
-  paidAmount: 75.500,
-  discount: 0,
-  tax: 0,
-  items: [
-    { name: 'كشف طبي — د. سارة الخالد', note: 'فحص عام شامل',      type: 'exam',     qty: 1, price: 20.000 },
-    { name: 'تحليل دم شامل — CBC',       note: 'مختبر',              type: 'lab',      qty: 1, price: 12.000 },
-    { name: 'وظائف الكبد — LFT',         note: 'مختبر',              type: 'lab',      qty: 1, price: 15.000 },
-    { name: 'أشعة بطن وحوض — Ultrasound',note: 'أشعة تشخيصية',      type: 'radiology',qty: 1, price: 25.000 },
-    { name: 'باناكتين 500mg',            note: 'صيدلية — 20 حبة',   type: 'pharmacy', qty: 1, price: 3.500  },
-  ],
-  payments: [
-    { date: new Date().toLocaleDateString('ar-JO'), amount: 75.500, note: 'دفع نقدي — الاستقبال' }
-  ],
-  notes: 'شكراً لثقتكم بعيادتنا. هذه الفاتورة صادرة إلكترونياً من نظام أرغون الطبي.'
-};
 
 // Start
 try {
