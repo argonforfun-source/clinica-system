@@ -901,10 +901,25 @@ const BillingEngine = {
     
     // حساب المدفوع لهذه الفاتورة تحديداً
     let paidForInv = 0;
+    const invPayments = [];
     for (const tx of Object.values(this._transactions)) {
       if (tx.invoiceId === invId && tx.status !== 'voided') {
-        if (tx.type === 'PAYMENT')  paidForInv += parseFloat(tx.amount) || 0;
-        if (tx.type === 'REVERSAL') paidForInv -= parseFloat(tx.amount) || 0;
+        if (tx.type === 'PAYMENT') {
+          paidForInv += parseFloat(tx.amount) || 0;
+          invPayments.push({
+            date: new Date(tx.timestamp || _B.now()).toLocaleString('ar-JO'),
+            note: tx.reason || 'دفع نقدي',
+            amount: tx.amount
+          });
+        }
+        if (tx.type === 'REVERSAL') {
+          paidForInv -= parseFloat(tx.amount) || 0;
+          invPayments.push({
+            date: new Date(tx.timestamp || _B.now()).toLocaleString('ar-JO'),
+            note: tx.reason || 'استرداد / عكس دفعة',
+            amount: -parseFloat(tx.amount)
+          });
+        }
       }
     }
 
@@ -963,7 +978,7 @@ const BillingEngine = {
         discount: 0,
         tax: 0,
         items: allItems,
-        payments: [], // Payments array omitted for single invoice view
+        payments: invPayments, // Added payment logs for history display
         notes: `إجمالي الفاتورة: ${_B.jod(inv.total)} · المسدد: ${_B.jod(paidForInv)} · المتبقي: ${_B.jod(Math.max((inv.total || 0) - paidForInv, 0))} د.أ`,
         originalTotal: inv.total,
         isComprehensive: false
