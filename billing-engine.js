@@ -741,7 +741,7 @@ const BillingEngine = {
     const payload = { invoice: masterInv, settings: settings };
     try {
         localStorage.setItem('argon_invoice_payload', JSON.stringify(payload));
-        const base = window.location.pathname.replace(/\\/[^/]*$/, '') || '';
+        const base = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) || '';
         window.open(`${base}/invoice-print.html?id=${encodeURIComponent(typeof CID !== 'undefined' ? CID : '1')}`, '_blank');
         setTimeout(() => localStorage.removeItem('argon_invoice_payload'), 30000);
     } catch (e) {
