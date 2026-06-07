@@ -651,7 +651,14 @@ const BillingEngine = {
 
       if (searchQ) {
         const phoneDigits = (p.patientPhone || '').replace(/\D/g, '');
-        if (!p.patientName.toLowerCase().includes(searchQ) && !phoneDigits.includes(searchQ)) continue;
+        let invMatch = false;
+        if (this._invoices) {
+          invMatch = Object.values(this._invoices).some(inv => 
+            inv && inv.patientId === p.patientId && 
+            ( (inv.displayId && inv.displayId.toLowerCase().includes(searchQ)) || (inv.id && inv.id.toLowerCase().includes(searchQ)) )
+          );
+        }
+        if (!p.patientName.toLowerCase().includes(searchQ) && !phoneDigits.includes(searchQ) && !invMatch) continue;
       }
 
       const badgeMap = {
@@ -997,7 +1004,7 @@ const BillingEngine = {
     try {
       localStorage.setItem('argon_invoice_payload', JSON.stringify(payload));
       const base = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) || '';
-      window.open(`${base}/invoice-print.html?v=13&id=${encodeURIComponent(typeof CID !== 'undefined' ? CID : '1')}`, '_blank');
+      window.open(`${base}/invoice-print.html?v=14&id=${encodeURIComponent(typeof CID !== 'undefined' ? CID : '1')}`, '_blank');
       setTimeout(() => localStorage.removeItem('argon_invoice_payload'), 30000);
       _B.audit('INVOICE_PRINTED', `طباعة الفاتورة ${invId}`);
     } catch (e) {
