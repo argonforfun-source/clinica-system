@@ -742,7 +742,7 @@ const BillingEngine = {
     try {
         localStorage.setItem('argon_invoice_payload', JSON.stringify(payload));
         const base = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) || '';
-        window.open(`${base}/invoice-print.html?id=${encodeURIComponent(typeof CID !== 'undefined' ? CID : '1')}`, '_blank');
+        window.open(`${base}/invoice-print.html?v=2&id=${encodeURIComponent(typeof CID !== 'undefined' ? CID : '1')}`, '_blank');
         setTimeout(() => localStorage.removeItem('argon_invoice_payload'), 30000);
     } catch (e) {
         console.error('Failed to open print page:', e);
