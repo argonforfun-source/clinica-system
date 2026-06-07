@@ -288,6 +288,11 @@ const BillingEngine = {
       return true;
     }
 
+    if (policy === 'external') {
+      _B.audit('EXTERNAL_SERVICE', `خدمة خارجية (لا تُفوتر): ${eventData.serviceId}`);
+      return true;
+    }
+
     const prefixMap = { lab: 'LAB', radiology: 'RAD', pharmacy: 'PHARM' };
     const prefix = prefixMap[eventData.department] || (eventData.department || 'GEN').toUpperCase();
     const invId  = policy === 'separate'
