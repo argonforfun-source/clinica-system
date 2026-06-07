@@ -839,100 +839,22 @@ const BillingEngine = {
     const pid = this.activePatientId;
     if (!pid) { _B.toast('⚠️ لم يتم تحديد مريض', 'err'); return; }
 
-    const pts  = this._patientsRef || {};
-    const info = pts[pid]?.info || {};
-    const fin  = this.calculatePatientFinancials(pid);
-
-    const clinicSettings = typeof _sets !== 'undefined' ? _sets : {};
-
-    // تجميع كل البنود
+    // البحث عن جميع الفواتير المرتبطة بهذا المريض
     const pInvoices = Object.entries(this._invoices)
       .filter(([, inv]) => inv.patientId === pid)
-      .sort(([,a],[,b]) => (a.createdAt||'') > (b.createdAt||'') ? 1 : -1);
+      .sort(([,a],[,b]) => (a.createdAt||'') > (b.createdAt||'') ? -1 : 1); // الأحدث أولاً
 
-    const docNames  = new Set();
-    const visitIds  = new Set();
-    const allItems  = [];
-    let   isPending = false;
-
-    pInvoices.forEach(([k, inv]) => {
-      if (['pending_review','pending'].includes(inv.status)) isPending = true;
-      if (inv.visitId)  visitIds.add(inv.visitId);
-      if (inv.docName)  docNames.add(inv.docName);
-      (inv.items || []).forEach(i => {
-        const n = (i.name || '').toLowerCase();
-        const d = (i.department || inv.department || '').toLowerCase();
-        let type = 'other';
-        if (d === 'exam'  || n.includes('كشف'))    type = 'exam';
-        else if (d === 'lab')                        type = 'lab';
-        else if (['radiology','rad'].includes(d))    type = 'radiology';
-        else if (['pharmacy','pharm'].includes(d))   type = 'pharmacy';
-        allItems.push({ ...i, type, note: `فاتورة: ${k.substring(0,8)}` });
-      });
-    });
-
-    // تجميع الدفعات
-    const allPayments = Object.values(this._transactions)
-      .filter(tx =>
-        tx.patientId === pid &&
-        ['payment','PAYMENT','credit'].includes(tx.type) &&
-        tx.status !== 'voided'
-      )
-      .map(tx => ({
-        date:   tx.date || new Date(tx.createdAt || Date.now()).toLocaleDateString('ar-JO'),
-        amount: tx.amount || 0,
-        note:   tx.note || 'دفعة مالية'
-      }));
-
-    const status = fin.unpaid <= 0 && fin.total > 0 ? 'paid'
-      : fin.paid > 0 ? 'partial'
-      : isPending    ? 'pending_review'
-      : 'unpaid';
-
-    const masterInv = {
-      id:            `STMT-${pid.substring(0,8).toUpperCase()}`,
-      visitId:       [...visitIds].join(', ') || '—',
-      status,
-      patientName:   info.name    || 'مريض غير معروف',
-      patientNID:    info.nationalId || '—',
-      patientPhone:  info.phone   || '—',
-      patientAge:    info.age     || '—',
-      patientGender: info.gender  || '—',
-      patientMRN:    info.mrn     || '—',
-      docName:       [...docNames].join('، ') || '—',
-      docSpec:       '—',
-      visitTime:     new Date().toLocaleTimeString('ar-JO', { hour:'2-digit', minute:'2-digit' }),
-      department:    'متعدد الأقسام',
-      createdAt:     _B.now(),
-      paidAt:        fin.unpaid <= 0 ? _B.now() : null,
-      paidAmount:    fin.paid,
-      discount:      0,
-      tax:           0,
-      items:         allItems,
-      payments:      allPayments,
-      notes: `كشف حساب شامل — الإجمالي: ${_B.jod(fin.total)} · المسدد: ${_B.jod(fin.paid)} · المتبقي: ${_B.jod(Math.max(fin.unpaid, 0))} د.أ`
-    };
-
-    const payload = {
-      invoice:  masterInv,
-      settings: {
-        name:    clinicSettings.name    || 'العيادة',
-        phone:   clinicSettings.phone   || '',
-        logoUrl: clinicSettings.logoUrl || null,
-        emoji:   clinicSettings.emoji   || '🏥'
-      }
-    };
-
-    try {
-      localStorage.setItem('argon_invoice_payload', JSON.stringify(payload));
-      const base = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) || '';
-      window.open(`${base}/invoice-print.html?v=12&id=${encodeURIComponent(typeof CID !== 'undefined' ? CID : '1')}`, '_blank');
-      setTimeout(() => localStorage.removeItem('argon_invoice_payload'), 30000);
-      _B.audit('INVOICE_PRINTED', `طباعة كشف حساب المريض ${_B.san(masterInv.patientName)}`);
-    } catch (e) {
-      console.error('[BillingEngine] print failed:', e);
-      _B.toast('❌ فشل تحضير الفاتورة للطباعة', 'err');
+    if (pInvoices.length === 0) {
+      _B.toast('⚠️ لا توجد فواتير مسجلة لهذا المريض', 'err'); return;
     }
+
+    // الأولوية القصوى: العثور على أحدث "فاتورة عيادة رئيسية" (التي لا تحتوي على الأقسام المنفصلة)
+    // هذا يضمن احترام سياسة الفصل: الفاتورة المنفصلة (مثل الصيدلية) لن تظهر هنا
+    const targetInvoice = pInvoices.find(([k]) => k.startsWith('INV-')) || pInvoices[0];
+
+    // توجيه أمر الطباعة إلى محرك طباعة الفاتورة الفردية
+    // والذي سيطبع فقط البنود الخاصة بهذه الفاتورة المحددة، متجاهلاً الفواتير المنفصلة الأخرى
+    this.printSingleInvoice(targetInvoice[0]);
   },
 
   // ════════════════════════════════════════════
