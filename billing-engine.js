@@ -152,9 +152,9 @@ const BillingEngine = {
             this._billingPolicy = sVal;
         });
       }),
-      db.ref(`${BASE}/settings/doctors`).once('value').then(snap => {
+      db.ref(`${BASE}/doctors`).once('value').then(snap => {
         this._clinicDocs = snap.val() || {};
-        db.ref(`${BASE}/settings/doctors`).on('value', s => { this._clinicDocs = s.val() || {}; });
+        db.ref(`${BASE}/doctors`).on('value', s => { this._clinicDocs = s.val() || {}; });
       })
     ]).then(() => {
       // ── مراقبة أوامر الفوترة من EMR ──
