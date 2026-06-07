@@ -168,6 +168,7 @@ const BillingEngine = {
     if (serviceType === 'pharmacy' && this._pharmacyInventory) {
       const drug = Object.values(this._pharmacyInventory).find(v => {
         const n = (v.name || '').toLowerCase().trim();
+        if (!n) return false;
         return n === norm || n.includes(norm) || norm.includes(n);
       });
       if (drug) {
@@ -181,6 +182,7 @@ const BillingEngine = {
       if (!item.active) return false;
       if (serviceType && item.type !== serviceType) return false;
       const n = (item.name || '').trim().toLowerCase();
+      if (!n) return false;
       return n === norm || n.includes(norm) || norm.includes(n);
     });
     return entry ? parseFloat(entry.price) : null;
