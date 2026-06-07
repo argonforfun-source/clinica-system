@@ -61,7 +61,7 @@ const BillingEngine = {
       });
 
       // 2.5 Listen for Billing Policy Settings
-      db.ref(`${BASE}/clinic_settings/billingPolicy/departments`).on('value', snap => {
+      db.ref(`${BASE}/settings/billingPolicy/departments`).on('value', snap => {
         this._clinicSettingsPolicy = snap.val() || null;
       });
 
@@ -91,7 +91,10 @@ const BillingEngine = {
 
   // ── ENTERPRISE BILLING ENGINE V1.5 ──
   getBillingPolicy: function (dept) {
-    // 🔒 STRICT POLICY: ALWAYS UNIFIED (One Master Invoice per Visit)
+    const policy = this._clinicSettingsPolicy || {};
+    // { lab: 'separate', radiology: 'unified', pharmacy: 'separate' }
+    const v = policy[dept] || policy[dept === 'radiology' ? 'rad' : dept];
+    if (v === 'separate' || v === 'free') return v;
     return 'unified';
   },
 
@@ -151,40 +154,64 @@ const BillingEngine = {
       department: eventData.department
     };
 
-    // 3. MASTER INVOICE ENFORCEMENT (One Invoice per Visit)
-    let visitInv = this.findVisitInvoice(eventData.visitId);
-    
-    // 3.1 Network / Timing Recovery: If the master invoice hasn't been created yet, create it atomically!
-    if (!visitInv) {
-      const invId = `INV-${eventData.visitId}`;
+    // 3. APPLY BILLING POLICY
+    const policy = this.getBillingPolicy(eventData.department);
+    if (policy === 'free') {
+       if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('FREE_SERVICE', `إعفاء حسب السياسة: ${eventData.serviceId}`, 'FINANCE');
+       return true; // silently succeed without creating a charge
+    }
+
+    const prefixMap = { lab: 'LAB', radiology: 'RAD', pharmacy: 'PHARM' };
+    const prefix = prefixMap[eventData.department] || eventData.department.toUpperCase();
+    const invId = policy === 'separate' ? `${prefix}-${eventData.visitId}` : `INV-${eventData.visitId}`;
+
+    let targetInv = this._invoices[invId];
+
+    // 4. ATOMIC CREATION & APPEND
+    if (!targetInv && policy === 'separate') {
       const ts = new Date().toISOString();
       const invoiceData = {
         patientId: eventData.patientId,
         patientName: eventData.patientName || 'غير معروف',
         visitId: eventData.visitId,
+        docName: eventData.docName || '',
+        department: eventData.department,
+        invoiceType: `${eventData.department}_invoice`,
         items: [],
         total: 0,
         createdAt: ts,
         status: "unpaid"
       };
-      // We do a set instead of push to guarantee the ID.
       db.ref(`${BASE}/invoices/${invId}`).set(invoiceData);
-      visitInv = { id: invId, ...invoiceData };
-      if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('MASTER_INVOICE_RECOVERED', `إنشاء فاتورة رئيسية مفقودة للزيارة: ${eventData.visitId}`, 'FINANCE');
+      targetInv = { id: invId, ...invoiceData };
+      if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('DEPT_INVOICE_CREATED', `فاتورة قسم منفصلة للزيارة: ${eventData.visitId}`, 'FINANCE');
+    } else if (!targetInv) {
+      const ts = new Date().toISOString();
+      const invoiceData = {
+        patientId: eventData.patientId,
+        patientName: eventData.patientName || 'غير معروف',
+        visitId: eventData.visitId,
+        docName: eventData.docName || '',
+        items: [],
+        total: 0,
+        createdAt: ts,
+        status: "unpaid"
+      };
+      db.ref(`${BASE}/invoices/${invId}`).set(invoiceData);
+      targetInv = { id: invId, ...invoiceData };
+      if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('MASTER_INVOICE_CREATED', `إنشاء فاتورة رئيسية للزيارة: ${eventData.visitId}`, 'FINANCE');
     }
 
-    // 3.2 Atomic Append to Master Invoice
-    const currentItems = visitInv.items || [];
+    const currentItems = targetInv.items || [];
     if (currentItems.find(i => i.billingReferenceId === billingRefId)) return false; // Double check
     
     currentItems.push(item);
     let newTotal = currentItems.reduce((acc, curr) => acc + curr.price, 0);
     
-    // Adjust status dynamically if it was previously paid but now has new charges
-    let newStatus = visitInv.status;
+    let newStatus = targetInv.status;
     if (requiresReview) {
       newStatus = 'pending_review';
-    } else if (newStatus === 'paid' || newStatus === 'voided' || visitInv.locked) {
+    } else if (newStatus === 'paid' || newStatus === 'voided' || targetInv.locked) {
       newStatus = 'partial'; // Because we added a new unpaid item
     }
 
@@ -192,15 +219,15 @@ const BillingEngine = {
       items: currentItems,
       total: parseFloat(newTotal.toFixed(2)),
       status: newStatus,
-      locked: false // Ensure it's unlocked for further processing
+      locked: false
     };
     if (requiresReview) {
       updates.financialBlocked = true;
     }
 
-    db.ref(`${BASE}/invoices/${visitInv.id}`).update(updates);
+    db.ref(`${BASE}/invoices/${targetInv.id}`).update(updates);
 
-    if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('INVOICE_UPDATED', `تحديث فاتورة موحدة: إضافة ${item.name}`, 'FINANCE');
+    if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('INVOICE_UPDATED', `إضافة ${item.name} إلى الفاتورة ${targetInv.id}`, 'FINANCE');
     return true;
   },
 
@@ -670,7 +697,15 @@ const BillingEngine = {
     pInvoices.forEach(([k, inv]) => {
       if (inv.status === 'voided') isVoided = true;
       if (inv.status === 'pending_review' || inv.status === 'pending') isPending = true;
-      if (inv.visitId) visitIds.add(inv.visitId);
+      if (inv.visitId) {
+        visitIds.add(inv.visitId);
+        if (typeof _bks !== 'undefined' && _bks[inv.visitId] && _bks[inv.visitId].docKey) {
+            const dKey = _bks[inv.visitId].docKey;
+            if (typeof _docs !== 'undefined' && _docs[dKey] && _docs[dKey].name) {
+                docNames.add(_docs[dKey].name);
+            }
+        }
+      }
       if (inv.docName) docNames.add(inv.docName);
       
       (inv.items || []).forEach(i => {
