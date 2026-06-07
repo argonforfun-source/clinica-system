@@ -771,31 +771,31 @@ function renderInvoice(inv, settings) {
 
   // ── Clinic branding ──
   document.getElementById('clinicName').textContent  = sanitize(settings.name || 'العيادة');
-  document.getElementById('clinicMeta').textContent  = \`ARGON MEDICAL OS · ID: \${CLINIC_ID}\`;
-  document.getElementById('clinicContact').textContent = settings.phone ? \`📞 \${sanitize(settings.phone)}\` : '';
-  document.getElementById('footerClinic').textContent = \`\${sanitize(settings.name || 'العيادة')} · ARGON MEDICAL OS · argonforfun.com\`;
+  document.getElementById('clinicMeta').textContent  = `ARGON MEDICAL OS · ID: ${CLINIC_ID}`;
+  document.getElementById('clinicContact').textContent = settings.phone ? `📞 ${sanitize(settings.phone)}` : '';
+  document.getElementById('footerClinic').textContent = `${sanitize(settings.name || 'العيادة')} · ARGON MEDICAL OS · argonforfun.com`;
 
   if (settings.logoUrl) {
     document.getElementById('clinicLogoWrap').innerHTML =
-      \`<img src="\${sanitize(settings.logoUrl)}" alt="logo">\`;
+      `<img src="${sanitize(settings.logoUrl)}" alt="logo">`;
   } else {
     document.getElementById('clinicLogoWrap').textContent = settings.emoji || '🏥';
   }
 
   // ── Invoice meta ──
-  const invId = inv.id || INV_KEY || \`INV-\${Date.now()}\`;
+  const invId = inv.id || INV_KEY || `INV-${Date.now()}`;
   document.getElementById('invNumber').textContent = sanitize(invId);
   document.getElementById('invMeta').innerHTML =
-    \`التاريخ: \${invDate}<br>الزيارة: \${sanitize(inv.visitId || '—')}\`;
-  document.getElementById('stampTs').textContent   = \`Generated: \${now} · ARGON v2.0\`;
-  document.getElementById('footerDate').textContent = \`طُبع في: \${now}\`;
+    `التاريخ: ${invDate}<br>الزيارة: ${sanitize(inv.visitId || '—')}`;
+  document.getElementById('stampTs').textContent   = `Generated: ${now} · ARGON v2.0`;
+  document.getElementById('footerDate').textContent = `طُبع في: ${now}`;
 
   // ── Status ──
   const ribbon = document.getElementById('statusRibbon');
   ribbon.className = 'inv-ribbon ' + cfg.ribbon;
   document.getElementById('ribbonText').textContent = cfg.label;
   document.getElementById('ribbonDate').textContent = inv.paidAt
-    ? \`· تاريخ التسديد: \${new Date(inv.paidAt).toLocaleDateString('ar-JO')}\`
+    ? `· تاريخ التسديد: ${new Date(inv.paidAt).toLocaleDateString('ar-JO')}`
     : '';
 
   const chip = document.getElementById('statusChip');
@@ -804,20 +804,20 @@ function renderInvoice(inv, settings) {
 
   // ── Patient ──
   document.getElementById('patName').textContent  = sanitize(inv.patientName || '—');
-  document.getElementById('patNID').textContent   = \`الرقم الوطني: \${sanitize(inv.patientNID || '—')}\`;
-  document.getElementById('patPhone').textContent = \`الهاتف: \${sanitize(inv.patientPhone || '—')}\`;
+  document.getElementById('patNID').textContent   = `الرقم الوطني: ${sanitize(inv.patientNID || '—')}`;
+  document.getElementById('patPhone').textContent = `الهاتف: ${sanitize(inv.patientPhone || '—')}`;
   document.getElementById('patAge').textContent   = inv.patientAge
-    ? \`العمر: \${sanitize(String(inv.patientAge))} سنة · \${sanitize(inv.patientGender || '—')}\`
+    ? `العمر: ${sanitize(String(inv.patientAge))} سنة · ${sanitize(inv.patientGender || '—')}`
     : '—';
-  document.getElementById('nidPill').textContent  = \`NID: \${sanitize(inv.patientNID || '—')}\`;
-  document.getElementById('mrnPill').textContent  = \`MRN: \${sanitize(inv.patientMRN || '—')}\`;
+  document.getElementById('nidPill').textContent  = `NID: ${sanitize(inv.patientNID || '—')}`;
+  document.getElementById('mrnPill').textContent  = `MRN: ${sanitize(inv.patientMRN || '—')}`;
 
   // ── Visit ──
-  document.getElementById('docName').textContent   = \`د. \${sanitize(inv.docName || '—')}\`;
+  document.getElementById('docName').textContent   = `د. ${sanitize(inv.docName || '—')}`;
   document.getElementById('docSpec').textContent   = sanitize(inv.docSpec || '—');
-  document.getElementById('visitTime').textContent = \`الوقت: \${sanitize(inv.visitTime || '—')}\`;
-  document.getElementById('visitDept').textContent = \`القسم: \${sanitize(inv.department || '—')}\`;
-  document.getElementById('visitBkNo').textContent = \`رقم الحجز: \${sanitize(inv.visitId || '—')}\`;
+  document.getElementById('visitTime').textContent = `الوقت: ${sanitize(inv.visitTime || '—')}`;
+  document.getElementById('visitDept').textContent = `القسم: ${sanitize(inv.department || '—')}`;
+  document.getElementById('visitBkNo').textContent = `رقم الحجز: ${sanitize(inv.visitId || '—')}`;
 
   // ── Items ──
   const items = inv.items || [];
@@ -830,23 +830,23 @@ function renderInvoice(inv, settings) {
         subtotal     += total;
         const typeKey = (item.type || 'other').toLowerCase();
         const tm      = TYPE_MAP[typeKey] || TYPE_MAP.other;
-        return \`
+        return `
           <div class="item-row">
             <div>
-              <div class="item-name-main">\${sanitize(item.name || '—')}</div>
-              \${item.note ? \`<div class="item-name-sub">\${sanitize(item.note)}</div>\` : ''}
+              <div class="item-name-main">${sanitize(item.name || '—')}</div>
+              ${item.note ? `<div class="item-name-sub">${sanitize(item.note)}</div>` : ''}
             </div>
             <div class="item-cell">
-              <span class="item-badge \${tm.cls}">
-                <i class="fas \${tm.icon}" style="font-size:.6rem"></i> \${tm.label}
+              <span class="item-badge ${tm.cls}">
+                <i class="fas ${tm.icon}" style="font-size:.6rem"></i> ${tm.label}
               </span>
             </div>
-            <div class="item-cell">\${qty}</div>
-            <div class="item-cell">\${fmt(price)} د.أ</div>
-            <div class="item-total-cell">\${fmt(total)} د.أ</div>
-          </div>\`;
+            <div class="item-cell">${qty}</div>
+            <div class="item-cell">${fmt(price)} د.أ</div>
+            <div class="item-total-cell">${fmt(total)} د.أ</div>
+          </div>`;
       }).join('')
-    : \`<div class="item-row" style="justify-content:center;color:var(--muted);font-size:.84rem">لا توجد بنود</div>\`;
+    : `<div class="item-row" style="justify-content:center;color:var(--muted);font-size:.84rem">لا توجد بنود</div>`;
   document.getElementById('itemsBody').innerHTML = itemsHtml;
 
   // ── Totals ──
@@ -856,13 +856,13 @@ function renderInvoice(inv, settings) {
   const paidAmt    = parseFloat(inv.paidAmount || (s === 'paid' ? grandTotal : 0));
   const remaining  = grandTotal - paidAmt;
 
-  document.getElementById('tSubtotal').textContent = \`\${fmt(subtotal)} د.أ\`;
-  document.getElementById('tDiscount').textContent = discount ? \`- \${fmt(discount)} د.أ\` : \`0.000 د.أ\`;
-  document.getElementById('tTax').textContent      = \`\${fmt(tax)} د.أ\`;
-  document.getElementById('tPaid').textContent     = \`\${fmt(paidAmt)} د.أ\`;
+  document.getElementById('tSubtotal').textContent = `${fmt(subtotal)} د.أ`;
+  document.getElementById('tDiscount').textContent = discount ? `- ${fmt(discount)} د.أ` : `0.000 د.أ`;
+  document.getElementById('tTax').textContent      = `${fmt(tax)} د.أ`;
+  document.getElementById('tPaid').textContent     = `${fmt(paidAmt)} د.أ`;
 
   const remEl = document.getElementById('tRemaining');
-  remEl.textContent = \`\${fmt(remaining)} د.أ\`;
+  remEl.textContent = `${fmt(remaining)} د.أ`;
   if (remaining <= 0)        remEl.className = 'totals-value green';
   else if (remaining < grandTotal) remEl.className = 'totals-value amber';
   else                        remEl.className = 'totals-value red';
@@ -870,15 +870,15 @@ function renderInvoice(inv, settings) {
   // ── Payment log ──
   const payments = inv.payments || [];
   const payHtml = payments.length
-    ? payments.map(p => \`
+    ? payments.map(p => `
         <div class="pay-log-row">
           <div>
-            <div class="pay-log-date">\${sanitize(p.date || '—')}</div>
-            <div class="pay-log-note">\${sanitize(p.note || 'دفع نقدي')}</div>
+            <div class="pay-log-date">${sanitize(p.date || '—')}</div>
+            <div class="pay-log-note">${sanitize(p.note || 'دفع نقدي')}</div>
           </div>
-          <div class="pay-log-amount">+ \${fmt(p.amount)} د.أ</div>
-        </div>\`).join('')
-    : \`<div class="pay-log-row"><div class="pay-log-date" style="color:var(--muted)">لا توجد دفعات مسجلة</div></div>\`;
+          <div class="pay-log-amount">+ ${fmt(p.amount)} د.أ</div>
+        </div>`).join('')
+    : `<div class="pay-log-row"><div class="pay-log-date" style="color:var(--muted)">لا توجد دفعات مسجلة</div></div>`;
   document.getElementById('payLogBody').innerHTML = payHtml;
 
   // ── Notes ──
@@ -899,17 +899,17 @@ function sendWhatsApp() {
   const statusAr = {
     paid: 'مدفوعة بالكامل ✅',
     unpaid: 'بانتظار التسديد ⏳',
-    partial: \`مدفوع جزئياً - متبقي \${fmt(d.remaining)} د.أ 💳\`,
+    partial: `مدفوع جزئياً - متبقي ${fmt(d.remaining)} د.أ 💳`,
     overdue: 'متأخر الدفع ⚠️'
   };
-  const msg = \`🏥 *\${sanitize(d.settings.name || 'العيادة')}*\\n\\nمرحباً \${sanitize(d.inv.patientName || '')},\\n\\n\` +
-    \`📄 *فاتورة رقم:* \${sanitize(d.inv.id || INV_KEY || '—')}\\n\` +
-    \`👨⚕️ *الطبيب:* د. \${sanitize(d.inv.docName || '—')}\\n\` +
-    \`💰 *الإجمالي:* \${fmt(d.grandTotal)} د.أ\\n\` +
-    \`✅ *المسدد:* \${fmt(d.paidAmt)} د.أ\\n\` +
-    \`📊 *الحالة:* \${statusAr[d.inv.status] || 'غير محددة'}\\n\\n\` +
-    \`شكراً لثقتكم بعيادتنا 🌿\\n_ARGON Medical OS_\`;
-  window.open(\`https://wa.me/\${phone}?text=\${encodeURIComponent(msg)}\`, '_blank');
+  const msg = `🏥 *${sanitize(d.settings.name || 'العيادة')}*\\n\\nمرحباً ${sanitize(d.inv.patientName || '')},\\n\\n` +
+    `📄 *فاتورة رقم:* ${sanitize(d.inv.id || INV_KEY || '—')}\\n` +
+    `👨⚕️ *الطبيب:* د. ${sanitize(d.inv.docName || '—')}\\n` +
+    `💰 *الإجمالي:* ${fmt(d.grandTotal)} د.أ\\n` +
+    `✅ *المسدد:* ${fmt(d.paidAmt)} د.أ\\n` +
+    `📊 *الحالة:* ${statusAr[d.inv.status] || 'غير محددة'}\\n\\n` +
+    `شكراً لثقتكم بعيادتنا 🌿\\n_ARGON Medical OS_`;
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 // ── DATA LOADING ──
@@ -921,8 +921,8 @@ async function loadAndRender() {
   if (INV_KEY) {
     try {
       const [invSnap, setSnap] = await Promise.all([
-        db.ref(\`\${BASE}/invoices/\${INV_KEY}\`).once('value'),
-        db.ref(\`\${BASE}/settings\`).once('value')
+        db.ref(`${BASE}/invoices/${INV_KEY}`).once('value'),
+        db.ref(`${BASE}/settings`).once('value')
       ]);
       if (invSnap.exists()) {
         inv = { ...invSnap.val(), id: INV_KEY };
