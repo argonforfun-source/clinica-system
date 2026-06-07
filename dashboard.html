@@ -2479,7 +2479,7 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catc
 })();
 </script>
 <!-- مودال محرر الفواتير (Admin Only) -->
-<div id="invoiceEditorModal" class="modal">
+<div id="invoiceEditorModal" class="modal" style="z-index: 10000;">
   <div class="mcont" style="max-width:600px;">
     <button class="mclose" onclick="document.getElementById('invoiceEditorModal').style.display='none'"><i class="fas fa-times"></i></button>
     <h2 style="color:var(--teal); margin-bottom:15px; font-weight:800;"><i class="fas fa-file-invoice-dollar"></i> محرر الفاتورة <span id="invEdId" style="font-size:0.8rem;color:var(--muted);margin-right:8px;font-family:'IBM Plex Mono',monospace"></span></h2>

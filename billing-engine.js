@@ -90,11 +90,13 @@ const BillingEngine = {
     return entry ? parseFloat(entry.price) : null;
   },
 
-  // ── ENTERPRISE BILLING ENGINE V1.5 ──
   getBillingPolicy: function (dept) {
-    const policy = this._clinicSettingsPolicy || {};
-    // { lab: 'separate', radiology: 'unified', pharmacy: 'separate' }
-    const v = policy[dept] || policy[dept === 'radiology' ? 'rad' : dept];
+    const settings = typeof _sets !== 'undefined' ? _sets : {};
+    const bp = settings.billingPolicy || {};
+    const departments = bp.departments || {};
+    
+    // { lab: 'separate', rad: 'unified', pharmacy: 'separate' }
+    const v = departments[dept] || departments[dept === 'radiology' ? 'rad' : dept];
     if (v === 'separate' || v === 'free') return v;
     return 'unified';
   },
@@ -334,9 +336,21 @@ const BillingEngine = {
        await db.ref(`${BASE}/billing_triggers/${triggerKey}/processingLock`).set(Date.now());
      } catch(e) { return; }
 
-     const { visitKey, orders = {} } = trigger;
+     const { visitKey, orders = {}, addConsultation } = trigger;
      const patId = trigger.patientId;
      const patName = trigger.patientName;
+
+     if (addConsultation) {
+         this.addCharge({
+             patientId: patId,
+             patientName: patName,
+             visitId: visitKey,
+             department: 'exam',
+             serviceId: 'CONSULT',
+             customName: 'كشفية الطبيب',
+             price: 15
+         });
+     }
 
      const processOrders = (list, dept) => {
          if (!list) return;
@@ -634,10 +648,11 @@ const BillingEngine = {
       const cats = { consult: [], lab: [], rad: [], pharm: [], other: [] };
       (inv.items || []).forEach(i => {
         const n = (i.name || '').toLowerCase();
-        if (n.includes('\u0643\u0634\u0641\u064a\u0629') || n.includes('consultation')) cats.consult.push(i);
-        else if (n.includes('\u062a\u062d\u0644\u064a\u0644') || n.includes('lab')) cats.lab.push(i);
-        else if (n.includes('\u062a\u0635\u0648\u064a\u0631') || n.includes('\u0623\u0634\u0639\u0629') || n.includes('rad') || n.includes('x-ray') || n.includes('mri') || n.includes('ct')) cats.rad.push(i);
-        else if (n.includes('\u0635\u064a\u062f\u0644') || n.includes('\u062f\u0648\u0627\u0621') || n.includes('pharm')) cats.pharm.push(i);
+        const d = (i.department || '').toLowerCase();
+        if (d === 'exam' || n.includes('\u0643\u0634\u0641\u064a\u0629') || n.includes('consultation')) cats.consult.push(i);
+        else if (d === 'lab' || n.includes('\u062a\u062d\u0644\u064a\u0644') || n.includes('lab') || n.includes('فحص')) cats.lab.push(i);
+        else if (d === 'radiology' || d === 'rad' || n.includes('\u062a\u0635\u0648\u064a\u0631') || n.includes('\u0623\u0634\u0639\u0629') || n.includes('rad') || n.includes('x-ray') || n.includes('mri') || n.includes('ct')) cats.rad.push(i);
+        else if (d === 'pharmacy' || d === 'pharm' || n.includes('\u0635\u064a\u062f\u0644') || n.includes('\u062f\u0648\u0627\u0621') || n.includes('pharm')) cats.pharm.push(i);
         else cats.other.push(i);
       });
 
