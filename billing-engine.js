@@ -902,6 +902,18 @@ const BillingEngine = {
 
     const clinicSettings = typeof _sets !== 'undefined' ? _sets : {};
 
+    let dSpec = 'عيادة عامة';
+    if (this._clinicDocs && docNames.size > 0) {
+      const specs = new Set();
+      docNames.forEach(n => {
+        const doc = Object.values(this._clinicDocs).find(d => 
+          d.name === n || 'د. ' + d.name === n || d.name === n.replace('د. ', '')
+        );
+        if (doc && doc.specialty) specs.add(doc.specialty);
+      });
+      if (specs.size > 0) dSpec = [...specs].join('، ');
+    }
+
     const payload = {
       invoice: {
         id: invId,
@@ -914,7 +926,7 @@ const BillingEngine = {
         patientGender: info.gender || '—',
         patientMRN: info.mrn || '—',
         docName: [...docNames].filter(Boolean).join('، ') || '—',
-        docSpec: '—',
+        docSpec: dSpec,
         visitTime: new Date(inv.createdAt || _B.now()).toLocaleTimeString('ar-JO', { hour:'2-digit', minute:'2-digit' }),
         department: inv.department || 'متعدد الأقسام',
         createdAt: inv.createdAt || _B.now(),
