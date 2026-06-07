@@ -142,9 +142,15 @@ const BillingEngine = {
         this._pharmacyInventory = snap.val() || {};
         db.ref(`${BASE}/pharmacy_inventory`).on('value', s => { this._pharmacyInventory = s.val() || {}; });
       }),
-      db.ref(`${BASE}/settings/billingPolicy/departments`).once('value').then(snap => {
-        this._clinicSettingsPolicy = snap.val() || null;
-        db.ref(`${BASE}/settings/billingPolicy/departments`).on('value', s => { this._clinicSettingsPolicy = s.val() || null; });
+      db.ref(`${BASE}/settings/billingPolicy`).once('value').then(snap => {
+        const bp = snap.val() || {};
+        this._clinicSettingsPolicy = bp.departments || null;
+        this._billingPolicy = bp;
+        db.ref(`${BASE}/settings/billingPolicy`).on('value', s => { 
+            const sVal = s.val() || {};
+            this._clinicSettingsPolicy = sVal.departments || null;
+            this._billingPolicy = sVal;
+        });
       }),
       db.ref(`${BASE}/settings/doctors`).once('value').then(snap => {
         this._clinicDocs = snap.val() || {};
@@ -420,7 +426,12 @@ const BillingEngine = {
     if (!hasConsult) {
       let docFee = 15;
       if (docName && this._clinicDocs) {
-        const d = Object.values(this._clinicDocs).find(d => d.name === docName);
+        const cName = docName.trim();
+        const d = Object.values(this._clinicDocs).find(d => {
+          if (!d.name) return false;
+          const dn = d.name.trim();
+          return dn === cName || cName.includes(dn) || dn.includes(cName) || `د. ${dn}` === cName;
+        });
         if (d && d.fee) docFee = parseFloat(d.fee);
       }
       this.addCharge({
