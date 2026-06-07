@@ -346,11 +346,18 @@ const BillingEngine = {
        await db.ref(`${BASE}/billing_triggers/${triggerKey}/processingLock`).set(Date.now());
      } catch(e) { return; }
 
-     const { visitKey, orders = {}, addConsultation, docName } = trigger;
+     const { visitKey, orders = {}, docName } = trigger;
      const patId = trigger.patientId;
      const patName = trigger.patientName;
 
-     if (addConsultation) {
+     // ALWAYS ensure Consultation Fee is present when visit closes
+     let targetInv = this._invoices[`INV-${visitKey}`];
+     let hasConsult = false;
+     if (targetInv && targetInv.items) {
+         hasConsult = targetInv.items.some(i => i.name === 'كشفية الطبيب' || i.serviceId === 'CONSULT');
+     }
+     
+     if (!hasConsult) {
          this.addCharge({
              patientId: patId,
              patientName: patName,
