@@ -857,6 +857,92 @@ const BillingEngine = {
     this.printSingleInvoice(targetInvoice[0]);
   },
 
+  printSingleInvoice: function (invId) {
+    const inv = this._invoices[invId];
+    if (!inv) return;
+    
+    const pts  = this._patientsRef || {};
+    const info = pts[inv.patientId]?.info || {};
+    
+    let isPending = ['pending_review','pending'].includes(inv.status);
+    
+    // حساب المدفوع لهذه الفاتورة تحديداً
+    let paidForInv = 0;
+    for (const tx of Object.values(this._transactions)) {
+      if (tx.invoiceId === invId && tx.status !== 'voided') {
+        if (tx.type === 'PAYMENT')  paidForInv += parseFloat(tx.amount) || 0;
+        if (tx.type === 'REVERSAL') paidForInv -= parseFloat(tx.amount) || 0;
+      }
+    }
+
+    // تجهيز العناصر
+    const allItems = [];
+    const docNames = new Set();
+    const visitIds = new Set();
+    
+    if (inv.visitId) visitIds.add(inv.visitId);
+    if (inv.docName) docNames.add(inv.docName);
+    
+    (inv.items || []).forEach(i => {
+      const n = (i.name || '').toLowerCase();
+      const d = (i.department || inv.department || '').toLowerCase();
+      let type = 'other';
+      if (d === 'exam'  || n.includes('كشف'))    type = 'exam';
+      else if (d === 'lab')                        type = 'lab';
+      else if (['radiology','rad'].includes(d))    type = 'radiology';
+      else if (['pharmacy','pharm'].includes(d))   type = 'pharmacy';
+      docNames.add(i.docName || inv.docName || '');
+      allItems.push({ ...i, type, note: `فاتورة: ${invId.substring(0,8)}` });
+    });
+
+    const clinicSettings = typeof _sets !== 'undefined' ? _sets : {};
+
+    const payload = {
+      invoice: {
+        id: invId,
+        visitId: [...visitIds].join(', ') || '—',
+        status: isPending ? 'pending_review' : inv.status,
+        patientName: inv.patientName || info.name || 'مريض غير معروف',
+        patientNID: info.nationalId || '—',
+        patientPhone: inv.patientPhone || info.phone || '—',
+        patientAge: info.age || '—',
+        patientGender: info.gender || '—',
+        patientMRN: info.mrn || '—',
+        docName: [...docNames].filter(Boolean).join('، ') || '—',
+        docSpec: '—',
+        visitTime: new Date(inv.createdAt || _B.now()).toLocaleTimeString('ar-JO', { hour:'2-digit', minute:'2-digit' }),
+        department: inv.department || 'متعدد الأقسام',
+        createdAt: inv.createdAt || _B.now(),
+        paidAt: (inv.total <= paidForInv && inv.total > 0) ? _B.now() : null,
+        paidAmount: paidForInv,
+        discount: 0,
+        tax: 0,
+        items: allItems,
+        payments: [], // Payments array omitted for single invoice view
+        notes: `إجمالي الفاتورة: ${_B.jod(inv.total)} · المسدد: ${_B.jod(paidForInv)} · المتبقي: ${_B.jod(Math.max((inv.total || 0) - paidForInv, 0))} د.أ`,
+        originalTotal: inv.total,
+        isComprehensive: false
+      },
+      settings: {
+        name: clinicSettings.name || 'العيادة',
+        phone: clinicSettings.phone || '',
+        logoUrl: clinicSettings.logoUrl || null,
+        emoji: clinicSettings.emoji || '🏥'
+      }
+    };
+
+    try {
+      localStorage.setItem('argon_invoice_payload', JSON.stringify(payload));
+      const base = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) || '';
+      window.open(`${base}/invoice-print.html?v=12&id=${encodeURIComponent(typeof CID !== 'undefined' ? CID : '1')}`, '_blank');
+      setTimeout(() => localStorage.removeItem('argon_invoice_payload'), 30000);
+      _B.audit('INVOICE_PRINTED', `طباعة الفاتورة ${invId}`);
+    } catch (e) {
+      console.error('[BillingEngine] print failed:', e);
+      _B.toast('❌ فشل تحضير الفاتورة للطباعة', 'err');
+    }
+  },
+
   // ════════════════════════════════════════════
   // ✏️ INVOICE EDITOR (Admin Only)
   // ════════════════════════════════════════════
