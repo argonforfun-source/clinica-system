@@ -60,6 +60,11 @@ const BillingEngine = {
         this._pricingCatalog = snap.val() || {};
       });
 
+      // 2.1 Listen for Pharmacy Inventory (For Drug Pricing)
+      db.ref(`${BASE}/pharmacy_inventory`).on('value', snap => {
+        this._pharmacyInventory = snap.val() || {};
+      });
+
       // 2.5 Listen for Billing Policy Settings
       db.ref(`${BASE}/settings/billingPolicy/departments`).on('value', snap => {
         this._clinicSettingsPolicy = snap.val() || null;
@@ -76,9 +81,22 @@ const BillingEngine = {
   // ── Pricing Catalog Lookup ──
   // Used by lab-app.js and radiology-app.js to get prices per service name
   lookupPrice: function (serviceName, serviceType) {
-    const catalog = this._pricingCatalog || {};
     const normalizedName = (serviceName || '').trim().toLowerCase();
 
+    // Special Case: Pharmacy Drugs from Pharmacy Inventory
+    if (serviceType === 'pharmacy' && this._pharmacyInventory) {
+      const foundDrug = Object.values(this._pharmacyInventory).find(v => {
+        const curName = (v.name || '').toLowerCase().trim();
+        return curName === normalizedName || curName.includes(normalizedName) || normalizedName.includes(curName);
+      });
+      // Fallback to price if sellPrice is undefined
+      if (foundDrug) {
+         if (foundDrug.price !== undefined) return parseFloat(foundDrug.price);
+         if (foundDrug.sellPrice !== undefined) return parseFloat(foundDrug.sellPrice);
+      }
+    }
+
+    const catalog = this._pricingCatalog || {};
     // Search by exact match or partial match on service name
     const entry = Object.values(catalog).find(item => {
       if (!item.active) return false;
