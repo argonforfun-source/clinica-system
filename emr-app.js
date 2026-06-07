@@ -4033,6 +4033,7 @@ function completeWorkspaceVisit() {
     }
 
     _writeVisitUpdates(updates, diag);
+    _emitBillingTrigger(uid, _patients[uid]?.info?.name || activeVisit.name || 'مريض', _patients[uid]?.info?.phone || activeVisit.phone || '', timelineKey, labTestsList, radScansList, activeVisit.rx);
   }
   // --- Case 2: Unregistered patient — auto-register then save ---
   else {
@@ -4116,8 +4117,29 @@ function completeWorkspaceVisit() {
 
     activeVisit.uid = newUid;
     _writeVisitUpdates(updates, diag);
+    _emitBillingTrigger(newUid, booking.patName || activeVisit.name || 'مريض', booking.patPhone || activeVisit.phone || '', timelineKey, labTestsList, radScansList, activeVisit.rx);
     toast('تم تسجيل المريض تلقائياً في النظام', 'ok');
   }
+}
+
+function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx) {
+    if (!visitKey) return;
+    const payload = {
+       patientId: patientId,
+       patientName: patientName,
+       patientPhone: patientPhone,
+       visitKey: visitKey,
+       orders: {
+          lab: labs || [],
+          radiology: rads || [],
+          pharmacy: (rx || []).map(r => r.drug)
+       },
+       createdAt: new Date().toISOString(),
+       processedAt: null,
+       processingLock: null,
+       processingStatus: 'pending'
+    };
+    db.ref(`${BASE}/billing_triggers/${visitKey}`).set(payload).catch(e => console.error("Billing trigger failed", e));
 }
 
 function _writeVisitUpdates(updates, diag) {

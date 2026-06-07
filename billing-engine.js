@@ -66,9 +66,10 @@ const BillingEngine = {
       });
 
       // 3. Additive Observer — ONLY for Visit Fee (كشفية الطبيب)
-      // Lab, Radiology, Pharmacy add their own detailed items when they complete services.
-      // This prevents double billing.
       this.initVisitFeeObserver();
+
+      // 4. Billing Triggers Observer (Catch orders from EMR)
+      this.initBillingTriggerWatcher();
     }
   },
 
@@ -261,9 +262,15 @@ const BillingEngine = {
     const invId = `INV-${visitId}`;
 
     let fee = 15;
-    if (typeof _docs !== 'undefined' && _docs[visitData.docId] && _docs[visitData.docId].fee) {
-      fee = parseFloat(_docs[visitData.docId].fee);
+    let docName = '';
+    if (typeof _docs !== 'undefined' && _docs[visitData.docId]) {
+      if (_docs[visitData.docId].fee) fee = parseFloat(_docs[visitData.docId].fee);
+      docName = _docs[visitData.docId].name || '';
+    } else if (typeof _docs !== 'undefined' && _docs[visitData.docKey]) { // fallback for active bookings
+      if (_docs[visitData.docKey].fee) fee = parseFloat(_docs[visitData.docKey].fee);
+      docName = _docs[visitData.docKey].name || '';
     }
+
     const visitItem = { name: 'كشفية الطبيب', price: fee };
 
     if (this._invoices[invId]) {
@@ -278,11 +285,11 @@ const BillingEngine = {
         });
       }
     } else {
-      this.saveInvoice(invId, visitData.patientId, visitId, [visitItem], visitData.patName, visitData.patPhone);
+      this.saveInvoice(invId, visitData.patientId, visitId, [visitItem], visitData.patName, visitData.patPhone, docName);
     }
   },
 
-  saveInvoice: function (invId, patientId, visitId, items, patName, patPhone) {
+  saveInvoice: function (invId, patientId, visitId, items, patName, patPhone, docName) {
     const total = items.reduce((acc, curr) => acc + curr.price, 0);
     const ts = new Date().toISOString();
 
@@ -290,6 +297,7 @@ const BillingEngine = {
       patientId: patientId,
       patientName: patName || '',
       patientPhone: patPhone || '',
+      docName: docName || '',
       visitId: visitId,
       items: items,
       total: total,
@@ -301,6 +309,59 @@ const BillingEngine = {
     };
 
     db.ref(`${BASE}/invoices/${invId}`).set(invoiceData);
+  },
+
+  // ── BILLING TRIGGERS (EMR ORDERS) ──
+  initBillingTriggerWatcher: function () {
+    this._processedTriggers = new Set();
+    const handleTrigger = (snap) => {
+       const t = snap.val();
+       if (t && !t.processedAt && !this._processedTriggers.has(snap.key)) {
+         this.processBillingTrigger(snap.key, t);
+       }
+    };
+    db.ref(`${BASE}/billing_triggers`).on('child_added', handleTrigger);
+    db.ref(`${BASE}/billing_triggers`).on('child_changed', handleTrigger);
+  },
+
+  processBillingTrigger: async function (triggerKey, trigger) {
+     if (this._processedTriggers.has(triggerKey)) return;
+     this._processedTriggers.add(triggerKey);
+
+     try {
+       const lockSnap = await db.ref(`${BASE}/billing_triggers/${triggerKey}/processingLock`).once('value');
+       if (lockSnap.val()) { this._processedTriggers.delete(triggerKey); return; }
+       await db.ref(`${BASE}/billing_triggers/${triggerKey}/processingLock`).set(Date.now());
+     } catch(e) { return; }
+
+     const { visitKey, orders = {} } = trigger;
+     const patId = trigger.patientId;
+     const patName = trigger.patientName;
+
+     const processOrders = (list, dept) => {
+         if (!list) return;
+         for (const order of list) {
+             const name = typeof order === 'string' ? order : order.name;
+             this.addCharge({
+                 patientId: patId,
+                 patientName: patName,
+                 visitId: visitKey,
+                 department: dept,
+                 serviceId: name,
+                 customName: name
+             });
+         }
+     };
+
+     processOrders(orders.lab, 'lab');
+     processOrders(orders.radiology, 'radiology');
+     processOrders(orders.pharmacy, 'pharmacy');
+
+     await db.ref(`${BASE}/billing_triggers/${triggerKey}`).update({
+         processedAt: new Date().toISOString(),
+         processingStatus: 'success',
+         processingLock: null
+     });
   },
 
   // ── MATH UTILS ──
