@@ -777,12 +777,16 @@ const BillingEngine = {
                style="background:rgba(14,165,233,.08);color:var(--sky);border-color:rgba(14,165,233,.2)">
                <i class="fas fa-edit"></i></button>`;
 
+        const printBtn = `<button class="tbtn" onclick="BillingEngine.printSingleInvoice('${_B.san(k)}')"
+               style="background:rgba(13,148,136,.08);color:var(--teal);border-color:rgba(13,148,136,.2);margin-right:4px;" title="طباعة هذه الفاتورة">
+               <i class="fas fa-print"></i></button>`;
+
         return `<tr>
           <td style="font-size:.75rem;white-space:nowrap">${dateStr}</td>
           <td style="min-width:220px">${itemsHtml}</td>
           <td style="font-family:'IBM Plex Mono',monospace;font-weight:900;font-size:1rem">${_B.jod(total)}</td>
           <td>${statusHtml}</td>
-          <td style="text-align:center">${editBtn}</td>
+          <td style="text-align:center;white-space:nowrap">${editBtn}${printBtn}</td>
         </tr>`;
       }).join('') ||
         `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">لا توجد مطالبات</td></tr>`;
