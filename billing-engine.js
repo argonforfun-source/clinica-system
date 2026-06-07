@@ -358,6 +358,12 @@ const BillingEngine = {
      }
      
      if (!hasConsult) {
+         let docFee = 15; // default
+         if (typeof _docs !== 'undefined' && docName) {
+             const docEntry = Object.values(_docs).find(d => d.name === docName);
+             if (docEntry && docEntry.fee) docFee = parseFloat(docEntry.fee);
+         }
+
          this.addCharge({
              patientId: patId,
              patientName: patName,
@@ -366,7 +372,7 @@ const BillingEngine = {
              department: 'exam',
              serviceId: 'CONSULT',
              customName: 'كشفية الطبيب',
-             price: 15
+             price: docFee
          });
      }
 
