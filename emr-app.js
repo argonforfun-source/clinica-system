@@ -4034,7 +4034,8 @@ function completeWorkspaceVisit() {
 
     _writeVisitUpdates(updates, diag);
     const finalVisitKey = bookingId || timelineKey;
-    _emitBillingTrigger(uid, _patients[uid]?.info?.name || activeVisit.name || 'مريض', _patients[uid]?.info?.phone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId);
+    const currentDoc = (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب';
+    _emitBillingTrigger(uid, _patients[uid]?.info?.name || activeVisit.name || 'مريض', _patients[uid]?.info?.phone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc);
   }
   // --- Case 2: Unregistered patient — auto-register then save ---
   else {
@@ -4119,18 +4120,20 @@ function completeWorkspaceVisit() {
     activeVisit.uid = newUid;
     _writeVisitUpdates(updates, diag);
     const finalVisitKey = bookingId || timelineKey;
-    _emitBillingTrigger(newUid, booking.patName || activeVisit.name || 'مريض', booking.patPhone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId);
+    const currentDoc = (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب';
+    _emitBillingTrigger(newUid, booking.patName || activeVisit.name || 'مريض', booking.patPhone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc);
     toast('تم تسجيل المريض تلقائياً في النظام', 'ok');
   }
 }
 
-function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx, addConsultation) {
+function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx, addConsultation, docName) {
     if (!visitKey) return;
     const payload = {
        patientId: patientId,
        patientName: patientName,
        patientPhone: patientPhone,
        visitKey: visitKey,
+       docName: docName || '',
        addConsultation: addConsultation === true,
        orders: {
           lab: labs || [],

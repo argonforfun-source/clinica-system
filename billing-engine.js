@@ -346,7 +346,7 @@ const BillingEngine = {
        await db.ref(`${BASE}/billing_triggers/${triggerKey}/processingLock`).set(Date.now());
      } catch(e) { return; }
 
-     const { visitKey, orders = {}, addConsultation } = trigger;
+     const { visitKey, orders = {}, addConsultation, docName } = trigger;
      const patId = trigger.patientId;
      const patName = trigger.patientName;
 
@@ -355,6 +355,7 @@ const BillingEngine = {
              patientId: patId,
              patientName: patName,
              visitId: visitKey,
+             docName: docName,
              department: 'exam',
              serviceId: 'CONSULT',
              customName: 'كشفية الطبيب',
@@ -370,6 +371,7 @@ const BillingEngine = {
                  patientId: patId,
                  patientName: patName,
                  visitId: visitKey,
+                 docName: docName,
                  department: dept,
                  serviceId: name,
                  customName: name
