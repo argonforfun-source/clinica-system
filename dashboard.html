@@ -658,7 +658,8 @@
           <div style="display:flex; gap:8px;">
             <input type="text" id="blSearch" onkeyup="renderReceivables()" placeholder="بحث باسم المريض أو الرقم..." class="mfi" style="width:250px; padding:6px 10px; font-size:0.85rem;">
             <select id="blFilter" class="mfi" onchange="renderReceivables()" style="width:150px; padding:6px; font-size:0.85rem;">
-              <option value="all">جميع الذمم</option>
+              <option value="all">جميع الذمم النشطة</option>
+              <option value="paid">مسدد بالكامل</option>
               <option value="unpaid">غير مدفوع كامل</option>
               <option value="partial">مدفوع جزئي</option>
               <option value="overdue">متأخر الدفع</option>
