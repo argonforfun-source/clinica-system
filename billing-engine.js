@@ -187,6 +187,7 @@ const BillingEngine = {
       };
       db.ref(`${BASE}/invoices/${invId}`).set(invoiceData);
       targetInv = { id: invId, ...invoiceData };
+      this._invoices[invId] = targetInv;
       if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('DEPT_INVOICE_CREATED', `فاتورة قسم منفصلة للزيارة: ${eventData.visitId}`, 'FINANCE');
     } else if (!targetInv) {
       const ts = new Date().toISOString();
@@ -202,6 +203,7 @@ const BillingEngine = {
       };
       db.ref(`${BASE}/invoices/${invId}`).set(invoiceData);
       targetInv = { id: invId, ...invoiceData };
+      this._invoices[invId] = targetInv;
       if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('MASTER_INVOICE_CREATED', `إنشاء فاتورة رئيسية للزيارة: ${eventData.visitId}`, 'FINANCE');
     }
 
@@ -229,6 +231,14 @@ const BillingEngine = {
     }
 
     db.ref(`${BASE}/invoices/${targetInv.id}`).update(updates);
+
+    // Synchronously update local cache to prevent overwrite in tight loops
+    targetInv.items = currentItems;
+    targetInv.total = updates.total;
+    targetInv.status = updates.status;
+    if (updates.locked !== undefined) targetInv.locked = updates.locked;
+    if (updates.financialBlocked !== undefined) targetInv.financialBlocked = updates.financialBlocked;
+    this._invoices[invId] = targetInv;
 
     if (typeof ArgonCore !== 'undefined') ArgonCore.logAudit('INVOICE_UPDATED', `إضافة ${item.name} إلى الفاتورة ${targetInv.id}`, 'FINANCE');
     return true;
