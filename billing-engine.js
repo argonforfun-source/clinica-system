@@ -962,6 +962,7 @@ const BillingEngine = {
     const payload = {
       invoice: {
         id: invId,
+        displayId: inv.displayId || null,
         visitId: [...visitIds].join(', ') || '—',
         status: isPending ? 'pending_review' : inv.status,
         patientName: inv.patientName || info.name || 'مريض غير معروف',
@@ -996,7 +997,7 @@ const BillingEngine = {
     try {
       localStorage.setItem('argon_invoice_payload', JSON.stringify(payload));
       const base = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) || '';
-      window.open(`${base}/invoice-print.html?v=12&id=${encodeURIComponent(typeof CID !== 'undefined' ? CID : '1')}`, '_blank');
+      window.open(`${base}/invoice-print.html?v=13&id=${encodeURIComponent(typeof CID !== 'undefined' ? CID : '1')}`, '_blank');
       setTimeout(() => localStorage.removeItem('argon_invoice_payload'), 30000);
       _B.audit('INVOICE_PRINTED', `طباعة الفاتورة ${invId}`);
     } catch (e) {
