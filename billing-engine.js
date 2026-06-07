@@ -211,7 +211,7 @@ const BillingEngine = {
       v = departments[dept] || departments[dept === 'radiology' ? 'rad' : dept];
     }
     
-    if (v === 'separate' || v === 'free') return v;
+    if (v === 'separate' || v === 'free' || v === 'external') return v;
     return 'unified';
   },
 
