@@ -459,7 +459,7 @@ const BillingEngine = {
 
     // ── الرسوم والضرائب التلقائية (Auto-Added Fees) ──
     if (this._billingPolicy && Array.isArray(this._billingPolicy.autoFees)) {
-      if (addConsultation || (orders.lab && orders.lab.length) || (orders.radiology && orders.radiology.length) || (orders.pharmacy && orders.pharmacy.length)) {
+      if (!hasConsult || (orders.lab && orders.lab.length) || (orders.radiology && orders.radiology.length) || (orders.pharmacy && orders.pharmacy.length)) {
         this._billingPolicy.autoFees.forEach((fee, index) => {
           if (!fee.name || !fee.price) return;
           this.addCharge({
