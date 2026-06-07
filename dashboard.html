@@ -2479,9 +2479,9 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catc
 })();
 </script>
 <!-- مودال محرر الفواتير (Admin Only) -->
-<div id="invoiceEditorModal" class="modal" style="z-index: 10000;">
-  <div class="mcont" style="max-width:600px;">
-    <button class="mclose" onclick="document.getElementById('invoiceEditorModal').style.display='none'"><i class="fas fa-times"></i></button>
+<div id="invoiceEditorModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(8px);z-index:10000;justify-content:center;align-items:center;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="mcont" style="background:var(--surf);border:1px solid var(--border);border-radius:20px;padding:24px;width:800px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.4);position:relative;">
+    <button onclick="document.getElementById('invoiceEditorModal').style.display='none'" style="position:absolute;top:20px;left:20px;background:none;border:none;font-size:1.5rem;color:var(--muted);cursor:pointer;"><i class="fas fa-times"></i></button>
     <h2 style="color:var(--teal); margin-bottom:15px; font-weight:800;"><i class="fas fa-file-invoice-dollar"></i> محرر الفاتورة <span id="invEdId" style="font-size:0.8rem;color:var(--muted);margin-right:8px;font-family:'IBM Plex Mono',monospace"></span></h2>
     <div id="invEdStatus" style="margin-bottom:15px; font-weight:bold; font-size:0.85rem;"></div>
     
