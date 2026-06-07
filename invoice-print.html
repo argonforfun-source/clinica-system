@@ -709,6 +709,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
 <script>
+window.onerror = function(msg, url, line, col, error) {
+  alert('Global Error: ' + msg + '\nLine: ' + line + '\n' + (error ? error.stack : ''));
+};
 /* ═══════════════════════════════════════════════════
    ARGON INVOICE PRINT ENGINE
    File: invoice-print.html (inline script)
@@ -998,7 +1001,11 @@ const DEMO_INVOICE = {
 };
 
 // Start
-loadAndRender();
+try {
+  loadAndRender();
+} catch (e) {
+  alert('Critical Error in invoice-print.html: ' + e.message + '\n\n' + e.stack);
+}
 </script>
 
 </body>
