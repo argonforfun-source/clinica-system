@@ -776,6 +776,17 @@
                 </select>
               </div>
             </div>
+            
+            <div style="background:rgba(0,0,0,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
+              <label class="setl" style="color:var(--teal);font-weight:bold;font-size:0.9rem;border-bottom:1px dashed var(--border);padding-bottom:8px;margin-bottom:10px">الرسوم الإضافية التلقائية (Auto-Added Fees & Taxes)</label>
+              <div style="font-size:0.75rem;color:var(--muted);margin-bottom:10px">تتم إضافة هذه الرسوم (مبالغ ثابتة) تلقائياً على الفاتورة الرئيسية (INV) لكل زيارة مريض يتم إغلاقها.</div>
+              <div id="autoFeesList" style="margin-bottom:10px"></div>
+              <div style="display:flex;gap:8px">
+                <input type="text" id="afName" class="seti" placeholder="اسم الرسم/الضريبة (مثال: رسوم خدمات)" style="flex:2;font-size:0.8rem;padding:6px;margin:0">
+                <input type="number" id="afPrice" class="seti" placeholder="المبلغ (د.أ)" step="0.001" style="flex:1;font-size:0.8rem;padding:6px;margin:0">
+                <button onclick="window.addAutoFee()" style="background:var(--teal);color:white;border:none;border-radius:6px;padding:6px 12px;font-size:0.8rem;cursor:pointer"><i class="fas fa-plus"></i> إضافة</button>
+              </div>
+            </div>
             <div style="display:flex;gap:8px">
               <button onclick="sw('pricing',document.getElementById('mPricing'))" style="flex:1;background:rgba(14,165,233,.1);color:var(--sky);border:1px solid rgba(14,165,233,.2);padding:6px 10px;border-radius:6px;font-size:0.8rem;cursor:pointer;font-weight:bold"><i class="fas fa-tags"></i> إدارة تسعيرة الفحوصات</button>
               <button onclick="if(confirm('هل أنت متأكد من تصفير ومسح جميع الفواتير والحركات المالية الحالية؟')) { db.ref(BASE + '/invoices').remove(); db.ref(BASE + '/financial_transactions').remove(); toast('تم تصفير الفواتير بنجاح', 'ok'); }" style="background:var(--red);color:white;border:none;padding:6px 10px;border-radius:6px;font-size:0.75rem;cursor:pointer;"><i class="fas fa-trash"></i> مسح الفواتير التجريبية</button>
@@ -990,6 +1001,38 @@ const BASE = 'clinics/' + CID;
 let _pass = '1122', _logins = 0, _lockUntil = 0;
 let _bks = {}, _cmp = {}, _docs = {}, _sets = {}, _referrals = {}, isConn = true;
 let prevCount = 0, firstLoad = true, audioCtx = null, _anonUid = null;
+
+// ==========================================
+// Auto-Added Fees Logic
+// ==========================================
+window._autoFees = [];
+window.renderAutoFees = function() {
+  const container = document.getElementById('autoFeesList');
+  if (!container) return;
+  if (window._autoFees.length === 0) {
+    container.innerHTML = '<div style="font-size:0.75rem;color:var(--muted);text-align:center;padding:10px">لا يوجد رسوم تلقائية مضافة حالياً.</div>';
+    return;
+  }
+  container.innerHTML = window._autoFees.map((f, i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;background:white;border:1px solid var(--border);border-radius:6px;padding:6px 10px;margin-bottom:6px">
+      <span style="font-size:0.8rem;font-weight:600"><i class="fas fa-tag" style="color:var(--teal);margin-left:5px"></i>${f.name}</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--teal);font-weight:bold">${Number(f.price).toFixed(3)} د.أ</span>
+        <button onclick="window._autoFees.splice(${i},1);window.renderAutoFees()" style="background:none;border:none;color:var(--red);cursor:pointer;padding:0"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+};
+
+window.addAutoFee = function() {
+  const n = document.getElementById('afName').value.trim();
+  const p = parseFloat(document.getElementById('afPrice').value);
+  if (!n || isNaN(p) || p <= 0) { toast('⚠️ أدخل اسم الرسم ومبلغ صحيح', 'err'); return; }
+  window._autoFees.push({ name: n, price: p });
+  document.getElementById('afName').value = '';
+  document.getElementById('afPrice').value = '';
+  window.renderAutoFees();
+};
 
 // ── DASHBOARD MULTI-LANGUAGE (i18n) ENGINE ──
 const dash_i18n = {
@@ -1339,6 +1382,8 @@ db.ref(BASE+'/settings').on('value', snap => {
   
   const advBp = s.billingPolicy || {};
   const deptsBp = advBp.departments || {};
+  window._autoFees = advBp.autoFees || [];
+  if (typeof window.renderAutoFees === 'function') window.renderAutoFees();
   const bpLab = document.getElementById('bpLab');
   const bpRad = document.getElementById('bpRad');
   const bpPharm = document.getElementById('bpPharm');
@@ -2167,7 +2212,8 @@ async function saveSettings() {
         lab: bpLabVal,
         rad: bpRadVal,
         pharmacy: bpPharmVal
-      }
+      },
+      autoFees: window._autoFees
     },
     color
   };
@@ -2526,6 +2572,6 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catc
 </div>
 <!-- نهاية مودال محرر الفواتير -->
 
-<script src="billing-engine.js?v=12.94"></script>
+<script src="billing-engine.js?v=12.95"></script>
 </body>
 </html>

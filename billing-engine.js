@@ -457,6 +457,23 @@ const BillingEngine = {
     processOrders(orders.radiology, 'radiology');
     processOrders(orders.pharmacy,  'pharmacy');
 
+    // ── الرسوم والضرائب التلقائية (Auto-Added Fees) ──
+    if (this._billingPolicy && Array.isArray(this._billingPolicy.autoFees)) {
+      if (addConsultation || (orders.lab && orders.lab.length) || (orders.radiology && orders.radiology.length) || (orders.pharmacy && orders.pharmacy.length)) {
+        this._billingPolicy.autoFees.forEach((fee, index) => {
+          if (!fee.name || !fee.price) return;
+          this.addCharge({
+            patientId: patId, patientName: patName,
+            visitId: visitKey, docName,
+            department: 'exam', // إجبار نزولها في الفاتورة الرئيسية
+            serviceId: `AUTOFEE_${index}`,
+            customName: fee.name,
+            price: parseFloat(fee.price) || 0
+          });
+        });
+      }
+    }
+
     // ── تحديث حالة الـ trigger — .update() ✅ ──
     await db.ref(`${BASE}/billing_triggers/${triggerKey}`).update({
       processedAt:      _B.now(),
