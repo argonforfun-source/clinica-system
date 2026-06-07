@@ -949,13 +949,7 @@ async function loadAndRender() {
     settings = DEMO_SETTINGS;
   }
 
-  // Also fetch clinic settings from Firebase if missing
-  if (!settings.name && CLINIC_ID) {
-    try {
-      const setSnap = await db.ref(\`\${BASE}/settings\`).once('value');
-      if (setSnap.exists()) settings = setSnap.val();
-    } catch (e) {}
-  }
+  // Firebase fetch removed to prevent hanging
 
   renderInvoice(inv, settings);
 }
