@@ -354,7 +354,9 @@ const BillingEngine = {
 
     } else {
       // ── فاتورة جديدة: .set() ✅ (!data.exists() → مسموح) ──
+      const displayId = 'INV-' + String(Date.now()).slice(-6);
       const newInvoice = {
+        displayId:   displayId,
         patientId:   eventData.patientId   || null,
         patientName: _B.san(eventData.patientName || 'غير معروف'),
         patientPhone:_B.san(eventData.patientPhone || ''),

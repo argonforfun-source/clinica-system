@@ -783,7 +783,7 @@ function renderInvoice(inv, settings) {
   }
 
   // ── Invoice meta ──
-  const invId = inv.id || INV_KEY || `INV-${Date.now()}`;
+  const invId = inv.displayId || inv.id || INV_KEY || `INV-${Date.now()}`;
   document.getElementById('invNumber').textContent = sanitize(invId);
   document.getElementById('invMeta').innerHTML =
     `التاريخ: ${invDate}<br>الزيارة: ${sanitize(inv.visitId || '—')}`;

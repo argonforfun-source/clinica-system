@@ -1729,11 +1729,21 @@ window.renderHist = function() {
   if(sq) {
     filteredKeys = filteredKeys.filter(k => {
       const b = _cmp[k]; if(!b) return false;
+      
+      let invMatch = false;
+      if (typeof BillingEngine !== 'undefined' && BillingEngine._invoices) {
+        invMatch = Object.values(BillingEngine._invoices).some(inv => 
+          (inv.patientId === b.patientId || inv.visitId === k) && 
+          ( (inv.displayId && inv.displayId.toLowerCase().includes(sq)) || (inv.id && inv.id.toLowerCase().includes(sq)) )
+        );
+      }
+
       return (b.patName && b.patName.toLowerCase().includes(sq)) ||
              (b.patPhone && b.patPhone.includes(sq)) ||
              (b.bookNo && b.bookNo.toLowerCase().includes(sq)) ||
              (b.docName && b.docName.toLowerCase().includes(sq)) ||
-             (b.patNationalId && b.patNationalId.includes(sq));
+             (b.patNationalId && b.patNationalId.includes(sq)) ||
+             invMatch;
     });
   }
   const noHistMsg = curLang === 'ar' ? 'لا يوجد سجل يطابق البحث' : (curLang === 'fr' ? 'Aucun historique' : 'No History');
@@ -2572,6 +2582,6 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catc
 </div>
 <!-- نهاية مودال محرر الفواتير -->
 
-<script src="billing-engine.js?v=12.98"></script>
+<script src="billing-engine.js?v=12.99"></script>
 </body>
 </html>
