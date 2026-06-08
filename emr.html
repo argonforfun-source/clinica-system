@@ -186,7 +186,7 @@
             <div class="fi-row" style="margin-bottom:12px;">
               <div style="position:relative;flex:1">
                 <input type="text" id="rxDrug" class="fi" placeholder="اسم الدواء أو العلاج الموصوف..." onkeyup="searchWorkspaceDrug()" onfocus="searchWorkspaceDrug()" autocomplete="off" style="width:100%" oninput="if(typeof saveVisitDraft === \"function\") saveVisitDraft()">
-                <div id="rxWorkspaceDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:220px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
+                <div id="rxWorkspaceDropdown" class="complex-only" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:220px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
               </div>
               <input type="text" id="rxDose" class="fi" placeholder="الجرعة (مثال: حبة مرتين يومياً)" style="flex:1" oninput="if(typeof saveVisitDraft === \"function\") saveVisitDraft()">
             </div>
@@ -421,7 +421,7 @@
 <script src="argon-nid-gate.js"></script>
 <script src="argon-enterprise.js???v=7"></script>
 <script src="billing-engine.js?v=12.994"></script>
-<script src="emr-app.js?v=10"></script>
+<script src="emr-app.js?v=11"></script>
 <script>
 (function setMaxDates() {
   const today = new Date().toISOString().split('T')[0];
