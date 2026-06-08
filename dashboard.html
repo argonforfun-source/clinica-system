@@ -253,6 +253,10 @@
     .ls-sub{font-size:1.1rem;color:rgba(255,255,255,0.6);margin-bottom:35px;max-width:500px;line-height:1.6}
     .ls-btn{background:#3b82f6;color:#fff;padding:14px 32px;border-radius:14px;font-family:'Tajawal',sans-serif;font-size:1.15rem;font-weight:800;text-decoration:none;transition:0.3s;box-shadow:0 12px 32px rgba(59,130,246,0.35);display:inline-flex;align-items:center;gap:10px}
     .ls-btn:hover{background:#2563eb;transform:translateY(-2px);box-shadow:0 15px 40px rgba(59,130,246,0.5)}
+    
+    /* ── LICENSE MODE CSS (SAFE HIDING) ── */
+    body.license-single .complex-only,
+    body.license-single .tab-complex { display: none !important; }
   </style>
 </head>
 <body>
@@ -592,9 +596,9 @@
           <div><label class="mfl">الدور / الوظيفة</label>
             <select id="sftR" class="mfi">
               <option value="reception">موظف استقبال</option>
-              <option value="pharmacist">صيدلي</option>
-              <option value="lab">فني مختبر</option>
-              <option value="radiology">فني أشعة</option>
+              <option value="pharmacist" class="complex-only">صيدلي</option>
+              <option value="lab" class="complex-only">فني مختبر</option>
+              <option value="radiology" class="complex-only">فني أشعة</option>
               <option value="admin">إدارة</option>
             </select>
           </div>
@@ -691,7 +695,7 @@
       <div class="ph"><div><div class="pt">🏷️ إدارة التسعير (Pricing Catalog)</div><div class="ps">تحديد سعر كل فحص وصورة بشكل مستقل</div></div></div>
 
       <!-- Lab Tests Pricing -->
-      <div class="glass-panel" style="overflow:hidden;border-radius:13px;border:1px solid var(--border);margin-bottom:20px">
+      <div class="glass-panel complex-only" style="overflow:hidden;border-radius:13px;border:1px solid var(--border);margin-bottom:20px">
         <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--surf)">
           <div style="font-weight:800;font-size:1rem"><i class="fas fa-microscope" style="color:var(--green);margin-left:6px"></i> تسعيرة فحوصات المختبر</div>
           <button onclick="openAddPricingItem('lab')" class="tbtn" style="background:rgba(16,185,129,.1);color:var(--green);border-color:rgba(16,185,129,.2)"><i class="fas fa-plus"></i> إضافة فحص</button>
@@ -705,7 +709,7 @@
       </div>
 
       <!-- Radiology Scans Pricing -->
-      <div class="glass-panel" style="overflow:hidden;border-radius:13px;border:1px solid var(--border)">
+      <div class="glass-panel complex-only" style="overflow:hidden;border-radius:13px;border:1px solid var(--border)">
         <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--surf)">
           <div style="font-weight:800;font-size:1rem"><i class="fas fa-x-ray" style="color:var(--sky);margin-left:6px"></i> تسعيرة فحوصات الأشعة</div>
           <button onclick="openAddPricingItem('radiology')" class="tbtn" style="background:rgba(14,165,233,.1);color:var(--sky);border-color:rgba(14,165,233,.2)"><i class="fas fa-plus"></i> إضافة فحص</button>
@@ -744,7 +748,7 @@
         <div class="setg"><label class="setl">رقم الواتساب</label><input type="text" id="sP" class="seti" placeholder="+962..."></div>
         <div class="setg" style="display:grid;grid-template-columns:1fr;gap:12px">
           <div>
-            <div style="background:rgba(0,0,0,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
+            <div class="complex-only" style="background:rgba(0,0,0,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
               <label class="setl" style="color:var(--teal);font-weight:bold;font-size:0.9rem;border-bottom:1px dashed var(--border);padding-bottom:8px;margin-bottom:10px">سياسة الفوترة المؤسسية (Enterprise Billing Policy)</label>
               
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">

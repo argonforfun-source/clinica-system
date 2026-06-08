@@ -14,6 +14,10 @@
       0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.4); }
       50% { box-shadow: 0 0 12px 4px rgba(245,158,11,0.2); }
     }
+    
+    /* ── LICENSE MODE CSS (SAFE HIDING) ── */
+    body.license-single .complex-only,
+    body.license-single .tab-complex { display: none !important; }
   </style>
 </head>
 <body data-theme="dark">
@@ -181,7 +185,7 @@
             <div class="vform-title"><i class="fas fa-pills"></i> الوصفة الطبية (Rx)</div>
             <div class="fi-row" style="margin-bottom:12px;">
               <div style="position:relative;flex:1">
-                <input type="text" id="rxDrug" class="fi" placeholder="اسم الدواء (ابحث في مخزون الصيدلية أو أدخل يدوياً)..." onkeyup="searchWorkspaceDrug()" onfocus="searchWorkspaceDrug()" autocomplete="off" style="width:100%" oninput="if(typeof saveVisitDraft === \"function\") saveVisitDraft()">
+                <input type="text" id="rxDrug" class="fi" placeholder="اسم الدواء أو العلاج الموصوف..." onkeyup="searchWorkspaceDrug()" onfocus="searchWorkspaceDrug()" autocomplete="off" style="width:100%" oninput="if(typeof saveVisitDraft === \"function\") saveVisitDraft()">
                 <div id="rxWorkspaceDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:220px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
               </div>
               <input type="text" id="rxDose" class="fi" placeholder="الجرعة (مثال: حبة مرتين يومياً)" style="flex:1" oninput="if(typeof saveVisitDraft === \"function\") saveVisitDraft()">
