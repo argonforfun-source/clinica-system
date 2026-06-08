@@ -345,7 +345,7 @@ async function doPass(){
 // ══ LINKS ══
 function showLinks(id, name, type) {
     const nm = decodeURIComponent(name), base = getBase();
-    const dash = `${base}dashboard.html?id=${id}`, book = `${base}index.html?id=${id}`, portal = `${base}patient-portal.html?id=${id}`, emr = `${base}emr.html?id=${id}`;
+    const dash = `${base}dashboard.html?id=${id}`, book = `${base}index.html?id=${id}`, portal = `${base}patient.html?id=${id}`, emr = `${base}emr.html?id=${id}`;
     
     let html = `
     <div style="font-size:15px;font-weight:800;color:var(--teal);margin-bottom:14px">🏥 ${nm}</div>
