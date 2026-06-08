@@ -345,7 +345,8 @@ async function doPass(){
 // ══ LINKS ══
 function showLinks(id, name, type) {
     const nm = decodeURIComponent(name), base = getBase();
-    const dash = `${base}dashboard.html?id=${id}`, book = `${base}index.html?id=${id}`, portal = `${base}patient.html?id=${id}`, emr = `${base}emr.html?id=${id}`;
+    const cb = Date.now().toString(36);
+    const dash = `${base}dashboard.html?id=${id}&cb=${cb}`, book = `${base}index.html?id=${id}&cb=${cb}`, portal = `${base}patient.html?id=${id}&cb=${cb}`, emr = `${base}emr.html?id=${id}&cb=${cb}`;
     
     let html = `
     <div style="font-size:15px;font-weight:800;color:var(--teal);margin-bottom:14px">🏥 ${nm}</div>
@@ -355,9 +356,9 @@ function showLinks(id, name, type) {
     <div class="lbox"><div class="ll">📋 بوابة المريض</div><div class="lv"><span>${portal}</span><button class="cpb" onclick="cp('${portal}')">نسخ</button></div></div>`;
 
     if (type === 'complex') {
-        const phar = `${base}pharmacy.html?id=${id}`;
-        const lab = `${base}lab.html?id=${id}`;
-        const rad = `${base}radiology.html?id=${id}`;
+        const phar = `${base}pharmacy.html?id=${id}&cb=${cb}`;
+        const lab = `${base}lab.html?id=${id}&cb=${cb}`;
+        const rad = `${base}radiology.html?id=${id}&cb=${cb}`;
         html += `
         <div style="margin-top:12px;border-top:1px dashed var(--border);padding-top:12px">
             <div class="lbox" style="background:rgba(14,165,233,0.05)"><div class="ll" style="color:var(--sky)"><i class="fas fa-capsules"></i> الصيدلية المركزية</div><div class="lv"><span>${phar}</span><button class="cpb" style="color:var(--sky)" onclick="cp('${phar}')">نسخ</button></div></div>
