@@ -258,7 +258,7 @@ async function addClinic(){
         await db.ref(`clinics/${id}`).set(clinicData);
         const base=getBase();
         document.getElementById('linkDash').textContent=`${base}dashboard.html?id=${id}`;
-        document.getElementById('linkBooking').textContent=`${base}booking.html?id=${id}`;
+        document.getElementById('linkBooking').textContent=`${base}index.html?id=${id}`;
         
         if (selectedType === 'complex') {
             document.getElementById('linkPhar').textContent=`${base}pharmacy.html?id=${id}`;
@@ -345,7 +345,7 @@ async function doPass(){
 // ══ LINKS ══
 function showLinks(id, name, type) {
     const nm = decodeURIComponent(name), base = getBase();
-    const dash = `${base}dashboard.html?id=${id}`, book = `${base}booking.html?id=${id}`, portal = `${base}patient-portal.html?id=${id}`, emr = `${base}emr.html?id=${id}`;
+    const dash = `${base}dashboard.html?id=${id}`, book = `${base}index.html?id=${id}`, portal = `${base}patient-portal.html?id=${id}`, emr = `${base}emr.html?id=${id}`;
     
     let html = `
     <div style="font-size:15px;font-weight:800;color:var(--teal);margin-bottom:14px">🏥 ${nm}</div>
