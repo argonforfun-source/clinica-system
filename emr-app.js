@@ -2450,6 +2450,12 @@ function searchDrug() {
   if (!inp || !dd) return;
   const q = inp.value.trim();
   if (!q) { dd.style.display = 'none'; return; }
+  
+  if (typeof ArgonLicense !== 'undefined' && ArgonLicense.type === 'single') {
+     dd.style.display = 'none';
+     return;
+  }
+
   dd.innerHTML = _buildDrugDropdownHTML(_searchInventoryLogic(q), q, 'selectDrug');
   dd.style.display = 'block';
 }
@@ -2470,6 +2476,12 @@ function searchWorkspaceDrug() {
   if (!inp || !dd) return;
   const q = inp.value.trim();
   if (!q) { dd.style.display = 'none'; return; }
+
+  if (typeof ArgonLicense !== 'undefined' && ArgonLicense.type === 'single') {
+     dd.style.display = 'none';
+     return;
+  }
+
   dd.innerHTML = _buildDrugDropdownHTML(_searchInventoryLogic(q), q, 'selectWorkspaceDrug');
   dd.style.display = 'block';
 }
@@ -4128,6 +4140,10 @@ function completeWorkspaceVisit() {
 
 function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx, addConsultation, docName) {
     if (!visitKey) return;
+    
+    // SAFETY CHECK: Single clinics strictly do NOT bill for lab, radiology, or pharmacy
+    const isSingle = (typeof ArgonLicense !== 'undefined' && ArgonLicense.type === 'single');
+
     const payload = {
        patientId: patientId,
        patientName: patientName,
@@ -4136,9 +4152,9 @@ function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, lab
        docName: docName || '',
        addConsultation: addConsultation === true,
        orders: {
-          lab: labs || [],
-          radiology: rads || [],
-          pharmacy: (rx || []).map(r => r.drug)
+          lab: isSingle ? [] : (labs || []),
+          radiology: isSingle ? [] : (rads || []),
+          pharmacy: isSingle ? [] : (rx || []).map(r => r.drug)
        },
        createdAt: new Date().toISOString(),
        processedAt: null,
