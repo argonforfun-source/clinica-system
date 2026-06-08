@@ -538,4 +538,5 @@ document.addEventListener('DOMContentLoaded', () => {
     ArgonCore.SyncManager.init();
     ArgonCore.NotificationCenter.init();
     ArgonMaintenance.init();
+    ArgonLicense.init();
 });
