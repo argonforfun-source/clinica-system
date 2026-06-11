@@ -254,8 +254,8 @@
       }
     }
 
-    // 1. Listen to New Bookings & Status Changes
-    db.ref(BASE + '/bookings').orderByChild('createdAt').startAt(new Date(Date.now() - 24*60*60*1000).toISOString()).on('child_added', snap => {
+    // 1. Listen to Bookings
+    db.ref(BASE + '/bookings').limitToLast(50).on('child_added', snap => {
       const v = snap.val();
       if (!v) return;
       const ts = new Date(v.createdAt || Date.now()).getTime();
@@ -266,7 +266,7 @@
       }
     });
 
-    db.ref(BASE + '/bookings').on('child_changed', snap => {
+    db.ref(BASE + '/bookings').limitToLast(50).on('child_changed', snap => {
       const v = snap.val();
       if (!v) return;
       if (v.status === 'in') {
@@ -275,12 +275,19 @@
     });
 
     // 2. Listen to Completed Visits (Archived)
-    db.ref(BASE + '/completedBookings').orderByChild('completedAt').limitToLast(50).on('child_added', snap => {
+    db.ref(BASE + '/completedBookings').limitToLast(50).on('child_added', snap => {
       const v = snap.val();
       if (!v) return;
       const ts = new Date(v.completedAt || Date.now()).getTime();
       addEvent('COMPLETED_VISIT', v, ts);
     });
+
+    // Initial timeout to clear loading if no data exists
+    setTimeout(() => {
+      if (_events.length === 0) {
+        renderLogs();
+      }
+    }, 1500);
 
     function clearLog() {
       _events = [];
