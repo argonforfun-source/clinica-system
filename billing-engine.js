@@ -330,6 +330,8 @@ const BillingEngine = {
 
       currentItems.push(item);
       const newTotal  = currentItems.reduce((s, i) => s + (parseFloat(i.price) || 0), 0);
+      const patTotal  = currentItems.reduce((s, i) => s + (parseFloat(i.patientShare) || parseFloat(i.price) || 0), 0);
+      const insTotal  = currentItems.reduce((s, i) => s + (parseFloat(i.insuranceShare) || 0), 0);
       let   newStatus = existing.status;
 
       if (requiresReview) newStatus = 'pending_review';
@@ -339,6 +341,8 @@ const BillingEngine = {
       invRef.update({
         items:    currentItems,
         total:    parseFloat(newTotal.toFixed(3)),
+        patientShareTotal: parseFloat(patTotal.toFixed(3)),
+        insuranceShareTotal: parseFloat(insTotal.toFixed(3)),
         status:   newStatus,
         locked:   false,
         ...(requiresReview ? { financialBlocked: true } : {})
@@ -349,6 +353,8 @@ const BillingEngine = {
         ...existing,
         items:  currentItems,
         total:  parseFloat(newTotal.toFixed(3)),
+        patientShareTotal: parseFloat(patTotal.toFixed(3)),
+        insuranceShareTotal: parseFloat(insTotal.toFixed(3)),
         status: newStatus
       };
 
@@ -370,6 +376,12 @@ const BillingEngine = {
           : 'visit_invoice',
         items:       [item],
         total:       parseFloat((item.price || 0).toFixed(3)),
+        patientShareTotal: item.patientShare !== undefined ? item.patientShare : parseFloat((item.price || 0).toFixed(3)),
+        insuranceShareTotal: item.insuranceShare || 0,
+        insurance:   eventData.insurance || null,
+        taxNumber:   (typeof _sets !== 'undefined' && _sets.taxNumber) ? _sets.taxNumber : '',
+        nationalInvoiceNumber: '',
+        invoiceUUID: 'UUID-' + Date.now() + Math.floor(Math.random()*1000),
         status:      requiresReview ? 'pending_review' : 'unpaid',
         locked:      false,
         createdAt:   _B.now(),
@@ -421,6 +433,14 @@ const BillingEngine = {
     const { visitKey, orders = {}, docName } = trigger;
     const patId   = trigger.patientId;
     const patName = trigger.patientName;
+    
+    // --- FETCH INSURANCE FROM BOOKING ---
+    let insuranceObj = trigger.insurance || null;
+    try {
+      const bkSnap = await db.ref(`${BASE}/bookings/${visitKey}`).once('value');
+      const bk = bkSnap.val() || {};
+      if (bk.insurance) insuranceObj = bk.insurance;
+    } catch(e) {}
 
     // ── تأكد من وجود كشفية الطبيب ──
     const existingInv = this._invoices[`INV-${visitKey}`];
@@ -442,7 +462,8 @@ const BillingEngine = {
         patientId: patId, patientName: patName,
         visitId: visitKey, docName,
         department: 'exam', serviceId: 'CONSULT',
-        customName: 'كشفية الطبيب', price: docFee
+        customName: 'كشفية الطبيب', price: docFee,
+        insurance: insuranceObj
       });
     }
 
@@ -464,7 +485,8 @@ const BillingEngine = {
         this.addCharge({
           patientId: patId, patientName: patName,
           visitId: visitKey, docName, department: dept,
-          serviceId: name, customName: name
+          serviceId: name, customName: name,
+          insurance: insuranceObj
         });
       }
     };
@@ -841,10 +863,16 @@ const BillingEngine = {
                style="background:rgba(13,148,136,.08);color:var(--teal);border-color:rgba(13,148,136,.2);margin-right:4px;" title="طباعة هذه الفاتورة">
                <i class="fas fa-print"></i></button>`;
 
+        const totalHtml = (inv.insuranceShareTotal > 0) 
+          ? `<div style="font-size:0.7rem;color:var(--muted);text-decoration:line-through">${_B.jod(total)} الإجمالي</div>
+             <div style="font-size:0.75rem;color:var(--purple);margin-top:2px"><i class="fas fa-shield-halved"></i> تأمين: ${_B.jod(inv.insuranceShareTotal)}</div>
+             <div style="font-size:0.95rem;color:var(--teal);margin-top:2px;font-weight:900">المريض: ${_B.jod(inv.patientShareTotal)}</div>`
+          : `<div style="font-size:1rem">${_B.jod(total)}</div>`;
+
         return `<tr>
           <td style="font-size:.75rem;white-space:nowrap">${dateStr}</td>
           <td style="min-width:220px">${itemsHtml}</td>
-          <td style="font-family:'IBM Plex Mono',monospace;font-weight:900;font-size:1rem">${_B.jod(total)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-weight:900;">${totalHtml}</td>
           <td>${statusHtml}</td>
           <td style="text-align:center;white-space:nowrap">${editBtn}${printBtn}</td>
         </tr>`;
