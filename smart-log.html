@@ -194,7 +194,7 @@ db.ref(BASE + '/argon_config/shadowMode').on('value', snap => {
 // ── الاستماع للـ smart_log ──
 let isInit = true;
 function startLiveLogs() {
-  db.ref(BASE + '/smart_log').orderByKey().limitToLast(200).on('child_added', snap => {
+  db.ref(BASE + '/smart_log').orderByKey().limitToLast(5000).on('child_added', snap => {
     _logs[snap.key] = { _key: snap.key, ...snap.val() };
     if (!isInit) renderTable(snap.key);
     else renderTable();
@@ -319,6 +319,20 @@ function renderTable(newKey = null) {
 
   // ترتيب تنازلي
   let entries = Object.values(_logs).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+// Deduplicate repetitive logs for the same patient on the same day
+let uniqueEntries = [];
+let seenKeys = new Set();
+entries.forEach(e => {
+    const name = e.incoming?.name || '';
+    const dateStr = e.timestamp ? new Date(e.timestamp).toDateString() : '';
+    const key = name + '_' + dateStr;
+    if (!name || !seenKeys.has(key)) {
+        uniqueEntries.push(e);
+        if (name) seenKeys.add(key);
+    }
+});
+entries = uniqueEntries;
 
   // حساب المقاييس
   let exact=0, strong=0, possible=0, newC=0, dup=0;
