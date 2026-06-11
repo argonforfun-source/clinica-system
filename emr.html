@@ -62,9 +62,10 @@
     <div style="padding:0 8px">
       <div class="sl">السجلات الطبية</div>
       <div class="ni on" onclick="sw('patList',this)"><i class="fas fa-users"></i>قائمة المرضى</div>
-      <div class="ni" onclick="sw('patFile',this)"><i class="fas fa-file-medical"></i>ملف المريض</div>
-      <div class="ni" onclick="sw('newVisit',this)"><i class="fas fa-stethoscope"></i>زيارة جديدة</div>
       <div class="ni" onclick="sw('waitingRoom',this)" style="display:flex;align-items:center;"><i class="fas fa-clock" style="color:var(--amber)"></i>غرفة الانتظار <span id="wrBadge" style="display:none;background:var(--amber);color:#000;border-radius:10px;padding:2px 6px;font-size:0.65rem;font-weight:900;margin-right:auto;box-shadow:0 0 8px rgba(245,158,11,0.5)">0</span></div>
+      <div class="ni" onclick="sw('calendar',this)"><i class="fas fa-calendar-alt" style="color:var(--teal)"></i>جدول المواعيد</div>
+      <div class="ni" onclick="sw('inbox',this)"><i class="fas fa-inbox" style="color:var(--sky)"></i>المهام والنتائج</div>
+      <div class="ni" onclick="sw('assistant',this)"><i class="fas fa-laptop-medical" style="color:var(--purple)"></i>المساعد السريري</div>
       <div class="ni" id="referralsMenuBtn" onclick="sw('referralList',this)" style="display:none"><i class="fas fa-exchange-alt" style="color:var(--purple)"></i>التحويلات الداخلية</div>
     </div>
     <div class="royal-foot">
@@ -108,6 +109,54 @@
       </div>
       <div id="wrList" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:12px">
         <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">جاري تحميل قائمة الانتظار...</div>
+      </div>
+    </div>
+
+    <!-- CALENDAR SECTION -->
+    <div id="calendar" class="sec">
+      <div class="ph">
+        <div><div class="pt">📅 جدول المواعيد</div><div class="ps">مواعيدك وحجوزاتك لليوم والأيام القادمة</div></div>
+      </div>
+      <div id="calendarContent" style="padding:20px;">
+        <div style="text-align:center;padding:40px;color:var(--muted)">جاري تحميل جدول المواعيد...</div>
+      </div>
+    </div>
+
+    <!-- INBOX SECTION -->
+    <div id="inbox" class="sec">
+      <div class="ph">
+        <div><div class="pt">🗂️ المهام والنتائج</div><div class="ps">تنبيهات ونتائج المختبر والأشعة للمراجعة</div></div>
+      </div>
+      <div id="inboxContent" style="padding:20px; display:grid; gap:14px;">
+        <div style="text-align:center;padding:40px;color:var(--muted)">لا توجد مهام أو نتائج معلقة حالياً.</div>
+      </div>
+    </div>
+
+    <!-- ASSISTANT SECTION -->
+    <div id="assistant" class="sec">
+      <div class="ph">
+        <div><div class="pt">🤖 المساعد السريري الذكي</div><div class="ps">حاسبات طبية سريعة وأدوات داعمة للقرار</div></div>
+      </div>
+      <div style="padding:20px; display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px;">
+        
+        <div style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02)">
+          <div style="font-weight:900; margin-bottom:14px; font-size:1.1rem; color:var(--teal)"><i class="fas fa-weight"></i> حاسبة مؤشر كتلة الجسم (BMI)</div>
+          <label style="display:block; margin-bottom:4px; font-size:0.85rem; color:var(--muted)">الوزن بالكيلوغرام</label>
+          <input type="number" id="calcWeight" placeholder="مثال: 75" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; margin-bottom:12px; outline:none;">
+          <label style="display:block; margin-bottom:4px; font-size:0.85rem; color:var(--muted)">الطول بالسنتيمتر</label>
+          <input type="number" id="calcHeight" placeholder="مثال: 175" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; margin-bottom:16px; outline:none;">
+          <button style="width:100%; padding:12px; background:var(--teal); color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer;" onclick="window.calcBMI()">حساب النتيجة</button>
+          <div id="bmiResult" style="margin-top:16px; font-weight:bold; font-size:1.1rem; text-align:center;"></div>
+        </div>
+
+        <div style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02)">
+          <div style="font-weight:900; margin-bottom:14px; font-size:1.1rem; color:var(--purple)"><i class="fas fa-baby"></i> حاسبة موعد الولادة المتوقع (EDD)</div>
+          <label style="display:block; margin-bottom:4px; font-size:0.85rem; color:var(--muted)">أول يوم في آخر دورة شهرية (LMP)</label>
+          <input type="date" id="calcLMP" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; margin-bottom:16px; outline:none;">
+          <button style="width:100%; padding:12px; background:var(--purple); color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer;" onclick="window.calcEDD()">حساب النتيجة</button>
+          <div id="eddResult" style="margin-top:16px; font-weight:bold; font-size:1.1rem; text-align:center;"></div>
+        </div>
+
       </div>
     </div>
 
