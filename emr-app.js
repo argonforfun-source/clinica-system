@@ -816,7 +816,11 @@ function filterPatients() {
 
   // Build the set of patient IDs/phones that have at least one booking for THIS doctor
   let allowedPatients = null;
-  if (loggedInDoctorId && !isAdmin) {
+  const isComplex = _sets && (_sets.mode === 'medical_complex' || _sets.type === 'complex');
+  
+  // Only apply strict doctor isolation in Polyclinic (Medical Complex) mode.
+  // In a Single Clinic, the doctor should see all patients in the database.
+  if (isComplex && loggedInDoctorId && !isAdmin) {
     allowedPatients = new Set();
     Object.values(_liveBookings).forEach(b => {
       const assignedDoc = b.doctorId || b.docKey;
