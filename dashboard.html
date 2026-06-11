@@ -498,7 +498,15 @@
 
     <!-- LIVE BOOKINGS -->
     <div id="live" class="sec">
-      <div class="ph"><div><div class="pt">🔔 الحجوزات الحية</div><div class="ps">يتحدث تلقائياً</div></div></div>
+      <div class="ph">
+        <div><div class="pt">🔔 الحجوزات الحية</div><div class="ps">يتحدث تلقائياً</div></div>
+        <!-- زر الحجز السريع للاستقبال v1.0 -->
+        <button onclick="openReceptionBooking()"
+          style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--teal),var(--sky));border:none;color:#fff;padding:9px 18px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:.86rem;cursor:pointer;box-shadow:0 4px 14px rgba(13,148,136,.3);transition:.2s"
+          onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+          <i class="fas fa-calendar-plus"></i> حجز سريع (استقبال)
+        </button>
+      </div>
       <div id="dashDeptFilterWrap" style="display:none;gap:8px;overflow-x:auto;padding:0 0 14px 0;margin:0 14px 14px 14px;border-bottom:1px solid var(--border)">
         <!-- Dynamic department filter chips -->
       </div>
@@ -594,12 +602,32 @@
         <div class="addrow2">
           <div><label class="mfl">اسم الموظف *</label><input type="text" id="sftN" class="mfi" placeholder="الاسم الكامل"></div>
           <div><label class="mfl">الدور / الوظيفة</label>
+            <!-- STAFF ROLES v2.0 — مجمع طبي وعيادة منفردة -->
             <select id="sftR" class="mfi">
-              <option value="reception">موظف استقبال</option>
-              <option value="pharmacist" class="complex-only">صيدلي</option>
-              <option value="lab" class="complex-only">فني مختبر</option>
-              <option value="radiology" class="complex-only">فني أشعة</option>
-              <option value="admin">إدارة</option>
+              <optgroup label="── وظائف مشتركة (عيادة ومجمع) ──">
+                <option value="reception">موظف / موظفة استقبال</option>
+                <option value="nurse">ممرضة / ممرض</option>
+                <option value="doctor_assistant">مساعد / مساعدة طبيب</option>
+                <option value="accountant">محاسب / محاسبة</option>
+                <option value="secretary">سكرتير / سكرتيرة</option>
+                <option value="admin">مشرف / مشرفة إداري</option>
+                <option value="data_entry">موظف إدخال بيانات</option>
+                <option value="it_support">دعم فني / تقنية معلومات</option>
+                <option value="security">موظف أمن وسلامة</option>
+                <option value="cleaner">عامل نظافة وخدمات</option>
+                <option value="driver">سائق / مواصلات</option>
+              </optgroup>
+              <optgroup label="── وظائف المجمع الطبي فقط ──">
+                <option value="pharmacist">صيدلي / صيدلانية</option>
+                <option value="lab">فني / فنية مختبر</option>
+                <option value="radiology">فني / فنية أشعة</option>
+                <option value="head_nurse">رئيس / رئيسة ممرضين</option>
+                <option value="dept_manager">مدير قسم طبي</option>
+                <option value="medical_director">مدير طبي / رئيس أطباء</option>
+                <option value="sterilization">فني / فنية تعقيم</option>
+                <option value="physiotherapy">معالج / معالجة فيزيائي</option>
+                <option value="nutrition">أخصائي / أخصائية تغذية</option>
+              </optgroup>
             </select>
           </div>
           <div><label class="mfl">رقم الهاتف</label><input type="text" id="sftP" class="mfi" placeholder="اختياري"></div>
@@ -750,10 +778,37 @@
           <div>
             <div class="complex-only" style="background:rgba(0,0,0,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
               <label class="setl" style="color:var(--teal);font-weight:bold;font-size:0.9rem;border-bottom:1px dashed var(--border);padding-bottom:8px;margin-bottom:10px">سياسة الفوترة المؤسسية (Enterprise Billing Policy)</label>
-              
+
+              <!-- ── حالة سريعة للوضع ── -->
+              <div id="billingModeStatus" style="margin-bottom:12px;padding:10px 14px;border-radius:9px;font-size:.82rem;font-weight:700;background:rgba(13,148,136,.08);border:1px solid rgba(13,148,136,.2);color:var(--teal)">
+                يرجى حفظ الإعدادات لتحديد الوضع الحالي
+              </div>
+
+              <!-- ── إعداد سريع بضغطة واحدة ── -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+                <button type="button" onclick="setBillingPreset('unified')"
+                  id="presetBtnUnified"
+                  style="padding:11px 8px;border-radius:9px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:.82rem;cursor:pointer;
+                         border:2px solid rgba(13,148,136,.4);background:rgba(13,148,136,.08);color:var(--teal);transition:.2s;text-align:center;line-height:1.4">
+                  🏥 موحد — فاتورة واحدة لكل زيارة<br>
+                  <span style="font-size:.7rem;font-weight:500;opacity:.75">الاستقبال + جميع الأقسام = فاتورة واحدة</span>
+                </button>
+                <button type="button" onclick="setBillingPreset('separate')"
+                  id="presetBtnSeparate"
+                  style="padding:11px 8px;border-radius:9px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:.82rem;cursor:pointer;
+                         border:2px solid rgba(139,92,246,.4);background:rgba(139,92,246,.08);color:var(--purple);transition:.2s;text-align:center;line-height:1.4">
+                  🏢 منفصل — فاتورة لكل قسم<br>
+                  <span style="font-size:.7rem;font-weight:500;opacity:.75">مختبر · أشعة · صيدلية — كل له فاتورة مستقلة</span>
+                </button>
+              </div>
+
+              <div style="font-size:.72rem;color:var(--muted);font-weight:700;margin-bottom:8px;padding:4px 0;border-bottom:1px dashed var(--border)">
+                ⚙️ ضبط متقدم لكل قسم منفرداً (اختياري):
+              </div>
+
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                 <span style="font-size:0.8rem;font-weight:600">🔬 سياسة المختبر (Lab)</span>
-                <select id="bpLab" class="setsel" style="width:160px;padding:4px;font-size:0.8rem">
+                <select id="bpLab" class="setsel" style="width:160px;padding:4px;font-size:0.8rem" onchange="updateBillingModeStatus()">
                   <option value="unified">فاتورة موحدة (استقبال)</option>
                   <option value="separate">فاتورة منفصلة (المختبر)</option>
                   <option value="external">حساب خارجي (لا يُفوتر)</option>
@@ -763,7 +818,7 @@
 
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                 <span style="font-size:0.8rem;font-weight:600">🩻 سياسة الأشعة (Radiology)</span>
-                <select id="bpRad" class="setsel" style="width:160px;padding:4px;font-size:0.8rem">
+                <select id="bpRad" class="setsel" style="width:160px;padding:4px;font-size:0.8rem" onchange="updateBillingModeStatus()">
                   <option value="unified">فاتورة موحدة (استقبال)</option>
                   <option value="separate">فاتورة منفصلة (الأشعة)</option>
                   <option value="external">حساب خارجي (لا يُفوتر)</option>
@@ -967,6 +1022,99 @@
   <div class="pfr"><iframe id="prevFrame" style="width:100%;height:100%;border:none"></iframe></div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════
+     نافذة الحجز السريع للاستقبال — Reception Quick Booking Modal v1.0
+     ══════════════════════════════════════════════════════════════ -->
+<div id="receptionBookingModal" onclick="if(event.target===this)closeReceptionBooking()"
+  style="display:none;position:fixed;inset:0;background:rgba(2,7,6,.85);backdrop-filter:blur(10px);z-index:9999;align-items:center;justify-content:center;padding:20px;font-family:'Tajawal',sans-serif">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:22px;padding:28px;width:100%;max-width:560px;box-shadow:0 24px 64px rgba(0,0,0,.5);position:relative;max-height:90vh;overflow-y:auto">
+    
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:1.2rem;font-weight:900;color:var(--text)">📅 حجز سريع من الاستقبال</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:3px">إدخال مباشر بدون قيود بوابة المريض</div>
+      </div>
+      <button onclick="closeReceptionBooking()" style="background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;padding:4px 8px;border-radius:6px">✕</button>
+    </div>
+
+    <!-- Patient Info -->
+    <div style="background:rgba(13,148,136,.05);border:1px solid rgba(13,148,136,.2);border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="font-size:.75rem;color:var(--teal);font-weight:800;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px">بيانات المريض</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="grid-column:1/-1">
+          <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">اسم المريض الكامل *</label>
+          <input type="text" id="rbPatName" class="mfi" placeholder="مثال: محمد أحمد السرّاحين" autocomplete="off">
+        </div>
+        <div>
+          <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">رقم الهاتف *</label>
+          <input type="tel" id="rbPatPhone" class="mfi" placeholder="07XXXXXXXX" dir="ltr">
+        </div>
+        <div>
+          <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">الرقم الوطني <span style="color:var(--teal);font-weight:bold">(مهم للربط)</span></label>
+          <input type="text" id="rbPatNID" class="mfi" placeholder="9-10 أرقام" dir="ltr">
+        </div>
+        <div>
+          <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">الجنس</label>
+          <select id="rbPatGender" class="mfi" style="background:var(--surf);color:var(--text);border:1px solid var(--border)">
+            <option value="">— اختياري —</option>
+            <option value="ذكر">ذكر</option>
+            <option value="أنثى">أنثى</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">تاريخ الميلاد</label>
+          <input type="date" id="rbPatDob" class="mfi">
+        </div>
+      </div>
+    </div>
+
+    <!-- Booking Info -->
+    <div style="background:rgba(14,165,233,.05);border:1px solid rgba(14,165,233,.2);border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="font-size:.75rem;color:var(--sky);font-weight:800;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px">تفاصيل الموعد</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="grid-column:1/-1">
+          <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">الطبيب المعالج *</label>
+          <select id="rbDocKey" class="mfi" onchange="rbOnDocChange()" style="background:var(--surf);color:var(--text);border:1px solid var(--border)">
+            <option value="">— اختر الطبيب —</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">التاريخ *</label>
+          <input type="date" id="rbDate" class="mfi">
+        </div>
+        <div>
+          <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">الوقت *</label>
+          <input type="time" id="rbTime" class="mfi">
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">ملاحظات (اختياري)</label>
+          <textarea id="rbNotes" class="mfi" rows="2" style="height:auto;resize:none;padding:8px" placeholder="سبب الزيارة، ملاحظات خاصة..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fee Info (auto-filled) -->
+    <div id="rbFeeRow" style="display:none;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:12px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:.85rem;color:var(--muted)">رسوم الكشف:</span>
+      <span id="rbFeeDisplay" style="font-weight:900;color:var(--green);font-family:'IBM Plex Mono',monospace">0.00 د.أ</span>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:10px">
+      <button onclick="submitReceptionBooking()"
+        id="rbSubmitBtn"
+        style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,var(--teal),var(--sky));border:none;color:#fff;padding:12px;border-radius:12px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:.95rem;cursor:pointer;transition:.2s">
+        <i class="fas fa-calendar-check"></i> تأكيد الحجز
+      </button>
+      <button onclick="closeReceptionBooking()"
+        style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:12px;font-family:'Tajawal',sans-serif;font-weight:600;cursor:pointer">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -1163,16 +1311,24 @@ function doLogin() {
     sessionStorage.setItem('clinica_auth_'+CID, '1');
     const el = document.getElementById('dashLogin');
     el.style.opacity='0'; el.style.transition='opacity .35s';
-    setTimeout(()=>{ el.style.display='none'; toast('✅ أهلاً بك!', 'ok'); },360);
-    
-    // Unhide Enterprise Modules dynamically upon login
-    if (window.BillingEngine) BillingEngine.isUiAuthorized = true;
-    const mb = document.getElementById('mBilling');
-    if (mb) mb.style.display = 'flex';
-    const mp = document.getElementById('mPricing');
-    if (mp) mp.style.display = 'flex';
+    setTimeout(()=>{
+      el.style.display='none';
+      toast('✅ أهلاً بك!', 'ok');
 
-    // Auto-Auth for Storage Access
+      // ══ FIX: إعادة تفعيل محرك الفوترة بعد تسجيل الدخول ══
+      // السبب: BillingEngine.init() يعمل قبل الدخول → isUiAuthorized=false
+      // → البيانات تُحمَّل لكن لا تُرسَم → الصفحة تبدو فارغة حتى الريفرش
+      if (typeof BillingEngine !== 'undefined') {
+        BillingEngine.isUiAuthorized = true;
+        const mBilling = document.getElementById('mBilling');
+        const mPricing = document.getElementById('mPricing');
+        if (mBilling) mBilling.style.display = 'flex';
+        if (mPricing) mPricing.style.display = 'flex';
+        BillingEngine.renderKPIs();
+        BillingEngine.renderReceivables();
+      }
+      renderPricingTables && renderPricingTables();
+    }, 360);
     auth.signInAnonymously().catch(()=>{});
   } else {
     _logins++;
@@ -1407,6 +1563,9 @@ db.ref(BASE+'/settings').on('value', snap => {
   if (bpLab) bpLab.value = deptsBp.lab || legacyFallback;
   if (bpRad) bpRad.value = deptsBp.rad || legacyFallback;
   if (bpPharm) bpPharm.value = deptsBp.pharmacy || legacyFallback;
+  
+  // ── مزامنة مؤشر وضع الفوترة ──
+  if (typeof updateBillingModeStatus === 'function') updateBillingModeStatus();
   
   const sMode = document.getElementById('sMode');
   if (sMode) {
@@ -1836,7 +1995,10 @@ db.ref(BASE+'/staff').on('value', snap => {
   if(!keys.length){sg.innerHTML='<div style="color:var(--muted);font-size:.84rem;grid-column:1/-1">لا يوجد موظفين بعد</div>';return;}
   sg.innerHTML=keys.map(k=>{
     const s=_staff[k];
-    const roleMap = { 'pharmacist': 'صيدلي', 'lab': 'فني مختبر', 'radiology': 'فني أشعة', 'reception': 'موظف استقبال', 'admin': 'إدارة' };
+    const roleMap = { 'pharmacist': 'صيدلي', 'lab': 'فني مختبر', 'radiology': 'فني أشعة', 'reception': 'موظف استقبال', 'admin': 'مشرف إداري',
+      'nurse':'ممرضة/ممرض','doctor_assistant':'مساعد طبيب','accountant':'محاسب','secretary':'سكرتير','data_entry':'إدخال بيانات',
+      'it_support':'دعم تقني','security':'أمن وسلامة','cleaner':'نظافة وخدمات','driver':'سائق','head_nurse':'رئيس ممرضين',
+      'dept_manager':'مدير قسم','medical_director':'مدير طبي','sterilization':'فني تعقيم','physiotherapy':'معالج فيزيائي','nutrition':'أخصائي تغذية' };
     return `<div class="dc">
       <div class="dc-top" style="height:70px; font-size: 2rem;">${s.emoji||'👤'}</div>
       <div class="dc-body">
@@ -1961,103 +2123,284 @@ function openPatientEMR(bookingKey) {
   window.open(`emr.html?id=${CID}&bk=${encodeURIComponent(bookingKey)}&expectedName=${nameParam}`, '_blank');
 }
 
+// ═══════════════════════════════════════════════════════════════
+// cmpBook v2.1 — FIX: error handling + button reset + timeout guard
+// ═══════════════════════════════════════════════════════════════
 async function cmpBook(k) {
   const b = _bks[k]; if (!b) return;
 
-  // ── ARGON ENTERPRISE: Smooth UI Feedback ──
-  // عرض مؤشر تحميل فوري لكي لا يظن الموظف أن النظام معلق
+  // ── زر الإنهاء: إدارة الحالة (تحميل / إعادة ضبط) ──
   const btn = document.querySelector(`button[onclick="cmpBook('${k}')"]`);
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> جارِ الحفظ...';
-    btn.style.opacity = '0.7';
+  function _setBtnLoading(on) {
+    if (!btn) return;
+    btn.disabled = on;
+    btn.innerHTML = on
+      ? '<i class="fas fa-circle-notch fa-spin"></i> جارِ الحفظ...'
+      : '<i class="fas fa-flag-checkered"></i> إنهاء';
+    btn.style.opacity = on ? '0.7' : '1';
+  }
+  _setBtnLoading(true);
+
+  // ── الإجراء النهائي: كتابة completedBookings ثم حذف booking ──
+  // مُعرَّف هنا كـ helper لإعادة استخدامه في جميع المسارات
+  function _doComplete(extraPatientId) {
+    const completedObj = { ...b, status: 'done', completedAt: new Date().toISOString() };
+    if (extraPatientId) completedObj.patientId = extraPatientId;
+
+    db.ref(`${BASE}/completedBookings/${k}`)
+      .set(completedObj)
+      .then(() => db.ref(`${BASE}/bookings/${k}`).remove())
+      .then(() => { toast('✅ تم إنهاء الحجز وأرشفته بنجاح', 'ok'); })
+      .catch(err => {
+        console.error('[cmpBook] Firebase write error:', err);
+        toast('❌ خطأ في إنهاء الحجز: ' + (err.message || 'تحقق من الاتصال'), 'err');
+        _setBtnLoading(false); // ← FIX: إعادة ضبط الزر عند الخطأ
+      });
   }
 
-  // Auto-create basic EMR profile under a unique Push Key if not exists (EMR Collision Prevention)
-  if (b.patPhone) {
-    let patPhone = b.patPhone.replace(/\D/g,'');
+  try {
+    if (!b.patPhone) { _doComplete(); return; }
+
+    let patPhone = b.patPhone.replace(/\D/g, '');
     if (patPhone.startsWith('962')) patPhone = patPhone.substring(3);
     if (patPhone.startsWith('0')) patPhone = patPhone.substring(1);
-    
-    const bookingName = (b.patName || '').trim();
 
-    // ── ARGON ENTERPRISE: Smart Patient Match & Shadow Logging ──
+    const bookingName  = (b.patName || '').trim();
+    const bookingNID   = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
+    let   linkedPtId   = b.patientId || null;
+
+    // ── ARGON ENTERPRISE: Smart Patient Match (مع حارس timeout 5 ث) ──
     if (window.ArgonMedical && window.ArgonMedical.PatientMatch) {
       const session = window.ArgonSession ? window.ArgonSession.get() : {};
-      const currentUserId = session.staffId || 'unknown_admin';
-      const bookingNID_cmp = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
-      const matchResult = await window.ArgonMedical.PatientMatch.findMatch(
-        CID,
-        { name: bookingName, phone: patPhone, nationalId: bookingNID_cmp },
-        db
-      );
+      const matchResult = await Promise.race([
+        window.ArgonMedical.PatientMatch.findMatch(CID, { name: bookingName, phone: patPhone, nationalId: bookingNID }, db),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('PatientMatch timeout')), 5000))
+      ]);
 
-      await window.ArgonMedical.ShadowLog.log(
-        CID,
-        matchResult,
-        { source: "reception_complete_booking", userId: currentUserId,
-          incoming: { name: bookingName, phone: patPhone } },
-        db
-      );
+      if (window.ArgonMedical.ShadowLog) {
+        await window.ArgonMedical.ShadowLog.log(
+          CID, matchResult,
+          { source: 'reception_complete_booking', userId: (session.staffId || 'admin'), incoming: { name: bookingName, phone: patPhone } },
+          db
+        ).catch(() => {}); // shadow log failure is non-fatal
+      }
 
       if (typeof ARGON_FLAGS !== 'undefined' && !ARGON_FLAGS.shadowMode) {
-        if (matchResult.result === "EXACT" || matchResult.result === "STRONG") {
-          // Patient already exists, no need to auto-create
-          // Update the status and return
-          db.ref(`${BASE}/bookings/${k}/status`).set('done');
-          db.ref(`${BASE}/bookings/${k}/patientId`).set(matchResult.matchedId);
-          db.ref(`${BASE}/completedBookings/${k}`).set(_bks[k]);
-          db.ref(`${BASE}/bookings/${k}`).remove();
-          toast('✅ تم إكمال الزيارة', 'ok');
+        if (matchResult.result === 'EXACT' || matchResult.result === 'STRONG') {
+          linkedPtId = matchResult.matchedId;
+          await db.ref(`${BASE}/bookings/${k}/patientId`).set(linkedPtId).catch(() => {});
+          _doComplete(linkedPtId);
           return;
         }
       }
     }
-    // ─────────────────────────────────────────────────────────────
-    // ── ARGON ENTERPRISE: Block Creation Without NID ──
+
+    // ── NID gate: إذا لا رقم وطني → أنهِ الحجز بدون إنشاء ملف EMR ──
     if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
-      const bookingNID_cmp = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
-      if (!bookingNID_cmp || bookingNID_cmp.length < 9) {
-        console.warn("Blocked auto-create patient due to missing NID on cmpBook.");
-        // Skip patient creation, just complete the booking
-        db.ref(`${BASE}/completedBookings/${k}`)
-          .set({ ...b, status: 'done', completedAt: new Date().toISOString() })
-          .then(() => db.ref(`${BASE}/bookings/${k}`).remove()
-            .then(() => toast('✅ تم إنهاء الحجز (بدون ملف EMR لعدم وجود رقم وطني)', 'ok')));
-        return;
+      if (!bookingNID || bookingNID.length < 9) {
+        console.info('[cmpBook] No NID — completing booking without EMR link.');
+        _doComplete(); return;
       }
     }
 
-    // ── ARGON ENTERPRISE: High-Speed Indexed NID Query (Replaces Slow Full Scan) ──
-    const bookingNID_cmp = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
-    db.ref(`${BASE}/patients`).orderByChild('info/nationalId').equalTo(bookingNID_cmp).once('value', snap => {
-      const exists = snap.exists();
-      
-      if (!exists) {
-        const newRef = db.ref(`${BASE}/patients`).push();
-        newRef.set({
-          info: {
-            name: b.patName,
-            phone: patPhone,
-            nationalId: b.patNationalId || b.nationalId || '',
-            dob: b.patDob || null,
-            age: b.patDob ? window.ArgonCalcAge(b.patDob) : (b.patAge ? parseInt(b.patAge) : null),
-            gender: b.patGender || '',
-            mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
-            createdAt: new Date().toISOString()
-          }
-        }).catch(err => console.error("Auto EMR registration failed: ", err));
-      }
-    });
-  }
+    // ── بحث/إنشاء ملف EMR بالرقم الوطني (promise-wrapped لضمان التسلسل) ──
+    if (bookingNID && bookingNID.length >= 9) {
+      await new Promise((resolve) => {
+        db.ref(`${BASE}/patients`).orderByChild('info/nationalId').equalTo(bookingNID)
+          .once('value', snap => {
+            if (snap.exists()) {
+              linkedPtId = Object.keys(snap.val())[0];
+              db.ref(`${BASE}/bookings/${k}/patientId`).set(linkedPtId).catch(() => {});
+            } else {
+              const newRef = db.ref(`${BASE}/patients`).push();
+              linkedPtId = newRef.key;
+              newRef.set({
+                info: {
+                  name: b.patName || 'مريض',
+                  phone: patPhone,
+                  nationalId: b.patNationalId || b.nationalId || '',
+                  dob: b.patDob || null,
+                  age: b.patDob ? window.ArgonCalcAge(b.patDob) : (b.patAge ? parseInt(b.patAge) : null),
+                  gender: b.patGender || '',
+                  mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
+                  createdAt: new Date().toISOString()
+                }
+              }).then(() => db.ref(`${BASE}/bookings/${k}/patientId`).set(linkedPtId).catch(() => {}))
+                .catch(err => console.error('[cmpBook] Auto EMR registration failed:', err));
+            }
+            resolve();
+          }, err => { console.error('[cmpBook] NID query error:', err); resolve(); });
+      });
+    }
 
-  db.ref(`${BASE}/completedBookings/${k}`)
-    .set({ ...b, status: 'done', completedAt: new Date().toISOString() })
-    .then(() => db.ref(`${BASE}/bookings/${k}`).remove()
-      .then(() => toast('✅ تم إنهاء الحجز', 'ok')));
+    _doComplete(linkedPtId);
+
+  } catch (err) {
+    // أي خطأ غير متوقع (PatientMatch timeout, etc.) → أنهِ الحجز على أي حال
+    console.warn('[cmpBook] Non-fatal error in smart dedup (completing anyway):', err.message);
+    _doComplete();
+  }
 }
 
-function clrHist(){if(!confirm('مسح سجل الحجوزات المكتملة؟'))return;db.ref(`${BASE}/completedBookings`).remove().then(()=>toast('تم المسح','ok'));}
+// ══════════════════════════════════════════════════════════════
+// RECEPTION QUICK BOOKING ENGINE v1.0
+// حجز سريع من الاستقبال — بدون قيود بوابة المريض العامة
+// ══════════════════════════════════════════════════════════════
+
+function openReceptionBooking() {
+  // Populate doctor dropdown from loaded _docs
+  const sel = document.getElementById('rbDocKey');
+  sel.innerHTML = '<option value="">— اختر الطبيب —</option>';
+  Object.entries(_docs || {}).forEach(([key, doc]) => {
+    if (doc.available !== false) {
+      sel.innerHTML += `<option value="${key}" data-fee="${doc.fee || 0}" data-name="${sanitize(doc.name)}" data-spec="${sanitize(doc.specialty || '')}">${doc.emoji || '👨‍⚕️'} د. ${sanitize(doc.name)} — ${sanitize(doc.specialty || '')}</option>`;
+    }
+  });
+
+  // Set default date = today, default time = current + 30 min rounded
+  const now = new Date();
+  document.getElementById('rbDate').value = now.toLocaleDateString('en-CA');
+  const hr = now.getHours(), mn = now.getMinutes();
+  const roundedMin = Math.ceil((mn + 30) / 15) * 15;
+  const dH = hr + Math.floor(roundedMin / 60);
+  const dM = roundedMin % 60;
+  document.getElementById('rbTime').value = String(dH).padStart(2,'0') + ':' + String(dM).padStart(2,'0');
+
+  // Set max date for DOB
+  const dobEl = document.getElementById('rbPatDob');
+  if (dobEl) dobEl.max = now.toLocaleDateString('en-CA');
+
+  // Reset form fields
+  ['rbPatName','rbPatPhone','rbPatNID','rbNotes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('rbPatGender').value = '';
+  document.getElementById('rbFeeRow').style.display = 'none';
+
+  // Show modal
+  const m = document.getElementById('receptionBookingModal');
+  m.style.display = 'flex';
+  setTimeout(() => { const n = document.getElementById('rbPatName'); if(n) n.focus(); }, 150);
+}
+
+function closeReceptionBooking() {
+  document.getElementById('receptionBookingModal').style.display = 'none';
+}
+
+function rbOnDocChange() {
+  const sel = document.getElementById('rbDocKey');
+  const opt = sel.options[sel.selectedIndex];
+  const fee = opt ? (opt.getAttribute('data-fee') || '0') : '0';
+  const feeRow = document.getElementById('rbFeeRow');
+  const feeDisp = document.getElementById('rbFeeDisplay');
+  if (parseFloat(fee) > 0) {
+    feeRow.style.display = 'flex';
+    feeDisp.textContent = parseFloat(fee).toFixed(2) + ' د.أ';
+  } else {
+    feeRow.style.display = 'none';
+  }
+}
+
+async function submitReceptionBooking() {
+  // ── Validation ──
+  const patName  = (document.getElementById('rbPatName').value || '').trim();
+  const patPhone = (document.getElementById('rbPatPhone').value || '').replace(/\D/g,'').replace(/^962/,'').replace(/^0/,'');
+  const patNID   = (document.getElementById('rbPatNID').value || '').trim().replace(/\s/g,'');
+  const docKey   = document.getElementById('rbDocKey').value;
+  const bDate    = document.getElementById('rbDate').value;
+  const bTime    = document.getElementById('rbTime').value;
+  const gender   = document.getElementById('rbPatGender').value;
+  const dob      = document.getElementById('rbPatDob').value;
+  const notes    = (document.getElementById('rbNotes').value || '').trim();
+
+  if (!patName)  { toast('⚠️ يرجى إدخال اسم المريض', 'err'); return; }
+  if (!patPhone || patPhone.length < 7) { toast('⚠️ يرجى إدخال رقم هاتف صحيح', 'err'); return; }
+  if (!docKey)   { toast('⚠️ يرجى اختيار الطبيب', 'err'); return; }
+  if (!bDate)    { toast('⚠️ يرجى تحديد التاريخ', 'err'); return; }
+  if (!bTime)    { toast('⚠️ يرجى تحديد الوقت', 'err'); return; }
+
+  const btn = document.getElementById('rbSubmitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> جارِ الحجز...';
+
+  try {
+    const doc      = _docs[docKey] || {};
+    const fee      = parseFloat(doc.fee || 0);
+    const docName  = doc.name || '';
+    const docSpec  = doc.specialty || '';
+    const bookNo   = '#D' + String(Math.floor(1 + Math.random() * 99)).padStart(2, '0');
+    const age      = dob ? window.ArgonCalcAge(dob) : null;
+
+    const bookingObj = {
+      patName:       sanitize(patName),
+      patPhone:      patPhone,
+      patNationalId: patNID || null,
+      patGender:     gender || null,
+      patDob:        dob || null,
+      patAge:        age,
+      docKey:        docKey,
+      docName:       sanitize(docName),
+      docSpec:       sanitize(docSpec),
+      fee:           fee,
+      date:          bDate,
+      time:          bTime,
+      notes:         sanitize(notes),
+      bookNo:        bookNo,
+      status:        'new',
+      source:        'reception_desk',          // ← تمييز الحجز من الاستقبال
+      createdAt:     new Date().toISOString(),
+      createdBy:     (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'reception'
+    };
+
+    // ── ربط ملف المريض تلقائياً إذا كان لديه رقم وطني ──
+    if (patNID && patNID.length >= 9) {
+      const cleanNID = ArgonNID.cleanNID(patNID);
+      const snap = await db.ref(`${BASE}/patients`).orderByChild('info/nationalId').equalTo(cleanNID).once('value');
+      if (snap.exists()) {
+        bookingObj.patientId = Object.keys(snap.val())[0];
+      }
+    }
+
+    await db.ref(`${BASE}/bookings`).push(bookingObj);
+
+    toast(`✅ تم حجز موعد لـ ${patName} في تمام ${bTime}`, 'ok');
+    closeReceptionBooking();
+
+  } catch (err) {
+    console.error('[Reception Booking]', err);
+    toast('❌ فشل الحجز: ' + (err.message || 'تحقق من الاتصال'), 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-calendar-check"></i> تأكيد الحجز';
+  }
+}
+
+// ── تحديث عرض اسم الدور بالعربية في بطاقات الموظفين ──
+window._staffRoleLabel = function(r) {
+  const map = {
+    reception:        'موظف استقبال',
+    nurse:            'ممرضة / ممرض',
+    doctor_assistant: 'مساعد طبيب',
+    accountant:       'محاسب',
+    secretary:        'سكرتير',
+    admin:            'مشرف إداري',
+    data_entry:       'إدخال بيانات',
+    it_support:       'دعم تقني',
+    security:         'أمن وسلامة',
+    cleaner:          'نظافة وخدمات',
+    driver:           'سائق',
+    pharmacist:       'صيدلي',
+    lab:              'فني مختبر',
+    radiology:        'فني أشعة',
+    head_nurse:       'رئيس ممرضين',
+    dept_manager:     'مدير قسم',
+    medical_director: 'مدير طبي',
+    sterilization:    'فني تعقيم',
+    physiotherapy:    'معالج فيزيائي',
+    nutrition:        'أخصائي تغذية'
+  };
+  return map[r] || r || 'موظف';
+};
 
 let editingDocKey = null;
 function addDoc() {
@@ -2342,6 +2685,21 @@ function sw(id,el){
   document.getElementById(id).classList.add('on');
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
   if(el)el.classList.add('on');
+
+  // ══ FIX: إعادة رسم قسم الفوترة في كل مرة يُفتح فيها ══
+  // يحل مشكلة: "الفواتير ما بتطلع من أول مرة إلا رفرش"
+  if (id === 'billing' && typeof BillingEngine !== 'undefined') {
+    // تقييم الصلاحية ديناميكياً (لا تعتمد على القيمة القديمة)
+    const isAuth = (typeof CID !== 'undefined' && sessionStorage.getItem('clinica_auth_' + CID) === '1');
+    BillingEngine.isUiAuthorized = isAuth;
+    if (isAuth) {
+      BillingEngine.renderKPIs();
+      BillingEngine.renderReceivables();
+    }
+  }
+  if (id === 'pricing' && typeof renderPricingTables === 'function') {
+    renderPricingTables();
+  }
 }
 function openPreview(){document.getElementById('prevFrame').src=`index.html?id=${CID}`;document.getElementById('prevModal').style.display='flex';}
 function closePrev(){document.getElementById('prevModal').style.display='none';document.getElementById('prevFrame').src='';}
@@ -2515,6 +2873,73 @@ function delLogo() {
     toast('✅ تم حذف الشعار', 'ok');
   });
 }
+
+// ══════════════════════════════════════════════════════════════
+// SMART BILLING POLICY ENGINE v1.0
+// ══════════════════════════════════════════════════════════════
+
+function setBillingPreset(mode) {
+  const selLab  = document.getElementById('bpLab');
+  const selRad  = document.getElementById('bpRad');
+  const selPhar = document.getElementById('bpPharm');
+
+  if (mode === 'unified') {
+    if (selLab)  selLab.value  = 'unified';
+    if (selRad)  selRad.value  = 'unified';
+    if (selPhar) selPhar.value = 'unified';
+  } else if (mode === 'separate') {
+    if (selLab)  selLab.value  = 'separate';
+    if (selRad)  selRad.value  = 'separate';
+    if (selPhar) selPhar.value = 'separate';
+  }
+
+  updateBillingModeStatus();
+  toast(`✅ وضع "${mode === 'unified' ? 'الفاتورة الموحدة' : 'الفواتير المنفصلة'}" مُختار — احفظ الإعدادات لتطبيقه`, 'ok');
+}
+
+function updateBillingModeStatus() {
+  const labV  = document.getElementById('bpLab')?.value  || 'unified';
+  const radV  = document.getElementById('bpRad')?.value  || 'unified';
+  const pharV = document.getElementById('bpPharm')?.value || 'unified';
+
+  const statusDiv = document.getElementById('billingModeStatus');
+  const btnU = document.getElementById('presetBtnUnified');
+  const btnS = document.getElementById('presetBtnSeparate');
+  if (!statusDiv) return;
+
+  const allUnified  = [labV, radV, pharV].every(v => v === 'unified');
+  const allSeparate = [labV, radV, pharV].every(v => v === 'separate');
+
+  if (allUnified) {
+    statusDiv.style.cssText = 'margin-bottom:12px;padding:10px 14px;border-radius:9px;font-size:.82rem;font-weight:700;background:rgba(13,148,136,.1);border:2px solid rgba(13,148,136,.3);color:var(--teal)';
+    statusDiv.innerHTML = '✅ الوضع: <b>موحد</b> — جميع طلبيات الأقسام تُدرج في فاتورة واحدة يدفعها المريض في الاستقبال';
+    if (btnU) btnU.style.borderWidth = '3px';
+    if (btnS) btnS.style.borderWidth = '2px';
+  } else if (allSeparate) {
+    statusDiv.style.cssText = 'margin-bottom:12px;padding:10px 14px;border-radius:9px;font-size:.82rem;font-weight:700;background:rgba(139,92,246,.1);border:2px solid rgba(139,92,246,.3);color:var(--purple)';
+    statusDiv.innerHTML = '✅ الوضع: <b>منفصل</b> — مختبر · أشعة · صيدلية — كل قسم يُصدر فاتورته المستقلة';
+    if (btnS) btnS.style.borderWidth = '3px';
+    if (btnU) btnU.style.borderWidth = '2px';
+  } else {
+    statusDiv.style.cssText = 'margin-bottom:12px;padding:10px 14px;border-radius:9px;font-size:.82rem;font-weight:700;background:rgba(245,158,11,.08);border:2px solid rgba(245,158,11,.25);color:var(--amber)';
+    statusDiv.innerHTML = `⚙️ الوضع: <b>مخصص</b> — مختبر: <b>${labV}</b> · أشعة: <b>${radV}</b> · صيدلية: <b>${pharV}</b>`;
+    if (btnU) btnU.style.borderWidth = '2px';
+    if (btnS) btnS.style.borderWidth = '2px';
+  }
+}
+
+// يُستدعى عند تحميل إعدادات Firebase لمزامنة مؤشر الوضع
+function _syncBillingModeStatusFromSettings(bp) {
+  if (!bp || !bp.departments) return;
+  const d = bp.departments;
+  const sel = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+  sel('bpLab',   d.lab);
+  sel('bpRad',   d.rad);
+  sel('bpPharm', d.pharmacy);
+  updateBillingModeStatus();
+}
+
+function clrHist(){if(!confirm('مسح سجل الحجوزات المكتملة؟'))return;db.ref(`${BASE}/completedBookings`).remove().then(()=>toast('تم المسح','ok'));}
 
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className=type?'show '+type:'show';setTimeout(()=>t.className='',3000);}
 

@@ -3161,7 +3161,9 @@
     function showErrModal(icon, title, body) {
       document.getElementById('errIcon').textContent  = icon;
       document.getElementById('errTitle').textContent = title;
-      document.getElementById('errBody').textContent  = body;
+      // FIX v1.1: textContent لا يعرض \n كسطر جديد في HTML — نستخدم innerHTML مع استبدال آمن
+      const safe = body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+      document.getElementById('errBody').innerHTML = safe;
       document.getElementById('errModal').classList.add('show');
     }
     function toast(msg, type = '') {

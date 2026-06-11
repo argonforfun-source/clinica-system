@@ -81,33 +81,35 @@ const BillingEngine = {
   _processedTriggers: new Set(),
   activePatientId:   null,
 
+  // ── isUiAuthorized: يُقيَّم ديناميكياً في كل استدعاء ──
+  // FIX v12.1: لا يُخزَّن كقيمة ثابتة عند التهيئة — يُقرأ من session في كل مرة
+  get isUiAuthorized() {
+    if (typeof CID !== 'undefined' && sessionStorage.getItem('clinica_auth_' + CID) === '1') return true;
+    if (window.ArgonSession) {
+      const s = window.ArgonSession.get();
+      if (s && ['admin', 'accountant', 'superadmin', 'reception'].includes(s.role)) return true;
+    }
+    return false;
+  },
+  // setter صوري للتوافق مع الكود القديم (dashboard.html يضبطه يدوياً بعد الدخول)
+  set isUiAuthorized(v) { /* dynamic getter takes precedence */ },
+
   // ════════════════════════════════════════════
   // 🚀 INIT
   // ════════════════════════════════════════════
 
   init: function () {
-    // ── التحقق من الصلاحية ──
-    let authorized = false;
-    if (typeof CID !== 'undefined' && sessionStorage.getItem('clinica_auth_' + CID) === '1') {
-      authorized = true;
-    } else if (window.ArgonSession) {
-      const s = window.ArgonSession.get();
-      if (s && ['admin', 'accountant', 'superadmin'].includes(s.role)) authorized = true;
-    }
-
-    // إظهار/إخفاء أزرار القائمة
-    const mBilling = document.getElementById('mBilling');
-    const mPricing = document.getElementById('mPricing');
-    if (!authorized) {
-      if (mBilling) mBilling.style.display = 'none';
-      if (mPricing) mPricing.style.display = 'none';
-      // لا نخرج (return) هنا لكي يعمل المحرك في الخلفية للأطباء
-    } else {
-      if (mBilling) mBilling.style.display = 'flex';
-      if (mPricing) mPricing.style.display = 'flex';
-    }
-    
-    this.isUiAuthorized = authorized;
+    // ── إظهار/إخفاء أزرار القائمة — يعتمد على الـ getter الديناميكي ──
+    const _updateMenuVisibility = () => {
+      const auth = this.isUiAuthorized;
+      const mBilling = document.getElementById('mBilling');
+      const mPricing = document.getElementById('mPricing');
+      if (mBilling) mBilling.style.display = auth ? 'flex' : 'none';
+      if (mPricing) mPricing.style.display = auth ? 'flex' : 'none';
+    };
+    _updateMenuVisibility();
+    // إعادة تقييم بعد 2 ثانية (تغطية حالة الدخول البطيء)
+    setTimeout(_updateMenuVisibility, 2000);
 
     if (typeof db === 'undefined' || !BASE) return;
 
@@ -682,7 +684,7 @@ const BillingEngine = {
         <td style="font-family:'IBM Plex Mono',monospace;font-weight:700">${_B.jod(p.total)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;color:var(--green)">${_B.jod(p.paid)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;color:${remaining > 0 ? 'var(--red)' : 'var(--muted)'};font-weight:${remaining > 0 ? 800 : 400}">${_B.jod(remaining)}</td>
-        <td>${badgeMap[status] || ''}</td>
+        <td>${badgeMap[status] || ''}<br>${this._renderDeptInvoiceBadges(p.patientId)}</td>
         <td style="text-align:center">
           <button class="tbtn" onclick="BillingEngine.openPatientLedger('${_B.san(p.patientId)}')"
             style="background:rgba(13,148,136,.08);color:var(--teal);border-color:rgba(13,148,136,.2)">
@@ -1182,8 +1184,43 @@ const BillingEngine = {
     });
   },
 
-  sanitize: _B.san
-};
+  sanitize: _B.san,
+
+  // ════════════════════════════════════════════
+  // 🏷️ DEPT INVOICE BADGES — شارات الفواتير المنفصلة
+  // ════════════════════════════════════════════
+  /**
+   * يُظهر شارات صغيرة بجانب كل مريض تُشير للفواتير المنفصلة الموجودة
+   * يُساعد محاسب الاستقبال على معرفة أن مريضاً عنده فاتورة مختبر + أشعة منفصلة
+   */
+  _renderDeptInvoiceBadges: function(patientId) {
+    const BADGE_MAP = {
+      lab_invoice:      { label: '🔬 مختبر', color: 'rgba(16,185,129,.15)', border: 'rgba(16,185,129,.3)', text: 'var(--green)' },
+      radiology_invoice:{ label: '🩻 أشعة',  color: 'rgba(14,165,233,.15)', border: 'rgba(14,165,233,.3)', text: 'var(--sky)'   },
+      pharmacy_invoice: { label: '💊 صيدلية',color: 'rgba(245,158,11,.15)', border: 'rgba(245,158,11,.3)', text: 'var(--amber)' },
+    };
+    const badges = [];
+    for (const [, inv] of Object.entries(this._invoices)) {
+      if (inv.patientId !== patientId) continue;
+      if (inv.invoiceType && BADGE_MAP[inv.invoiceType]) {
+        const cfg = BADGE_MAP[inv.invoiceType];
+        const paid = this.calculateInvoicePaid(Object.keys(this._invoices).find(k => this._invoices[k] === inv) || '');
+        const rem  = (parseFloat(inv.total) || 0) - paid;
+        const isDue = rem > 0.001 && !['voided','cancelled','paid'].includes(inv.status);
+        if (!badges.find(b => b.includes(cfg.label))) {
+          badges.push(
+            `<span style="display:inline-block;margin-top:3px;margin-left:3px;font-size:.6rem;font-weight:800;padding:1px 6px;border-radius:5px;
+              background:${cfg.color};border:1px solid ${cfg.border};color:${cfg.text}">
+              ${cfg.label}${isDue ? ` · ${_B.jod(rem)}` : ' ✓'}
+            </span>`
+          );
+        }
+      }
+    }
+    return badges.join('');
+  },
+
+}; // ← END BillingEngine object
 
 // ════════════════════════════════════════════════════════════════════════
 // 💳 RECORD BILLING PAYMENT — تسجيل دفعة
