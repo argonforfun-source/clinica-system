@@ -1164,6 +1164,14 @@ function doLogin() {
     const el = document.getElementById('dashLogin');
     el.style.opacity='0'; el.style.transition='opacity .35s';
     setTimeout(()=>{ el.style.display='none'; toast('✅ أهلاً بك!', 'ok'); },360);
+    
+    // Unhide Enterprise Modules dynamically upon login
+    if (window.BillingEngine) BillingEngine.isUiAuthorized = true;
+    const mb = document.getElementById('mBilling');
+    if (mb) mb.style.display = 'flex';
+    const mp = document.getElementById('mPricing');
+    if (mp) mp.style.display = 'flex';
+
     // Auto-Auth for Storage Access
     auth.signInAnonymously().catch(()=>{});
   } else {
