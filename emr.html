@@ -122,13 +122,36 @@
       </div>
     </div>
 
-    <!-- INBOX SECTION -->
+    <!-- INBOX SECTION (TASKS) -->
     <div id="inbox" class="sec">
       <div class="ph">
-        <div><div class="pt">🗂️ المهام</div><div class="ps">تنبيهات ومهام العمل المعلقة</div></div>
+        <div><div class="pt">🗂️ المهام والملاحظات</div><div class="ps">مفكرتك الشخصية للمهام اليومية والتنبيهات</div></div>
       </div>
-      <div id="inboxContent" style="padding:20px; display:grid; gap:14px;">
-        <div style="text-align:center;padding:40px;color:var(--muted)">لا توجد مهام معلقة حالياً.</div>
+      
+      <div style="padding:20px;">
+        <!-- Add Task Form -->
+        <div style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:20px; display:flex; gap:10px; box-shadow:0 2px 8px rgba(0,0,0,0.02)">
+          <input type="text" id="newTaskInput" placeholder="اكتب مهمة أو ملاحظة جديدة هنا..." style="flex:1; padding:12px; border:1px solid var(--border); border-radius:8px; outline:none; font-family:inherit;">
+          <button onclick="window.addDoctorTask()" style="background:var(--sky); color:#fff; border:none; border-radius:8px; padding:0 20px; font-weight:bold; cursor:pointer;"><i class="fas fa-plus"></i> إضافة</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+          <!-- Pending Tasks -->
+          <div>
+            <div style="font-weight:bold; color:var(--sky); margin-bottom:12px; border-bottom:2px solid var(--sky); padding-bottom:6px;"><i class="fas fa-clock"></i> المهام المعلقة</div>
+            <div id="tasksPending" style="display:grid; gap:10px;">
+              <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.9rem;">جاري التحميل...</div>
+            </div>
+          </div>
+          
+          <!-- Completed Tasks -->
+          <div>
+            <div style="font-weight:bold; color:var(--green); margin-bottom:12px; border-bottom:2px solid var(--green); padding-bottom:6px;"><i class="fas fa-check-circle"></i> المهام المنجزة</div>
+            <div id="tasksCompleted" style="display:grid; gap:10px;">
+              <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.9rem;">لا توجد مهام منجزة.</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
