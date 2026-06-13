@@ -1974,7 +1974,7 @@
         statusNew: "جديد 🔔", statusConf: "مؤكد ✅", statusWait: "بالانتظار ⏳", statusDone: "مكتمل 🏁", statusCancel: "ملغي ❌",
         cancelBookBtn: "إلغاء الحجز", editBookBtn: "تعديل الملاحظات",
         rateExp: "قيم تجربتك مع الطبيب", submitRate: "إرسال التقييم",
-        errLimit: "لقد وصلت للحد الأقصى المسموح به (5 حجوزات في الساعة).\\nيرجى الانتظار قليلاً ثم المحاولة مجدداً.",
+        errLimit: "لقد وصلت للحد الأقصى المسموح به (50 حجز في الساعة).\\nيرجى الانتظار قليلاً ثم المحاولة مجدداً.",
         errSlot: "قام شخص آخر بحجز هذا الموعد في نفس اللحظة.\\nيرجى اختيار موعد آخر من القائمة المتاحة.",
         errClosed: "استقبال الحجوزات الإلكترونية متوقف مؤقتاً.\\nيرجى المحاولة لاحقاً أو التواصل مع العيادة مباشرة.",
         errData: "⚠️ يرجى التحقق من البيانات المدخلة", errNid: "⚠️ يرجى إدخال رقم وطني صحيح", errSelectDT: "⚠️ يرجى اختيار تاريخ ووقت الحجز",
@@ -2001,7 +2001,7 @@
         statusNew: "New 🔔", statusConf: "Confirmed ✅", statusWait: "Waiting ⏳", statusDone: "Completed 🏁", statusCancel: "Cancelled ❌",
         cancelBookBtn: "Cancel Booking", editBookBtn: "Edit Notes",
         rateExp: "Rate your experience", submitRate: "Submit Rating",
-        errLimit: "Maximum allowed limit reached (5 bookings per hour).\\nPlease wait a while and try again.",
+        errLimit: "Maximum allowed limit reached (50 bookings per hour).\\nPlease wait a while and try again.",
         errSlot: "Someone else just booked this time slot at the exact same moment.\\nPlease select another available time.",
         errClosed: "Online booking is temporarily suspended.\\nPlease try again later or contact the clinic.",
         errData: "⚠️ Please check the entered data", errSelectDT: "⚠️ Please select a date and time",
@@ -2028,7 +2028,7 @@
         statusNew: "Nouveau 🔔", statusConf: "Confirmé ✅", statusWait: "En Attente ⏳", statusDone: "Terminé 🏁", statusCancel: "Annulé ❌",
         cancelBookBtn: "Annuler", editBookBtn: "Modifier Notes",
         rateExp: "Évaluez votre expérience", submitRate: "Soumettre",
-        errLimit: "Limite maximale atteinte (5/heure).\\nVeuillez patienter.",
+        errLimit: "Limite maximale atteinte (50/heure).\\nVeuillez patienter.",
         errSlot: "Ce créneau vient d'être réservé par quelqu'un d'autre.\\nVeuillez en choisir un autre.",
         errClosed: "La réservation en ligne est suspendue.\\nVeuillez contacter la clinique.",
         errData: "⚠️ Veuillez vérifier les données", errSelectDT: "⚠️ Veuillez sélectionner la date et l'heure",
@@ -2105,7 +2105,7 @@
         localStorage.setItem(RATE_KEY, JSON.stringify({ count: 1, ts: now }));
         return true;
       }
-      if (data.count >= 5) { // max 5 bookings/hour
+      if (data.count >= 50) { // max 50 bookings/hour
         return false;
       }
       data.count++;
