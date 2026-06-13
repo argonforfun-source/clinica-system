@@ -69,8 +69,21 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════
-   * 2. HTML BUILDERS
+   * 2. HTML BUILDERS & HELPERS
    * ══════════════════════════════════════════════════════════════════ */
+  function _getPatientName() {
+    if (!_currentPatientId) return 'غير محدد';
+    try {
+      if (window._patients && window._patients[_currentPatientId]) {
+        var p = window._patients[_currentPatientId];
+        return p.name || (p.info && p.info.name) || 'مريض رقم ' + _currentPatientId.substring(0, 5);
+      }
+      return 'مريض ' + _currentPatientId.substring(0, 5);
+    } catch(e) {
+      return 'مريض ' + _currentPatientId.substring(0, 5);
+    }
+  }
+
   function _buildLoadingHTML() {
     return '<div style="text-align:center;padding:30px;color:var(--muted)">' +
       '<i class="fas fa-circle-notch fa-spin" style="font-size:1.5rem;color:var(--teal)"></i>' +
@@ -88,8 +101,11 @@
 
       /* ── Header ── */
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">',
-        '<div style="font-size:1rem;font-weight:800;color:var(--teal)">',
-          '🦷 الرسم البياني للأسنان — FDI (ISO 3950)',
+        '<div>',
+          '<div style="font-size:1.1rem;font-weight:800;color:var(--teal);margin-bottom:4px">',
+            '🦷 الرسم البياني لأسنان المريض: <span style="color:#0f172a;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-size:1.05rem">' + _getPatientName() + '</span>',
+          '</div>',
+          '<div style="font-size:0.8rem;color:var(--muted)">FDI (ISO 3950) — التغييرات تحفظ مباشرة في ملف المريض</div>',
         '</div>',
         '<div style="display:flex;gap:8px">',
           '<button onclick="DentalChartModule.saveChart()" ',

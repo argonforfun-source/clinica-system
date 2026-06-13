@@ -220,9 +220,9 @@
       sidebarContainer.appendChild(divider);
     }
 
-    /* وحدات الأسنان */
+    /* وحدات الأسنان مدمجة الآن في ملف المريض نفسه ولا تظهر كشاشة مستقلة */
     if (cfg.features && cfg.features.dentalChart) {
-      addSidebarSpecItem(sidebarContainer, 'dentalChartSection', '🦷 الرسم البياني للأسنان', 'fa-tooth', cfg.color);
+      // addSidebarSpecItem(sidebarContainer, 'dentalChartSection', '🦷 الرسم البياني للأسنان', 'fa-tooth', cfg.color);
     }
     /* وحدة النمو للأطفال */
     if (cfg.features && cfg.features.growthCharts) {
