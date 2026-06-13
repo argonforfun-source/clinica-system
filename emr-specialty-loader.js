@@ -55,7 +55,7 @@
         clearInterval(interval);
         if (sets && sets.specialty) {
           applySpecialty(sets.specialty, sets);
-        } else {
+        } else if (!_loader.currentSpecialty) {
           /* لا تخصص = general_medicine = سلوك حالي */
           console.log('[ArgonSpecialtyLoader] No specialty set — using legacy general_medicine path.');
           applyGeneralMedicineDefaults();

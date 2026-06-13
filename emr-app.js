@@ -239,6 +239,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Bind EMR Login and settings
   db.ref(BASE + '/settings').on('value', snap => {
     _sets = snap.val();
+    window._sets = _sets;
     if (_sets) {
       _sets.mode = (_sets.type === 'complex' || _sets.mode === 'medical_complex') ? 'medical_complex' : 'single_clinic';
       checkAndSeedDefaultDepartments();
