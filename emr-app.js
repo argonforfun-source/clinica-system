@@ -2211,6 +2211,10 @@ function refreshPatientFileUI(uid) {
   const container = document.getElementById('patFileContent');
   if (container) {
     container.innerHTML = fileHTML;
+    
+    if (activeEmrTab === 'dental-chart-tab' && window.DentalChartModule && typeof window.DentalChartModule.render === 'function') {
+      window.DentalChartModule.render('_patFileDentalChart', uid);
+    }
   }
 }
 
