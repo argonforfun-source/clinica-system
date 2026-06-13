@@ -96,25 +96,25 @@
    * DEVELOPMENTAL MILESTONES
    * ══════════════════════════════════════════════════════════════════ */
   var MILESTONES = [
-    { ageMonths: 2,  domain: 'اجتماعي',   text: 'يبتسم اجتماعياً عند مخاطبته' },
-    { ageMonths: 2,  domain: 'حركي',      text: 'يرفع رأسه عند الاستلقاء على بطنه' },
-    { ageMonths: 4,  domain: 'حركي',      text: 'يدير رأسه نحو الأصوات' },
-    { ageMonths: 4,  domain: 'لغوي',      text: 'يُصدر أصوات مناغاة (أووه، آه)' },
-    { ageMonths: 6,  domain: 'حركي',      text: 'يجلس بمساعدة خفيفة' },
-    { ageMonths: 6,  domain: 'حركي',      text: 'يمسك الألعاب بكلتا اليدين' },
-    { ageMonths: 9,  domain: 'حركي',      text: 'يجلس وحده بثبات' },
-    { ageMonths: 9,  domain: 'حركي',      text: 'إمساك الإبهام-السبابة (Pincer Grasp)' },
-    { ageMonths: 9,  domain: 'اجتماعي',   text: 'يخشى الغرباء (Stranger Anxiety)' },
-    { ageMonths: 12, domain: 'حركي',      text: 'يمشي بمساعدة أو يقف وحده' },
-    { ageMonths: 12, domain: 'لغوي',      text: 'يقول كلمة أو كلمتين بمعنى (ماما/بابا)' },
-    { ageMonths: 18, domain: 'حركي',      text: 'يمشي وحده بثبات' },
-    { ageMonths: 18, domain: 'لغوي',      text: 'يقول 6-20 كلمة' },
-    { ageMonths: 24, domain: 'لغوي',      text: 'جملة من كلمتين (ماما جاءت)' },
-    { ageMonths: 24, domain: 'حركي',      text: 'يصعد ويهبط الدرج بمساعدة' },
-    { ageMonths: 36, domain: 'لغوي',      text: 'جمل من 3 كلمات، غرباء يفهمونه' },
-    { ageMonths: 36, domain: 'حركي',      text: 'يركب دراجة ثلاثية العجلات' },
-    { ageMonths: 48, domain: 'لغوي',      text: 'يحكي قصصاً بسيطة' },
-    { ageMonths: 60, domain: 'معرفي',     text: 'يعرف الألوان والأرقام 1-10' }
+    { id: 'm_soc_2',   ageMonths: 2,  domain: 'اجتماعي',   text: 'يبتسم اجتماعياً عند مخاطبته' },
+    { id: 'm_mot_2',   ageMonths: 2,  domain: 'حركي',      text: 'يرفع رأسه عند الاستلقاء على بطنه' },
+    { id: 'm_mot_4',   ageMonths: 4,  domain: 'حركي',      text: 'يدير رأسه نحو الأصوات' },
+    { id: 'm_lan_4',   ageMonths: 4,  domain: 'لغوي',      text: 'يُصدر أصوات مناغاة (أووه، آه)' },
+    { id: 'm_mot_6_1', ageMonths: 6,  domain: 'حركي',      text: 'يجلس بمساعدة خفيفة' },
+    { id: 'm_mot_6_2', ageMonths: 6,  domain: 'حركي',      text: 'يمسك الألعاب بكلتا اليدين' },
+    { id: 'm_mot_9_1', ageMonths: 9,  domain: 'حركي',      text: 'يجلس وحده بثبات' },
+    { id: 'm_mot_9_2', ageMonths: 9,  domain: 'حركي',      text: 'إمساك الإبهام-السبابة (Pincer Grasp)' },
+    { id: 'm_soc_9',   ageMonths: 9,  domain: 'اجتماعي',   text: 'يخشى الغرباء (Stranger Anxiety)' },
+    { id: 'm_mot_12',  ageMonths: 12, domain: 'حركي',      text: 'يمشي بمساعدة أو يقف وحده' },
+    { id: 'm_lan_12',  ageMonths: 12, domain: 'لغوي',      text: 'يقول كلمة أو كلمتين بمعنى (ماما/بابا)' },
+    { id: 'm_mot_18',  ageMonths: 18, domain: 'حركي',      text: 'يمشي وحده بثبات' },
+    { id: 'm_lan_18',  ageMonths: 18, domain: 'لغوي',      text: 'يقول 6-20 كلمة' },
+    { id: 'm_lan_24',  ageMonths: 24, domain: 'لغوي',      text: 'جملة من كلمتين (ماما جاءت)' },
+    { id: 'm_mot_24',  ageMonths: 24, domain: 'حركي',      text: 'يصعد ويهبط الدرج بمساعدة' },
+    { id: 'm_lan_36',  ageMonths: 36, domain: 'لغوي',      text: 'جمل من 3 كلمات، غرباء يفهمونه' },
+    { id: 'm_mot_36',  ageMonths: 36, domain: 'حركي',      text: 'يركب دراجة ثلاثية العجلات' },
+    { id: 'm_lan_48',  ageMonths: 48, domain: 'لغوي',      text: 'يحكي قصصاً بسيطة' },
+    { id: 'm_cog_60',  ageMonths: 60, domain: 'معرفي',     text: 'يعرف الألوان والأرقام 1-10' }
   ];
 
   /* ══════════════════════════════════════════════════════════════════
@@ -136,6 +136,7 @@
    * ══════════════════════════════════════════════════════════════════ */
   var _measurements = [];
   var _vaccinations = {};
+  var _milestonesStatus = {};
   var _currentPatientId = null;
   var _containerId = null;
   var _activeTab = 'growth';
@@ -157,12 +158,14 @@
     _loadData(patientId).then(function (data) {
       _measurements = data.measurements || [];
       _vaccinations = data.vaccinations || {};
+      _milestonesStatus = data.milestones || {};
       container.innerHTML = _buildMainHTML();
       _attachStyles();
       _switchTab(_activeTab);
     }).catch(function () {
       _measurements = [];
       _vaccinations = {};
+      _milestonesStatus = {};
       container.innerHTML = _buildMainHTML();
       _attachStyles();
       _switchTab(_activeTab);
@@ -483,21 +486,26 @@
     }
 
     var items = relevantMilestones.map(function (m) {
-      var isAchieved = ageMonths > m.ageMonths + 2;
-      var isCurrent = ageMonths >= m.ageMonths && ageMonths <= m.ageMonths + 2;
-      var isUpcoming = ageMonths < m.ageMonths;
+      var docStatus = _milestonesStatus[m.id];
+      var isAchievedByAge = ageMonths > m.ageMonths + 2;
+      var isCurrentByAge = ageMonths >= m.ageMonths && ageMonths <= m.ageMonths + 2;
       var domColor = domainColors[m.domain] || 'var(--muted)';
 
       var icon, opacity;
-      if (isAchieved) { icon = '✅'; opacity = '1'; }
-      else if (isCurrent) { icon = '🔔'; opacity = '1'; }
+      if (docStatus === 'pass') { icon = '✅'; opacity = '1'; }
+      else if (docStatus === 'fail') { icon = '⚠️'; opacity = '1'; }
+      else if (isAchievedByAge) { icon = '✅'; opacity = '0.8'; }
+      else if (isCurrentByAge) { icon = '🔔'; opacity = '1'; }
       else { icon = '⏳'; opacity = '0.5'; }
 
+      var isPass = docStatus === 'pass';
+      var isFail = docStatus === 'fail';
+
       return [
-        '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;',
-          'border-radius:8px;border:1px solid var(--border);margin-bottom:6px;',
-          'opacity:', opacity, ';background:rgba(255,255,255,0.01)">',
-          '<div style="font-size:1.2rem;flex-shrink:0;margin-top:1px">', icon, '</div>',
+        '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;',
+          'border-radius:8px;border:1px solid ', isFail ? 'rgba(239,68,68,0.3)' : 'var(--border)', ';margin-bottom:6px;',
+          'opacity:', opacity, ';background:', isFail ? 'rgba(239,68,68,0.05)' : (isPass ? 'rgba(16,185,129,0.05)' : 'rgba(255,255,255,0.01)'), '">',
+          '<div style="font-size:1.2rem;flex-shrink:0;margin-top:1px;width:24px;text-align:center">', icon, '</div>',
           '<div style="flex:1">',
             '<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">',
               '<span style="font-size:0.68rem;padding:2px 7px;border-radius:10px;',
@@ -506,7 +514,19 @@
               '</span>',
               '<span style="font-size:0.68rem;color:var(--muted)">عند ', m.ageMonths, ' شهر</span>',
             '</div>',
-            '<div style="font-size:0.85rem;font-weight:600;color:var(--text)">', m.text, '</div>',
+            '<div style="font-size:0.85rem;font-weight:600;color:', isFail ? 'var(--red)' : 'var(--text)', '">', m.text, '</div>',
+          '</div>',
+          '<div style="display:flex;gap:4px">',
+            '<button onclick="GrowthChartModule.markMilestone(\'', m.id, '\', \'pass\')" title="تأكيد تطور طبيعي"',
+              'style="padding:4px 8px;border-radius:6px;cursor:pointer;font-size:0.75rem;border:none;font-family:\'Tajawal\',sans-serif;font-weight:700;transition:0.2s;',
+              isPass ? 'background:var(--green);color:white;' : 'background:rgba(16,185,129,0.1);color:var(--green);', '">',
+              'طبيعي',
+            '</button>',
+            '<button onclick="GrowthChartModule.markMilestone(\'', m.id, '\', \'fail\')" title="تأكيد تأخر أو مشكلة"',
+              'style="padding:4px 8px;border-radius:6px;cursor:pointer;font-size:0.75rem;border:none;font-family:\'Tajawal\',sans-serif;font-weight:700;transition:0.2s;',
+              isFail ? 'background:var(--red);color:white;' : 'background:rgba(239,68,68,0.1);color:var(--red);', '">',
+              'تأخر',
+            '</button>',
           '</div>',
         '</div>'
       ].join('');
@@ -674,6 +694,27 @@
     }
   }
 
+  function markMilestone(milestoneId, status) {
+    if (_milestonesStatus[milestoneId] === status) {
+      delete _milestonesStatus[milestoneId];
+      status = null;
+    } else {
+      _milestonesStatus[milestoneId] = status;
+    }
+
+    if (typeof db !== 'undefined' && typeof BASE !== 'undefined' && _currentPatientId) {
+      var ref = db.ref(BASE + '/patients/' + _currentPatientId + '/specialty_data/pediatrics/milestones/' + milestoneId);
+      if (status === null) {
+        ref.remove();
+      } else {
+        ref.set(status);
+      }
+    }
+
+    var tabContent = document.getElementById('_gcTab-milestones');
+    if (tabContent) tabContent.innerHTML = _buildMilestonesTab();
+  }
+
   function calcDose() {
     var weightEl = document.getElementById('_dose-weight');
     var drugEl   = document.getElementById('_dose-drug');
@@ -782,9 +823,11 @@
       });
     var p2 = db.ref(basePath + '/vaccinations').once('value')
       .then(function (s) { return s.val() || {}; });
+    var p3 = db.ref(basePath + '/milestones').once('value')
+      .then(function (s) { return s.val() || {}; });
 
-    return Promise.all([p1, p2]).then(function (res) {
-      return { measurements: res[0], vaccinations: res[1] };
+    return Promise.all([p1, p2, p3]).then(function (res) {
+      return { measurements: res[0], vaccinations: res[1], milestones: res[2] };
     });
   }
 
@@ -855,6 +898,7 @@
     switchTab: _switchTab,
     addMeasurement: addMeasurement,
     markVaccine: markVaccine,
+    markMilestone: markMilestone,
     calcDose: calcDose,
     liveCalc: liveCalc,
     getLatestMeasurements: function () {
