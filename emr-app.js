@@ -2137,6 +2137,10 @@ function generatePatientFileHTML(uid) {
       <button class="emr-tab-btn ${activeEmrTab === 'referral-tab' ? 'active' : ''}" onclick="switchEmrTab('referral-tab')" style="background:var(--surf);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s">
         <i class="fas fa-exchange-alt" style="color:#a855f7"></i> التحويلات الداخلية
       </button>` : ''}
+      ${window.ArgonSpecialtyLoader && window.ArgonSpecialtyLoader.hasFeature('dentalChart') ? `
+      <button class="emr-tab-btn ${activeEmrTab === 'dental-chart-tab' ? 'active' : ''}" onclick="switchEmrTab('dental-chart-tab')" style="background:var(--surf);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s">
+        <i class="fas fa-tooth" style="color:#3b82f6"></i> 🦷 الرسم البياني للأسنان
+      </button>` : ''}
     </div>
 
     <!-- Dynamic Tab Contents -->
@@ -2186,6 +2190,14 @@ function generatePatientFileHTML(uid) {
           <button class="btn-primary" onclick="createInternalReferral()" style="height:38px;padding:0 20px;border-radius:8px;background:linear-gradient(135deg,var(--purple),#7c3aed);font-size:0.82rem;border:none;box-shadow:0 4px 12px rgba(139,92,246,0.3)"><i class="fas fa-share-square"></i> إرسال التحويل</button>
         </div>
       </div>
+    </div>` : ''}
+
+    ${window.ArgonSpecialtyLoader && window.ArgonSpecialtyLoader.hasFeature('dentalChart') ? `
+    <div id="emr-tab-dental-chart" class="emr-tab-content ${activeEmrTab === 'dental-chart-tab' ? 'active-content' : ''}" style="display:${activeEmrTab === 'dental-chart-tab' ? 'block' : 'none'}">
+      <div class="ph" style="margin-bottom:12px">
+        <div><div class="pt" style="font-size:1.15rem;color:#3b82f6">🦷 الرسم البياني للأسنان — FDI (ISO 3950)</div><div class="ps">خريطة تفاعلية لأسنان المريض — اضغط على أي سن لتعديل حالته</div></div>
+      </div>
+      <div id="_patFileDentalChart" style="padding:10px"></div>
     </div>` : ''}
   `;
 
@@ -3552,6 +3564,30 @@ function switchEmrTab(tabId) {
     if (btn) btn.classList.add('active');
     const el = document.getElementById('emr-tab-referral');
     if (el) { el.style.display = 'block'; el.classList.add('active-content'); }
+  } else if (tabId === 'dental-chart-tab') {
+    /* تفعيل تبويب الرسم البياني للأسنان */
+    document.querySelectorAll('.emr-tab-btn').forEach(b => {
+      if (b.textContent.includes('الرسم البياني')) b.classList.add('active');
+    });
+    const el = document.getElementById('emr-tab-dental-chart');
+    if (el) { el.style.display = 'block'; el.classList.add('active-content'); }
+    /* استدعاء render مع معرف المريض الحالي */
+    if (window.DentalChartModule && typeof window.DentalChartModule.render === 'function') {
+      const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
+      window.DentalChartModule.render('_patFileDentalChart', pid);
+    } else {
+      /* الموديول لم يُحمَّل بعد — حمّله عند الطلب */
+      if (window.ArgonSpecialtyLoader && typeof window.ArgonSpecialtyLoader.loadModule === 'function') {
+        window.ArgonSpecialtyLoader.loadModule('dental_chart_module');
+        /* انتظر التحميل ثم render */
+        setTimeout(function () {
+          if (window.DentalChartModule) {
+            const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
+            window.DentalChartModule.render('_patFileDentalChart', pid);
+          }
+        }, 1000);
+      }
+    }
   }
 }
 
