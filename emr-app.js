@@ -309,6 +309,7 @@ function initEMR() {
   // Load Patients List directly from Firebase
   db.ref(BASE + '/patients').on('value', snap => {
     _patients = snap.val() || {};
+    window._patients = _patients;
 
     // Auto-load patient from URL param on first load
     if (!activePatientId) {
@@ -2207,6 +2208,10 @@ function generatePatientFileHTML(uid) {
 
 function refreshPatientFileUI(uid) {
   if (activePatientId !== uid) return;
+  
+  const mainDiv = document.querySelector('.main');
+  const scrollPos = mainDiv ? mainDiv.scrollTop : window.scrollY;
+
   const fileHTML = generatePatientFileHTML(uid);
   const container = document.getElementById('patFileContent');
   if (container) {
@@ -2214,6 +2219,17 @@ function refreshPatientFileUI(uid) {
     
     if (activeEmrTab === 'dental-chart-tab' && window.DentalChartModule && typeof window.DentalChartModule.render === 'function') {
       window.DentalChartModule.render('_patFileDentalChart', uid);
+      
+      let attempts = 0;
+      const restoreScroll = setInterval(() => {
+        if (mainDiv) mainDiv.scrollTop = scrollPos;
+        else window.scrollTo(0, scrollPos);
+        attempts++;
+        if (attempts > 10) clearInterval(restoreScroll);
+      }, 50);
+    } else {
+      if (mainDiv) mainDiv.scrollTop = scrollPos;
+      else window.scrollTo(0, scrollPos);
     }
   }
 }
