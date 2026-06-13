@@ -226,7 +226,7 @@
     }
     /* وحدة النمو للأطفال */
     if (cfg.features && cfg.features.growthCharts) {
-      addSidebarSpecItem(sidebarContainer, 'growthChartsSection', '📈 منحنيات النمو', 'fa-chart-line', cfg.color);
+      addEmbeddedSidebarItem(sidebarContainer, 'growth-chart-tab', '📈 منحنيات النمو', 'fa-chart-line', cfg.color);
     }
     /* جدول التطعيمات */
     if (cfg.features && cfg.features.vaccinationSchedule) {
@@ -238,15 +238,15 @@
     }
     /* ECG */
     if (cfg.features && cfg.features.ecgReport) {
-      addSidebarSpecItem(sidebarContainer, 'ecgSection', '💓 تقرير رسم القلب', 'fa-heartbeat', cfg.color);
+      addEmbeddedSidebarItem(sidebarContainer, 'cardio-tab', '💓 تقرير رسم القلب', 'fa-heartbeat', cfg.color);
     }
     /* سجل ضغط الدم */
     if (cfg.features && cfg.features.bpLogChart) {
-      addSidebarSpecItem(sidebarContainer, 'bpLogSection', '📊 سجل ضغط الدم', 'fa-chart-area', cfg.color);
+      addEmbeddedSidebarItem(sidebarContainer, 'cardio-tab', '📊 سجل ضغط الدم', 'fa-chart-area', cfg.color);
     }
     /* حاسبات المخاطر */
     if (cfg.features && cfg.features.framinghamRisk) {
-      addSidebarSpecItem(sidebarContainer, 'riskCalcSection', '🧮 حاسبات المخاطر القلبية', 'fa-calculator', cfg.color);
+      addEmbeddedSidebarItem(sidebarContainer, 'cardio-tab', '🧮 حاسبات المخاطر القلبية', 'fa-calculator', cfg.color);
     }
     /* مقاييس التقييم النفسي */
     if (cfg.features && cfg.features.phq9) {
@@ -289,6 +289,25 @@
         /* محاولة تحميل الوحدة عند الطلب */
         triggerModuleLoad(sectionId, color);
       }
+    });
+
+    container.appendChild(item);
+  }
+
+  function addEmbeddedSidebarItem(container, tabId, label, iconClass, color) {
+    var item = document.createElement('div');
+    item.className = 'ni argon-spec-sidebar-item';
+    item.style.cssText = 'color:' + color + ';opacity:0.85;font-size:0.82rem;';
+    item.innerHTML = '<i class="fas ' + iconClass + '" style="color:' + color + '"></i>' + label;
+
+    item.addEventListener('click', function () {
+      if (!window.activePatientId) {
+        if (typeof window.toast === 'function') window.toast('يرجى اختيار المريض أولاً لفتح ' + label, 'error');
+        else alert('يرجى اختيار المريض أولاً لفتح ' + label);
+        return;
+      }
+      if (typeof sw === 'function') sw('patFile');
+      if (typeof switchEmrTab === 'function') switchEmrTab(tabId);
     });
 
     container.appendChild(item);
@@ -448,29 +467,7 @@
    */
   function _activateModuleSection(moduleName) {
     var sectionMap = {
-      dental_chart_module: {
-        sectionId: 'dentalChartSection',
-        containerId: '_dentalChartContainer',
-        title: '🦷 الرسم البياني للأسنان',
-        renderFn: function (containerId) {
-          var pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
-          if (window.DentalChartModule && typeof window.DentalChartModule.render === 'function') {
-            window.DentalChartModule.render(containerId, pid);
-          }
-        }
-      },
-      growth_chart_module: {
-        sectionId: 'growthChartsSection',
-        containerId: '_growthChartContainer',
-        title: '📈 منحنيات النمو',
-        renderFn: function (containerId) {
-          if (window.GrowthChartModule && typeof window.GrowthChartModule.render === 'function') {
-            var pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
-            window.GrowthChartModule.render(containerId, pid);
-          }
-        }
-      }
-      /* يمكن إضافة وحدات أخرى هنا بنفس النمط */
+      /* التخصصات المدمجة داخل ملف المريض (مثل الأسنان، النمو، القلب) لم تعد بحاجة لشاشات مستقلة */
     };
 
     var cfg = sectionMap[moduleName];
