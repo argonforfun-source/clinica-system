@@ -1087,6 +1087,25 @@
           <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">الوقت *</label>
           <input type="time" id="rbTime" class="mfi">
         </div>
+        <div>
+          <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">شركة التأمين (اختياري)</label>
+          <select id="rbInsProv" class="mfi" style="background:var(--surf);color:var(--text);border:1px solid var(--border)">
+            <option value="">— بدون تأمين (نقدي) —</option>
+            <option value="nathealth">نات هيلث (NatHealth)</option>
+            <option value="gig">الخليج للتأمين (GIG)</option>
+            <option value="mednet">ميد نت (MedNet)</option>
+            <option value="globe">جلوب ميد (GlobeMed)</option>
+            <option value="omn">أومني كير (OmniCare)</option>
+            <option value="jic">الأردنية للتأمين (JIC)</option>
+            <option value="nic">الوطنية للتأمين (NIC)</option>
+            <option value="solidarity">سوليدرتي (Solidarity)</option>
+            <option value="other">أخرى</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">رقم البوليصة (اختياري)</label>
+          <input type="text" id="rbInsPol" class="mfi" placeholder="رقم بوليصة التأمين..." dir="ltr">
+        </div>
         <div style="grid-column:1/-1">
           <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">ملاحظات (اختياري)</label>
           <textarea id="rbNotes" class="mfi" rows="2" style="height:auto;resize:none;padding:8px" placeholder="سبب الزيارة، ملاحظات خاصة..."></textarea>
@@ -2271,10 +2290,12 @@ function openReceptionBooking() {
   if (dobEl) dobEl.max = now.toLocaleDateString('en-CA');
 
   // Reset form fields
-  ['rbPatName','rbPatPhone','rbPatNID','rbNotes'].forEach(id => {
+  ['rbPatName','rbPatPhone','rbPatNID','rbNotes','rbInsPol'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('rbPatGender').value = '';
+  const insProvEl = document.getElementById('rbInsProv');
+  if (insProvEl) insProvEl.value = '';
   document.getElementById('rbFeeRow').style.display = 'none';
 
   // Show modal
@@ -2312,6 +2333,8 @@ async function submitReceptionBooking() {
   const gender   = document.getElementById('rbPatGender').value;
   const dob      = document.getElementById('rbPatDob').value;
   const notes    = (document.getElementById('rbNotes').value || '').trim();
+  const insProv  = document.getElementById('rbInsProv') ? document.getElementById('rbInsProv').value : '';
+  const insPol   = document.getElementById('rbInsPol') ? (document.getElementById('rbInsPol').value || '').trim() : '';
 
   if (!patName)  { toast('⚠️ يرجى إدخال اسم المريض', 'err'); return; }
   if (!patPhone || patPhone.length < 7) { toast('⚠️ يرجى إدخال رقم هاتف صحيح', 'err'); return; }
@@ -2345,6 +2368,8 @@ async function submitReceptionBooking() {
       date:          bDate,
       time:          bTime,
       notes:         sanitize(notes),
+      insProv:       insProv || null,
+      insPol:        insPol || null,
       bookNo:        bookNo,
       status:        'new',
       source:        'reception_desk',          // ← تمييز الحجز من الاستقبال
