@@ -270,14 +270,17 @@
     var item = document.createElement('div');
     item.className = 'ni argon-spec-sidebar-item';
     item.style.cssText = 'color:' + color + ';opacity:0.85;font-size:0.82rem;';
+    item.setAttribute('data-section-id', sectionId);
     item.innerHTML = '<i class="fas ' + iconClass + '" style="color:' + color + '"></i>' + label;
 
     item.addEventListener('click', function () {
-      /* إذا وُجد قسم بهذا الـ id أفتحه، وإلا أظهر toast */
+      /* إذا وُجد قسم بهذا الـ id أفتحه مع إعادة render، وإلا حمّل الوحدة */
       var section = document.getElementById(sectionId);
       if (section) {
-        /* استخدم sw() من emr-app.js */
-        if (typeof window.sw === 'function') window.sw(sectionId, item);
+        /* القسم موجود — أعد عرضه مع refresh */
+        _showSpecialtySection(sectionId);
+        /* أعد render للمحتوى ببيانات المريض الحالي */
+        triggerModuleLoad(sectionId, color);
       } else {
         /* القسم لم يُنشأ بعد — الوحدة لم تُحمَّل */
         if (typeof window.toast === 'function') {
@@ -414,7 +417,7 @@
     var scriptPath = 'specialty-modules/' + moduleName + '.js';
 
     var script = document.createElement('script');
-    script.src = scriptPath + '?v=1.0';
+    script.src = scriptPath + '?v=1.1';
     script.async = true;
 
     script.onload = function () {
@@ -426,6 +429,9 @@
       if (window[moduleKey] && typeof window[moduleKey].init === 'function') {
         window[moduleKey].init();
       }
+
+      /* ── إنشاء القسم وعرضه بعد التحميل ── */
+      _activateModuleSection(moduleName);
     };
 
     script.onerror = function () {
@@ -434,6 +440,94 @@
     };
 
     document.head.appendChild(script);
+  }
+
+  /**
+   * _activateModuleSection — ينشئ القسم (sec) في DOM ويستدعي render
+   * هذه الدالة تُنفَّذ بعد تحميل السكربت بنجاح.
+   */
+  function _activateModuleSection(moduleName) {
+    var sectionMap = {
+      dental_chart_module: {
+        sectionId: 'dentalChartSection',
+        containerId: '_dentalChartContainer',
+        title: '🦷 الرسم البياني للأسنان',
+        renderFn: function (containerId) {
+          var pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
+          if (window.DentalChartModule && typeof window.DentalChartModule.render === 'function') {
+            window.DentalChartModule.render(containerId, pid);
+          }
+        }
+      },
+      growth_chart_module: {
+        sectionId: 'growthChartsSection',
+        containerId: '_growthChartContainer',
+        title: '📈 منحنيات النمو',
+        renderFn: function (containerId) {
+          if (window.GrowthChartModule && typeof window.GrowthChartModule.render === 'function') {
+            var pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
+            window.GrowthChartModule.render(containerId, pid);
+          }
+        }
+      }
+      /* يمكن إضافة وحدات أخرى هنا بنفس النمط */
+    };
+
+    var cfg = sectionMap[moduleName];
+    if (!cfg) return;
+
+    /* لا تُنشئ مرتين */
+    if (document.getElementById(cfg.sectionId)) {
+      /* القسم موجود — أعد render فقط */
+      cfg.renderFn(cfg.containerId);
+      _showSpecialtySection(cfg.sectionId);
+      return;
+    }
+
+    /* ── إنشاء القسم كـ sec في الـ main area ── */
+    var mainArea = document.querySelector('.main');
+    if (!mainArea) return;
+
+    var section = document.createElement('div');
+    section.id = cfg.sectionId;
+    section.className = 'sec';
+    section.innerHTML = [
+      '<div class="ph">',
+        '<div><div class="pt">' + cfg.title + '</div>',
+        '<div class="ps">قسم متخصص — يتم تحديثه تلقائياً مع بيانات المريض</div></div>',
+        '<button class="btn-secondary btn-sm" onclick="sw(\'newVisit\')" style="border-radius:8px;padding:6px 14px">',
+          '<i class="fas fa-arrow-right"></i> العودة للزيارة',
+        '</button>',
+      '</div>',
+      '<div id="' + cfg.containerId + '" style="padding:16px"></div>'
+    ].join('');
+
+    mainArea.appendChild(section);
+
+    /* ── استدعاء render ── */
+    cfg.renderFn(cfg.containerId);
+
+    /* ── إظهار القسم ── */
+    _showSpecialtySection(cfg.sectionId);
+  }
+
+  /**
+   * _showSpecialtySection — يُظهر القسم ويُخفي البقية
+   */
+  function _showSpecialtySection(sectionId) {
+    var sections = document.querySelectorAll('.sec');
+    sections.forEach(function (s) { s.classList.remove('on'); });
+    var target = document.getElementById(sectionId);
+    if (target) target.classList.add('on');
+
+    /* تحديث sidebar active state */
+    document.querySelectorAll('.ni').forEach(function (n) { n.classList.remove('on'); });
+    var sidebarItems = document.querySelectorAll('.argon-spec-sidebar-item.ni');
+    sidebarItems.forEach(function (item) {
+      if (item.getAttribute('data-section-id') === sectionId) {
+        item.classList.add('on');
+      }
+    });
   }
 
   function triggerModuleLoad(sectionId, color) {
@@ -454,6 +548,9 @@
     var modName = moduleMap[sectionId];
     if (modName && _loader.modulesLoaded.indexOf(modName) === -1) {
       loadModule(modName);
+    } else if (modName) {
+      /* الوحدة مُحمَّلة بالفعل — أعد عرض القسم */
+      _activateModuleSection(modName);
     }
   }
 
