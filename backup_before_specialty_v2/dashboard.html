@@ -848,12 +848,12 @@
               </div>
             </div>
             <div style="display:flex;gap:8px">
-              <button class="complex-only" onclick="sw('pricing',document.getElementById('mPricing'))" style="flex:1;background:rgba(14,165,233,.1);color:var(--sky);border:1px solid rgba(14,165,233,.2);padding:6px 10px;border-radius:6px;font-size:0.8rem;cursor:pointer;font-weight:bold"><i class="fas fa-tags"></i> إدارة تسعيرة الفحوصات</button>
+              <button class="complex-only" style="display:none !important;" onclick="sw('pricing',document.getElementById('mPricing'))" style="flex:1;background:rgba(14,165,233,.1);color:var(--sky);border:1px solid rgba(14,165,233,.2);padding:6px 10px;border-radius:6px;font-size:0.8rem;cursor:pointer;font-weight:bold"><i class="fas fa-tags"></i> إدارة تسعيرة الفحوصات</button>
               <button onclick="if(confirm('هل أنت متأكد من تصفير ومسح جميع الفواتير والحركات المالية الحالية؟')) { db.ref(BASE + '/invoices').remove(); db.ref(BASE + '/financial_transactions').remove(); toast('تم تصفير الفواتير بنجاح', 'ok'); }" style="background:var(--red);color:white;border:none;padding:6px 10px;border-radius:6px;font-size:0.75rem;cursor:pointer;"><i class="fas fa-trash"></i> مسح الفواتير التجريبية</button>
             </div>
           </div>
           <div style="display:none;">
-            <label class="setl">نظام التشغيل (Operational Mode) *</label>
+            <label class="setl" style="display:none">نظام التشغيل (Operational Mode) *</label>
             <select id="sMode" class="setsel" disabled style="opacity: 0.7; cursor: not-allowed; background: rgba(0,0,0,0.15);">
               <option value="single_clinic">عيادة منفردة (Single Clinic) 🏥</option>
               <option value="medical_complex">مجمع طبي متكامل (Medical Complex) 🏢</option>
@@ -935,7 +935,7 @@
         </div>
         
         <!-- DEPARTMENTS PANEL -->
-        <div id="deptsPanel" style="display:none;margin:20px 0 14px 0;border-top:1px dashed var(--border);padding-top:16px">
+        <div id="deptsPanel" style="display:none !important;margin:20px 0 14px 0;border-top:1px dashed var(--border);padding-top:16px">
           <label class="setl" style="color:var(--teal);font-weight:800"><i class="fas fa-network-wired"></i> إدارة أقسام المجمع الطبي</label>
           <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin-bottom:12px;align-items:end">
             <div><label class="mfl">اسم القسم *</label><input type="text" id="depN" class="mfi" placeholder="مثال: قسم الأسنان"></div>
@@ -949,7 +949,7 @@
         </div>
         
         <!-- RBAC PASSWORDS PANEL -->
-        <div style="margin:20px 0 14px 0;border-top:1px dashed var(--border);padding-top:16px">
+        <div style="display:none !important;margin:20px 0 14px 0;border-top:1px dashed var(--border);padding-top:16px">
           <label class="setl" style="color:var(--sky);font-weight:800"><i class="fas fa-user-shield"></i> كلمات مرور الطاقم الطبي وصلاحيات الوصول (RBAC)</label>
           <div style="margin-top:10px; background: rgba(15,23,42,0.3); border: 1px solid var(--border); border-radius: 12px; padding: 15px; position: relative;">
             <div id="rbacLockOverlay" style="position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(15,23,42,0.8); backdrop-filter: blur(4px); border-radius: 12px; display: flex; align-items: center; justify-content: center; z-index: 10;">
@@ -1065,6 +1065,49 @@
         <div>
           <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">تاريخ الميلاد</label>
           <input type="date" id="rbPatDob" class="mfi">
+        </div>
+        
+        <!-- Insurance Info -->
+        <div style="grid-column:1/-1; background:rgba(139, 92, 246, 0.05); border:1px solid rgba(139, 92, 246, 0.2); border-radius:12px; padding:16px; margin-top:8px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--purple);font-weight:800;cursor:pointer;margin-bottom:10px;">
+            <input type="checkbox" id="rbHasInsurance" onchange="document.getElementById('rbInsuranceDetails').style.display=this.checked?'grid':'none'">
+            <i class="fas fa-shield-halved"></i> المريض يمتلك تأمين طبي
+          </label>
+          <div id="rbInsuranceDetails" style="display:none; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; border-top:1px dashed var(--border); padding-top:12px;">
+            <div>
+              <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">شركة التأمين (Insurance Provider) *</label>
+              <select id="rbInsProvider" class="mfi" style="background:var(--surf);color:var(--text);border:1px solid var(--border)">
+                <option value="">— اختر الشركة —</option>
+                <option value="nathealth">NatHealth (الوطنية للتأمين)</option>
+                <option value="medservice">MedService (ميد سيرفيس)</option>
+                <option value="gig">GIG Jordan (الشرق العربي للتأمين)</option>
+                <option value="alnisr">Al-Nisr Al-Arabi (النسر العربي)</option>
+                <option value="euroarab">EuroArab (اليورو عربي)</option>
+                <option value="jic">Jordan Insurance (التأمين الأردنية)</option>
+                <option value="nic">National Insurance (التأمين الوطنية)</option>
+                <option value="islamic">Islamic Insurance (التأمين الإسلامية)</option>
+                <option value="first">First Insurance (الأولى للتأمين)</option>
+                <option value="other">أخرى (Other)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">رقم البوليصة / المشترك *</label>
+              <input type="text" id="rbInsPolicy" class="mfi" placeholder="Policy / Member ID" dir="ltr">
+            </div>
+            <div>
+              <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">درجة التأمين (Class)</label>
+              <select id="rbInsClass" class="mfi" style="background:var(--surf);color:var(--text);border:1px solid var(--border)">
+                <option value="A">درجة أولى (Class A)</option>
+                <option value="B">درجة ثانية (Class B)</option>
+                <option value="C">درجة ثالثة (Class C)</option>
+                <option value="VIP">شامل (VIP)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">نسبة تحمل المريض (%) *</label>
+              <input type="number" id="rbInsPatientShare" class="mfi" placeholder="مثال: 20" min="0" max="100" value="20" dir="ltr">
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1241,7 +1284,7 @@ function setDashLang(lang) {
   const q = (sel, txt) => { const el = document.querySelector(sel); if(el) el.innerHTML = txt; };
   q('#m1 span', DT('menuLive')); q('#m2 span', DT('menuHist')); q('#m3 span', DT('menuDocs')); q('#mStaff span', DT('menuStaff')); q('#m4 span', DT('menuSets'));
   q('#live .pt', '🔔 ' + DT('bookingsTitle'));
-  q('#hist .pt', '📜 ' + DT('histTitle')); q('#hist button', '<i class="fas fa-trash" style="margin-left:5px"></i>' + DT('clearHist'));
+  q('#hist .pt', '📜 ' + DT('histTitle')); q('button[onclick="clrHist()"]', '<i class="fas fa-trash" style="margin-left:5px"></i>' + DT('clearHist'));
   q('#docs .pt', '👨‍⚕️ ' + DT('docTitle')); q('#staff .pt', '👥 ' + DT('staffTitle')); q('.badd', '<i class="fas fa-plus" style="margin-left:4px"></i>' + DT('btnAdd'));
   q('#settings .pt', '⚙️ ' + DT('setsTitle')); q('.bsave', '<i class="fas fa-floppy-disk" style="margin-left:8px"></i>' + DT('btnSave'));
   q('.lcard h2', '🏥 ' + DT('loginTitle')); q('.lcard p', DT('loginSub')); q('#btnLog', DT('btnLogin'));
@@ -1508,8 +1551,8 @@ db.ref(BASE+'/settings').on('value', snap => {
   }
   
   _sets = s;
-  _sets.mode = (s.type === 'complex' || s.mode === 'medical_complex') ? 'medical_complex' : 'single_clinic';
-  checkAndSeedDefaultDepartments();
+  _sets.mode = 'single_clinic'; // Forced by system update
+  // checkAndSeedDefaultDepartments(); // Disabled
   
   // Only 'suspended' locks the dashboard (Super Admin only)
   if (s.status === 'suspended') {
@@ -2352,6 +2395,25 @@ async function submitReceptionBooking() {
       createdBy:     (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'reception'
     };
 
+    // ── Insurance Info ──
+    const hasIns = document.getElementById('rbHasInsurance') && document.getElementById('rbHasInsurance').checked;
+    if (hasIns) {
+      const insProv = document.getElementById('rbInsProvider').value;
+      const insPol  = (document.getElementById('rbInsPolicy').value || '').trim();
+      const insCls  = document.getElementById('rbInsClass').value;
+      const insShr  = parseFloat(document.getElementById('rbInsPatientShare').value || '0');
+      
+      if (!insProv) { toast('⚠️ يرجى اختيار شركة التأمين', 'err'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-calendar-check"></i> تأكيد الحجز'; return; }
+      if (!insPol)  { toast('⚠️ يرجى إدخال رقم بوليصة التأمين', 'err'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-calendar-check"></i> تأكيد الحجز'; return; }
+      
+      bookingObj.insurance = {
+        provider: insProv,
+        policyNo: sanitize(insPol),
+        class: insCls,
+        patientSharePct: insShr
+      };
+    }
+
     // ── ربط ملف المريض تلقائياً إذا كان لديه رقم وطني ──
     if (patNID && patNID.length >= 9) {
       const cleanNID = ArgonNID.cleanNID(patNID);
@@ -2557,6 +2619,7 @@ async function saveSettings() {
   const update={
     name:sanitize(sN),
     phone:sanitize(sP),
+    taxNumber:sanitize(document.getElementById('sTaxNumber').value),
     status:document.getElementById('sSt').value,
     is24Hours:document.getElementById('s24h').checked,
     clinicStart:document.getElementById('sWs').value,

@@ -1074,16 +1074,11 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
   }
 
   // ── ARGON ENTERPRISE: Zero Auto-Merge Without NID ──
-  // بدلاً من إيقاف التنفيذ كلياً، نعرض نافذة تتيح للطاقم الربط اليدوي أو البحث بالاسم/الهاتف
   if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
+    toast('⚠️ لا يمكن مطابقة ملف المريض تلقائياً بدون رقم وطني مؤكد. يرجى طلب تحديث بيانات المريض من الاستقبال أو البحث يدوياً.', 'err');
     if (window.ArgonMedical && window.ArgonMedical.ShadowLog) {
-      window.ArgonMedical.ShadowLog.log(CID,
-        { result: 'BLOCKED', reason: 'Zero auto-merge policy enforced. Missing NID.' },
-        { source: 'doctor_wr_fallback', incoming: { name: bookingName } }, db
-      );
+      window.ArgonMedical.ShadowLog.log(CID, { result: "BLOCKED", reason: "Zero auto-merge policy enforced. Missing NID." }, { source: "doctor_wr_fallback", incoming: { name: bookingName } }, db);
     }
-    // عرض نافذة الربط اليدوي بدلاً من رسالة الخطأ الصماء
-    _showNIDLinkDialog(bookingKey, booking, bookingName, startVisit);
     return;
   }
 
@@ -1148,240 +1143,18 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
 }
 
 /**
- * ── نافذة الربط اليدوي للمريض ──
- * تظهر عندما يكون الحجز بدون رقم وطني مؤكد
- * تتيح: (1) إدخال الرقم الوطني ومطابقته، (2) البحث بالاسم/الهاتف، (3) إنشاء ملف جديد
- * FIX v1.1 — بديل نافذة الخطأ الصماء
+ * ── دالة مساعدة: المنطق القديم معزولاً ──
  */
-function _showNIDLinkDialog(bookingKey, booking, bookingName, startVisit) {
-  const existing = document.getElementById('_nidLinkDialogOverlay');
-  if (existing) existing.remove();
-
-  const overlay = document.createElement('div');
-  overlay.id = '_nidLinkDialogOverlay';
-  overlay.style.cssText = `
-    position:fixed;inset:0;background:rgba(2,7,6,.88);backdrop-filter:blur(12px);
-    z-index:120000;display:flex;align-items:center;justify-content:center;padding:20px;
-    font-family:'Tajawal',sans-serif;
-  `;
-
-  overlay.innerHTML = `
-    <div style="background:var(--panel);border:1px solid var(--border);border-radius:22px;
-                padding:28px;width:100%;max-width:500px;box-shadow:0 24px 64px rgba(0,0,0,.6)">
-
-      <div style="text-align:center;margin-bottom:20px">
-        <div style="font-size:2.8rem;margin-bottom:8px">🔍</div>
-        <div style="font-size:1.15rem;font-weight:900;color:var(--text)">ربط ملف المريض</div>
-        <div style="font-size:.82rem;color:var(--amber);font-weight:600;margin-top:4px">
-          الحجز لـ <b>${sanitize(bookingName)}</b> لا يحتوي على رقم وطني مؤكد
-        </div>
-      </div>
-
-      <!-- Tab 1: NID entry -->
-      <div style="background:rgba(13,148,136,.06);border:1px solid rgba(13,148,136,.2);border-radius:12px;padding:16px;margin-bottom:12px">
-        <div style="font-size:.78rem;color:var(--teal);font-weight:800;margin-bottom:10px">
-          <i class="fas fa-id-card"></i> إدخال الرقم الوطني والربط التلقائي
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="text" id="_nldNID" placeholder="أدخل الرقم الوطني (9-10 أرقام)"
-            dir="ltr" maxlength="12"
-            style="flex:1;background:var(--surf);border:1px solid var(--border);border-radius:9px;
-                   padding:10px 12px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:.9rem;outline:none"
-            onkeydown="if(event.key==='Enter') _nldDoNID('${bookingKey}','${sanitize(bookingName)}',${startVisit})">
-          <button onclick="_nldDoNID('${bookingKey}','${sanitize(bookingName)}',${startVisit})"
-            style="background:var(--teal);border:none;color:#fff;padding:10px 16px;border-radius:9px;
-                   font-family:'Tajawal',sans-serif;font-weight:800;cursor:pointer;white-space:nowrap">
-            <i class="fas fa-search"></i> مطابقة
-          </button>
-        </div>
-        <div id="_nldNIDResult" style="font-size:.78rem;margin-top:8px;color:var(--muted)"></div>
-      </div>
-
-      <!-- Tab 2: Search -->
-      <div style="background:rgba(14,165,233,.06);border:1px solid rgba(14,165,233,.2);border-radius:12px;padding:16px;margin-bottom:12px">
-        <div style="font-size:.78rem;color:var(--sky);font-weight:800;margin-bottom:10px">
-          <i class="fas fa-user-search"></i> بحث في السجلات الموجودة (اسم أو هاتف)
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="text" id="_nldSearch" placeholder="اكتب جزءاً من الاسم أو الهاتف..."
-            style="flex:1;background:var(--surf);border:1px solid var(--border);border-radius:9px;
-                   padding:10px 12px;color:var(--text);font-family:'Tajawal',sans-serif;font-size:.88rem;outline:none"
-            oninput="_nldDoSearch(this.value)">
-        </div>
-        <div id="_nldSearchResults" style="margin-top:10px;max-height:180px;overflow-y:auto"></div>
-      </div>
-
-      <!-- Actions -->
-      <div style="display:flex;gap:8px">
-        <button onclick="_nldOpenNew('${bookingKey}',${startVisit})"
-          style="flex:1;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--green);
-                 padding:10px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;cursor:pointer">
-          <i class="fas fa-user-plus"></i> فتح كمريض جديد
-        </button>
-        <button onclick="document.getElementById('_nidLinkDialogOverlay').remove()"
-          style="background:var(--surf);border:1px solid var(--border);color:var(--muted);
-                 padding:10px 18px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:600;cursor:pointer">
-          إلغاء
-        </button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-
-  // Pre-fill NID from booking if partially available
-  const preFill = (booking.patNationalId || booking.nationalId || '').trim();
-  if (preFill) document.getElementById('_nldNID').value = preFill;
-
-  // Store context on window for callbacks
-  window._nldCtx = { bookingKey, booking, startVisit };
-
-  setTimeout(() => {
-    const ni = document.getElementById('_nldNID');
-    if (ni) ni.focus();
-  }, 150);
-}
-
-// مطابقة بالرقم الوطني
-window._nldDoNID = async function(bookingKey, bookingName, startVisit) {
-  const rawNID = (document.getElementById('_nldNID')?.value || '').trim();
-  const cleanNID = ArgonNID.cleanNID(rawNID);
-  const resultDiv = document.getElementById('_nldNIDResult');
-
-  if (!ArgonNID.isValidNID(cleanNID)) {
-    if (resultDiv) resultDiv.innerHTML = '<span style="color:var(--red)">⚠️ رقم وطني غير صالح (يجب أن يكون 9 أرقام على الأقل)</span>';
-    return;
-  }
-
-  if (resultDiv) resultDiv.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="color:var(--teal)"></i> جارِ البحث...';
-
-  // أولاً: بحث محلي في الذاكرة
-  const localMatch = ArgonNID.findByNIDLocal(cleanNID, _patients);
-  if (localMatch) {
-    if (resultDiv) resultDiv.innerHTML = `<span style="color:var(--green)">✅ وُجد: ${sanitize(localMatch.info?.name || '')} — سيتم الربط</span>`;
-    // ربط الحجز بالمريض المكتشف
-    await db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(localMatch.uid).catch(() => {});
-    await db.ref(`${BASE}/bookings/${bookingKey}/patNationalId`).set(cleanNID).catch(() => {});
-    setTimeout(() => {
-      const ov = document.getElementById('_nidLinkDialogOverlay');
-      if (ov) ov.remove();
-      if (startVisit) { sw('newVisit'); loadVisitForm(localMatch.uid, bookingKey); }
-      else { viewPatientFile(localMatch.uid); sw('patFile'); }
-    }, 700);
-    return;
-  }
-
-  // ثانياً: بحث Firebase
-  try {
-    const snap = await db.ref(`${BASE}/patients`).orderByChild('info/nationalId').equalTo(cleanNID).once('value');
-    if (snap.exists()) {
-      const uid = Object.keys(snap.val())[0];
-      const info = snap.val()[uid]?.info || {};
-      if (resultDiv) resultDiv.innerHTML = `<span style="color:var(--green)">✅ وُجد: ${sanitize(info.name || '')} — سيتم الربط</span>`;
-      await db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(uid).catch(() => {});
-      await db.ref(`${BASE}/bookings/${bookingKey}/patNationalId`).set(cleanNID).catch(() => {});
-      setTimeout(() => {
-        const ov = document.getElementById('_nidLinkDialogOverlay');
-        if (ov) ov.remove();
-        if (startVisit) { sw('newVisit'); loadVisitForm(uid, bookingKey); }
-        else { viewPatientFile(uid); sw('patFile'); }
-      }, 700);
-    } else {
-      if (resultDiv) resultDiv.innerHTML = `<span style="color:var(--amber)">لم يُعثر على ملف بهذا الرقم. اضغط "فتح كمريض جديد" لإنشاء ملف.</span>`;
-    }
-  } catch (e) {
-    if (resultDiv) resultDiv.innerHTML = `<span style="color:var(--red)">❌ خطأ في البحث: ${e.message}</span>`;
-  }
-};
-
-// بحث بالاسم أو الهاتف
-window._nldDoSearch = function(query) {
-  const container = document.getElementById('_nldSearchResults');
-  if (!container) return;
-  const q = query.trim().toLowerCase();
-  if (q.length < 2) { container.innerHTML = ''; return; }
-
-  const ctx = window._nldCtx || {};
-  const results = Object.entries(_patients).filter(([uid, p]) => {
-    const info = p.info || {};
-    const name  = (info.name  || '').toLowerCase();
-    const phone = (info.phone || '').toLowerCase();
-    const nid   = (info.nationalId || '').toLowerCase();
-    return name.includes(q) || phone.includes(q) || nid.includes(q);
-  }).slice(0, 8);
-
-  if (!results.length) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:.78rem;padding:6px">لا نتائج</div>';
-    return;
-  }
-
-  container.innerHTML = results.map(([uid, p]) => {
-    const info = p.info || {};
-    return `
-      <div onclick="_nldSelectPatient('${uid}','${ctx.bookingKey}',${ctx.startVisit})"
-        style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;
-               cursor:pointer;border:1px solid var(--border);margin-bottom:6px;
-               background:rgba(255,255,255,.02);transition:.2s"
-        onmouseover="this.style.background='rgba(13,148,136,.08)'"
-        onmouseout="this.style.background='rgba(255,255,255,.02)'">
-        <span style="font-size:1.4rem">${info.gender === 'أنثى' ? '👩' : '👨'}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:800;font-size:.9rem;color:var(--text)">${sanitize(info.name || '—')}</div>
-          <div style="font-size:.72rem;color:var(--muted);font-family:'IBM Plex Mono',monospace">
-            📞 ${info.phone || '—'}
-            ${info.nationalId ? ` · 🪪 ${info.nationalId}` : ''}
-          </div>
-        </div>
-        <i class="fas fa-chevron-left" style="color:var(--teal);font-size:.8rem"></i>
-      </div>
-    `;
-  }).join('');
-};
-
-// اختيار مريض من نتائج البحث
-window._nldSelectPatient = async function(uid, bookingKey, startVisit) {
-  await db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(uid).catch(() => {});
-  const ov = document.getElementById('_nidLinkDialogOverlay');
-  if (ov) ov.remove();
-  if (startVisit) { sw('newVisit'); loadVisitForm(uid, bookingKey); }
-  else { viewPatientFile(uid); sw('patFile'); }
-  toast('✅ تم ربط الملف الطبي بالحجز', 'ok');
-};
-
-// فتح كمريض جديد (يُحوَّل لنموذج التسجيل مع بيانات الحجز مُعبَّأة مسبقاً)
-window._nldOpenNew = function(bookingKey, startVisit) {
-  const ov = document.getElementById('_nidLinkDialogOverlay');
-  if (ov) ov.remove();
-
-  const booking = _liveBookings[bookingKey] || {};
-
-  // عبِّئ نموذج المريض الجديد بالبيانات المتاحة من الحجز
-  const nameEl  = document.getElementById('npName');
-  const phoneEl = document.getElementById('npPhone');
-  if (nameEl  && booking.patName)  nameEl.value  = booking.patName;
-  if (phoneEl && booking.patPhone) phoneEl.value = booking.patPhone;
-
-  // فتح نافذة تسجيل مريض جديد
-  const modal = document.getElementById('newPatModal');
-  if (modal) modal.style.display = 'flex';
-
-  toast('📋 يرجى إكمال بيانات المريض وإضافة الرقم الوطني', 'ok');
-};
-
 async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = false) {
   const _legacyNID = ArgonNID.cleanNID(booking.patNationalId || booking.nationalId || '');
 
-  // ── ARGON ENTERPRISE: Block creation without NID — show dialog instead of silent error ──
+  // ── ARGON ENTERPRISE: Block creation without NID ──
   if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
     if (!ArgonNID.isValidNID(_legacyNID)) {
+      toast('⚠️ لا يمكن إنشاء ملف مريض جديد بدون رقم وطني (أو جواز سفر). يرجى إضافته من نافذة الحجز.', 'err');
       if (window.ArgonMedical && window.ArgonMedical.ShadowLog) {
-        window.ArgonMedical.ShadowLog.log(CID,
-          { result: 'BLOCKED', reason: 'Missing NID for new file creation' },
-          { source: 'legacy_booking_guard', incoming: { name: booking.patName } }, db
-        );
+        window.ArgonMedical.ShadowLog.log(CID, { result: "BLOCKED", reason: "Missing NID for new file creation" }, { source: "legacy_booking_guard", incoming: { name: booking.patName } }, db);
       }
-      // FIX v1.1: نافذة الربط اليدوي بدلاً من الإيقاف الصامت
-      _showNIDLinkDialog(bookingKey, booking, booking.patName || '', startVisit);
       return;
     }
   }
@@ -2510,7 +2283,7 @@ function loadVisitForm(uid, bookingId = null) {
         <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
           <div style="position:relative;flex:2;min-width:200px">
             <input id="rxName" class="fi" placeholder="اسم الدواء (ابحث في مخزون الصيدلية أو أدخل يدوياً)" onkeyup="searchDrug()" onfocus="searchDrug()" autocomplete="off" style="width:100%">
-            <div id="rxDropdown" class="complex-only" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:220px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
+            <div id="rxDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:220px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
           </div>
           <input id="rxDose" class="fi" placeholder="الجرعة (مثال: 500mg)" style="flex:1;min-width:100px">
           <input id="rxFreq" class="fi" placeholder="التكرار (مثال: 3 مرات)" style="flex:1;min-width:100px">
@@ -2677,12 +2450,6 @@ function searchDrug() {
   if (!inp || !dd) return;
   const q = inp.value.trim();
   if (!q) { dd.style.display = 'none'; return; }
-  
-  if (typeof ArgonLicense !== 'undefined' && ArgonLicense.type === 'single') {
-     dd.style.display = 'none';
-     return;
-  }
-
   dd.innerHTML = _buildDrugDropdownHTML(_searchInventoryLogic(q), q, 'selectDrug');
   dd.style.display = 'block';
 }
@@ -2703,12 +2470,6 @@ function searchWorkspaceDrug() {
   if (!inp || !dd) return;
   const q = inp.value.trim();
   if (!q) { dd.style.display = 'none'; return; }
-
-  if (typeof ArgonLicense !== 'undefined' && ArgonLicense.type === 'single') {
-     dd.style.display = 'none';
-     return;
-  }
-
   dd.innerHTML = _buildDrugDropdownHTML(_searchInventoryLogic(q), q, 'selectWorkspaceDrug');
   dd.style.display = 'block';
 }
@@ -4272,9 +4033,6 @@ function completeWorkspaceVisit() {
     }
 
     _writeVisitUpdates(updates, diag);
-    const finalVisitKey = bookingId || timelineKey;
-    const currentDoc = (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب';
-    _emitBillingTrigger(uid, _patients[uid]?.info?.name || activeVisit.name || 'مريض', _patients[uid]?.info?.phone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc);
   }
   // --- Case 2: Unregistered patient — auto-register then save ---
   else {
@@ -4358,66 +4116,18 @@ function completeWorkspaceVisit() {
 
     activeVisit.uid = newUid;
     _writeVisitUpdates(updates, diag);
-    const finalVisitKey = bookingId || timelineKey;
-    const currentDoc = (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب';
-    _emitBillingTrigger(newUid, booking.patName || activeVisit.name || 'مريض', booking.patPhone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc);
     toast('تم تسجيل المريض تلقائياً في النظام', 'ok');
   }
 }
 
-function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx, addConsultation, docName) {
-    if (!visitKey) return;
-    
-    // SAFETY CHECK: Single clinics strictly do NOT bill for lab, radiology, or pharmacy
-    const isSingle = (typeof ArgonLicense !== 'undefined' && ArgonLicense.type === 'single');
-
-    const payload = {
-       patientId: patientId,
-       patientName: patientName,
-       patientPhone: patientPhone,
-       visitKey: visitKey,
-       docName: docName || '',
-       addConsultation: addConsultation === true,
-       orders: {
-          lab: isSingle ? [] : (labs || []),
-          radiology: isSingle ? [] : (rads || []),
-          pharmacy: isSingle ? [] : (rx || []).map(r => r.drug)
-       },
-       createdAt: new Date().toISOString(),
-       processedAt: null,
-       processingLock: null,
-       processingStatus: 'pending'
-    };
-    db.ref(`${BASE}/billing_triggers/${visitKey}`).set(payload).catch(e => console.error("Billing trigger failed", e));
-}
-
-// FIX v1.1: حفظ مرجع زر الإنهاء لإعادة ضبطه عند الخطأ
-let _visitSaveBtn = null;
-
 function _writeVisitUpdates(updates, diag) {
-  // تعطيل زر الإنهاء أثناء الكتابة
-  if (!_visitSaveBtn) _visitSaveBtn = document.getElementById('btnCompleteVisit') || document.querySelector('[onclick*="completeWorkspaceVisit"]');
-  if (_visitSaveBtn) {
-    _visitSaveBtn.disabled = true;
-    _visitSaveBtn._origHTML = _visitSaveBtn.innerHTML;
-    _visitSaveBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> جارِ الحفظ...';
-  }
-
   db.ref().update(updates).then(() => {
     logAudit('END_VISIT', `تم إنهاء زيارة وحفظ الملف. التشخيص: ${diag || '—'}`, 'العيادة');
     toast('✅ تم إنهاء الزيارة الطبية وحفظ الملف بنجاح!', 'ok');
     sw('waitingRoom');
     activeVisit = { uid: null, bookingId: null, rx: [] };
-    clearVisitDraft();
   }).catch(err => {
     toast('❌ خطأ أثناء الحفظ: ' + err.message, 'err');
-    // FIX v1.1: إعادة ضبط الزر عند الخطأ
-    if (_visitSaveBtn) {
-      _visitSaveBtn.disabled = false;
-      _visitSaveBtn.innerHTML = _visitSaveBtn._origHTML || '<i class="fas fa-flag-checkered"></i> إنهاء الزيارة';
-    }
-  }).finally(() => {
-    _visitSaveBtn = null;
   });
 }
 
