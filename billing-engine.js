@@ -503,7 +503,8 @@ const BillingEngine = {
 
   calculateInvoicePaid: function (invoiceId) {
     let paid = 0;
-    for (const tx of Object.values(this._transactions)) {
+    const txs = this._transactions || {};
+    for (const tx of Object.values(txs)) {
       if (tx.invoiceId !== invoiceId || tx.status === 'voided') continue;
       if (tx.type === 'PAYMENT')  paid += parseFloat(tx.amount) || 0;
       if (tx.type === 'REVERSAL') paid -= parseFloat(tx.amount) || 0;
@@ -1236,29 +1237,30 @@ const BillingEngine = {
  * منطق التوزيع: FIFO — يُطبَّق على الفواتير من الأقدم للأحدث.
  */
 function recordBillingPayment() {
-  const patientId = BillingEngine.activePatientId;
-  if (!patientId) { _B.toast('⚠️ لم يتم تحديد مريض', 'err'); return; }
+  try {
+    const patientId = BillingEngine.activePatientId;
+    if (!patientId) { _B.toast('⚠️ لم يتم تحديد مريض', 'err'); return; }
 
-  const amtEl    = document.getElementById('blPayAmount');
-  const reasonEl = document.getElementById('blPayReason');
-  const amount   = parseFloat(amtEl?.value);
-  const reason   = reasonEl?.value?.trim() || 'دفع نقدي';
+    const amtEl    = document.getElementById('blPayAmount');
+    const reasonEl = document.getElementById('blPayReason');
+    const amount   = parseFloat(amtEl?.value);
+    const reason   = reasonEl?.value?.trim() || 'دفع نقدي';
 
-  if (!amount || amount <= 0 || isNaN(amount)) {
-    _B.toast('⚠️ أدخل مبلغاً صحيحاً أكبر من صفر', 'err'); return;
-  }
+    if (!amount || amount <= 0 || isNaN(amount)) {
+      _B.toast('⚠️ أدخل مبلغاً صحيحاً أكبر من صفر', 'err'); return;
+    }
 
-  // ── منع الدفع إذا كانت هناك فواتير قيد المراجعة ──
-  const hasBlocked = Object.values(BillingEngine._invoices)
-    .some(inv => inv.patientId === patientId && inv.financialBlocked);
-  if (hasBlocked) {
-    _B.toast('⛔ لا يمكن تحصيل الدفعات: هناك فواتير قيد المراجعة المالية', 'err'); return;
-  }
+    // ── منع الدفع إذا كانت هناك فواتير قيد المراجعة ──
+    const hasBlocked = Object.values(BillingEngine._invoices || {})
+      .some(inv => inv && inv.patientId === patientId && inv.financialBlocked);
+    if (hasBlocked) {
+      _B.toast('⛔ لا يمكن تحصيل الدفعات: هناك فواتير قيد المراجعة المالية', 'err'); return;
+    }
 
   // ── حساب الرصيد المستحق الفعلي ──
-  const pInvoices = Object.entries(BillingEngine._invoices)
-    .filter(([, inv]) => inv.patientId === patientId && !['voided','cancelled'].includes(inv.status))
-    .sort(([,a],[,b]) => (a.createdAt||'') > (b.createdAt||'') ? 1 : -1); // FIFO
+  const pInvoices = Object.entries(BillingEngine._invoices || {})
+    .filter(([, inv]) => inv && inv.patientId === patientId && !['voided','cancelled'].includes(inv.status))
+    .sort(([,a],[,b]) => ((a && a.createdAt)||'') > ((b && b.createdAt)||'') ? 1 : -1); // FIFO
 
   let totalUnallocated = pInvoices.reduce((sum, [k, inv]) => {
     const rem = (parseFloat(inv.total) || 0) - BillingEngine.calculateInvoicePaid(k);
@@ -1328,6 +1330,11 @@ function recordBillingPayment() {
     console.error('[BillingEngine] payment batch failed:', e);
     _B.toast('❌ فشل تسجيل الدفعة — تأكد من الاتصال', 'err');
   });
+
+  } catch (err) {
+    console.error('[BillingEngine] Uncaught error in recordBillingPayment:', err);
+    _B.toast(`❌ خطأ داخلي: ${err.message}`, 'err');
+  }
 }
 
 function closeBillingModal() {
