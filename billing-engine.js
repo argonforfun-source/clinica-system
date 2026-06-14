@@ -1276,7 +1276,7 @@ function recordBillingPayment() {
 
   // ── بناء batch update ──
   const timestamp  = _B.now();
-  const session    = window.ArgonSession ? window.ArgonSession.get() : {};
+  const session    = window.ArgonSession ? (window.ArgonSession.get() || {}) : {};
   const actorId    = session.staffId || 'dashboard_admin';
   const updates    = {};
   let   remaining  = amount;
