@@ -2064,7 +2064,7 @@ function generatePatientFileHTML(uid) {
           <div class="tl-card" style="${cardStyle}" onclick="this.classList.toggle('open')">
             <div class="tl-head" style="justify-content: space-between; align-items:flex-start;">
               <div style="display:flex; flex-direction:column; gap:4px;">
-                <span class="tl-date">${v.date} · ${v.time}</span>
+                <span class="tl-date" style="display:flex;align-items:center;gap:6px">${v.date} · ${v.time} <span style="font-size:0.75rem;color:var(--teal);background:rgba(13,148,136,0.1);padding:2px 8px;border-radius:4px;font-weight:bold"><i class="far fa-clock"></i> ${window.argonTimeAgo ? window.argonTimeAgo((v.date || '') + 'T' + parseArabicTime(v.time || '') + ':00') : ''}</span></span>
                 <span class="tl-doc" style="background:#0f172a; color:#f8fafc; padding:4px 10px; border-radius:8px; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(0,0,0,0.1); width:fit-content; border: 1px solid #334155;"><i class="fas ${cardIcon}"></i> الطبيب: ${sanitize(v.docName)}</span>
               </div>
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -3862,6 +3862,10 @@ function formatArabicDate(dateStr) {
 // Convert 12h Arabic/English time into comparable 24h format
 function parseArabicTime(t) {
   let clean = String(t || '').trim();
+  const easternDigits = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
+  for (let i = 0; i < 10; i++) {
+    clean = clean.replace(easternDigits[i], i);
+  }
   const isPM = clean.includes('م') || clean.includes('PM');
   const isAM = clean.includes('ص') || clean.includes('AM');
   const match = clean.match(/(\d+):(\d+)/);
