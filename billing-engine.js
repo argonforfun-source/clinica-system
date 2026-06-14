@@ -1294,7 +1294,7 @@ function recordBillingPayment() {
     // ── financial_transaction جديد — .set() على push key ✅ ──
     // (append-only node: ".write": "!data.exists()")
     const txKey = db.ref().child('x').push().key;
-    updates[`${BASE}/financial_transactions/${txKey}`] = {
+    updates[`financial_transactions/${txKey}`] = {
       invoiceId:  invId,
       patientId,
       type:       'PAYMENT',
@@ -1307,17 +1307,17 @@ function recordBillingPayment() {
     // ── تحديث حالة الفاتورة — .update() ✅ ──
     // invoices: ".write": "!data.exists() || newData.exists()"
     // newData.exists() = true لأننا نحدث (لا نحذف)
-    updates[`${BASE}/invoices/${invId}/status`] = isFullyPaid ? 'paid' : 'partial';
+    updates[`invoices/${invId}/status`] = isFullyPaid ? 'paid' : 'partial';
     if (isFullyPaid) {
-      updates[`${BASE}/invoices/${invId}/locked`]  = true;
-      updates[`${BASE}/invoices/${invId}/paidAt`]  = timestamp;
+      updates[`invoices/${invId}/locked`]  = true;
+      updates[`invoices/${invId}/paidAt`]  = timestamp;
     }
 
     remaining -= toApply;
   }
 
   // ── كتابة دفعية واحدة ✅ ──
-  db.ref().update(updates).then(() => {
+  db.ref(BASE).update(updates).then(() => {
     _B.toast(`✅ تم تسجيل دفعة ${_B.jod(amount)} د.أ بنجاح`, 'ok');
     if (amtEl)    amtEl.value    = '';
     if (reasonEl) reasonEl.value = '';
