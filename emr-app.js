@@ -1070,6 +1070,9 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
         );
         return; // أوقف التنفيذ — النافذة ستتولى الأمر
       }
+      } catch (e) {
+        console.warn('[PatientMatch Blocking Error]', e);
+      }
     }
   }
   // ─────────────────────────────────────────────────────────────
