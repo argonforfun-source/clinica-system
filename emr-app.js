@@ -4859,3 +4859,237 @@ async function getPatientSafe(uid) {
 
   return null;
 }
+
+
+// ══════════════════════════════════════════════════════════════
+// DOCTOR TASKS MANAGER (إدارة المهام والملاحظات الشخصية)
+// ══════════════════════════════════════════════════════════════
+
+window.addDoctorTask = function() {
+  const inputEl = document.getElementById('newTaskInput');
+  if (!inputEl) return;
+  const text = inputEl.value.trim();
+  if (!text) return;
+  
+  const session = ArgonSession.get() || {};
+  const docId = session.staffId;
+  if (!docId) {
+    alert("عذراً، يجب تسجيل الدخول كطبيب لإضافة المهام.");
+    return;
+  }
+  
+  const taskId = db.ref(`${BASE}/tasks/${docId}`).push().key;
+  
+  db.ref(`${BASE}/tasks/${docId}/${taskId}`).set({
+    text: text,
+    status: 'pending',
+    timestamp: Date.now()
+  }).then(() => {
+    inputEl.value = '';
+    inputEl.focus();
+  }).catch(err => {
+    console.error(err);
+    alert('حدث خطأ أثناء حفظ المهمة');
+  });
+};
+
+window.toggleTaskStatus = function(taskId, currentStatus) {
+  const session = ArgonSession.get() || {};
+  const docId = session.staffId;
+  if (!docId) return;
+  
+  const newStatus = (currentStatus === 'pending') ? 'completed' : 'pending';
+  db.ref(`${BASE}/tasks/${docId}/${taskId}/status`).set(newStatus);
+};
+
+window.deleteTask = function(taskId) {
+  if(!confirm('هل أنت متأكد من حذف هذه المهمة؟')) return;
+  const session = ArgonSession.get() || {};
+  const docId = session.staffId;
+  if (!docId) return;
+  
+  db.ref(`${BASE}/tasks/${docId}/${taskId}`).remove();
+};
+
+function renderDoctorTasks(tasksObj) {
+  const pendingEl = document.getElementById('tasksPending');
+  const completedEl = document.getElementById('tasksCompleted');
+  if (!pendingEl || !completedEl) return;
+  
+  if (!tasksObj) {
+    pendingEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.9rem;">لا توجد مهام معلقة.</div>';
+    completedEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.9rem;">لا توجد مهام منجزة.</div>';
+    return;
+  }
+  
+  let pendingHtml = '';
+  let completedHtml = '';
+  
+  // Sort tasks by timestamp (newest first)
+  const tasks = Object.entries(tasksObj).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
+  
+  tasks.forEach(([id, t]) => {
+    const isCompleted = t.status === 'completed';
+    const dateStr = new Date(t.timestamp).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+    
+    const cardHtml = `
+      <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; align-items:flex-start; gap:10px; transition:0.2s;">
+        <button onclick="window.toggleTaskStatus('${id}', '${t.status}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem; color:${isCompleted ? 'var(--green)' : 'var(--muted)'}; padding:0;">
+          <i class="${isCompleted ? 'fas fa-check-circle' : 'far fa-circle'}"></i>
+        </button>
+        <div style="flex:1;">
+          <div style="font-weight:bold; font-size:0.95rem; text-decoration:${isCompleted ? 'line-through' : 'none'}; color:${isCompleted ? 'var(--muted)' : '#000'}">
+            ${t.text}
+          </div>
+          <div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">
+            <i class="far fa-clock"></i> ${dateStr}
+          </div>
+        </div>
+        <button onclick="window.deleteTask('${id}')" style="background:none; border:none; cursor:pointer; font-size:1rem; color:var(--red); padding:4px; opacity:0.6; transition:0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+      </div>
+    `;
+    
+    if (isCompleted) {
+      completedHtml += cardHtml;
+    } else {
+      pendingHtml += cardHtml;
+    }
+  });
+  
+  pendingEl.innerHTML = pendingHtml || '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.9rem;">لا توجد مهام معلقة. رائعة! 🎉</div>';
+  completedEl.innerHTML = completedHtml || '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.9rem;">لا توجد مهام منجزة.</div>';
+}
+
+// Hook to listen for tasks
+let _tasksListener = null;
+function initDoctorTasksListener() {
+  const session = ArgonSession.get() || {};
+  const docId = session.staffId;
+  if (!docId) return;
+  
+  if (_tasksListener) db.ref(`${BASE}/tasks/${docId}`).off('value', _tasksListener);
+  
+  _tasksListener = db.ref(`${BASE}/tasks/${docId}`).on('value', snap => {
+    if(document.getElementById('tasksPending')) {
+      renderDoctorTasks(snap.val());
+    }
+  });
+}
+
+// Start listening once the system loads
+setTimeout(initDoctorTasksListener, 2000);
+
+// Also re-init if they open the inbox specifically
+const oldSwTasks = window.sw;
+window.sw = function(id, el) {
+  oldSwTasks(id, el);
+  if(id === 'inbox') {
+    initDoctorTasksListener();
+  }
+};
+
+
+// ══════════════════════════════════════════════════════════════
+// SMART CLINICAL ASSISTANT (المساعد السريري الذكي)
+// ══════════════════════════════════════════════════════════════
+
+window.calcBMI = function() {
+  const w = parseFloat(document.getElementById('calcWeight').value);
+  const h = parseFloat(document.getElementById('calcHeight').value) / 100;
+  const resEl = document.getElementById('bmiResult');
+  if (!w || !h || h <= 0 || w <= 0) {
+    resEl.innerHTML = '<span style="color:var(--red)">يرجى إدخال قيم صحيحة للوزن والطول</span>';
+    return;
+  }
+  const bmi = (w / (h * h)).toFixed(1);
+  let status = '', color = '';
+  if (bmi < 18.5) { status = 'نقص في الوزن'; color = 'var(--amber)'; }
+  else if (bmi < 25) { status = 'وزن طبيعي'; color = 'var(--green)'; }
+  else if (bmi < 30) { status = 'زيادة في الوزن'; color = 'var(--amber)'; }
+  else { status = 'سمنة'; color = 'var(--red)'; }
+  
+  resEl.innerHTML = `<span style="font-size:1.5rem;color:${color}">${bmi}</span><br><span style="color:${color}">${status}</span>`;
+};
+
+window.calcEDD = function() {
+  const lmpStr = document.getElementById('calcLMP').value;
+  const resEl = document.getElementById('eddResult');
+  if (!lmpStr) {
+    resEl.innerHTML = '<span style="color:var(--red)">يرجى تحديد تاريخ أول يوم لآخر دورة</span>';
+    return;
+  }
+  const lmp = new Date(lmpStr);
+  // Naegele's rule: add 7 days, subtract 3 months, add 1 year
+  const edd = new Date(lmp.getTime());
+  edd.setDate(edd.getDate() + 7);
+  edd.setMonth(edd.getMonth() - 3);
+  edd.setFullYear(edd.getFullYear() + 1);
+  
+  resEl.innerHTML = `<span style="font-size:1.3rem;color:var(--purple)">موعد الولادة: ${edd.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</span>`;
+};
+
+// ══════════════════════════════════════════════════════════════
+// DOCTOR APPOINTMENTS CALENDAR
+// ══════════════════════════════════════════════════════════════
+
+function renderDoctorCalendar() {
+  const session = ArgonSession.get() || {};
+  const loggedInDoc = session.staffId;
+  const isAdmin = session.role === 'admin';
+  const content = document.getElementById('calendarContent');
+  if (!content) return;
+  
+  let myBookings = Object.entries(_liveBookings).filter(([k, b]) => {
+    const assigned = b.doctorId || b.docKey;
+    if (!isAdmin && assigned !== loggedInDoc) return false;
+    return true;
+  });
+  
+  // Sort by date and time
+  myBookings.sort((a, b) => {
+    const tA = (a[1].date || '') + ' ' + (a[1].time || '');
+    const tB = (b[1].date || '') + ' ' + (b[1].time || '');
+    return tA.localeCompare(tB);
+  });
+  
+  if (myBookings.length === 0) {
+    content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">لا توجد حجوزات قادمة مجدولة.</div>';
+    return;
+  }
+  
+  let html = '<div style="display:grid; gap:10px;">';
+  myBookings.forEach(([k, b]) => {
+    let statusBadge = '';
+    if (b.status === 'new') statusBadge = '<span style="background:var(--sky);color:#fff;padding:2px 6px;border-radius:4px;font-size:0.7rem;">حجز جديد</span>';
+    else if (b.status === 'confirmed') statusBadge = '<span style="background:var(--teal);color:#fff;padding:2px 6px;border-radius:4px;font-size:0.7rem;">مؤكد</span>';
+    else if (b.status === 'waiting') statusBadge = '<span style="background:var(--amber);color:#fff;padding:2px 6px;border-radius:4px;font-size:0.7rem;">في الانتظار</span>';
+    else statusBadge = `<span style="background:#888;color:#fff;padding:2px 6px;border-radius:4px;font-size:0.7rem;">${b.status}</span>`;
+    
+    html += `
+      <div style="background:#fff; border:1px solid var(--border); border-left:4px solid var(--teal); border-radius:8px; padding:12px; display:flex; align-items:center; gap:12px;">
+        <div style="min-width:70px; font-weight:bold; color:var(--teal); font-size:1.1rem; text-align:center;">
+          ${b.time || '--:--'}
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:bold;">${b.patName || 'مريض غير معروف'}</div>
+          <div style="font-size:0.8rem; color:var(--muted);">${b.date || ''} | ${b.patPhone || ''}</div>
+        </div>
+        <div>
+          ${statusBadge}
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  content.innerHTML = html;
+}
+
+// Hook into the bookings listener to update calendar
+const originalBookingsListener = db.ref(`${BASE}/bookings`).on('value', snap => {
+  if(window._timeoutCalendarRender) clearTimeout(window._timeoutCalendarRender);
+  window._timeoutCalendarRender = setTimeout(() => {
+    if(document.getElementById('calendarContent')) renderDoctorCalendar();
+  }, 1000);
+});
