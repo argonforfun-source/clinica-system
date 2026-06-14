@@ -5,35 +5,6 @@
  */
 
 window.ArgonUIManager = {
-    // Switch Sidebar Navigation Tabs
-    sw: function (id, el) {
-        // Prevent opening empty clinical workspace if no patient is active
-        if (id === 'newVisit') {
-            if (typeof window.activeVisit === 'undefined' || !window.activeVisit || !window.activeVisit.uid) {
-                if (typeof this.toast !== 'undefined') this.toast('⚠️ الرجاء اختيار مريض من غرفة الانتظار أولاً لبدء زيارة', 'warn');
-                return;
-            }
-        }
-
-        // Release patient locks when leaving patient-specific contexts
-        if (id !== 'patFile' && id !== 'newVisit') {
-            if (window.EMRContext && window.EMRContext.sessionLock) {
-                if (typeof BASE !== 'undefined' && window.EMRContext.activePatientId && window.db) {
-                    window.db.ref(`${BASE}/active_sessions/${window.EMRContext.activePatientId}`).remove();
-                }
-                window.EMRContext.sessionLock = false;
-                window.EMRContext.activePatientId = null;
-            }
-        }
-
-        document.querySelectorAll('.sec').forEach(s => s.classList.remove('on'));
-        const targetSection = document.getElementById(id);
-        if (targetSection) targetSection.classList.add('on');
-
-        document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
-        if (el) el.classList.add('on');
-    },
-
     // Toast Notifications
     toast: function (msg, type = '') {
         const t = document.getElementById('toast');
@@ -59,7 +30,6 @@ window.ArgonUIManager = {
 };
 
 // Global polyfills to keep backward compatibility with emr-app.js existing code
-window.sw = function(id, el) { return window.ArgonUIManager.sw(id, el); };
 window.toast = function(msg, type) { return window.ArgonUIManager.toast(msg, type); };
 window.toggleTheme = function() { return window.ArgonUIManager.toggleTheme(); };
 window.updateThemeIcon = function(theme) { return window.ArgonUIManager.updateThemeIcon(theme); };
