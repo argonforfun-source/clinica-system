@@ -824,7 +824,7 @@ function loadMorePatients() {
   filterPatients();
 }
 
-function loadMorePatientsFromServer() {
+async function loadMorePatientsFromServer() {
   if (!_pager) return;
 
   /* تعطيل الزر أثناء التحميل */
@@ -4750,7 +4750,7 @@ window.renderCriticalAlertsUI = function () {
 };
 
 
-function getPatientSafe(uid) {
+async function getPatientSafe(uid) {
   if (!uid) return null;
 
   /* 1. من الكاش المحلي */
