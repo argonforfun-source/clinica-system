@@ -445,7 +445,7 @@
     var scriptPath = 'specialty-modules/' + moduleName + '.js';
 
     var script = document.createElement('script');
-    script.src = scriptPath + '?v=1.3';
+    script.src = scriptPath + '?v=' + Date.now();
     script.async = true;
 
     script.onload = function () {
