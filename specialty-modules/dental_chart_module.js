@@ -74,13 +74,21 @@
   function _getPatientName() {
     if (!_currentPatientId) return 'غير محدد';
     try {
+      if (typeof document !== 'undefined') {
+        var pName = document.querySelector('.pat-name');
+        if (pName && pName.textContent) return pName.textContent.trim();
+        
+        var wsName = document.getElementById('wsName');
+        if (wsName && wsName.textContent) return wsName.textContent.trim();
+      }
+
       if (window._patients && window._patients[_currentPatientId]) {
         var p = window._patients[_currentPatientId];
         return p.name || (p.info && p.info.name) || 'مريض رقم ' + _currentPatientId.substring(0, 5);
       }
-      return 'مريض ' + _currentPatientId.substring(0, 5);
+      return 'مريض -' + _currentPatientId.substring(1, 5);
     } catch(e) {
-      return 'مريض ' + _currentPatientId.substring(0, 5);
+      return 'مريض -' + _currentPatientId.substring(1, 5);
     }
   }
 
