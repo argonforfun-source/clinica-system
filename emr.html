@@ -77,7 +77,7 @@
     <!-- PATIENT LIST SECTION -->
     <div id="patList" class="sec on">
       <div class="ph">
-        <div><div class="pt">👥 قائمة المرضى</div><div class="ps">جميع المرضى المسجلين في النظام</div></div>
+        <div><div class="pt">👥 قائمة المرضى <span id="patTotalBadge" style="font-size:0.75rem;background:var(--teal);color:#fff;padding:2px 8px;border-radius:12px;margin-right:8px;box-shadow:0 2px 4px rgba(13,148,136,0.3)">0</span></div><div class="ps">جميع المرضى المسجلين في النظام</div></div>
         <div style="display:flex; gap:8px;">
           <div style="position:relative;">
             <button class="btn-secondary btn-sm" style="border:1px solid var(--teal);color:var(--teal);background:rgba(13,148,136,0.05)" onclick="toggleRecentPatientsDropdown()">
@@ -200,6 +200,7 @@
       <div class="ws-header">
         <div style="display:flex;align-items:center;gap:16px;">
           <button class="ws-back-btn" onclick="cancelVisit()"><i class="fas fa-arrow-right"></i> العودة لغرفة الانتظار</button>
+          <button class="ws-back-btn" onclick="sw('patFile')" style="background:rgba(13,148,136,0.1);color:var(--teal);border-color:rgba(13,148,136,0.2);"><i class="fas fa-file-medical"></i> العودة لملف المريض</button>
           <div style="width:1px;height:24px;background:var(--border);"></div>
           <div style="display:flex;align-items:center;gap:12px;">
             <div id="wsAvatar" class="photo-preview-circle" style="width:40px;height:40px;font-size:1rem;">👤</div>
@@ -497,7 +498,7 @@
 <script src="argon-nid-gate.js"></script>
 <script src="argon-enterprise.js???v=7"></script>
 <script src="billing-engine.js?v=12.994"></script>
-<script src="emr-app.js?v=20"></script>
+<script src="emr-app.js?v=21"></script>
 <script>
 (function setMaxDates() {
   const today = new Date().toISOString().split('T')[0];

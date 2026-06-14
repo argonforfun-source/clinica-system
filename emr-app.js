@@ -305,6 +305,17 @@ window.addEventListener('DOMContentLoaded', () => {
     if (typeof renderDynamicCatalogTags === 'function') renderDynamicCatalogTags();
   });
 });
+
+// Initialize Patient Count Badge
+setTimeout(() => {
+  if (typeof db !== 'undefined' && BASE) {
+    db.ref(`${BASE}/patients`).once('value').then(snap => {
+      window._totalPatientsCount = snap.numChildren();
+      const badge = document.getElementById('patTotalBadge');
+      if (badge) badge.textContent = window._totalPatientsCount;
+    }).catch(e => console.warn('Could not load patient count', e));
+  }
+}, 2500);
 // EMR Initialization
 function initEMR() {
   toast('مرحباً بك في نظام السجلات الطبية', 'ok');
@@ -1866,6 +1877,11 @@ function _executeSaveNewPatient(name, phone, nationalId, dob, age, gender, blood
   const newUid = newRef.key;
 
   newRef.set(patObj).then(() => {
+    if (window._totalPatientsCount !== undefined) {
+      window._totalPatientsCount++;
+      const badge = document.getElementById('patTotalBadge');
+      if (badge) badge.textContent = window._totalPatientsCount;
+    }
     if (window._pager) window._pager.cache[newUid] = { id: newUid, ...patObj };
     logAudit('CREATE_PATIENT', `تم تسجيل مريض جديد ${patObj.info.name} (${newUid}) - MRN: ${mrn}`, 'EMR');
     toast(`✅ تم تسجيل المريض بنجاح — ${mrn}`, 'ok');
