@@ -1445,11 +1445,21 @@ window._nldOpenNew = function(bookingKey, startVisit) {
   const nameEl  = document.getElementById('npName');
   const phoneEl = document.getElementById('npPhone');
   const nidEl   = document.getElementById('npNationalId');
+  const dobEl   = document.getElementById('npDob');
+  const genderEl = document.getElementById('npGender');
+  
   if (nameEl  && booking.patName)  nameEl.value  = booking.patName;
   if (phoneEl && booking.patPhone) phoneEl.value = booking.patPhone;
   if (nidEl) {
     const bnid = ArgonNID.cleanNID(booking.patNationalId || booking.nationalId || '');
     if (bnid) nidEl.value = bnid;
+  }
+  if (dobEl && booking.patDob) {
+    dobEl.value = booking.patDob;
+    dobEl.dispatchEvent(new Event('input')); // To trigger age preview
+  }
+  if (genderEl && booking.patGender) {
+    genderEl.value = booking.patGender;
   }
 
   // فتح نافذة تسجيل مريض جديد
