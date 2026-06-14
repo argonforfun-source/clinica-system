@@ -3222,6 +3222,19 @@ function saveVisit() {
       ArgonCore.logAudit('CREATE_VISIT', `تم حفظ زيارة جديدة للمريض ${activePatientId}`, 'EMR');
     }
 
+    // Resolve Booking and clear from waiting room
+    if (activeVisit && activeVisit.bookingId) {
+      const bId = activeVisit.bookingId;
+      const b = (typeof _liveBookings !== 'undefined') ? _liveBookings[bId] : null;
+      if (b) {
+        db.ref(`${BASE}/completedBookings/${bId}`).set({ ...b, status: 'done', completedAt: new Date().toISOString() });
+        db.ref(`${BASE}/bookings/${bId}`).remove();
+      } else {
+        db.ref(`${BASE}/bookings/${bId}/status`).set('completed');
+      }
+      activeVisit.bookingId = null;
+    }
+
     toast('✅ تم حفظ الزيارة الطبية وإرسال الطلبات بنجاح', 'ok');
     refreshPatientFileUI(activePatientId);
   }).catch(() => toast('❌ فشل حفظ الزيارة الطبية', 'err'));
