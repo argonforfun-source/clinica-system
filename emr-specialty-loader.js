@@ -220,9 +220,18 @@
       sidebarContainer.appendChild(divider);
     }
 
-    /* وحدات الأسنان مدمجة الآن في ملف المريض نفسه ولا تظهر كشاشة مستقلة */
+    /* وحدات الأسنان: إضافة روابط مرجعية أنيقة تلفت الانتباه وتوجه للمكان الصحيح */
     if (cfg.features && cfg.features.dentalChart) {
-      // addSidebarSpecItem(sidebarContainer, 'dentalChartSection', '🦷 الرسم البياني للأسنان', 'fa-tooth', cfg.color);
+      addEmbeddedSidebarItem(sidebarContainer, 'timeline-tab', 'الرسم البياني للأسنان', 'fa-tooth', cfg.color);
+    }
+    if (cfg.features && cfg.features.treatmentPlan) {
+      addEmbeddedSidebarItem(sidebarContainer, 'timeline-tab', 'خطة العلاج والمتابعة', 'fa-list-check', cfg.color);
+    }
+    if (cfg.features && cfg.features.xrayPerTooth) {
+      addEmbeddedSidebarItem(sidebarContainer, 'timeline-tab', 'أشعة الأسنان (X-Ray)', 'fa-x-ray', cfg.color);
+    }
+    if (cfg.features && cfg.features.beforeAfterPhotos) {
+      addEmbeddedSidebarItem(sidebarContainer, 'timeline-tab', 'معرض الصور التجميلية', 'fa-camera-retro', cfg.color);
     }
     /* وحدة النمو للأطفال */
     if (cfg.features && cfg.features.growthCharts) {
