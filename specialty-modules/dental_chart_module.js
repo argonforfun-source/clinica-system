@@ -527,10 +527,16 @@
    * 7. RESET CHART
    * ══════════════════════════════════════════════════════════════════ */
   function resetChart() {
-    if (!confirm('هل أنت متأكد من إعادة تعيين الرسم البياني؟ ستُحذف كل البيانات غير المحفوظة.')) return;
+    if (!confirm('هل أنت متأكد من مسح الرسم البياني بالكامل للبدء من جديد؟ ستفقد جميع الحالات السابقة إذا قمت بالحفظ.')) return;
     _chart = {};
-    _unsavedChanges = false;
-    render(_containerId, _currentPatientId);
+    _unsavedChanges = true;
+    var container = document.getElementById(_containerId);
+    if (container) {
+      container.innerHTML = _buildChartHTML();
+      _attachStyles();
+      var unsavedEl = document.getElementById('_dental-unsaved');
+      if (unsavedEl) unsavedEl.style.display = 'block';
+    }
   }
 
   /* ══════════════════════════════════════════════════════════════════
