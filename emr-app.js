@@ -2248,6 +2248,14 @@ function generatePatientFileHTML(uid) {
       <button class="emr-tab-btn ${activeEmrTab === 'dental-chart-tab' ? 'active' : ''}" onclick="switchEmrTab('dental-chart-tab')" style="background:var(--surf);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s">
         <i class="fas fa-tooth" style="color:#3b82f6"></i> 🦷 الرسم البياني للأسنان
       </button>` : ''}
+      ${window.ArgonSpecialtyLoader && window.ArgonSpecialtyLoader.hasFeature('treatmentPlan') ? `
+      <button class="emr-tab-btn ${activeEmrTab === 'treatment-plan-tab' ? 'active' : ''}" onclick="switchEmrTab('treatment-plan-tab')" style="background:var(--surf);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s">
+        <i class="fas fa-list-check" style="color:#6366f1"></i> 📋 خطة العلاج والتسعير
+      </button>` : ''}
+      ${window.ArgonSpecialtyLoader && window.ArgonSpecialtyLoader.hasFeature('beforeAfterPhotos') ? `
+      <button class="emr-tab-btn ${activeEmrTab === 'dental-media-tab' ? 'active' : ''}" onclick="switchEmrTab('dental-media-tab')" style="background:var(--surf);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s">
+        <i class="fas fa-camera-retro" style="color:#0ea5e9"></i> 📸 معرض الصور والأشعة
+      </button>` : ''}
       ${window.ArgonSpecialtyLoader && window.ArgonSpecialtyLoader.hasFeature('growthCharts') ? `
       <button class="emr-tab-btn ${activeEmrTab === 'growth-chart-tab' ? 'active' : ''}" onclick="switchEmrTab('growth-chart-tab')" style="background:var(--surf);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:10px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s">
         <i class="fas fa-chart-line" style="color:#0ea5e9"></i> 📈 منحنيات النمو
@@ -2313,6 +2321,30 @@ function generatePatientFileHTML(uid) {
         <div><div class="pt" style="font-size:1.15rem;color:#3b82f6">🦷 الرسم البياني للأسنان — FDI (ISO 3950)</div><div class="ps">خريطة تفاعلية لأسنان المريض — اضغط على أي سن لتعديل حالته</div></div>
       </div>
       <div id="_patFileDentalChart" style="padding:10px"></div>
+    </div>` : ''}
+
+    ${window.ArgonSpecialtyLoader && window.ArgonSpecialtyLoader.hasFeature('treatmentPlan') ? `
+    <div id="emr-tab-treatment-plan" class="emr-tab-content ${activeEmrTab === 'treatment-plan-tab' ? 'active-content' : ''}" style="display:${activeEmrTab === 'treatment-plan-tab' ? 'block' : 'none'}">
+      <div class="ph" style="margin-bottom:12px">
+        <div><div class="pt" style="font-size:1.15rem;color:#6366f1">📋 وحدة خطة العلاج والتسعير</div><div class="ps">تخطيط الإجراءات المستقبلية وتتبع التكاليف — <span style="color:var(--red);font-weight:bold;">(قيد التطوير للاستخدام المهني)</span></div></div>
+      </div>
+      <div style="padding:40px;text-align:center;background:rgba(99, 102, 241, 0.05);border-radius:12px;border:1px dashed rgba(99, 102, 241, 0.3);">
+        <i class="fas fa-tools" style="font-size:3rem;color:rgba(99, 102, 241, 0.4);margin-bottom:16px;"></i>
+        <h3 style="color:#6366f1;margin-bottom:8px;">وحدة خطة العلاج قيد التجهيز</h3>
+        <p style="color:var(--muted);font-size:0.9rem;max-width:400px;margin:0 auto;">يتم حالياً تطوير هذه الوحدة لتمكين الطبيب من جدولة الإجراءات المستقبلية (مثل الزرع وسحب العصب) على عدة جلسات مع حساب التسعير التلقائي.</p>
+      </div>
+    </div>` : ''}
+
+    ${window.ArgonSpecialtyLoader && window.ArgonSpecialtyLoader.hasFeature('beforeAfterPhotos') ? `
+    <div id="emr-tab-dental-media" class="emr-tab-content ${activeEmrTab === 'dental-media-tab' ? 'active-content' : ''}" style="display:${activeEmrTab === 'dental-media-tab' ? 'block' : 'none'}">
+      <div class="ph" style="margin-bottom:12px">
+        <div><div class="pt" style="font-size:1.15rem;color:#0ea5e9">📸 معرض الصور والأشعة</div><div class="ps">توثيق صور قبل وبعد (Before & After) وأشعة الأسنان السينية — <span style="color:var(--red);font-weight:bold;">(قيد التطوير للاستخدام المهني)</span></div></div>
+      </div>
+      <div style="padding:40px;text-align:center;background:rgba(14, 165, 233, 0.05);border-radius:12px;border:1px dashed rgba(14, 165, 233, 0.3);">
+        <i class="fas fa-camera-retro" style="font-size:3rem;color:rgba(14, 165, 233, 0.4);margin-bottom:16px;"></i>
+        <h3 style="color:#0ea5e9;margin-bottom:8px;">وحدة معرض الصور والأشعة قيد التجهيز</h3>
+        <p style="color:var(--muted);font-size:0.9rem;max-width:400px;margin:0 auto;">هذه الوحدة ستتيح ربط صور الأشعة السينية البانورامية والموضعية بأسنان محددة لتسهيل المقارنة المباشرة وتتبع تقدم العلاج.</p>
+      </div>
     </div>` : ''}
 
     ${window.ArgonSpecialtyLoader && window.ArgonSpecialtyLoader.hasFeature('growthCharts') ? `
@@ -3765,6 +3797,18 @@ function switchEmrTab(tabId) {
         }, 1000);
       }
     }
+  } else if (tabId === 'treatment-plan-tab') {
+    document.querySelectorAll('.emr-tab-btn').forEach(b => {
+      if (b.textContent.includes('خطة العلاج')) b.classList.add('active');
+    });
+    const el = document.getElementById('emr-tab-treatment-plan');
+    if (el) { el.style.display = 'block'; el.classList.add('active-content'); }
+  } else if (tabId === 'dental-media-tab') {
+    document.querySelectorAll('.emr-tab-btn').forEach(b => {
+      if (b.textContent.includes('معرض الصور')) b.classList.add('active');
+    });
+    const el = document.getElementById('emr-tab-dental-media');
+    if (el) { el.style.display = 'block'; el.classList.add('active-content'); }
   } else if (tabId === 'growth-chart-tab') {
     document.querySelectorAll('.emr-tab-btn').forEach(b => {
       if (b.textContent.includes('نمو')) b.classList.add('active');
