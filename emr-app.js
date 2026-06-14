@@ -355,6 +355,11 @@ function initEMR() {
   _pager.onLoadingChange = (isLoading) => {
     const spinner = document.getElementById('patLoadingSpinner');
     if (spinner) spinner.style.display = isLoading ? 'flex' : 'none';
+    
+    // إذا انتهى التحميل، أعد رسم القائمة لإزالة الـ Spinner إذا كانت فارغة
+    if (!isLoading) {
+      filterPatients();
+    }
   };
 
   /* معالجة الأخطاء */
