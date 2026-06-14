@@ -197,6 +197,11 @@ window.ArgonSession = {
         sessionStorage.removeItem(this.KEY);
     },
     logout: function () {
+        if (window._pager) {
+            window._pager.destroy();
+            window._pager = null;
+        }
+        if (window.ArgonAuthBridge) window.ArgonAuthBridge.logout();
         this.clear();
         window.location.assign(window.location.pathname + window.location.search);
     }
