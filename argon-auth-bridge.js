@@ -85,14 +85,94 @@ const ArgonAuthBridge = (() => {
     }
   }
 
+  // PHASE 3 - 3.3: First-Run Setup Wizard for Super Admin
+  function _showSuperAdminWizard(resolve, reject) {
+    const existing = document.getElementById('argon-super-wizard');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'argon-super-wizard';
+    overlay.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.95);backdrop-filter:blur(8px);z-index:9999999;display:flex;align-items:center;justify-content:center;font-family:Tajawal,sans-serif;direction:rtl;";
+    
+    overlay.innerHTML = `
+      <div style="background:#1e293b;padding:40px;border-radius:16px;border:1px solid var(--border);width:90%;max-width:400px;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)">
+        <i class="fas fa-crown" style="font-size:3rem;color:var(--amber);margin-bottom:15px"></i>
+        <h2 style="color:#fff;margin-bottom:10px">الإعداد لأول مرة (سوبر أدمن)</h2>
+        <p style="color:var(--muted);font-size:0.9rem;margin-bottom:25px">يرجى تهيئة النظام وتعيين حساب السوبر أدمن الجديد بشكل آمن.</p>
+        
+        <div style="text-align:right;margin-bottom:15px">
+            <label style="color:var(--sky);font-size:0.8rem;margin-bottom:5px;display:block">اسم المستخدم</label>
+            <input type="text" id="arg-sa-user" class="vform-input" style="width:100%" placeholder="مثال: admin">
+        </div>
+        <div style="text-align:right;margin-bottom:15px">
+            <label style="color:var(--sky);font-size:0.8rem;margin-bottom:5px;display:block">كلمة المرور</label>
+            <input type="password" id="arg-sa-pass" class="vform-input" style="width:100%" placeholder="8 أحرف على الأقل">
+        </div>
+        <div style="text-align:right;margin-bottom:25px">
+            <label style="color:var(--sky);font-size:0.8rem;margin-bottom:5px;display:block">تأكيد كلمة المرور</label>
+            <input type="password" id="arg-sa-conf" class="vform-input" style="width:100%" placeholder="تأكيد كلمة المرور">
+        </div>
+        
+        <button id="arg-sa-btn" class="btn-primary" style="width:100%;padding:12px;font-size:1.1rem;background:var(--amber);color:#000;border-color:var(--amber);"><i class="fas fa-check"></i> إنشاء الحساب والدخول</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    document.getElementById('arg-sa-btn').onclick = async () => {
+      const u = document.getElementById('arg-sa-user').value.trim();
+      const p1 = document.getElementById('arg-sa-pass').value;
+      const p2 = document.getElementById('arg-sa-conf').value;
+      
+      if (!u) return alert('يرجى إدخال اسم المستخدم');
+      if (p1.length < 8) return alert('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+      if (p1 !== p2) return alert('كلمتا المرور غير متطابقتين');
+      
+      const btn = document.getElementById('arg-sa-btn');
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+      btn.disabled = true;
+
+      // Hash password using SHA-256 for basic security without ArgonEnterpriseAuth dependency
+      const encoder = new TextEncoder();
+      const data = encoder.encode(p1 + "SUPER_SALT");
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      await _db.ref('super_admin').set({
+        user: u,
+        pass: hashHex,
+        first_setup_completed: true,
+        setupAt: new Date().toISOString()
+      });
+      
+      overlay.remove();
+      alert('تم إعداد السوبر أدمن بنجاح! يمكنك الآن تسجيل الدخول.');
+      // Resolve so the caller knows it's handled (though typically they just reload)
+      window.location.reload();
+      resolve(null);
+    };
+  }
+
   /**
    * تسجيل دخول السوبر أدمن بالطريقة الكلاسيكية
    */
   async function loginSuperAdmin(username, password) {
     const snap = await _db.ref('super_admin').once('value');
-    const config = snap.val() || { user: 'admin', pass: 'argon_super_2026' };
-    
-    if (username === config.user && password === config.pass) {
+    const config = snap.val();
+
+    if (!config || !config.user || !config.pass) {
+      return new Promise((resolve, reject) => {
+        _showSuperAdminWizard(resolve, reject);
+      });
+    }
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + "SUPER_SALT");
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const inputHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    if (username === config.user && (password === config.pass || inputHash === config.pass)) {
       try {
         await _auth.signInWithEmailAndPassword('superadmin@argon.clinic.system', password);
         return { role: 'super', uid: _auth.currentUser?.uid };

@@ -230,7 +230,7 @@ const ArgonEnterprise = {
 
                         ${prescNotes ? `
                         <div style="margin-top:20px;padding:15px;border-right:4px solid #f59e0b;background:#fffbeb;border-radius:8px;color:#b45309">
-                            <h4 style="margin:0 0 5px">طھط¹ظ„ظٹظ…ط§ت إضافية:</h4>
+                            <h4 style="margin:0 0 5px">تعليمات إضافية:</h4>
                             <p style="margin:0">${prescNotes.replace(/\n/g, '<br>')}</p>
                         </div>
                         ` : ''}
@@ -246,7 +246,7 @@ const ArgonEnterprise = {
                         </div>
                         
                         <div style="margin-top:40px;text-align:center;color:#94a3b8;font-size:0.8rem;border-top:1px solid #e2e8f0;padding-top:20px">
-                            مع تمنياتنا لكم ط¨ط§ظ„ط´ظپط§ء العاجل<br>تم إنشاء هذه الوصفة بواسطة ARGON EMR
+                            مع تمنياتنا لكم بالشفاء العاجل<br>تم إنشاء هذه الوصفة بواسطة ARGON EMR
                         </div>
                     </div>
                 </div>
@@ -291,8 +291,8 @@ const ArgonEnterprise = {
                     </div>
                     
                     ${v.complaint ? `<div style="margin-bottom:10px"><strong style="color:#475569">الشكوى الرئيسية:</strong><p style="margin:5px 0 0;color:#1e293b">${v.complaint}</p></div>` : ''}
-                    ${v.diagnosis ? `<div style="margin-bottom:10px"><strong style="color:#475569">التشخيص ط§ظ„ظ†ظ‡ط§ط¦ي:</strong><p style="margin:5px 0 0;color:#1e293b">${v.diagnosis}</p></div>` : ''}
-                    ${v.notes ? `<div style="margin-bottom:10px"><strong style="color:#475569">ط§ظ„ظ…ظ„ط§ط­ط¸ط§ت الطبية:</strong><p style="margin:5px 0 0;color:#1e293b">${v.notes}</p></div>` : ''}
+                    ${v.diagnosis ? `<div style="margin-bottom:10px"><strong style="color:#475569">التشخيص النهائي:</strong><p style="margin:5px 0 0;color:#1e293b">${v.diagnosis}</p></div>` : ''}
+                    ${v.notes ? `<div style="margin-bottom:10px"><strong style="color:#475569">الملاحظات الطبية:</strong><p style="margin:5px 0 0;color:#1e293b">${v.notes}</p></div>` : ''}
                     
                     ${(v.vitals && (v.vitals.bp || v.vitals.temp || v.vitals.pulse)) ? `
                     <div style="display:flex;gap:15px;margin-top:15px;background:#f8fafc;padding:10px;border-radius:8px">
@@ -311,14 +311,14 @@ const ArgonEnterprise = {
                             <p style="margin:5px 0;color:#555">${clinicSettings.address || ''} | ${clinicSettings.phone || ''}</p>
                         </div>
                         <div style="text-align:left">
-                            <h2 style="margin:0;color:#333">السجل ط§ظ„ط·ط¨ي الموحد (EMR)</h2>
+                            <h2 style="margin:0;color:#333">السجل الطبي الموحد (EMR)</h2>
                             <p style="margin:5px 0;color:#555">تاريخ الطباعة: ${dateStr}</p>
                         </div>
                     </div>
                     
                     <div style="margin-bottom:30px;background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #ddd;display:grid;grid-template-columns:1fr 1fr;gap:15px">
                         <div>
-                            <h3 style="margin:0 0 15px;color:#0d9488;grid-column:1/-1">ط§ظ„ظ…ظ„ف ط§ظ„ط´ط®طµي للمريض</h3>
+                            <h3 style="margin:0 0 15px;color:#0d9488;grid-column:1/-1">الملف الشخصي للمريض</h3>
                             <p style="margin:0 0 8px"><strong>الاسم:</strong> ${patientData.name}</p>
                             <p style="margin:0 0 8px"><strong>الهاتف:</strong> ${patientData.phone}</p>
                             <p style="margin:0"><strong>الرقم الوطني/الهوية:</strong> ${patientData.natId || '-'}</p>
@@ -337,10 +337,10 @@ const ArgonEnterprise = {
                         </div>` : ''}
                     </div>
 
-                    <h3 style="margin:0 0 20px;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:10px">التاريخ ط§ظ„ط·ط¨ي ظˆط§ظ„ط²ظٹط§ط±ط§ت السابقة:</h3>
+                    <h3 style="margin:0 0 20px;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:10px">التاريخ الطبي والزيارات السابقة:</h3>
                     
                     <div style="display:flex;flex-direction:column;gap:10px">
-                        ${visitsArray.length > 0 ? visitsHtml : '<p style="text-align:center;color:#94a3b8;padding:30px">لا يوجد سجل ط²ظٹط§ط±ط§ت سابق لهذا المريض</p>'}
+                        ${visitsArray.length > 0 ? visitsHtml : '<p style="text-align:center;color:#94a3b8;padding:30px">لا يوجد سجل زيارات سابق لهذا المريض</p>'}
                     </div>
 
                     <div style="margin-top:50px;text-align:center;color:#777;font-size:12px;border-top:1px solid #ddd;padding-top:20px">
@@ -750,7 +750,7 @@ const liveUpdateCheck = setInterval(() => {
  *  argon-patient-match.js
  *
  *  ⚠️  READ-ONLY SHADOW MODE BY DEFAULT
- *  لا يعدّل ط£ي بيانات حقيقية حتى تفعّل FLAG يدوياً
+ *  لا يعدّل أي بيانات حقيقية حتى تفعّل FLAG يدوياً
  * ============================================================
  */
 
@@ -803,9 +803,9 @@ const ARGON_FLAGS = {
 /**
  * نتائج المطابقة الممكنة
  * EXACT     → تطابق مؤكد 100%، لا تنشئ ملفاً جديداً
- * STRONG    → تطابق ظ‚ظˆي جداً، على الأرجح نفس الشخص
- * POSSIBLE  → تشابه، يحتاج تأكيد ط¨ط´ط±ي
- * NEW       → لا يوجد تطابق، آمن ظ„إنشاء ظ…ظ„ف جديد
+ * STRONG    → تطابق قوي جداً، على الأرجح نفس الشخص
+ * POSSIBLE  → تشابه، يحتاج تأكيد بشري
+ * NEW       → لا يوجد تطابق، آمن لإنشاء ملف جديد
  */
 const MatchResult = Object.freeze({
   EXACT: "EXACT",
@@ -818,20 +818,20 @@ window.ArgonMedical = window.ArgonMedical || {};
 
 window.ArgonMedical.PatientMatch = (() => {
   // ─────────────────────────────────────────────────────────
-  // 🔤 Text Normalization — تطبيع النص ط§ظ„ط¹ط±ط¨ي
+  // 🔤 Text Normalization — تطبيع النص العربي
   // ─────────────────────────────────────────────────────────
 
   function normalizeArabic(str) {
     if (!str || typeof str !== "string") return "";
     return str
       .trim()
-      // ط­ط°ف التشكيل (فتحة، ضمة، كسرة، شدة، سكون، إلخ)
+      // حذف التشكيل (فتحة، ضمة، كسرة، شدة، سكون، إلخ)
       .replace(/[\u0610-\u061A\u064B-\u065F\u0670]/g, "")
-      .replace(/^ال/, "")           // ط­ط°ف ال ط§ظ„طھط¹ط±يف من البداية
-      .replace(/[أإآا]/g, "ا")      // توحيد ط§ظ„ظ‡ظ…ط²ط§ت
-      .replace(/ة/g, "ه")           // توحيد ط§ظ„طھط§ء المربوطة
-      .replace(/ى/g, "ي")           // توحيد ط§ظ„ط£ظ„ف المقصورة
-      .replace(/\s+/g, " ")         // ظ…ط³ط§ظپط§ت زائدة
+      .replace(/^ال/, "")           // حذف ال التعريف من البداية
+      .replace(/[أإآا]/g, "ا")      // توحيد الهمزات
+      .replace(/ة/g, "ه")           // توحيد التاء المربوطة
+      .replace(/ى/g, "ي")           // توحيد الألف المقصورة
+      .replace(/\s+/g, " ")         // مسافات زائدة
       .toLowerCase();
   }
 
@@ -1001,7 +1001,7 @@ window.ArgonMedical.PatientMatch = (() => {
 })();
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 📋 LAYER 3 — Shadow Engine (التسجيل ط§ظ„طµط§ظ…ت)
+// 📋 LAYER 3 — Shadow Engine (التسجيل الصامت)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 window.ArgonMedical.ShadowLog = (() => {
@@ -1060,7 +1060,7 @@ window.ArgonMedical = window.ArgonMedical || {};
  * @param {Function} onCreateNew   - callback إذا اختار "فرد عائلة جديد"
  */
 window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCreateNew) {
-  // أزل ط£ي نافذة سابقة
+  // أزل أي نافذة سابقة
   const old = document.getElementById('_argonMatchOverlay');
   if (old) old.remove();
 
@@ -1082,7 +1082,7 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
     animation: _argonFadeIn 0.2s ease;
   `;
 
-  // ط£ط¶ف animation keyframe مرة واحدة
+  // أضف animation keyframe مرة واحدة
   if (!document.getElementById('_argonMatchStyle')) {
     const style = document.createElement('style');
     style.id = '_argonMatchStyle';
@@ -1116,7 +1116,7 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
           font-size:1.3rem; flex-shrink:0;
         ">⚠️</div>
         <div>
-          <div style="font-size:1rem; font-weight:800; color:var(--text,#f8fafc)">تم العثور على ظ…ظ„ف مشابه</div>
+          <div style="font-size:1rem; font-weight:800; color:var(--text,#f8fafc)">تم العثور على ملف مشابه</div>
           <div style="font-size:0.78rem; color:var(--muted,#94a3b8); margin-top:2px">${reasonText}</div>
         </div>
         <span style="
@@ -1127,9 +1127,9 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
         ">${conf}% تشابه</span>
       </div>
 
-      <!-- مقارنة ط§ظ„بيانات -->
+      <!-- مقارنة البيانات -->
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;">
-        <!-- ط§ظ„ظ…ظ„ف الموجود -->
+        <!-- الملف الموجود -->
         <div style="
           padding:12px 14px;
           border-radius:10px;
@@ -1137,12 +1137,12 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
           background:rgba(14,165,233,0.05);
         ">
           <div style="font-size:0.7rem; color:#0ea5e9; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:5px;">
-            <span>📂</span> ط§ظ„ظ…ظ„ف الموجود
+            <span>📂</span> الملف الموجود
           </div>
           <div style="font-size:0.95rem; font-weight:800; color:var(--text,#f8fafc)">${window.ArgonMedical._escHtml(matchResult.matchedName || '—')}</div>
           <div style="font-size:0.75rem; color:var(--muted,#94a3b8); margin-top:3px; font-family:'IBM Plex Mono',monospace; direction:ltr;">${window.ArgonMedical._escHtml(matchResult.matchedId || '')}</div>
         </div>
-        <!-- ط§ظ„بيانات الواردة -->
+        <!-- البيانات الواردة -->
         <div style="
           padding:12px 14px;
           border-radius:10px;
@@ -1150,7 +1150,7 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
           background:rgba(255,255,255,0.02);
         ">
           <div style="font-size:0.7rem; color:var(--muted,#94a3b8); font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:5px;">
-            <span>🆕</span> الطلب ط§ظ„ط­ط§ظ„ي
+            <span>🆕</span> الطلب الحالي
           </div>
           <div style="font-size:0.95rem; font-weight:800; color:var(--text,#f8fafc)">${window.ArgonMedical._escHtml(matchResult.incoming?.name || matchResult._incomingName || '—')}</div>
           <div style="font-size:0.75rem; color:var(--muted,#94a3b8); margin-top:3px; font-family:'IBM Plex Mono',monospace; direction:ltr;">${window.ArgonMedical._escHtml(matchResult.incoming?.phone || matchResult._incomingPhone || '')}</div>
@@ -1172,13 +1172,13 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
       <!-- أزرار القرار -->
       <div style="display:flex; flex-direction:column; gap:8px;">
         <button class="am-btn" id="_argonBtnUse" style="background:var(--teal,#0d9488); color:#fff;">
-          ✅ نفس الشخص — استخدم ط§ظ„ظ…ظ„ف الموجود
+          ✅ نفس الشخص — استخدم الملف الموجود
         </button>
         <button class="am-btn" id="_argonBtnNew" style="background:rgba(255,255,255,0.04); color:var(--text,#f8fafc); border:1px solid var(--border,#334155) !important;">
           👨‍👩‍👧 فرد عائلة جديد — أنشئ ملفاً مستقلاً
         </button>
         <button class="am-btn" id="_argonBtnCancel" style="background:transparent; color:var(--muted,#94a3b8); font-size:0.82rem; padding:7px 0;">
-          ط¥ظ„ط؛ط§ء
+          إلغاء
         </button>
       </div>
     </div>
@@ -1203,7 +1203,7 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
   });
 };
 
-// دالة مساعدة ظ„طھظ†ط¸يف HTML
+// دالة مساعدة لتنظيف HTML
 window.ArgonMedical._escHtml = function(str) {
   return String(str || '').replace(/[<>"'&]/g, c =>
     ({ '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":"&#39;", '&':'&amp;' }[c])

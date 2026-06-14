@@ -47,14 +47,19 @@ const CLINIC_BASE = 'clinics/' + CLINIC_ID;
 
 window.ArgonCore = {
 
-    // ── 1. MEDICAL AUDIT LOG ──
+    // ── 1. MEDICAL AUDIT LOG (Hardened — P0 Fix: userId + role) ──
     logAudit: function (action, details, moduleName = 'SYSTEM') {
         if (!_argonDb) return;
         const auditRef = _argonDb.ref(`${CLINIC_BASE}/audit_logs`).push();
+        // PHASE 3 - 3.4: Audit Log with User Identity
+        const session = window.ArgonSession ? window.ArgonSession.get() : null;
         const logEntry = {
             action: action,
             details: details,
             module: moduleName,
+            userId: session?.staffId || session?.username || 'unknown',
+            userRole: session?.role || 'unknown',
+            userDisplayName: session?.displayName || '',
             timestamp: firebase.database.ServerValue.TIMESTAMP,
             userAgent: navigator.userAgent,
             platform: navigator.platform
@@ -66,22 +71,60 @@ window.ArgonCore = {
 
     // ── 2. ZERO DATA LOSS (AUTO-SAVE) ──
     AutoSave: {
-        saveDraft: function (draftKey, dataObj) {
+        _dbPromise: null,
+        _initDB: function () {
+            if (!this._dbPromise) {
+                this._dbPromise = new Promise((resolve, reject) => {
+                    const request = indexedDB.open('ArgonDraftsDB', 1);
+                    request.onupgradeneeded = (e) => {
+                        e.target.result.createObjectStore('drafts');
+                    };
+                    request.onsuccess = (e) => resolve(e.target.result);
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            }
+            return this._dbPromise;
+        },
+        saveDraft: async function (draftKey, dataObj) {
             try {
-                const payload = JSON.stringify({ data: dataObj, savedAt: new Date().toISOString() });
-                localStorage.setItem(`argon_draft_${draftKey}`, payload);
+                const db = await this._initDB();
+                const payload = { data: dataObj, savedAt: new Date().toISOString() };
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('drafts', 'readwrite');
+                    const store = tx.objectStore('drafts');
+                    const request = store.put(payload, `argon_draft_${draftKey}`);
+                    request.onsuccess = () => resolve();
+                    request.onerror = (e) => reject(e.target.error);
+                });
             } catch (e) {
-                console.error("ArgonCore AutoSave: Quota exceeded or error", e);
+                console.error("ArgonCore AutoSave: DB Error", e);
             }
         },
-        loadDraft: function (draftKey) {
+        loadDraft: async function (draftKey) {
             try {
-                const payload = localStorage.getItem(`argon_draft_${draftKey}`);
-                return payload ? JSON.parse(payload) : null;
+                const db = await this._initDB();
+                return new Promise((resolve) => {
+                    const tx = db.transaction('drafts', 'readonly');
+                    const store = tx.objectStore('drafts');
+                    const request = store.get(`argon_draft_${draftKey}`);
+                    request.onsuccess = () => resolve(request.result || null);
+                    request.onerror = () => resolve(null);
+                });
             } catch (e) { return null; }
         },
-        clearDraft: function (draftKey) {
-            localStorage.removeItem(`argon_draft_${draftKey}`);
+        clearDraft: async function (draftKey) {
+            try {
+                const db = await this._initDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('drafts', 'readwrite');
+                    const store = tx.objectStore('drafts');
+                    const request = store.delete(`argon_draft_${draftKey}`);
+                    request.onsuccess = () => resolve();
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            } catch (e) {
+                console.error("ArgonCore AutoSave: Delete Error", e);
+            }
         }
     },
 
@@ -96,6 +139,24 @@ window.ArgonCore = {
                 console.warn("🔴 ArgonCore: Network is OFFLINE.");
                 if (typeof toast === 'function') toast('⚠️ انقطع الاتصال! النظام يحفظ بياناتك محلياً بشكل آمن.', 'err');
             });
+        }
+    },
+
+    // ── 3.5 APP CHECK ENFORCEMENT (PHASE 4 - PREPARATION) ──
+    AppCheckManager: {
+        init: function () {
+            // TODO: Uncomment and add your reCAPTCHA v3 site key when Blaze is active
+            /*
+            if (typeof firebase !== 'undefined' && firebase.appCheck) {
+                const appCheck = firebase.appCheck();
+                appCheck.activate(
+                    // Your reCAPTCHA v3 site key
+                    'INSERT_RECAPTCHA_V3_SITE_KEY_HERE',
+                    true // true = isTokenAutoRefreshEnabled
+                );
+                console.log("🛡️ ArgonCore: Firebase App Check initialized.");
+            }
+            */
         }
     },
 
@@ -178,10 +239,71 @@ window.ArgonCore = {
 // ── 5. SESSION MANAGEMENT & ENTERPRISE SECURITY (V8.4) ──
 window.ArgonSession = {
     KEY: 'argon_auth_session',
+    
+    // PHASE 3 - 3.1: Global Concurrency Lock
+    monitorConcurrency: function () {
+        if (!_argonDb) return;
+        const s = this.get();
+        if (!s || !s.staffId || !s.clinicId) return;
+
+        const sessionRef = _argonDb.ref(`clinics/${s.clinicId}/active_logins/${s.staffId}`);
+        sessionRef.on('value', snap => {
+            const data = snap.val();
+            if (data && data.sessionId !== s.sessionId) {
+                // Another device logged in
+                sessionRef.off('value'); // stop listening
+                ArgonCore.logAudit('FORCE_LOGOUT', 'CONCURRENT_SESSION', 'AUTH');
+                this.clear(); // clear local session
+
+                // Show fixed un-closable red overlay
+                const overlay = document.createElement('div');
+                overlay.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(220,38,38,0.95);backdrop-filter:blur(10px);z-index:9999999;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-family:Tajawal,sans-serif;text-align:center;direction:rtl;";
+                overlay.innerHTML = `
+                    <i class="fas fa-exclamation-triangle" style="font-size:5rem;margin-bottom:20px;"></i>
+                    <h1 style="font-size:2.5rem;font-weight:900;margin-bottom:10px">تم الدخول من جهاز آخر</h1>
+                    <p style="font-size:1.2rem;max-width:500px;line-height:1.6;margin-bottom:30px">
+                        تم تسجيل الدخول إلى هذا الحساب (${sanitize(s.displayName)}) من جهاز آخر. 
+                        تم إنهاء هذه الجلسة فوراً حمايةً للبيانات ومنعاً للتداخل.
+                    </p>
+                    <button onclick="window.location.reload()" style="padding:12px 30px;background:#fff;color:#dc2626;border:none;border-radius:8px;font-size:1.1rem;font-weight:bold;cursor:pointer">إعادة تحميل الصفحة</button>
+                `;
+                document.body.appendChild(overlay);
+            }
+        });
+
+        // Remove on window close
+        window.addEventListener('beforeunload', () => {
+            const current = this.get();
+            if (current && current.sessionId) {
+                // To avoid race conditions, only remove if we are still the active session
+                sessionRef.once('value').then(snap => {
+                    const d = snap.val();
+                    if (d && d.sessionId === current.sessionId) {
+                        sessionRef.remove();
+                    }
+                });
+            }
+        });
+    },
+
     start: function (payload) {
+        // PHASE 3 - 3.1: Unique session identifiers and Firebase sync
         payload.issuedAt = Date.now();
-        payload.deviceFingerprint = navigator.userAgent + "|" + window.screen.colorDepth;
+        payload.sessionId = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : 'sess_' + Date.now() + Math.random().toString(36).substr(2);
+        payload.deviceFingerprint = navigator.userAgent + "|" + window.screen.width + "x" + window.screen.height + "|" + Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
         sessionStorage.setItem(this.KEY, JSON.stringify(payload));
+
+        if (_argonDb && payload.clinicId && payload.staffId) {
+            _argonDb.ref(`clinics/${payload.clinicId}/active_logins/${payload.staffId}`).set({
+                sessionId: payload.sessionId,
+                deviceFingerprint: payload.deviceFingerprint,
+                loginAt: new Date().toISOString(),
+                displayName: payload.displayName || payload.staffId
+            }).then(() => {
+                this.monitorConcurrency();
+            });
+        }
     },
     get: function () {
         try { return JSON.parse(sessionStorage.getItem(this.KEY)); } catch (e) { return null; }
@@ -197,6 +319,10 @@ window.ArgonSession = {
         sessionStorage.removeItem(this.KEY);
     },
     logout: function () {
+        const s = this.get();
+        if (s && _argonDb) {
+            _argonDb.ref(`clinics/${s.clinicId}/active_logins/${s.staffId}`).remove();
+        }
         if (window._pager) {
             window._pager.destroy();
             window._pager = null;
@@ -208,18 +334,34 @@ window.ArgonSession = {
 };
 
 window.ArgonEnterpriseAuth = {
-    hashPassword: async function (rawPassword) {
+    // P1 FIX: Per-user salt support with backward compatibility
+    // Legacy hash (ARGON_SALT) still used for VERIFICATION of old passwords
+    // New passwords always get a unique random salt
+    _hashWithSalt: async function (rawPassword, salt) {
         const encoder = new TextEncoder();
-        const data = encoder.encode(rawPassword + "ARGON_SALT");
+        const data = encoder.encode(rawPassword + salt);
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     },
+    // Backward-compatible: uses legacy salt if no salt provided
+    hashPassword: async function (rawPassword, salt) {
+        return this._hashWithSalt(rawPassword, salt || 'ARGON_SALT');
+    },
+    // PHASE 3 - 3.5: Random Unique Salt (32 bytes)
+    _generateSalt: function () {
+        const arr = new Uint8Array(32);
+        crypto.getRandomValues(arr);
+        return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+    },
     setStaffCredentials: async function (uid, rawPassword, isDoctor = false) {
-        const hash = await this.hashPassword(rawPassword);
+        // P1 FIX: Always use a unique salt for new passwords
+        const salt = this._generateSalt();
+        const hash = await this._hashWithSalt(rawPassword, salt);
         const basePath = isDoctor ? `${CLINIC_BASE}/doctors/${uid}` : `${CLINIC_BASE}/staff/${uid}`;
         await _argonDb.ref(`${basePath}/enterpriseAuth`).update({
             passwordHash: hash,
+            passwordSalt: salt,
             sessionVersion: 1,
             updatedAt: Date.now()
         });
@@ -234,14 +376,40 @@ window.ArgonEnterpriseAuth = {
             return false;
         }
 
-        const inputHash = await this.hashPassword(rawPassword);
-
         if (!user.enterpriseAuth || !user.enterpriseAuth.passwordHash) {
             ArgonCore.logAudit('LOGIN_FAILED', `No enterprise auth setup for: ${uid}`, 'AUTH');
-            return false;
+            // PHASE 3 - 3.3: Show Password Setup UI
+            this.showSetupUI(uid, isDoctor);
+            throw new Error('DEPT_PASSWORD_NOT_SET');
         }
 
-        if (user.enterpriseAuth.passwordHash === inputHash) {
+        // P1 FIX: Try per-user salt first, then legacy salt for backward compat
+        const storedHash = user.enterpriseAuth.passwordHash;
+        const storedSalt = user.enterpriseAuth.passwordSalt || null;
+        let matched = false;
+
+        if (storedSalt) {
+            // Modern path: per-user salt
+            const inputHash = await this._hashWithSalt(rawPassword, storedSalt);
+            matched = (storedHash === inputHash);
+        } else {
+            // Legacy path: fixed ARGON_SALT — auto-migrate on success
+            const inputHash = await this.hashPassword(rawPassword);
+            matched = (storedHash === inputHash);
+            if (matched) {
+                // AUTO-MIGRATE: upgrade to per-user salt silently
+                const newSalt = this._generateSalt();
+                const newHash = await this._hashWithSalt(rawPassword, newSalt);
+                _argonDb.ref(`${basePath}/enterpriseAuth`).update({
+                    passwordHash: newHash,
+                    passwordSalt: newSalt,
+                    migratedAt: Date.now()
+                }).catch(() => {}); // Non-blocking — don't fail login on migration error
+                ArgonCore.logAudit('SECURITY_UPGRADE', `Auto-migrated ${uid} to per-user salt`, 'AUTH');
+            }
+        }
+
+        if (matched) {
             ArgonCore.logAudit('LOGIN_SUCCESS', `User logged in: ${uid}`, 'AUTH');
             ArgonSession.start({
                 sessionId: 'sess_' + Date.now() + Math.floor(Math.random() * 1000),
@@ -256,6 +424,58 @@ window.ArgonEnterpriseAuth = {
 
         ArgonCore.logAudit('LOGIN_FAILED', `Invalid password for: ${uid}`, 'AUTH');
         return false;
+    },
+    
+    // PHASE 3 - 3.3: Department Setup UI First-Run
+    showSetupUI: function(uid, isDoctor) {
+        const existing = document.getElementById('argon-setup-wizard');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'argon-setup-wizard';
+        overlay.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.9);backdrop-filter:blur(8px);z-index:9999999;display:flex;align-items:center;justify-content:center;font-family:Tajawal,sans-serif;direction:rtl;";
+        
+        overlay.innerHTML = `
+            <div style="background:#1e293b;padding:40px;border-radius:16px;border:1px solid var(--border);width:90%;max-width:400px;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)">
+                <i class="fas fa-shield-alt" style="font-size:3rem;color:var(--teal);margin-bottom:15px"></i>
+                <h2 style="color:#fff;margin-bottom:10px">إعداد الأمان لأول مرة</h2>
+                <p style="color:var(--muted);font-size:0.9rem;margin-bottom:25px">يجب تعيين كلمة مرور القسم أولاً قبل الاستخدام. هذه الخطوة تُنفذ مرة واحدة فقط.</p>
+                
+                <div style="text-align:right;margin-bottom:15px">
+                    <label style="color:var(--sky);font-size:0.8rem;margin-bottom:5px;display:block">كلمة المرور الجديدة</label>
+                    <input type="password" id="arg-new-pass" class="vform-input" style="width:100%;margin-bottom:10px" placeholder="8 أحرف على الأقل">
+                </div>
+                <div style="text-align:right;margin-bottom:25px">
+                    <label style="color:var(--sky);font-size:0.8rem;margin-bottom:5px;display:block">تأكيد كلمة المرور</label>
+                    <input type="password" id="arg-conf-pass" class="vform-input" style="width:100%" placeholder="تأكيد كلمة المرور">
+                </div>
+                
+                <button id="arg-save-btn" class="btn-primary" style="width:100%;padding:12px;font-size:1.1rem"><i class="fas fa-check-circle"></i> حفظ كلمة المرور والدخول</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        document.getElementById('arg-save-btn').onclick = async () => {
+            const p1 = document.getElementById('arg-new-pass').value;
+            const p2 = document.getElementById('arg-conf-pass').value;
+            if (p1.length < 8) return alert('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+            if (p1 !== p2) return alert('كلمتا المرور غير متطابقتين');
+            
+            try {
+                const btn = document.getElementById('arg-save-btn');
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+                btn.disabled = true;
+                await this.setStaffCredentials(uid, p1, isDoctor);
+                overlay.remove();
+                alert('تم إعداد كلمة المرور بنجاح! يرجى تسجيل الدخول الآن.');
+                window.location.reload();
+            } catch (e) {
+                console.error(e);
+                alert('فشل حفظ كلمة المرور. تأكد من الاتصال بالإنترنت.');
+                document.getElementById('arg-save-btn').disabled = false;
+                document.getElementById('arg-save-btn').innerHTML = '<i class="fas fa-check-circle"></i> حفظ كلمة المرور والدخول';
+            }
+        };
     }
 };
 
@@ -393,11 +613,23 @@ window.ArgonPortalRuntime = {
         const isDepartment = ['pharmacy', 'lab', 'radiology'].includes(portalName);
 
         if (isDepartment) {
+            // P0 FIX: Removed hardcoded '1122' fallback — password MUST be configured
             const snap = await _argonDb.ref(`${CLINIC_BASE}/settings/portalPasswords/${portalName}`).once('value');
             const storedHash = snap.val();
             const inputHash = await ArgonEnterpriseAuth.hashPassword(pass);
 
-            if (storedHash === inputHash || (!storedHash && pass === '1122')) {
+            if (!storedHash) {
+                // No password configured — reject login and guide to Admin
+                const errEl = document.getElementById('entErr');
+                if (errEl) {
+                    errEl.textContent = '⚠️ لم يتم تعيين كلمة مرور لهذا القسم. يرجى مراجعة الإدارة لإعدادها من لوحة التحكم.';
+                    errEl.style.display = 'block';
+                }
+                ArgonCore.logAudit('LOGIN_BLOCKED', `No password configured for portal: ${portalName}`, 'AUTH');
+                return; // Early return — don't proceed
+            }
+
+            if (storedHash === inputHash) {
                 let deptName = portalName === 'pharmacy' ? 'الصيدلية المركزية' : (portalName === 'lab' ? 'المختبرات الطبية' : 'قسم الأشعة');
                 ArgonSession.start({
                     sessionId: 'sess_' + portalName + '_' + Date.now(),
@@ -419,8 +651,35 @@ window.ArgonPortalRuntime = {
             const uid = select ? select.value : 'admin';
 
             if (uid === 'admin') {
-                const snap = await _argonDb.ref(`${CLINIC_BASE}/settings/password`).once('value');
-                if (snap.val() === pass) {
+                // P0 FIX: Admin password — hash-based comparison with auto-migration from plaintext
+                const passSnap = await _argonDb.ref(`${CLINIC_BASE}/settings/password`).once('value');
+                const hashSnap = await _argonDb.ref(`${CLINIC_BASE}/settings/passwordHash`).once('value');
+                const saltSnap = await _argonDb.ref(`${CLINIC_BASE}/settings/passwordSalt`).once('value');
+                const storedPlaintext = passSnap.val();
+                const storedHash = hashSnap.val();
+                const storedSalt = saltSnap.val();
+                let adminMatched = false;
+
+                if (storedHash) {
+                    // Modern path: hash-based
+                    const inputHash = storedSalt
+                        ? await ArgonEnterpriseAuth._hashWithSalt(pass, storedSalt)
+                        : await ArgonEnterpriseAuth.hashPassword(pass);
+                    adminMatched = (storedHash === inputHash);
+                } else if (storedPlaintext && storedPlaintext === pass) {
+                    // Legacy plaintext match — AUTO-MIGRATE to hash NOW
+                    adminMatched = true;
+                    const newSalt = ArgonEnterpriseAuth._generateSalt();
+                    const newHash = await ArgonEnterpriseAuth._hashWithSalt(pass, newSalt);
+                    _argonDb.ref(`${CLINIC_BASE}/settings`).update({
+                        passwordHash: newHash,
+                        passwordSalt: newSalt,
+                        password: null  // Remove plaintext permanently
+                    }).catch(() => {});
+                    ArgonCore.logAudit('SECURITY_UPGRADE', 'Admin password auto-migrated from plaintext to hash', 'AUTH');
+                }
+
+                if (adminMatched) {
                     ArgonSession.start({
                         sessionId: 'sess_admin_' + Date.now(),
                         staffId: 'admin',
@@ -430,6 +689,9 @@ window.ArgonPortalRuntime = {
                         clinicId: CLINIC_ID
                     });
                     success = true;
+                    ArgonCore.logAudit('LOGIN_SUCCESS', 'Admin logged in', 'AUTH');
+                } else {
+                    ArgonCore.logAudit('LOGIN_FAILED', 'Invalid admin password', 'AUTH');
                 }
             } else {
                 success = await ArgonEnterpriseAuth.login(uid, pass, reqRole, isDoctor);
@@ -538,8 +800,84 @@ window.ArgonMaintenance = {
     }
 };
 
+// ── 7. ENTERPRISE PERFORMANCE: VIRTUAL SCROLLING (PHASE 4) ──
+window.ArgonVirtualList = class {
+    /**
+     * @param {HTMLElement} container - The scrollable container
+     * @param {Array} items - The data array
+     * @param {Function} renderFn - Function returning HTML string or DOM node for an item
+     * @param {number} itemHeight - Fixed height of each row in px
+     */
+    constructor(container, items, renderFn, itemHeight = 60) {
+        this.container = container;
+        this.items = items;
+        this.renderFn = renderFn;
+        this.itemHeight = itemHeight;
+        this.visibleNodes = new Map();
+        
+        // Create an inner wrapper to enforce scroll height
+        this.wrapper = document.createElement('div');
+        this.wrapper.style.position = 'relative';
+        this.wrapper.style.height = `${this.items.length * this.itemHeight}px`;
+        this.container.innerHTML = '';
+        this.container.appendChild(this.wrapper);
+        
+        this.container.addEventListener('scroll', () => this.render());
+        // Use IntersectionObserver for viewport resizes/changes if needed
+        this.render();
+    }
+
+    updateData(newItems) {
+        this.items = newItems;
+        this.wrapper.style.height = `${this.items.length * this.itemHeight}px`;
+        this.render();
+    }
+
+    render() {
+        const scrollTop = this.container.scrollTop;
+        const containerHeight = this.container.clientHeight;
+        
+        const startIndex = Math.max(0, Math.floor(scrollTop / this.itemHeight) - 2);
+        const endIndex = Math.min(this.items.length - 1, Math.floor((scrollTop + containerHeight) / this.itemHeight) + 2);
+
+        // Remove out-of-bounds nodes
+        for (let [index, node] of this.visibleNodes.entries()) {
+            if (index < startIndex || index > endIndex) {
+                this.wrapper.removeChild(node);
+                this.visibleNodes.delete(index);
+            }
+        }
+
+        // Add new in-bounds nodes
+        for (let i = startIndex; i <= endIndex; i++) {
+            if (!this.visibleNodes.has(i)) {
+                const item = this.items[i];
+                const content = this.renderFn(item, i);
+                
+                let node;
+                if (typeof content === 'string') {
+                    const temp = document.createElement('div');
+                    temp.innerHTML = content.trim();
+                    node = temp.firstChild;
+                } else {
+                    node = content;
+                }
+                
+                node.style.position = 'absolute';
+                node.style.top = `${i * this.itemHeight}px`;
+                node.style.left = '0';
+                node.style.right = '0';
+                
+                this.wrapper.appendChild(node);
+                this.visibleNodes.set(i, node);
+            }
+        }
+    }
+};
+
 // Initialize Core Systems
 document.addEventListener('DOMContentLoaded', () => {
+    ArgonCore.AppCheckManager.init();
     ArgonCore.SyncManager.init();
     ArgonCore.NotificationCenter.init();
     ArgonMaintenance.init();

@@ -1905,6 +1905,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-appcheck-compat.js"></script>
   <script>
     /* ═══════════════════════════════════════════════════════
        ARGON SYSTEM — Patient Booking Interface v2.0
@@ -2456,7 +2457,7 @@
           <div style="font-size:0.75rem;color:var(--amber);letter-spacing:1px">${stars}</div>
           <span style="font-size:0.65rem;color:var(--muted);font-weight:700">${avg} (${rCnt})</span>
         </div>
-        <div class="dfee">${parseFloat(d.fee || 0).toFixed(2)} د.أ</div>
+        <div class="dfee">${parseFloat(d.fee || 0).toFixed(3)} د.أ</div>
         <button class="dbookbtn" ${avail ? '' : `disabled`} onclick="event.stopPropagation();pickDoc('${d.key}')">
           <i class="fas fa-${isClosed ? 'pause-circle' : 'calendar-plus'}"></i>${btnLabel}
         </button>
@@ -2473,7 +2474,7 @@
       document.getElementById('dp-icon').textContent = d.emoji || '👨‍⚕️';
       document.getElementById('dp-name').textContent = 'د. ' + sanitize(d.name);
       document.getElementById('dp-spec').textContent = sanitize(d.specialty || '');
-      document.getElementById('dp-fee').textContent = parseFloat(d.fee || 0).toFixed(2) + ' د.أ';
+      document.getElementById('dp-fee').textContent = parseFloat(d.fee || 0).toFixed(3) + ' د.أ';
       document.getElementById('s0Next').disabled = true;
       buildDates();
       goStep(0);
@@ -2620,7 +2621,7 @@
     <div class="brow"><span class="bl">الوقت</span><span class="bv" style="font-family:'IBM Plex Mono',monospace">${selTime}</span></div>
     <div class="brow"><span class="bl">المريض</span><span class="bv">${name}</span></div>
     ${notes ? `<div class="brow" style="flex-direction:column;align-items:flex-start;gap:4px"><span class="bl">ملاحظات</span><span class="bv" style="font-size:.82rem;word-wrap:break-word;overflow-wrap:anywhere;white-space:pre-wrap;max-width:100%">${notes}</span></div>` : ''}
-    <div class="btotal"><span class="bl">رسوم الكشف</span><span class="bv">${parseFloat(d.fee || 0).toFixed(2)} د.أ</span></div>`;
+    <div class="btotal"><span class="bl">رسوم الكشف</span><span class="bv">${parseFloat(d.fee || 0).toFixed(3)} د.أ</span></div>`;
     }
 
     // ── VALIDATE STEP 1 ──
@@ -2780,7 +2781,7 @@
           patGender: sanitize(document.getElementById('pGender').value),
           notes: sanitize(document.getElementById('pNotes').value),
           date: selDate, time: selTime,
-          fee: parseFloat(selDoc.fee || 0).toFixed(2),
+          fee: parseFloat(selDoc.fee || 0).toFixed(3),
           status: 'new',
           createdAt: new Date().toISOString(),
           anonUid: _anonUid || 'guest'

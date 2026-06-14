@@ -657,53 +657,9 @@ async function migratePhoneKeyedPatients() {
   }
 }
 
-// Sidebar Navigation
-function sw(id, el) {
-  // Prevent opening empty clinical workspace if no patient is active
-  if (id === 'newVisit') {
-    if (typeof activeVisit === 'undefined' || !activeVisit || !activeVisit.uid) {
-      if (typeof toast !== 'undefined') toast('⚠️ الرجاء اختيار مريض من غرفة الانتظار أولاً لبدء زيارة', 'warn');
-      return;
-    }
-  }
+// UI Functions (sw, toast, toggleTheme, updateThemeIcon) 
+// have been successfully migrated to emr-ui-manager.js (Phase 4 Modularization)
 
-  // Release patient locks when leaving patient-specific contexts
-  if (id !== 'patFile' && id !== 'newVisit') {
-    if (window.EMRContext && window.EMRContext.sessionLock) {
-      if (typeof BASE !== 'undefined' && window.EMRContext.activePatientId) {
-        db.ref(`${BASE}/active_sessions/${window.EMRContext.activePatientId}`).remove();
-      }
-      window.EMRContext.sessionLock = false;
-      window.EMRContext.activePatientId = null;
-    }
-  }
-
-  document.querySelectorAll('.sec').forEach(s => s.classList.remove('on'));
-  document.getElementById(id).classList.add('on');
-  document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
-  if (el) el.classList.add('on');
-}
-
-// Toast
-function toast(msg, type = '') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = type ? 'show ' + type : 'show';
-  setTimeout(() => t.className = '', 3000);
-}
-
-// Theme
-function toggleTheme() {
-  const currentTheme = document.body.getAttribute('data-theme');
-  const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  document.body.setAttribute('data-theme', nextTheme);
-  localStorage.setItem('argon_theme', nextTheme);
-  updateThemeIcon(nextTheme);
-}
-function updateThemeIcon(theme) {
-  const btn = document.getElementById('themeBtn');
-  if (btn) btn.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-}
 
 // Render Patients List
 let patPageLimit = 15;
@@ -1050,39 +1006,45 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
     return;
   }
 
-  // ── ARGON ENTERPRISE: Smart Patient Match & Shadow Logging ──
+  // ── ARGON ENTERPRISE: Smart Patient Match & Shadow Logging (PHASE 3 - 3.2 Decoupled) ──
   if (window.ArgonMedical && window.ArgonMedical.PatientMatch) {
     const session = window.ArgonSession ? window.ArgonSession.get() : {};
     const currentDoctorId = session.staffId || 'unknown_doc';
-    const matchResult = await window.ArgonMedical.PatientMatch.findMatch(
-      CID,
-      { name: bookingName, phone: bookingPhone, nationalId: _bNID },
-      db
-    );
+    const withTimeout = (promise, ms = 2000) => Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej('timeout'), ms))]);
+    const runMatch = window.ArgonMedical.PatientMatch.findMatch(CID, { name: bookingName, phone: bookingPhone, nationalId: _bNID }, db);
 
-    await window.ArgonMedical.ShadowLog.log(
-      CID,
-      matchResult,
-      {
-        source: "doctor_waiting_room", userId: currentDoctorId,
-        incoming: { name: bookingName, phone: bookingPhone }
-      },
-      db
-    );
-
-    // If Shadow Mode is OFF, we enforce the smart matching decision
-    if (typeof ARGON_FLAGS !== 'undefined' && !ARGON_FLAGS.shadowMode) {
-      if (matchResult.result === "EXACT" || matchResult.result === "STRONG") {
-        if (startVisit) {
-          sw('newVisit');
-          loadVisitForm(matchResult.matchedId, bookingKey);
-        } else {
-          viewPatientFile(matchResult.matchedId);
-          sw('patFile');
+    if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.shadowMode) {
+      // Fire and forget
+      runMatch.then(matchResult => {
+        if (window.ArgonMedical.ShadowLog) {
+          window.ArgonMedical.ShadowLog.log(CID, matchResult, {
+            source: "doctor_waiting_room", userId: currentDoctorId,
+            incoming: { name: bookingName, phone: bookingPhone }
+          }, db).catch(e => console.warn('[ShadowLog]', e));
         }
-        return;
-      }
-      if (matchResult.result === "POSSIBLE") {
+      }).catch(e => console.warn('[Shadow]', e));
+    } else {
+      // Blocking wait
+      try {
+        const matchResult = await withTimeout(runMatch, 2000);
+        if (window.ArgonMedical.ShadowLog) {
+          await withTimeout(window.ArgonMedical.ShadowLog.log(CID, matchResult, {
+            source: "doctor_waiting_room", userId: currentDoctorId,
+            incoming: { name: bookingName, phone: bookingPhone }
+          }, db), 2000).catch(e => console.warn('[ShadowLog]', e));
+        }
+
+        if (matchResult.result === "EXACT" || matchResult.result === "STRONG") {
+          if (startVisit) {
+            sw('newVisit');
+            loadVisitForm(matchResult.matchedId, bookingKey);
+          } else {
+            viewPatientFile(matchResult.matchedId);
+            sw('patFile');
+          }
+          return;
+        }
+        if (matchResult.result === "POSSIBLE") {
         // أضف البيانات الواردة للنتيجة حتى تظهر في نافذة المقارنة
         matchResult._incomingName = bookingName;
         matchResult._incomingPhone = booking.patPhone || rawUid;
@@ -2727,9 +2689,9 @@ function loadVisitForm(uid, bookingId = null) {
   document.getElementById('visitFormArea').innerHTML = formHTML;
 
   // Restore Auto-Saved Draft if exists
-  setTimeout(() => {
+  setTimeout(async () => {
     if (typeof ArgonCore !== 'undefined') {
-      const draft = ArgonCore.AutoSave.loadDraft(uid);
+      const draft = await ArgonCore.AutoSave.loadDraft(uid);
       if (draft && draft.data) {
         const d = draft.data;
         if (document.getElementById('vDoc') && d.docKey) document.getElementById('vDoc').value = d.docKey;
