@@ -2750,7 +2750,7 @@
       const q = (sel, txt) => { const el = document.querySelector(sel); if (el) el.innerHTML = txt; };
       q('#m1 span', DT('menuLive')); q('#m2 span', DT('menuHist')); q('#m3 span', DT('menuDocs')); q('#mStaff span', DT('menuStaff')); q('#m4 span', DT('menuSets'));
       q('#live .pt', '🔔 ' + DT('bookingsTitle'));
-      q('#hist .pt', '📜 ' + DT('histTitle')); q('#hist button', '<i class="fas fa-trash" style="margin-left:5px"></i>' + DT('clearHist'));
+      q('#hist .pt', '📜 ' + DT('histTitle')); q('button[onclick="clrHist()"]', '<i class="fas fa-trash" style="margin-left:5px"></i>' + DT('clearHist'));
       q('#docs .pt', '👨‍⚕️ ' + DT('docTitle')); q('#staff .pt', '👥 ' + DT('staffTitle')); q('.badd', '<i class="fas fa-plus" style="margin-left:4px"></i>' + DT('btnAdd'));
       q('#settings .pt', '⚙️ ' + DT('setsTitle')); q('.bsave', '<i class="fas fa-floppy-disk" style="margin-left:8px"></i>' + DT('btnSave'));
       q('.lcard h2', '🏥 ' + DT('loginTitle')); q('.lcard p', DT('loginSub')); q('#btnLog', DT('btnLogin'));
