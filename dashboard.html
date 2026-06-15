@@ -2570,27 +2570,34 @@
             <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">الوقت *</label>
             <input type="time" id="rbTime" class="mfi">
           </div>
-          <div>
-            <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">شركة التأمين
-              (اختياري)</label>
-            <select id="rbInsProv" class="mfi"
-              style="background:var(--surf);color:var(--text);border:1px solid var(--border)">
-              <option value="">— بدون تأمين (نقدي) —</option>
-              <option value="nathealth">نات هيلث (NatHealth)</option>
-              <option value="gig">الخليج للتأمين (GIG)</option>
-              <option value="mednet">ميد نت (MedNet)</option>
-              <option value="globe">جلوب ميد (GlobeMed)</option>
-              <option value="omn">أومني كير (OmniCare)</option>
-              <option value="jic">الأردنية للتأمين (JIC)</option>
-              <option value="nic">الوطنية للتأمين (NIC)</option>
-              <option value="solidarity">سوليدرتي (Solidarity)</option>
-              <option value="other">أخرى</option>
-            </select>
+          <div style="grid-column:1/-1; margin-top:8px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;font-weight:700;color:var(--text);cursor:pointer;background:rgba(13,148,136,.06);padding:10px 12px;border-radius:8px;border:1px solid rgba(13,148,136,.2);width:max-content;">
+              <input type="checkbox" id="rbHasInsurance" onchange="document.getElementById('rbInsuranceContainer').style.display=this.checked?'grid':'none'" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer">
+              المريض لديه تأمين طبي
+            </label>
           </div>
-          <div>
-            <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">رقم البوليصة
-              (اختياري)</label>
-            <input type="text" id="rbInsPol" class="mfi" placeholder="رقم بوليصة التأمين..." dir="ltr">
+          
+          <div id="rbInsuranceContainer" style="display:none; grid-column:1/-1; grid-template-columns:1fr 1fr; gap:12px; background:rgba(13,148,136,.03); padding:16px; border-radius:10px; border:1px dashed rgba(13,148,136,.3); margin-bottom:8px;">
+            <div>
+              <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">شركة التأمين *</label>
+              <select id="rbInsProv" class="mfi"
+                style="background:var(--surf);color:var(--text);border:1px solid var(--border)">
+                <option value="">— اختر شركة التأمين —</option>
+                <option value="nathealth">نات هيلث (NatHealth)</option>
+                <option value="gig">الخليج للتأمين (GIG)</option>
+                <option value="mednet">ميد نت (MedNet)</option>
+                <option value="globe">جلوب ميد (GlobeMed)</option>
+                <option value="omn">أومني كير (OmniCare)</option>
+                <option value="jic">الأردنية للتأمين (JIC)</option>
+                <option value="nic">الوطنية للتأمين (NIC)</option>
+                <option value="solidarity">سوليدرتي (Solidarity)</option>
+                <option value="other">أخرى</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">رقم البوليصة</label>
+              <input type="text" id="rbInsPol" class="mfi" placeholder="رقم بوليصة التأمين..." dir="ltr">
+            </div>
           </div>
           <div style="grid-column:1/-1">
             <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">ملاحظات (اختياري)</label>
@@ -2617,6 +2624,33 @@
         <button onclick="closeReceptionBooking()"
           style="background:var(--surf);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:12px;font-family:'Tajawal',sans-serif;font-weight:600;cursor:pointer">
           إلغاء
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+     نافذة فحص التكرار — Deduplication Match Modal
+     ══════════════════════════════════════════════════════════════ -->
+  <div id="dedupMatchModal" style="display:none;position:fixed;inset:0;background:rgba(2,7,6,.85);backdrop-filter:blur(10px);z-index:10000;align-items:center;justify-content:center;padding:20px;font-family:'Tajawal',sans-serif">
+    <div style="background:var(--panel);border:1px solid rgba(245,158,11,.3);border-radius:22px;padding:28px;width:100%;max-width:480px;box-shadow:0 24px 64px rgba(0,0,0,.5);text-align:center">
+      <div style="font-size:3rem;margin-bottom:12px">⚠️</div>
+      <div style="font-size:1.2rem;font-weight:900;color:var(--amber);margin-bottom:8px">مريض مسجل مسبقاً!</div>
+      <div style="font-size:.9rem;color:var(--text);margin-bottom:16px;line-height:1.6">
+        النظام وجد ملفاً مطابقاً للبيانات المدخلة <br>(نفس الاسم أو الهاتف أو الرقم الوطني):<br>
+        <strong id="dedupMatchName" style="color:var(--teal);font-size:1.1rem;display:block;margin-top:8px;padding:8px;background:rgba(13,148,136,.1);border-radius:8px"></strong>
+      </div>
+      <div style="font-size:.8rem;color:var(--muted);margin-bottom:24px">هل تريد ربط الحجز بهذا الملف لمنع تكرار البيانات؟</div>
+      
+      <div style="display:flex;gap:10px;flex-direction:column">
+        <button id="dedupBtnLink" style="width:100%;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:var(--green);padding:14px;border-radius:12px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:1rem;cursor:pointer;transition:.2s">
+          ✅ نعم، اربط الحجز بهذا الملف
+        </button>
+        <button id="dedupBtnNew" style="width:100%;background:var(--surf);border:1px solid var(--border);color:var(--text);padding:14px;border-radius:12px;font-family:'Tajawal',sans-serif;font-weight:600;font-size:.95rem;cursor:pointer;transition:.2s">
+          ➕ لا، أنشئ ملفاً جديداً
+        </button>
+        <button onclick="document.getElementById('dedupMatchModal').style.display='none';document.getElementById('rbSubmitBtn').disabled=false;document.getElementById('rbSubmitBtn').innerHTML='<i class=\'fas fa-calendar-check\'></i> تأكيد الحجز';" style="width:100%;background:transparent;border:none;color:var(--muted);padding:8px;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:.85rem;cursor:pointer;text-decoration:underline;margin-top:4px">
+          إلغاء العملية والرجوع للتعديل
         </button>
       </div>
     </div>
@@ -3823,6 +3857,10 @@
 
     function closeReceptionBooking() {
       document.getElementById('receptionBookingModal').style.display = 'none';
+      if(document.getElementById('rbHasInsurance')){
+        document.getElementById('rbHasInsurance').checked = false;
+        document.getElementById('rbInsuranceContainer').style.display = 'none';
+      }
     }
 
     function rbOnDocChange() {
@@ -3850,6 +3888,8 @@
       const gender = document.getElementById('rbPatGender').value;
       const dob = document.getElementById('rbPatDob').value;
       const notes = (document.getElementById('rbNotes').value || '').trim();
+      
+      const hasInsurance = document.getElementById('rbHasInsurance') && document.getElementById('rbHasInsurance').checked;
       const insProv = document.getElementById('rbInsProv') ? document.getElementById('rbInsProv').value : '';
       const insPol = document.getElementById('rbInsPol') ? (document.getElementById('rbInsPol').value || '').trim() : '';
 
@@ -3858,60 +3898,101 @@
       if (!docKey) { toast('⚠️ يرجى اختيار الطبيب', 'err'); return; }
       if (!bDate) { toast('⚠️ يرجى تحديد التاريخ', 'err'); return; }
       if (!bTime) { toast('⚠️ يرجى تحديد الوقت', 'err'); return; }
+      if (hasInsurance && !insProv) { toast('⚠️ التأمين مفعل: يرجى اختيار شركة التأمين', 'err'); return; }
 
       const btn = document.getElementById('rbSubmitBtn');
       btn.disabled = true;
-      btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> جارِ الحجز...';
+      btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> فحص السجلات...';
 
       try {
-        const doc = _docs[docKey] || {};
-        const fee = parseFloat(doc.fee || 0);
-        const docName = doc.name || '';
-        const docSpec = doc.specialty || '';
-        const bookNo = '#D' + String(Math.floor(1 + Math.random() * 99)).padStart(2, '0');
-        const age = dob ? window.ArgonCalcAge(dob) : null;
+        let matchedId = null;
+        let matchedName = null;
+        let cleanNID = patNID ? (window.ArgonNID ? ArgonNID.cleanNID(patNID) : patNID) : null;
 
-        const bookingObj = {
-          patName: sanitize(patName),
-          patPhone: patPhone,
-          patNationalId: patNID || null,
-          patGender: gender || null,
-          patDob: dob || null,
-          patAge: age,
-          docKey: docKey,
-          docName: sanitize(docName),
-          docSpec: sanitize(docSpec),
-          fee: fee,
-          date: bDate,
-          time: bTime,
-          notes: sanitize(notes),
-          insProv: insProv || null,
-          insPol: insPol || null,
-          bookNo: bookNo,
-          status: 'new',
-          source: 'reception_desk',          // ← تمييز الحجز من الاستقبال
-          createdAt: new Date().toISOString(),
-          createdBy: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'reception'
-        };
-
-        // ── ربط ملف المريض تلقائياً إذا كان لديه رقم وطني ──
-        if (patNID && patNID.length >= 9) {
-          const cleanNID = ArgonNID.cleanNID(patNID);
+        if (cleanNID && cleanNID.length >= 9) {
           const snap = await db.ref(`${BASE}/patients`).orderByChild('info/nationalId').equalTo(cleanNID).once('value');
           if (snap.exists()) {
-            bookingObj.patientId = Object.keys(snap.val())[0];
+            matchedId = Object.keys(snap.val())[0];
+            matchedName = snap.val()[matchedId]?.info?.name || '';
           }
         }
+        
+        if (!matchedId && patPhone.length >= 7) {
+          const snap = await db.ref(`${BASE}/patients`).orderByChild('info/phone').equalTo(patPhone).once('value');
+          if (snap.exists()) {
+            matchedId = Object.keys(snap.val())[0];
+            matchedName = snap.val()[matchedId]?.info?.name || '';
+          }
+        }
+        
+        const saveBooking = async (finalPatientId) => {
+           btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> جارِ الحفظ...';
+           const doc = _docs[docKey] || {};
+           const fee = parseFloat(doc.fee || 0);
+           const docName = doc.name || '';
+           const docSpec = doc.specialty || '';
+           const bookNo = '#D' + String(Math.floor(1 + Math.random() * 99)).padStart(2, '0');
+           const age = dob ? window.ArgonCalcAge(dob) : null;
 
-        await db.ref(`${BASE}/bookings`).push(bookingObj);
+           const bookingObj = {
+             patName: sanitize(patName),
+             patPhone: patPhone,
+             patNationalId: patNID || null,
+             patGender: gender || null,
+             patDob: dob || null,
+             patAge: age,
+             docKey: docKey,
+             docName: sanitize(docName),
+             docSpec: sanitize(docSpec),
+             fee: fee,
+             date: bDate,
+             time: bTime,
+             notes: sanitize(notes),
+             insProv: hasInsurance ? insProv : null,
+             insPol: hasInsurance ? insPol : null,
+             bookNo: bookNo,
+             status: 'new',
+             source: 'reception_desk',
+             createdAt: new Date().toISOString(),
+             createdBy: (window.ArgonSession ? ArgonSession.get()?.staffId : null) || 'reception'
+           };
 
-        toast(`✅ تم حجز موعد لـ ${patName} في تمام ${bTime}`, 'ok');
-        closeReceptionBooking();
+           if (finalPatientId) bookingObj.patientId = finalPatientId;
+
+           await db.ref(`${BASE}/bookings`).push(bookingObj);
+           toast(`✅ تم حجز موعد لـ ${patName} في تمام ${bTime}`, 'ok');
+           
+           // clear and close
+           document.getElementById('rbPatName').value = '';
+           document.getElementById('rbPatPhone').value = '';
+           document.getElementById('rbPatNID').value = '';
+           document.getElementById('rbNotes').value = '';
+           if(document.getElementById('rbInsPol')) document.getElementById('rbInsPol').value = '';
+           closeReceptionBooking();
+           
+           btn.disabled = false;
+           btn.innerHTML = '<i class="fas fa-calendar-check"></i> تأكيد الحجز';
+        };
+
+        if (matchedId) {
+          document.getElementById('dedupMatchName').innerText = matchedName || 'مريض مسجل لدينا';
+          document.getElementById('dedupMatchModal').style.display = 'flex';
+          
+          document.getElementById('dedupBtnLink').onclick = () => {
+             document.getElementById('dedupMatchModal').style.display = 'none';
+             saveBooking(matchedId);
+          };
+          document.getElementById('dedupBtnNew').onclick = () => {
+             document.getElementById('dedupMatchModal').style.display = 'none';
+             saveBooking(null);
+          };
+        } else {
+          await saveBooking(null);
+        }
 
       } catch (err) {
         console.error('[Reception Booking]', err);
         toast('❌ فشل الحجز: ' + (err.message || 'تحقق من الاتصال'), 'err');
-      } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-calendar-check"></i> تأكيد الحجز';
       }
