@@ -3920,8 +3920,17 @@
         if (!matchedId && patPhone.length >= 7) {
           const snap = await db.ref(`${BASE}/patients`).orderByChild('info/phone').equalTo(patPhone).once('value');
           if (snap.exists()) {
-            matchedId = Object.keys(snap.val())[0];
-            matchedName = snap.val()[matchedId]?.info?.name || '';
+            const matches = snap.val();
+            for (let key in matches) {
+              const existingNID = matches[key].info?.nationalId;
+              // If the existing patient has a National ID, and we entered a National ID, and they DON'T MATCH -> Different person!
+              if (cleanNID && existingNID && existingNID !== cleanNID) {
+                continue;
+              }
+              matchedId = key;
+              matchedName = matches[key].info?.name || '';
+              break;
+            }
           }
         }
         
