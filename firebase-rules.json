@@ -191,12 +191,26 @@
         "invoices": {
           ".indexOn": ["patientId", "status", "createdAt"],
           "$invId": {
-            ".validate": "newData.hasChildren(['patientId', 'total'])"
+            ".validate": "newData.hasChildren(['patientId', 'total'])",
+            ".write": "auth != null && (
+              root.child('clinic_auth_map/' + auth.uid).val() === $clinicId ||
+              root.child('clinic_auth_map/' + auth.uid).val() === '__SUPER__'
+            ) && newData.exists()"
           }
         },
         
         "financial_transactions": {
-          ".indexOn": ["patientId", "invoiceId", "timestamp"]
+          ".indexOn": ["patientId", "invoiceId", "timestamp"],
+          "$txId": {
+            ".write": "auth != null && (
+              root.child('clinic_auth_map/' + auth.uid).val() === $clinicId ||
+              root.child('clinic_auth_map/' + auth.uid).val() === '__SUPER__'
+            ) && !data.exists()",
+            ".validate": "newData.hasChildren(['patientId', 'type', 'amount', 'timestamp']) &&
+              newData.child('amount').isNumber() &&
+              newData.child('amount').val() > 0 &&
+              (newData.child('type').val() === 'PAYMENT' || newData.child('type').val() === 'REVERSAL')"
+          }
         },
 
         /* ════════════════════════════════
@@ -208,7 +222,10 @@
               root.child('clinic_auth_map/' + auth.uid).val() === $clinicId ||
               root.child('clinic_auth_map/' + auth.uid).val() === '__SUPER__'
             ) && !data.exists()",
-            ".validate": "newData.hasChildren(['action', 'timestamp'])"
+            ".validate": "newData.hasChildren(['action', 'timestamp']) &&
+              newData.child('action').isString() &&
+              newData.child('action').val().length >= 2 &&
+              newData.child('action').val().length <= 100"
           }
         },
 

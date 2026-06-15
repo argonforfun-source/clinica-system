@@ -1238,8 +1238,15 @@ const BillingEngine = {
  */
 function recordBillingPayment() {
   try {
+    // ── قفل منع الضغط المزدوج (Double-Click Protection) ──
+    if (recordBillingPayment._locked) {
+      _B.toast('⏳ جاري معالجة الدفعة السابقة...', 'err');
+      return;
+    }
+    recordBillingPayment._locked = true;
+
     const patientId = BillingEngine.activePatientId;
-    if (!patientId) { _B.toast('⚠️ لم يتم تحديد مريض', 'err'); return; }
+    if (!patientId) { _B.toast('⚠️ لم يتم تحديد مريض', 'err'); recordBillingPayment._locked = false; return; }
 
     const amtEl    = document.getElementById('blPayAmount');
     const reasonEl = document.getElementById('blPayReason');
@@ -1247,95 +1254,126 @@ function recordBillingPayment() {
     const reason   = reasonEl?.value?.trim() || 'دفع نقدي';
 
     if (!amount || amount <= 0 || isNaN(amount)) {
-      _B.toast('⚠️ أدخل مبلغاً صحيحاً أكبر من صفر', 'err'); return;
+      _B.toast('⚠️ أدخل مبلغاً صحيحاً أكبر من صفر', 'err'); recordBillingPayment._locked = false; return;
     }
 
     // ── منع الدفع إذا كانت هناك فواتير قيد المراجعة ──
     const hasBlocked = Object.values(BillingEngine._invoices || {})
       .some(inv => inv && inv.patientId === patientId && inv.financialBlocked);
     if (hasBlocked) {
-      _B.toast('⛔ لا يمكن تحصيل الدفعات: هناك فواتير قيد المراجعة المالية', 'err'); return;
+      _B.toast('⛔ لا يمكن تحصيل الدفعات: هناك فواتير قيد المراجعة المالية', 'err'); recordBillingPayment._locked = false; return;
     }
 
-  // ── حساب الرصيد المستحق الفعلي ──
-  const pInvoices = Object.entries(BillingEngine._invoices || {})
-    .filter(([, inv]) => inv && inv.patientId === patientId && !['voided','cancelled'].includes(inv.status))
-    .sort(([,a],[,b]) => ((a && a.createdAt)||'') > ((b && b.createdAt)||'') ? 1 : -1); // FIFO
+    // ── قراءة لحظية (Fresh Snapshot) لمنع Race Conditions ──
+    Promise.all([
+      db.ref(`${BASE}/invoices`).once('value'),
+      db.ref(`${BASE}/financial_transactions`).once('value')
+    ]).then(([invSnap, txSnap]) => {
+      const freshInvoices = invSnap.val() || {};
+      const freshTransactions = txSnap.val() || {};
 
-  let totalUnallocated = pInvoices.reduce((sum, [k, inv]) => {
-    const rem = (parseFloat(inv.total) || 0) - BillingEngine.calculateInvoicePaid(k);
-    return sum + Math.max(rem, 0);
-  }, 0);
+      // حساب المدفوع من البيانات اللحظية (وليس من الكاش)
+      const calcFreshPaid = (invId) => {
+        let paid = 0;
+        for (const tx of Object.values(freshTransactions)) {
+          if (tx.invoiceId === invId && tx.status !== 'voided') {
+            if (tx.type === 'PAYMENT') paid += parseFloat(tx.amount) || 0;
+            if (tx.type === 'REVERSAL') paid -= parseFloat(tx.amount) || 0;
+          }
+        }
+        return Math.max(paid, 0);
+      };
 
-  if (amount > totalUnallocated + 0.001) { // tolerance صغير للأرقام العشرية
-    _B.toast(
-      `⛔ المبلغ (${_B.jod(amount)}) يتجاوز الرصيد المستحق (${_B.jod(totalUnallocated)}) — يُمنع الرصيد السالب`,
-      'err'
-    ); return;
-  }
+      // ── حساب الرصيد المستحق الفعلي (من بيانات لحظية) ──
+      const pInvoices = Object.entries(freshInvoices)
+        .filter(([, inv]) => inv && inv.patientId === patientId && !['voided','cancelled'].includes(inv.status))
+        .sort(([,a],[,b]) => ((a && a.createdAt)||'') > ((b && b.createdAt)||'') ? 1 : -1); // FIFO
 
-  // ── بناء batch update ──
-  const timestamp  = _B.now();
-  const session    = window.ArgonSession ? (window.ArgonSession.get() || {}) : {};
-  const actorId    = session.staffId || 'dashboard_admin';
-  const updates    = {};
-  let   remaining  = amount;
+      let totalUnallocated = pInvoices.reduce((sum, [k, inv]) => {
+        const rem = (parseFloat(inv.total) || 0) - calcFreshPaid(k);
+        return sum + Math.max(rem, 0);
+      }, 0);
 
-  for (const [invId, inv] of pInvoices) {
-    if (remaining <= 0.001) break;
+      if (amount > totalUnallocated + 0.001) {
+        _B.toast(
+          `⛔ المبلغ (${_B.jod(amount)}) يتجاوز الرصيد المستحق (${_B.jod(totalUnallocated)}) — يُمنع الرصيد السالب`,
+          'err'
+        );
+        recordBillingPayment._locked = false;
+        return;
+      }
 
-    const total       = parseFloat(inv.total) || 0;
-    const paid        = BillingEngine.calculateInvoicePaid(invId);
-    const unallocated = parseFloat((total - paid).toFixed(3));
-    if (unallocated <= 0.001) continue;
+      // ── بناء batch update ──
+      const timestamp  = _B.now();
+      const session    = window.ArgonSession ? (window.ArgonSession.get() || {}) : {};
+      const actorId    = session.staffId || 'dashboard_admin';
+      const updates    = {};
+      let   remaining  = amount;
 
-    const toApply = parseFloat(Math.min(unallocated, remaining).toFixed(3));
-    const newPaid = parseFloat((paid + toApply).toFixed(3));
-    const isFullyPaid = newPaid >= total - 0.001;
+      for (const [invId, inv] of pInvoices) {
+        if (remaining <= 0.001) break;
 
-    // ── financial_transaction جديد — .set() على push key ✅ ──
-    // (append-only node: ".write": "!data.exists()")
-    const txKey = db.ref().child('x').push().key;
-    updates[`financial_transactions/${txKey}`] = {
-      invoiceId:  invId,
-      patientId,
-      type:       'PAYMENT',
-      amount:     toApply,
-      reason:     _B.san(reason),
-      timestamp,
-      actorId
-    };
+        const total       = parseFloat(inv.total) || 0;
+        const paid        = calcFreshPaid(invId);
+        const unallocated = parseFloat((total - paid).toFixed(3));
+        if (unallocated <= 0.001) continue;
 
-    // ── تحديث حالة الفاتورة — .update() ✅ ──
-    // invoices: ".write": "!data.exists() || newData.exists()"
-    // newData.exists() = true لأننا نحدث (لا نحذف)
-    updates[`invoices/${invId}/status`] = isFullyPaid ? 'paid' : 'partial';
-    if (isFullyPaid) {
-      updates[`invoices/${invId}/locked`]  = true;
-      updates[`invoices/${invId}/paidAt`]  = timestamp;
-    }
+        const toApply = parseFloat(Math.min(unallocated, remaining).toFixed(3));
+        const newPaid = parseFloat((paid + toApply).toFixed(3));
+        const isFullyPaid = newPaid >= total - 0.001;
 
-    remaining -= toApply;
-  }
+        // ── financial_transaction جديد — .set() على push key ✅ ──
+        const txKey = db.ref().child('x').push().key;
+        updates[`financial_transactions/${txKey}`] = {
+          invoiceId:  invId,
+          patientId,
+          type:       'PAYMENT',
+          amount:     toApply,
+          reason:     _B.san(reason),
+          timestamp,
+          serverTime: firebase.database.ServerValue.TIMESTAMP,
+          actorId
+        };
 
-  // ── كتابة دفعية واحدة ✅ ──
-  db.ref(BASE).update(updates).then(() => {
-    _B.toast(`✅ تم تسجيل دفعة ${_B.jod(amount)} د.أ بنجاح`, 'ok');
-    if (amtEl)    amtEl.value    = '';
-    if (reasonEl) reasonEl.value = '';
+        // ── تحديث حالة الفاتورة ──
+        updates[`invoices/${invId}/status`] = isFullyPaid ? 'paid' : 'partial';
+        if (isFullyPaid) {
+          updates[`invoices/${invId}/locked`]  = true;
+          updates[`invoices/${invId}/paidAt`]  = timestamp;
+        }
 
-    const patName = document.getElementById('blPatName')?.textContent || '';
-    _B.audit('PAYMENT_RECORDED', `دفعة ${_B.jod(amount)} من ${_B.san(patName)}`);
-  }).catch(e => {
-    console.error('[BillingEngine] payment batch failed:', e);
-    _B.toast('❌ فشل تسجيل الدفعة — تأكد من الاتصال', 'err');
-  });
+        remaining -= toApply;
+      }
+
+      // ── كتابة دفعية واحدة (Atomic Batch) ✅ ──
+      db.ref(BASE).update(updates).then(() => {
+        _B.toast(`✅ تم تسجيل دفعة ${_B.jod(amount)} د.أ بنجاح`, 'ok');
+        if (amtEl)    amtEl.value    = '';
+        if (reasonEl) reasonEl.value = '';
+
+        const patName = document.getElementById('blPatName')?.textContent || '';
+        _B.audit('PAYMENT_RECORDED', `دفعة ${_B.jod(amount)} من ${_B.san(patName)}`);
+      }).catch(e => {
+        console.error('[BillingEngine] payment batch failed:', e);
+        _B.toast('❌ فشل تسجيل الدفعة — تأكد من الاتصال', 'err');
+      }).finally(() => {
+        recordBillingPayment._locked = false;
+      });
+
+    }).catch(err => {
+      console.error('[BillingEngine] Fresh snapshot failed:', err);
+      _B.toast('❌ فشل قراءة البيانات — تأكد من الاتصال', 'err');
+      recordBillingPayment._locked = false;
+    });
 
   } catch (err) {
     console.error('[BillingEngine] Uncaught error in recordBillingPayment:', err);
     _B.toast(`❌ خطأ داخلي: ${err.message}`, 'err');
+    recordBillingPayment._locked = false;
   }
 }
+recordBillingPayment._locked = false;
+
 
 function closeBillingModal() {
   const modal = document.getElementById('billingModal');

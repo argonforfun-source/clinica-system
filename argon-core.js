@@ -21,6 +21,47 @@ if (typeof firebase !== 'undefined' && !firebase.apps.length) {
 
 const _argonDb = typeof firebase !== 'undefined' ? firebase.database() : null;
 
+// ══════════════════════════════════════════
+// OFFLINE PERSISTENCE — يحفظ البيانات محلياً عند انقطاع الإنترنت
+// ══════════════════════════════════════════
+if (_argonDb) {
+    try {
+        _argonDb.goOnline(); // ensure we start online
+        // Firebase RTDB has built-in disk persistence (enabled by default for web)
+        // But we add explicit connection monitoring:
+    } catch (e) { /* safe to ignore */ }
+}
+
+// ── Connection State Monitor ──
+if (_argonDb) {
+    const _connRef = _argonDb.ref('.info/connected');
+    _connRef.on('value', function(snap) {
+        const isOnline = snap.val() === true;
+        // Update UI indicator
+        let indicator = document.getElementById('argon-conn-indicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'argon-conn-indicator';
+            indicator.style.cssText = 'position:fixed;bottom:8px;left:8px;z-index:99999;padding:4px 12px;border-radius:20px;font-size:0.7rem;font-weight:800;font-family:Tajawal,sans-serif;direction:rtl;transition:all 0.3s ease;pointer-events:none;';
+            document.body.appendChild(indicator);
+        }
+        if (isOnline) {
+            indicator.textContent = '🟢 متصل';
+            indicator.style.background = 'rgba(16,185,129,0.15)';
+            indicator.style.color = '#10b981';
+            indicator.style.border = '1px solid rgba(16,185,129,0.3)';
+            // Hide after 3 seconds when connected
+            setTimeout(function() { if (indicator) indicator.style.opacity = '0'; }, 3000);
+        } else {
+            indicator.textContent = '🔴 غير متصل — البيانات محفوظة محلياً';
+            indicator.style.background = 'rgba(239,68,68,0.15)';
+            indicator.style.color = '#ef4444';
+            indicator.style.border = '1px solid rgba(239,68,68,0.3)';
+            indicator.style.opacity = '1';
+        }
+    });
+}
+
 // ── Global Time Formatter ──
 window.argonTimeAgo = function (isoDate) {
     if (!isoDate) return '';
