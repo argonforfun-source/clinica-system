@@ -1491,14 +1491,14 @@
       <span class="ic">🏥</span>
       <h2>لوحة تحكم العيادة</h2>
       <p id="lClinicName">جاري التحقق...</p>
-      <input type="password" id="lPass" class="linp" placeholder="كلمة المرور">
+      <input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="lPass" class="linp" placeholder="كلمة المرور">
       <button onclick="doLogin()" class="lbtn">دخول</button>
       <div id="staffLoginToggle" style="margin-top:14px;font-size:.78rem;color:var(--muted);cursor:pointer;text-align:center;" onclick="toggleStaffLoginMode()">
         <i class="fas fa-user-md"></i> تسجيل دخول كموظف بحسابك الشخصي
       </div>
       <div id="staffLoginBox" style="display:none;margin-top:14px">
         <select id="lStaffSelect" class="linp" style="text-align:right"><option value="">— اختر اسمك —</option></select>
-        <input type="password" id="lStaffPass" class="linp" placeholder="كلمة مرورك الشخصية" style="margin-top:8px">
+        <input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="lStaffPass" class="linp" placeholder="كلمة مرورك الشخصية" style="margin-top:8px">
         <button onclick="doStaffLogin()" class="lbtn" style="margin-top:8px;background:linear-gradient(135deg,var(--teal),var(--sky));">دخول بحسابي</button>
       </div>
       <div class="lerr" id="lErr">كلمة المرور غير صحيحة ❌</div>
@@ -1624,7 +1624,7 @@
       <div id="setPassTitle" style="font-size:1.1rem;font-weight:800;margin-bottom:4px;color:var(--text)">تعيين كلمة
         المرور</div>
       <div id="setPassSub" style="font-size:.8rem;color:var(--muted);margin-bottom:20px">البوابة الطبية</div>
-      <input type="password" id="setPassInput" class="mfi" placeholder="اكتب كلمة المرور الجديدة..."
+      <input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="setPassInput" class="mfi" placeholder="اكتب كلمة المرور الجديدة..."
         style="width:100%;margin-bottom:12px;font-size:1rem;text-align:center;letter-spacing:2px"
         autocomplete="new-password">
       <div style="display:flex;gap:8px;margin-top:4px">
@@ -1883,7 +1883,7 @@
                 <option value="">— عام —</option>
               </select>
             </div>
-            <div><label class="mfl" style="color:var(--teal)">كلمة مرور البوابة 🔒</label><input type="password"
+            <div><label class="mfl" style="color:var(--teal)">كلمة مرور البوابة 🔒</label><input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;"
                 id="dPass" class="mfi" placeholder="اكتب لتعيين باسورد جديد"></div>
             <button class="badd" id="btnCancelEdit" onclick="cancelDocEdit()"
               style="display:none;background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)"><i
@@ -1985,7 +1985,7 @@
           </div>
           <div class="addrow2" style="margin-top:8px; align-items:flex-end;">
             <div><label class="mfl">الرقم الوطني</label><input type="text" id="sftNatId" class="mfi" placeholder="اختياري"></div>
-            <div><label class="mfl" style="color:var(--teal)">كلمة مرور الدخول 🔒</label><input type="password" id="sftPass" class="mfi" placeholder="اختياري — أو عيّنها لاحقاً من البطاقة"></div>
+            <div><label class="mfl" style="color:var(--teal)">كلمة مرور الدخول 🔒</label><input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="sftPass" class="mfi" placeholder="اختياري — أو عيّنها لاحقاً من البطاقة"></div>
             <button class="badd" id="btnStaffAdd" onclick="addStaff()"><i class="fas fa-plus"
                 style="margin-left:4px"></i>إضافة موظف</button>
             <button class="badd" id="btnCancelStaffEdit" onclick="cancelStaffEdit()"
@@ -2369,9 +2369,9 @@
               class="seti" placeholder="🏥"></div>
           <div class="setg">
             <label class="setl">كلمة المرور الحالية (مطلوبة للتغيير)</label>
-            <input type="password" id="sPwCurrent" class="seti" placeholder="أدخل كلمة المرور الحالية">
+            <input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="sPwCurrent" class="seti" placeholder="أدخل كلمة المرور الحالية">
           </div>
-          <div class="setg"><label class="setl">كلمة المرور الجديدة</label><input type="password" id="sPw" class="seti"
+          <div class="setg"><label class="setl">كلمة المرور الجديدة</label><input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="sPw" class="seti"
               placeholder="اتركها فارغة للإبقاء على الحالية"></div>
 
           <!-- PATIENT PORTAL LINK COPIER -->
@@ -2423,29 +2423,29 @@
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div>
                   <label class="mfl">كلمة مرور الأطباء (EMR)</label>
-                  <input type="password" id="sPassDoc" class="mfi" placeholder="الافتراضية: نفس كلمة مرور العيادة">
+                  <input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="sPassDoc" class="mfi" placeholder="الافتراضية: نفس كلمة مرور العيادة">
                 </div>
                 <!-- Complex Only Passwords -->
                 <div id="complexPasscodes"
                   style="display:none; grid-column: 1 / -1; grid-template-columns: 1fr 1fr; gap: 12px;">
                   <div>
                     <label class="mfl">بوابة الصيدلية (Pharmacy)</label>
-                    <input type="password" id="sPassPhar" class="mfi" placeholder="تم التشفير. أدخل جديد للتغيير"
+                    <input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="sPassPhar" class="mfi" placeholder="تم التشفير. أدخل جديد للتغيير"
                       disabled>
                   </div>
                   <div>
                     <label class="mfl">بوابة المختبر (Lab)</label>
-                    <input type="password" id="sPassLab" class="mfi" placeholder="تم التشفير. أدخل جديد للتغيير"
+                    <input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="sPassLab" class="mfi" placeholder="تم التشفير. أدخل جديد للتغيير"
                       disabled>
                   </div>
                   <div>
                     <label class="mfl">بوابة الأشعة (Radiology)</label>
-                    <input type="password" id="sPassRad" class="mfi" placeholder="تم التشفير. أدخل جديد للتغيير"
+                    <input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="sPassRad" class="mfi" placeholder="تم التشفير. أدخل جديد للتغيير"
                       disabled>
                   </div>
                   <div>
                     <label class="mfl">بوابة الاستقبال (Reception)</label>
-                    <input type="password" id="sPassRec" class="mfi" placeholder="تم التشفير. أدخل جديد للتغيير"
+                    <input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="sPassRec" class="mfi" placeholder="تم التشفير. أدخل جديد للتغيير"
                       disabled>
                   </div>
                 </div>

@@ -19,7 +19,7 @@
             <div class="login-sub">Super Admin Control Panel</div>
             <div class="login-div"></div>
             <input class="li" type="text" id="lu" placeholder="👤  اسم المستخدم" autocomplete="off">
-            <input class="li" type="password" id="lp" placeholder="🔒  كلمة المرور">
+            <input class="li" type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="lp" placeholder="🔒  كلمة المرور">
             <button class="login-btn" onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> &nbsp;دخول النظام</button>
             <div class="login-err" id="lerr">❌ بيانات الدخول غير صحيحة</div>
         </div>
@@ -63,7 +63,7 @@
                 <div class="add-body" id="secBody">
                     <div style="padding:18px 20px">
                         <div class="form-grid" style="grid-template-columns:1fr;padding:0 0 10px">
-                            <div class="fg"><label style="color:var(--red)"><i class="fas fa-key"></i> كلمة المرور الجديدة للسوبر أدمن</label><input class="fi" id="masterPassInp" type="password" placeholder="••••••••"></div>
+                            <div class="fg"><label style="color:var(--red)"><i class="fas fa-key"></i> كلمة المرور الجديدة للسوبر أدمن</label><input class="fi" id="masterPassInp" type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" placeholder="••••••••"></div>
                         </div>
                         <button class="btn" style="background:var(--red);color:#fff;width:100%" onclick="updateMasterCreds()"><i class="fas fa-save"></i> حفظ بيانات الدخول الجديدة</button>
                     </div>
@@ -104,7 +104,7 @@
                             <script>document.getElementById('nId').value='c_'+Math.random().toString(36).substr(2,9);</script>
                         </div>
                         <div class="fg"><label>🏥 اسم العيادة *</label><input class="fi" id="nName" placeholder="عيادة الشفاء"></div>
-                        <div class="fg"><label><i class="fas fa-lock"></i> كلمة المرور *</label><input class="fi" id="nPass" type="password" value="123456"></div>
+                        <div class="fg"><label><i class="fas fa-lock"></i> كلمة المرور *</label><input class="fi" id="nPass" type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" value="123456"></div>
                         <div class="fg"><label><i class="fas fa-phone"></i> الهاتف</label><input class="fi" id="nPhone" placeholder="+96279xxxxxxx" dir="ltr"></div>
                         <div class="fg"><label><i class="fas fa-map-marker-alt"></i> العنوان</label><input class="fi" id="nAddr" placeholder="عمّان — الأردن"></div>
                         <div class="fg">
@@ -170,7 +170,7 @@
     <div class="modal-bg" id="lModal"><div class="modal"><div class="modal-title"><i class="fas fa-link"></i> روابط العيادة <button class="modal-close" onclick="cm('lModal')">✕</button></div><div id="lContent"></div><div class="modal-foot"><button class="btn btn-outline btn-sm" onclick="cm('lModal')">إغلاق</button></div></div></div>
 
     <!-- MODAL: PASSWORD -->
-    <div class="modal-bg" id="pModal"><div class="modal" style="width:400px"><div class="modal-title"><i class="fas fa-key"></i> تغيير كلمة المرور <button class="modal-close" onclick="cm('pModal')">✕</button></div><input type="hidden" id="pResId"><div class="fg" style="margin-bottom:8px"><label><i class="fas fa-lock"></i> كلمة المرور الجديدة</label><input class="fi" type="password" id="pVal" placeholder="أدخل كلمة المرور الجديدة..."></div><div class="modal-foot"><button class="btn btn-teal btn-sm" onclick="doPass()"><i class="fas fa-save"></i> حفظ</button><button class="btn btn-outline btn-sm" onclick="cm('pModal')">إلغاء</button></div></div></div>
+    <div class="modal-bg" id="pModal"><div class="modal" style="width:400px"><div class="modal-title"><i class="fas fa-key"></i> تغيير كلمة المرور <button class="modal-close" onclick="cm('pModal')">✕</button></div><input type="hidden" id="pResId"><div class="fg" style="margin-bottom:8px"><label><i class="fas fa-lock"></i> كلمة المرور الجديدة</label><input class="fi" type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="pVal" placeholder="أدخل كلمة المرور الجديدة..."></div><div class="modal-foot"><button class="btn btn-teal btn-sm" onclick="doPass()"><i class="fas fa-save"></i> حفظ</button><button class="btn btn-outline btn-sm" onclick="cm('pModal')">إلغاء</button></div></div></div>
 
     <!-- MODAL: EDIT -->
     <div class="modal-bg" id="editModal"><div class="modal"><div class="modal-title"><i class="fas fa-edit"></i> تعديل العيادة <button class="modal-close" onclick="cm('editModal')">✕</button></div><input type="hidden" id="editId"><div class="form-grid" style="padding:0 0 14px">

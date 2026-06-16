@@ -484,11 +484,11 @@ window.ArgonEnterpriseAuth = {
                 
                 <div style="text-align:right;margin-bottom:15px">
                     <label style="color:var(--sky);font-size:0.8rem;margin-bottom:5px;display:block">كلمة المرور الجديدة</label>
-                    <input type="password" id="arg-new-pass" class="vform-input" style="width:100%;margin-bottom:10px" placeholder="8 أحرف على الأقل">
+                    <input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="arg-new-pass" class="vform-input" style="width:100%;margin-bottom:10px" placeholder="8 أحرف على الأقل">
                 </div>
                 <div style="text-align:right;margin-bottom:25px">
                     <label style="color:var(--sky);font-size:0.8rem;margin-bottom:5px;display:block">تأكيد كلمة المرور</label>
-                    <input type="password" id="arg-conf-pass" class="vform-input" style="width:100%" placeholder="تأكيد كلمة المرور">
+                    <input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="arg-conf-pass" class="vform-input" style="width:100%" placeholder="تأكيد كلمة المرور">
                 </div>
                 
                 <button id="arg-save-btn" class="btn-primary" style="width:100%;padding:12px;font-size:1.1rem"><i class="fas fa-check-circle"></i> حفظ كلمة المرور والدخول</button>
@@ -575,7 +575,7 @@ window.ArgonPortalRuntime = {
                 <h2 style="color: white; margin-bottom: 5px; font-weight: 900;">بوابة ${deptName}</h2>
                 <p style="color: #94a3b8; margin-bottom: 24px; font-size: 0.9rem;">الرجاء إدخال كلمة مرور القسم للوصول</p>
                 <div id="entLoginStep2">
-                    <input type="password" id="entPass" placeholder="كلمة المرور الخاصة بالقسم" style="width: 100%; padding: 12px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; color: white; font-family: inherit; font-size: 1rem; margin-bottom: 15px; text-align: center; outline: none;" onkeyup="if(event.key==='Enter')ArgonPortalRuntime.doLogin('${portalName}', false)">
+                    <input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="entPass" placeholder="كلمة المرور الخاصة بالقسم" style="width: 100%; padding: 12px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; color: white; font-family: inherit; font-size: 1rem; margin-bottom: 15px; text-align: center; outline: none;" onkeyup="if(event.key==='Enter')ArgonPortalRuntime.doLogin('${portalName}', false)">
                     <button onclick="ArgonPortalRuntime.doLogin('${portalName}', false)" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #0d9488, #0ea5e9); border: none; border-radius: 10px; color: white; font-family: inherit; font-weight: 800; cursor: pointer; font-size: 1rem; margin-bottom: 10px;">دخول البوابة</button>
                     <div id="entErr" style="display: none; color: #fca5a5; font-size: 0.85rem; margin-top: 10px; background: rgba(239,68,68,0.1); padding: 8px; border-radius: 8px;">كلمة المرور غير صحيحة.</div>
                 </div>
@@ -596,7 +596,7 @@ window.ArgonPortalRuntime = {
 
                 <div id="entLoginStep2" style="display: none;">
                     <h3 id="entUserName" style="color: #5eead4; margin-bottom: 15px; font-size: 1.1rem;"></h3>
-                    <input type="password" id="entPass" placeholder="كلمة المرور الخاصة بك" style="width: 100%; padding: 12px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; color: white; font-family: inherit; font-size: 1rem; margin-bottom: 15px; text-align: center; outline: none;" onkeyup="if(event.key==='Enter')ArgonPortalRuntime.doLogin('${portalName}', ${isDoctor})">
+                    <input type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" id="entPass" placeholder="كلمة المرور الخاصة بك" style="width: 100%; padding: 12px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; color: white; font-family: inherit; font-size: 1rem; margin-bottom: 15px; text-align: center; outline: none;" onkeyup="if(event.key==='Enter')ArgonPortalRuntime.doLogin('${portalName}', ${isDoctor})">
                     <button onclick="ArgonPortalRuntime.doLogin('${portalName}', ${isDoctor})" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #0d9488, #0ea5e9); border: none; border-radius: 10px; color: white; font-family: inherit; font-weight: 800; cursor: pointer; font-size: 1rem; margin-bottom: 10px;">تسجيل الدخول</button>
                     <button onclick="ArgonPortalRuntime.prevStep()" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: none; border-radius: 10px; color: white; font-family: inherit; cursor: pointer; font-size: 0.9rem;">رجوع</button>
                     <div id="entErr" style="display: none; color: #fca5a5; font-size: 0.85rem; margin-top: 10px; background: rgba(239,68,68,0.1); padding: 8px; border-radius: 8px;">كلمة المرور غير صحيحة أو غير معينة.</div>
