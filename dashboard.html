@@ -1493,6 +1493,14 @@
       <p id="lClinicName">جاري التحقق...</p>
       <input type="password" id="lPass" class="linp" placeholder="كلمة المرور">
       <button onclick="doLogin()" class="lbtn">دخول</button>
+      <div id="staffLoginToggle" style="margin-top:14px;font-size:.78rem;color:var(--muted);cursor:pointer;text-align:center;" onclick="toggleStaffLoginMode()">
+        <i class="fas fa-user-md"></i> تسجيل دخول كموظف بحسابك الشخصي
+      </div>
+      <div id="staffLoginBox" style="display:none;margin-top:14px">
+        <select id="lStaffSelect" class="linp" style="text-align:right"><option value="">— اختر اسمك —</option></select>
+        <input type="password" id="lStaffPass" class="linp" placeholder="كلمة مرورك الشخصية" style="margin-top:8px">
+        <button onclick="doStaffLogin()" class="lbtn" style="margin-top:8px;background:linear-gradient(135deg,var(--teal),var(--sky));">دخول بحسابي</button>
+      </div>
       <div class="lerr" id="lErr">كلمة المرور غير صحيحة ❌</div>
     </div>
   </div>
@@ -1671,13 +1679,13 @@
     <div class="sidebar">
       <div style="padding:0 8px">
         <div class="sl">الإدارة</div>
-        <div class="ni on" onclick="sw('stats',this)"><i class="fas fa-chart-line"></i>الإحصائيات</div>
+        <div class="ni on" id="navStats" onclick="sw('stats',this)"><i class="fas fa-chart-line"></i>الإحصائيات</div>
         <div class="ni" id="liveNI" onclick="sw('live',this)">
           <i class="fas fa-bell" id="bellI"></i>الحجوزات الحية
           <span class="nbdg z" id="liveC">0</span>
         </div>
-        <div class="ni" onclick="sw('hist',this)"><i class="fas fa-clock-rotate-left"></i>سجل الحجوزات</div>
-        <div class="ni" onclick="window.open('emr.html?id='+CID,'_blank')"
+        <div class="ni" id="navHist" onclick="sw('hist',this)"><i class="fas fa-clock-rotate-left"></i>سجل الحجوزات</div>
+        <div class="ni" id="navEmr" onclick="window.open('emr.html?id='+CID,'_blank')"
           style="border-right:2px dashed var(--teal);background:rgba(13,148,136,.03)"><i class="fas fa-file-medical"
             style="color:var(--teal)"></i>السجلات الطبية EMR <span
             style="margin-right:auto;font-size:0.6rem;background:var(--teal);color:#000;padding:2px 6px;border-radius:4px;font-weight:900">PRO</span>
@@ -1694,7 +1702,7 @@
               style="color:var(--purple)"></i>قسم الأشعة</div>
         </div>
 
-        <div class="ni" onclick="sw('docs',this)"><i class="fas fa-user-md"></i>إدارة الأطباء</div>
+        <div class="ni" id="navDocs" onclick="sw('docs',this)"><i class="fas fa-user-md"></i>إدارة الأطباء</div>
         <div class="ni" id="mStaff" onclick="sw('staff',this)"><i class="fas fa-users-cog"></i><span>إدارة طاقم
             العمل</span></div>
         <div class="ni" id="mBilling" onclick="sw('billing',this)"
@@ -1703,7 +1711,7 @@
         <div class="ni complex-only" id="mPricing" onclick="sw('pricing',this)"
           style="color:var(--sky); border-right:2px solid var(--sky); background:rgba(14,165,233,.05)"><i
             class="fas fa-tags"></i><span>إدارة التسعير</span></div>
-        <div class="ni" onclick="sw('settings',this)"><i class="fas fa-gear"></i>الإعدادات</div>
+        <div class="ni" id="navSettings" onclick="sw('settings',this)"><i class="fas fa-gear"></i>الإعدادات</div>
       </div>
       <div class="royal-foot">
         <div class="argon-sig">
@@ -1976,9 +1984,8 @@
             <div><label class="mfl">إيموجي</label><input type="text" id="sftE" class="mfi" value="👤"></div>
           </div>
           <div class="addrow2" style="margin-top:8px; align-items:flex-end;">
-            <div><label class="mfl">الرقم الوطني</label><input type="text" id="sftNatId" class="mfi"
-                placeholder="اختياري"></div>
-            <!-- Password removed -->
+            <div><label class="mfl">الرقم الوطني</label><input type="text" id="sftNatId" class="mfi" placeholder="اختياري"></div>
+            <div><label class="mfl" style="color:var(--teal)">كلمة مرور الدخول 🔒</label><input type="password" id="sftPass" class="mfi" placeholder="اختياري — أو عيّنها لاحقاً من البطاقة"></div>
             <button class="badd" id="btnStaffAdd" onclick="addStaff()"><i class="fas fa-plus"
                 style="margin-left:4px"></i>إضافة موظف</button>
             <button class="badd" id="btnCancelStaffEdit" onclick="cancelStaffEdit()"
@@ -2882,8 +2889,61 @@
         setTimeout(() => document.getElementById('lErr').style.display = 'none', 3000);
       }
     }
+
+    const ARGON_NAV_PERMISSIONS = {
+      doctor:    { sections: ['live','hist'], hideIds: ['navDocs','mStaff','mBilling','mPricing','navSettings'], landing: 'live' },
+      reception: { sections: ['live','hist','billing'], hideIds: ['navDocs','mStaff','mPricing','navSettings','navEmr'], landing: 'live' }
+    };
+
+    function applyPermissions(role) {
+      if (!role || role === 'admin') return; 
+      const perm = ARGON_NAV_PERMISSIONS[role];
+      if (!perm) return; 
+
+      const statsNav = document.getElementById('navStats');
+      if (statsNav) statsNav.style.display = perm.sections.includes('stats') ? '' : 'none';
+      perm.hideIds.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+
+      if (perm.landing) sw(perm.landing, document.getElementById('liveNI'));
+      if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('PERMISSIONS_APPLIED', `قيود الواجهة طُبّقت لدور: ${role}`, 'AUTH');
+    }
+
+    function toggleStaffLoginMode() {
+      const box = document.getElementById('staffLoginBox');
+      const showing = box.style.display !== 'none';
+      box.style.display = showing ? 'none' : 'block';
+      if (!showing) {
+        const sel = document.getElementById('lStaffSelect');
+        sel.innerHTML = '<option value="">— اختر اسمك —</option>';
+        Object.entries(_docs || {}).forEach(([k, d]) => sel.innerHTML += `<option value="doctor:${k}">👨⚕️ د. ${sanitize(d.name)}</option>`);
+        Object.entries(_staff || {}).forEach(([k, s]) => sel.innerHTML += `<option value="staff:${k}">${s.emoji||'👤'} ${sanitize(s.name)}</option>`);
+      }
+    }
+
+    async function doStaffLogin() {
+      const val = document.getElementById('lStaffSelect').value;
+      const pass = document.getElementById('lStaffPass').value;
+      if (!val) { toast('⚠️ اختر اسمك أولاً', 'err'); return; }
+      const [kind, uid] = val.split(':');
+      const isDoctor = kind === 'doctor';
+      const role = isDoctor ? 'doctor' : ((_staff[uid]||{}).role === 'reception' ? 'reception' : (_staff[uid]||{}).role);
+      try {
+        const ok = await ArgonEnterpriseAuth.login(uid, pass, role, isDoctor);
+        if (ok) {
+          const el = document.getElementById('dashLogin');
+          el.style.opacity='0'; el.style.transition='opacity .35s';
+          setTimeout(()=>{ el.style.display='none'; toast('✅ أهلاً بك!','ok'); applyPermissions(role); }, 360);
+        } else {
+          toast('❌ كلمة المرور غير صحيحة', 'err');
+        }
+      } catch (e) {
+        if (e.message !== 'DEPT_PASSWORD_NOT_SET') toast('❌ خطأ: ' + e.message, 'err');
+      }
+    }
+
     function doLogout() {
       sessionStorage.removeItem('clinica_auth_' + CID);
+      if (typeof ArgonEnterpriseAuth !== 'undefined' && ArgonEnterpriseAuth.logout) { ArgonEnterpriseAuth.logout(); }
       window.location.reload();
     }
 
@@ -3546,14 +3606,19 @@
           'it_support': 'دعم تقني', 'security': 'أمن وسلامة', 'cleaner': 'نظافة وخدمات', 'driver': 'سائق', 'head_nurse': 'رئيس ممرضين',
           'dept_manager': 'مدير قسم', 'medical_director': 'مدير طبي', 'sterilization': 'فني تعقيم', 'physiotherapy': 'معالج فيزيائي', 'nutrition': 'أخصائي تغذية'
         };
+        const hasPass = s.enterpriseAuth && s.enterpriseAuth.passwordHash;
         return `<div class="dc">
-      <div class="dc-top" style="height:70px; font-size: 2rem;">${s.emoji || '👤'}</div>
+      <div class="dc-top" style="height:70px; font-size: 2rem;">${s.emoji||'👤'}</div>
       <div class="dc-body">
         <div class="dc-name">${sanitize(s.name)}</div>
         <div class="dc-spec" style="color:var(--sky)">${roleMap[s.role] || s.role}</div>
+        <div style="font-size:0.7rem;margin-top:6px;font-weight:700;color:${hasPass ? 'var(--green)' : 'var(--red)'}">
+          <i class="fas ${hasPass ? 'fa-lock' : 'fa-lock-open'}"></i> ${hasPass ? 'تم تعيين كلمة مرور' : 'بلا كلمة مرور — لا يمكنه الدخول'}
+        </div>
       </div>
       <div style="display:flex;border-top:1px solid rgba(13,148,136,.1)">
-        <button onclick="editStaff('${k}')" style="flex:1;background:none;border:none;border-left:1px solid rgba(13,148,136,.1);color:var(--sky);padding:8px;font-family:'Tajawal',sans-serif;font-size:.75rem;cursor:pointer;transition:.2s"><i class="fas fa-edit"></i> تعديل</button>
+        <button onclick="editStaff('${k}')" style="flex:1;background:none;border:none;border-left:1px solid rgba(13,148,136,.1);color:var(--sky);padding:8px;font-family:'Tajawal',sans-serif;font-size:.75rem;cursor:pointer">✏️ تعديل</button>
+        <button onclick="openSetPass('${k}',false)" style="flex:1;background:none;border:none;border-left:1px solid rgba(13,148,136,.1);color:var(--teal);padding:8px;font-family:'Tajawal',sans-serif;font-size:.75rem;cursor:pointer"><i class="fas fa-key"></i> باسورد</button>
         <button class="bdel" style="flex:1;border:none" onclick="db.ref(BASE+'/staff/${k}').remove();toast('تم الحذف','ok')"><i class="fas fa-trash"></i> حذف</button>
       </div>
     </div>`;
@@ -4405,16 +4470,21 @@
         emoji: sftE ? (sftE.value.trim() || '👤') : '👤'
       };
 
+      const sftPass = document.getElementById('sftPass');
+      const newPass = sftPass ? sftPass.value.trim() : '';
+
       if (editingStaffKey) {
-        db.ref(`${BASE}/staff/${editingStaffKey}`).update(staffObj).then(() => {
-          toast('✅ تم تحديث الموظف', 'ok');
+        db.ref(`${BASE}/staff/${editingStaffKey}`).update(staffObj).then(async () => {
+          if (newPass) await ArgonEnterpriseAuth.setStaffCredentials(editingStaffKey, newPass, false);
+          toast('✅ تم تحديث الموظف' + (newPass ? ' وتعيين كلمة المرور 🔒' : ''), 'ok');
           cancelStaffEdit();
         });
       } else {
         const staffRef = db.ref(`${BASE}/staff`).push();
-        staffRef.set(staffObj).then(() => {
+        staffRef.set(staffObj).then(async () => {
+          if (newPass) await ArgonEnterpriseAuth.setStaffCredentials(staffRef.key, newPass, false);
           cancelStaffEdit();
-          toast('✅ تم إضافة الموظف', 'ok');
+          toast('✅ تم إضافة الموظف' + (newPass ? ' وتعيين كلمة المرور 🔒' : ''), 'ok');
         });
       }
     }
@@ -4458,6 +4528,8 @@
       if (sftP) sftP.value = '';
       if (sftNatId) sftNatId.value = '';
       if (sftE) sftE.value = '👤';
+      const sftPassEl = document.getElementById('sftPass');
+      if (sftPassEl) sftPassEl.value = '';
 
       const b = document.getElementById('btnStaffAdd');
       if (b) {
