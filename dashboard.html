@@ -2939,8 +2939,11 @@
 
     function doLogout() {
       sessionStorage.removeItem('clinica_auth_' + CID);
-      if (typeof ArgonEnterpriseAuth !== 'undefined' && ArgonEnterpriseAuth.logout) { ArgonEnterpriseAuth.logout(); }
-      window.location.reload();
+      if (typeof ArgonSession !== 'undefined' && ArgonSession.logout) { 
+        ArgonSession.logout(); 
+      } else {
+        window.location.reload();
+      }
     }
 
     // ── SOUND ──
