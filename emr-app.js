@@ -330,8 +330,11 @@ function initEMR() {
     const style = document.createElement('style');
     style.innerHTML = `
       .is-readonly input, .is-readonly textarea, .is-readonly select { pointer-events:none; background:#f1f5f9!important; opacity:0.8; }
-      .is-readonly .save-btn, .is-readonly .delete-btn, .is-readonly [onclick*="save"], .is-readonly [onclick*="delete"], .is-readonly [onclick*="remove"] { display:none!important; }
+      .is-readonly .save-btn, .is-readonly .delete-btn, .is-readonly [onclick*="save"], .is-readonly [onclick*="delete"], .is-readonly [onclick*="remove"], .is-readonly [onclick*="edit"], .is-readonly [onclick*="reset"], .is-readonly [onclick*="clear"] { display:none!important; }
       .is-readonly .readonly-banner { display:flex!important; }
+      /* Specialty Modules Freeze */
+      .is-readonly .argon-tooth-cell-v2, .is-readonly .bseg, .is-readonly .origin-btn, .is-readonly .mode-btn, .is-readonly .palette-btn { pointer-events:none!important; }
+      .is-readonly .det-btn-save, .is-readonly .det-btn-bridge, .is-readonly .det-btn-cancel { display:none!important; }
     `;
     document.head.appendChild(style);
 
