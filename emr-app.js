@@ -4375,6 +4375,11 @@ function resolvePatientUid(rawUid, expectedName = '') {
 
 function loadVisitForm(rawUid, bookingId, expectedName = '') {
   const uid = resolvePatientUid(rawUid, expectedName);
+
+  if (bookingId && !window.IS_READONLY) {
+    db.ref(`${BASE}/bookings/${bookingId}/status`).set('with_doctor').catch(() => { });
+  }
+
   if (!uid) {
     // Patient not yet registered — open workspace with booking data only
     const booking = _liveBookings[bookingId] || {};
