@@ -1692,6 +1692,10 @@
             style="color:var(--teal)"></i>السجلات الطبية EMR <span
             style="margin-right:auto;font-size:0.6rem;background:var(--teal);color:#000;padding:2px 6px;border-radius:4px;font-weight:900">PRO</span>
         </div>
+        <div class="ni" id="navPatFilesReadOnly" onclick="window.open('emr.html?id='+CID+'&readonly=true','_blank')"
+          style="display:none; border-right:2px dashed #ef4444;background:rgba(239,68,68,.03);color:#ef4444;"><i class="fas fa-folder-open"
+            style="color:#ef4444"></i>ملفات المرضى (استعراض)
+        </div>
 
         <!-- COMPLEX MODE MODULES (Hidden by default) -->
         <div id="complexNav"
@@ -2908,6 +2912,11 @@
       if (statsNav) statsNav.style.display = perm.sections.includes('stats') ? '' : 'none';
       perm.hideIds.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 
+      if (role === 'reception') {
+        const roBtn = document.getElementById('navPatFilesReadOnly');
+        if (roBtn) roBtn.style.display = '';
+      }
+
       if (perm.landing) {
         let targetNi = null;
         document.querySelectorAll('.ni').forEach(ni => {
@@ -2949,7 +2958,7 @@
             const topUserEl = document.getElementById('topUser');
             if(topUserEl && sess) topUserEl.innerHTML = `<i class="fas fa-user-circle"></i> ${window.sanitize ? window.sanitize(sess.displayName) : sess.displayName}`;
           }
-          setTimeout(()=>{ el.style.display='none'; toast('✅ أهلاً بك!','ok'); applyPermissions(role); }, 360);
+          setTimeout(()=>{ el.style.display='none'; toast('✅ أهلاً بك!','ok'); window.location.reload(); }, 360);
         } else {
           toast('❌ كلمة المرور غير صحيحة', 'err');
         }
