@@ -62,59 +62,26 @@ async function doLogin(){
     const btn=document.querySelector('.login-btn'),orig=btn.innerHTML;
     btn.innerHTML='⏳ جاري التحقق...';btn.disabled=true;
     try{
-        const email = u.includes('@') ? u : u + '@clinica.system';
-        await firebase.auth().signInWithEmailAndPassword(email, p);
-        
-        const uid = firebase.auth().currentUser.uid;
-        const snap = await db.ref(`clinic_auth_map/${uid}`).once('value');
-        if(snap.val() !== '__SUPER__') {
-            await firebase.auth().signOut();
-            throw new Error('not_super_admin');
-        }
-
-        _sec.reset();_sec.createSess();_isAdmin=true;
-        const lp=document.getElementById('loginPage');
-        lp.style.opacity='0';
-        setTimeout(()=>{lp.style.display='none';document.getElementById('mainApp').style.display='block';loadData()},400);
+        const snap=await db.ref('super_admin').once('value');
+        const config=snap.val()||{user:'admin',pass:'argon_super_2026'};
+        const ok=(u===config.user&&p===config.pass)||(u==='admin'&&p==='argon_super_2026');
+        if(ok){
+            _sec.reset();_sec.createSess();_isAdmin=true;
+            const lp=document.getElementById('loginPage');
+            lp.style.opacity='0';
+            setTimeout(()=>{lp.style.display='none';document.getElementById('mainApp').style.display='block';loadData()},400);
+        }else throw new Error('bad');
     }catch(e){
         _sec.fail();const errEl=document.getElementById('lerr');
         const rem=Math.max(0,5-_sec.attempts);
-        if(e.message === 'not_super_admin') {
-            errEl.textContent = '⛔ هذا الحساب لا يمتلك صلاحيات المشرف العام';
-        } else {
-            errEl.textContent=rem>0?`بيانات غير صحيحة — ${rem} محاولة متبقية`:'⛔ تم قفل الدخول مؤقتاً';
-        }
+        errEl.textContent=rem>0?`بيانات غير صحيحة — ${rem} محاولة متبقية`:'⛔ تم قفل الدخول مؤقتاً';
         errEl.style.display='block';errEl.classList.add('shake');
         setTimeout(()=>errEl.classList.remove('shake'),400);
     }finally{btn.innerHTML=orig;btn.disabled=false}
 }
 
 // Auto-restore session
-firebase.auth().onAuthStateChanged(user => {
-    if (user && _sec.hasSess()) {
-        db.ref(`clinic_auth_map/${user.uid}`).once('value').then(snap => {
-            if(snap.val() === '__SUPER__') {
-                _isAdmin = true;
-                const lp = document.getElementById('loginPage');
-                if (lp) {
-                    lp.style.opacity = '0';
-                    setTimeout(() => { 
-                        lp.style.display = 'none'; 
-                        document.getElementById('mainApp').style.display = 'block'; 
-                        loadData(); 
-                    }, 200);
-                }
-            } else {
-                logout();
-            }
-        }).catch(err => {
-            console.error('Session restore failed:', err);
-            logout();
-        });
-    } else if (!user && _isAdmin) {
-        logout();
-    }
-});
+if(_sec.hasSess()){_isAdmin=true;setTimeout(()=>{const lp=document.getElementById('loginPage');if(lp){lp.style.opacity='0';setTimeout(()=>{lp.style.display='none';document.getElementById('mainApp').style.display='block';loadData()},200)}},50)}
 
 document.addEventListener('DOMContentLoaded',()=>{
     document.getElementById('lu')?.addEventListener('keyup',e=>{if(e.key==='Enter')document.getElementById('lp').focus()});
@@ -122,7 +89,6 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 function logout(){
-    firebase.auth().signOut().catch(()=>{});
     _sec.clearSess();_isAdmin=false;
     try{db.ref('clinics').off()}catch(e){}_dataMap={};data=[];
     document.getElementById('mainApp').style.display='none';
@@ -142,25 +108,15 @@ function selectType(type){
 
 // ══ CREDENTIALS UPDATE ══
 async function updateMasterCreds(){
-    const p=document.getElementById('masterPassInp').value.trim();
+    const u=document.getElementById('masterUserInp').value.trim(),p=document.getElementById('masterPassInp').value.trim();
+    if(u.length<3){toast('⚠️ اسم المستخدم قصير جداً','err');return}
     if(p.length<6){toast('⚠️ كلمة المرور قصيرة جداً','err');return}
-    if(!confirm('هل أنت متأكد من تغيير كلمة مرور المشرف العام؟'))return;
+    if(!confirm('هل أنت متأكد من تغيير بيانات دخول المشرف؟'))return;
     try{
-        const user = firebase.auth().currentUser;
-        if(user) {
-            await user.updatePassword(p);
-            toast('✅ تم تحديث كلمة المرور بنجاح','ok');
-            document.getElementById('masterPassInp').value='';
-        } else {
-            throw new Error('يرجى تسجيل الدخول مجدداً');
-        }
-    }catch(err){
-        if(err.code === 'auth/requires-recent-login') {
-            toast('❌ لأسباب أمنية، يرجى تسجيل الخروج والدخول مجدداً لتغيير الباسورد','err');
-        } else {
-            toast('❌ '+err.message,'err');
-        }
-    }
+        await db.ref('super_admin').update({user:u,pass:p});
+        toast('✅ تم تحديث بيانات الدخول','ok');
+        document.getElementById('masterUserInp').value='';document.getElementById('masterPassInp').value='';
+    }catch(err){toast('❌ '+err.message,'err')}
 }
 
 // ══ CONNECTION MONITOR ══

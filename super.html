@@ -62,8 +62,9 @@
                 </div>
                 <div class="add-body" id="secBody">
                     <div style="padding:18px 20px">
-                        <div class="form-grid" style="grid-template-columns:1fr;padding:0 0 10px">
-                            <div class="fg"><label style="color:var(--red)"><i class="fas fa-key"></i> كلمة المرور الجديدة للسوبر أدمن</label><input class="fi" id="masterPassInp" type="password" placeholder="••••••••"></div>
+                        <div class="form-grid" style="grid-template-columns:1fr 1fr;padding:0 0 10px">
+                            <div class="fg"><label style="color:var(--red)"><i class="fas fa-user-shield"></i> اسم المستخدم</label><input class="fi" id="masterUserInp" placeholder="اسم المستخدم الجديد"></div>
+                            <div class="fg"><label style="color:var(--red)"><i class="fas fa-key"></i> كلمة المرور</label><input class="fi" id="masterPassInp" type="password" placeholder="••••••••"></div>
                         </div>
                         <button class="btn" style="background:var(--red);color:#fff;width:100%" onclick="updateMasterCreds()"><i class="fas fa-save"></i> حفظ بيانات الدخول الجديدة</button>
                     </div>
@@ -200,7 +201,6 @@
     </script>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
     <script src="super-app.js"></script>
 
