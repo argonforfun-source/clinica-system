@@ -1,0 +1,5 @@
+node_modules/
+backups/
+serviceAccountKey.json
+.env
+.firebase/
