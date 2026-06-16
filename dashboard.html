@@ -2900,7 +2900,15 @@
       if (statsNav) statsNav.style.display = perm.sections.includes('stats') ? '' : 'none';
       perm.hideIds.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 
-      if (perm.landing) sw(perm.landing, document.getElementById('liveNI'));
+      if (perm.landing) {
+        let targetNi = null;
+        document.querySelectorAll('.ni').forEach(ni => {
+          if (ni.getAttribute('onclick') && ni.getAttribute('onclick').includes(`sw('${perm.landing}'`)) {
+            targetNi = ni;
+          }
+        });
+        sw(perm.landing, targetNi || document.getElementById('liveNI'));
+      }
       if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) ArgonCore.logAudit('PERMISSIONS_APPLIED', `قيود الواجهة طُبّقت لدور: ${role}`, 'AUTH');
     }
 
@@ -2928,6 +2936,11 @@
         if (ok) {
           const el = document.getElementById('dashLogin');
           el.style.opacity='0'; el.style.transition='opacity .35s';
+          if (typeof ArgonSession !== 'undefined') {
+            const sess = ArgonSession.get();
+            const topUserEl = document.getElementById('topUser');
+            if(topUserEl && sess) topUserEl.innerHTML = `<i class="fas fa-user-circle"></i> ${window.sanitize ? window.sanitize(sess.displayName) : sess.displayName}`;
+          }
           setTimeout(()=>{ el.style.display='none'; toast('✅ أهلاً بك!','ok'); applyPermissions(role); }, 360);
         } else {
           toast('❌ كلمة المرور غير صحيحة', 'err');
