@@ -320,6 +320,43 @@ setTimeout(() => {
 function initEMR() {
   toast('مرحباً بك في نظام السجلات الطبية', 'ok');
 
+  // ── READ-ONLY MODE CHECK ──
+  const isReadOnly = new URLSearchParams(window.location.search).get('readonly') === 'true';
+  if (isReadOnly) {
+    window.IS_READONLY = true;
+    document.body.classList.add('is-readonly');
+    
+    // UI Freeze
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .is-readonly input, .is-readonly textarea, .is-readonly select { pointer-events:none; background:#f1f5f9!important; opacity:0.8; }
+      .is-readonly .save-btn, .is-readonly .delete-btn, .is-readonly [onclick*="save"], .is-readonly [onclick*="delete"], .is-readonly [onclick*="remove"] { display:none!important; }
+      .is-readonly .readonly-banner { display:flex!important; }
+    `;
+    document.head.appendChild(style);
+
+    // Banner
+    const banner = document.createElement('div');
+    banner.className = 'readonly-banner';
+    banner.style.cssText = 'display:none;align-items:center;justify-content:center;background:#ef4444;color:#fff;font-weight:bold;padding:10px;position:fixed;top:0;left:0;right:0;z-index:10000;font-family:"Tajawal",sans-serif;box-shadow:0 4px 12px rgba(239,68,68,0.4);';
+    banner.innerHTML = '<i class="fas fa-lock" style="margin-left:8px"></i> وضع القراءة فقط (مخصص للاستقبال) - غير مصرح لك بتعديل أو إضافة بيانات طبية';
+    document.body.appendChild(banner);
+
+    // Logic Freeze (Firebase override)
+    const originalRef = db.ref.bind(db);
+    db.ref = function(path) {
+      const r = originalRef(path);
+      const fakePromise = () => Promise.resolve();
+      r.set = fakePromise;
+      r.update = fakePromise;
+      r.remove = fakePromise;
+      r.push = function() { return { key: 'readonly_fake_key', set: fakePromise, update: fakePromise, remove: fakePromise }; };
+      return r;
+    };
+    
+    toast('⚠️ أنت الآن في وضع القراءة فقط', 'warn');
+  }
+
   /* ══ تهيئة محرك التحميل المتدرج ══ */
   _pager = new ArgonPatientPager(db, BASE, {
     pageSize:    30,

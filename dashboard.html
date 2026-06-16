@@ -2561,7 +2561,7 @@
           </div>
           <div>
             <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">التاريخ *</label>
-            <input type="date" id="rbDate" class="mfi">
+            <input type="date" id="rbDate" class="mfi" onchange="rbOnDocChange()">
           </div>
           <div>
             <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">الوقت *</label>
@@ -2606,10 +2606,18 @@
 
       <!-- Fee Info (auto-filled) -->
       <div id="rbFeeRow"
-        style="display:none;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:12px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+        style="display:none;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:12px;margin-bottom:16px;align-items:center;justify-content:space-between">
         <span style="font-size:.85rem;color:var(--muted)">رسوم الكشف:</span>
         <span id="rbFeeDisplay" style="font-weight:900;color:var(--green);font-family:'IBM Plex Mono',monospace">0.00
           د.أ</span>
+      </div>
+
+      <!-- Schedule Preview -->
+      <div id="rbSchedulePreview" style="display:none;background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
+        <div style="font-size:.85rem;font-weight:800;color:var(--teal);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+          <i class="fas fa-clock"></i> المواعيد المحجوزة مسبقاً لهذا الطبيب في هذا اليوم:
+        </div>
+        <div id="rbScheduleList" style="display:flex;flex-wrap:wrap;gap:8px"></div>
       </div>
 
       <!-- Actions -->
@@ -3444,6 +3452,9 @@
             ? 'background:linear-gradient(135deg,rgba(168,85,247,.03),rgba(124,58,237,.01));border:1px solid rgba(168,85,247,.15);'
             : '';
 
+          const sessRole = window.ArgonSession ? window.ArgonSession.get()?.role : '';
+          const isRec = sessRole === 'reception';
+
           html += `<div class="bc${st === 'cancelled' ? ' cancel' : ''}" style="border-right-color:${borderLeft};${cardBg}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:6px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
@@ -3465,7 +3476,7 @@
         <div class="bfooter">
           <span class="bprice">${isRef ? '<span style="color:#a855f7;font-weight:700">مجاني</span>' : (b.fee || '0.00') + ' <small>د.أ</small>'}</span>
           <div class="acts">
-            ${(b.patientId || b.patPhone) ? `<button class="ab" onclick="openPatientEMR('${k}')" style="background:rgba(13,148,136,.1);color:var(--teal);border-color:rgba(13,148,136,.25)"><i class="fas fa-folder-open"></i> الملف</button>` : ''}
+            ${(b.patientId || b.patPhone) ? (isRec ? `<button class="ab" onclick="openPatientEMRReadOnly('${k}')" style="background:rgba(239,68,68,.1);color:#ef4444;border-color:rgba(239,68,68,.25)"><i class="fas fa-eye"></i> استعراض الملف</button>` : `<button class="ab" onclick="openPatientEMR('${k}')" style="background:rgba(13,148,136,.1);color:var(--teal);border-color:rgba(13,148,136,.25)"><i class="fas fa-folder-open"></i> الملف</button>`) : ''}
             ${st === 'new' ? `<button class="ab a-ok" onclick="updSt('${k}','confirmed')"><i class="fas fa-check"></i> تأكيد</button>` : ''}
             ${st === 'confirmed' ? `<button class="ab a-wait" onclick="updSt('${k}','waiting')"><i class="fas fa-clock"></i> انتظار</button>` : ''}
             ${st === 'waiting' ? `<button class="ab a-wait" style="background:rgba(59, 130, 246, 0.1);color:#3b82f6;border-color:rgba(59, 130, 246, 0.3)" onclick="updSt('${k}','with_doctor')"><i class="fas fa-user-md"></i> للعيادة</button>` : ''}
@@ -3773,6 +3784,14 @@
       window.open(`emr.html?id=${CID}&bk=${encodeURIComponent(bookingKey)}&expectedName=${nameParam}`, '_blank');
     }
 
+    // Open patient file in EMR in Read-Only mode for Reception
+    function openPatientEMRReadOnly(bookingKey) {
+      const b = _bks[bookingKey];
+      if (!b) return;
+      const nameParam = encodeURIComponent(b.patName || '');
+      window.open(`emr.html?id=${CID}&bk=${encodeURIComponent(bookingKey)}&expectedName=${nameParam}&readonly=true`, '_blank');
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // cmpBook v2.1 — FIX: error handling + button reset + timeout guard
     // ═══════════════════════════════════════════════════════════════
@@ -3942,6 +3961,7 @@
       const insProvEl = document.getElementById('rbInsProv');
       if (insProvEl) insProvEl.value = '';
       document.getElementById('rbFeeRow').style.display = 'none';
+      document.getElementById('rbSchedulePreview').style.display = 'none';
 
       // Show modal
       const m = document.getElementById('receptionBookingModal');
@@ -3969,6 +3989,33 @@
       } else {
         feeRow.style.display = 'none';
       }
+
+      // ── Smart Schedule Preview ──
+      const docKey = sel.value;
+      const bDate = document.getElementById('rbDate').value;
+      const previewDiv = document.getElementById('rbSchedulePreview');
+      const listDiv = document.getElementById('rbScheduleList');
+      
+      if (!docKey || !bDate) {
+        previewDiv.style.display = 'none';
+        return;
+      }
+      
+      // Filter existing bookings for this doctor and date
+      const existingBks = Object.values(window._bks || {}).filter(b => b.docKey === docKey && b.date === bDate && b.status !== 'cancelled');
+      
+      if (existingBks.length === 0) {
+        listDiv.innerHTML = '<div style="font-size:.8rem;color:var(--green);background:rgba(16,185,129,.1);padding:6px 12px;border-radius:6px">✅ لا يوجد مواعيد محجوزة مسبقاً، الجدول متاح بالكامل.</div>';
+      } else {
+        // Sort by time
+        existingBks.sort((a,b) => (a.time || '') > (b.time || '') ? 1 : -1);
+        listDiv.innerHTML = existingBks.map(b => {
+          return `<div style="font-size:.75rem;font-weight:700;color:var(--amber);background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);padding:4px 8px;border-radius:6px;font-family:'IBM Plex Mono',monospace">
+            ${b.time} ⏳
+          </div>`;
+        }).join('');
+      }
+      previewDiv.style.display = 'block';
     }
 
     async function submitReceptionBooking() {
@@ -3993,6 +4040,19 @@
       if (!bDate) { toast('⚠️ يرجى تحديد التاريخ', 'err'); return; }
       if (!bTime) { toast('⚠️ يرجى تحديد الوقت', 'err'); return; }
       if (hasInsurance && !insProv) { toast('⚠️ التأمين مفعل: يرجى اختيار شركة التأمين', 'err'); return; }
+
+      // ── Smart Conflict Validation (15 mins threshold) ──
+      const existingBks = Object.values(window._bks || {}).filter(b => b.docKey === docKey && b.date === bDate && b.status !== 'cancelled');
+      const selTimeMins = parseInt(bTime.split(':')[0]) * 60 + parseInt(bTime.split(':')[1]);
+      
+      for (const eb of existingBks) {
+        if (!eb.time) continue;
+        const ebMins = parseInt(eb.time.split(':')[0]) * 60 + parseInt(eb.time.split(':')[1]);
+        if (Math.abs(selTimeMins - ebMins) < 15) {
+           toast(`❌ تعارض في المواعيد: يوجد موعد محجوز مسبقاً عند ${eb.time}. يرجى اختيار وقت آخر.`, 'err');
+           return;
+        }
+      }
 
       const btn = document.getElementById('rbSubmitBtn');
       btn.disabled = true;

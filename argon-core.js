@@ -528,7 +528,20 @@ window.ArgonPortalACL = {
         else if (portalName === 'lab') requiredRole = 'lab';
         else if (portalName === 'radiology') requiredRole = 'radiology';
 
-        const valid = ArgonSession.isValid(requiredRole);
+        let valid = ArgonSession.isValid(requiredRole);
+        
+        // --- READ-ONLY OVERRIDE FOR EMR ---
+        if (!valid && portalName === 'emr') {
+            const isReadOnly = new URLSearchParams(window.location.search).get('readonly') === 'true';
+            if (isReadOnly) {
+                // If it's readonly, allow admin or reception to enter EMR
+                const s = ArgonSession.get();
+                if (s && (s.role === 'admin' || s.role === 'reception')) {
+                    valid = true;
+                }
+            }
+        }
+
         if (!valid) ArgonCore.logAudit('UNAUTHORIZED_ACCESS', `Attempted access to ${portalName}`, 'AUTH');
         return valid;
     }
