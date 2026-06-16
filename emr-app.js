@@ -330,7 +330,7 @@ function initEMR() {
     const style = document.createElement('style');
     style.innerHTML = `
       .is-readonly input, .is-readonly textarea, .is-readonly select { pointer-events:none; background:#f1f5f9!important; opacity:0.8; }
-      .is-readonly .save-btn, .is-readonly .delete-btn, .is-readonly [onclick*="save"], .is-readonly [onclick*="delete"], .is-readonly [onclick*="remove"], .is-readonly [onclick*="edit"], .is-readonly [onclick*="reset"], .is-readonly [onclick*="clear"] { display:none!important; }
+      .is-readonly .save-btn, .is-readonly .delete-btn, .is-readonly [onclick*="save"], .is-readonly [onclick*="delete"], .is-readonly [onclick*="remove"], .is-readonly [onclick*="edit"], .is-readonly [onclick*="reset"], .is-readonly [onclick*="clear"], .is-readonly [onclick*="add"] { display:none!important; }
       .is-readonly .readonly-banner { display:flex!important; }
       /* Specialty Modules Freeze */
       .is-readonly .argon-tooth-cell-v2, .is-readonly .bseg, .is-readonly .origin-btn, .is-readonly .mode-btn, .is-readonly .palette-btn { pointer-events:none!important; }
@@ -341,8 +341,16 @@ function initEMR() {
     // Banner
     const banner = document.createElement('div');
     banner.className = 'readonly-banner';
-    banner.style.cssText = 'display:none;align-items:center;justify-content:center;background:#ef4444;color:#fff;font-weight:bold;padding:10px;position:fixed;top:0;left:0;right:0;z-index:10000;font-family:"Tajawal",sans-serif;box-shadow:0 4px 12px rgba(239,68,68,0.4);';
-    banner.innerHTML = '<i class="fas fa-lock" style="margin-left:8px"></i> وضع القراءة فقط (مخصص للاستقبال) - غير مصرح لك بتعديل أو إضافة بيانات طبية';
+    banner.style.cssText = 'display:none;align-items:center;justify-content:space-between;background:rgba(254,242,242,0.95);color:#b91c1c;font-weight:bold;padding:12px 20px;position:fixed;top:15px;left:50%;transform:translateX(-50%);z-index:10000;font-family:"Tajawal",sans-serif;box-shadow:0 8px 32px rgba(220,38,38,0.15);border-radius:30px;border:1px solid #fca5a5;backdrop-filter:blur(8px);font-size:0.9rem;width:auto;min-width:420px;';
+    banner.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;">
+        <i class="fas fa-eye" style="color:#ef4444;font-size:1.1rem;"></i> 
+        <span>وضع الاستعراض (للاستقبال) - لا يمكنك التعديل</span>
+      </div>
+      <button onclick="window.close()" style="background:#ef4444;color:#fff;border:none;border-radius:20px;padding:6px 16px;cursor:pointer;font-family:Tajawal;font-weight:bold;font-size:0.8rem;box-shadow:0 2px 8px rgba(239,68,68,0.3);transition:all 0.2s">
+        <i class="fas fa-times" style="margin-left:4px"></i> إغلاق الملف
+      </button>
+    `;
     document.body.appendChild(banner);
 
     // Logic Freeze (Firebase override)
