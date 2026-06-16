@@ -3711,6 +3711,19 @@
       const bookingNID_C3 = ArgonNID.cleanNID(b.patNationalId || b.nationalId || '');
       // ──
 
+      // ── ARGON ENTERPRISE: Local Race Condition Lock ──
+      // Prevent the same receptionist from triggering 3 creations in 500ms
+      const lockKey = bookingNID_C3 || cleanPhone;
+      if (lockKey) {
+        if (!window._pendingCreations) window._pendingCreations = {};
+        if (window._pendingCreations[lockKey]) {
+          console.warn('[RaceLock] Creation already in progress for', lockKey, '- retrying in 1.5s');
+          setTimeout(() => _ensurePatientAndLink(bookingKey, b, callback), 1500);
+          return;
+        }
+        window._pendingCreations[lockKey] = true;
+      }
+
       // ── ARGON ENTERPRISE: Smart Patient Match & Shadow Logging (PHASE 3 - 3.2 Decoupled) ──
       if (window.ArgonMedical && window.ArgonMedical.PatientMatch) {
         const session = window.ArgonSession ? window.ArgonSession.get() : {};
@@ -3762,9 +3775,12 @@
         if (snap.exists()) {
           // Link existing patient
           const foundKey = Object.keys(snap.val())[0];
-          db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(foundKey).then(callback);
+          db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(foundKey).then(() => {
+            if (lockKey) delete window._pendingCreations[lockKey];
+            callback();
+          });
         } else {
-          // Create new patient record (either completely new phone, or same phone but different name)
+          // Create new patient record
           const newRef = db.ref(`${BASE}/patients`).push();
           newRef.set({
             info: {
@@ -3778,7 +3794,10 @@
               createdAt: new Date().toISOString()
             }
           }).then(() => {
-            db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(newRef.key).then(callback);
+            db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(newRef.key).then(() => {
+              if (lockKey) delete window._pendingCreations[lockKey];
+              callback();
+            });
           });
         }
       });
