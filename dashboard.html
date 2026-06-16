@@ -1650,6 +1650,8 @@
       <span id="tlogo" class="tlogo">ARGON</span>
       <span style="width:1px;height:20px;background:var(--border)"></span>
       <span id="topName" style="font-size:.9rem;font-weight:700">...</span>
+      <span style="width:1px;height:20px;background:var(--border)"></span>
+      <span id="topUser" style="font-size:.85rem;font-weight:700;color:var(--teal);"></span>
     </div>
     <div class="tr">
       <span id="stBadge" class="tbadge tb-open"><i class="fas fa-circle" style="font-size:.38rem"></i> مفتوح</span>
@@ -1953,29 +1955,17 @@
             <div><label class="mfl">الدور / الوظيفة</label>
               <!-- STAFF ROLES v2.0 — مجمع طبي وعيادة منفردة -->
               <select id="sftR" class="mfi">
-                <optgroup label="── وظائف مشتركة (عيادة ومجمع) ──">
+                <optgroup label="── وظائف إدارية وطبية ──">
+                  <option value="admin">مشرف إداري / مدير</option>
                   <option value="reception">موظف / موظفة استقبال</option>
-                  <option value="nurse">ممرضة / ممرض</option>
-                  <option value="doctor_assistant">مساعد / مساعدة طبيب</option>
+                  <option value="nurse">ممرض / ممرضة</option>
+                  <option value="doctor_assistant">مساعد طبيب</option>
                   <option value="accountant">محاسب / محاسبة</option>
-                  <option value="secretary">سكرتير / سكرتيرة</option>
-                  <option value="admin">مشرف / مشرفة إداري</option>
-                  <option value="data_entry">موظف إدخال بيانات</option>
-                  <option value="it_support">دعم فني / تقنية معلومات</option>
-                  <option value="security">موظف أمن وسلامة</option>
-                  <option value="cleaner">عامل نظافة وخدمات</option>
-                  <option value="driver">سائق / مواصلات</option>
                 </optgroup>
-                <optgroup label="── وظائف المجمع الطبي فقط ──">
+                <optgroup label="── وظائف المجمع الطبي ──">
                   <option value="pharmacist">صيدلي / صيدلانية</option>
                   <option value="lab">فني / فنية مختبر</option>
                   <option value="radiology">فني / فنية أشعة</option>
-                  <option value="head_nurse">رئيس / رئيسة ممرضين</option>
-                  <option value="dept_manager">مدير قسم طبي</option>
-                  <option value="medical_director">مدير طبي / رئيس أطباء</option>
-                  <option value="sterilization">فني / فنية تعقيم</option>
-                  <option value="physiotherapy">معالج / معالجة فيزيائي</option>
-                  <option value="nutrition">أخصائي / أخصائية تغذية</option>
                 </optgroup>
               </select>
             </div>
@@ -2891,8 +2881,14 @@
     }
 
     const ARGON_NAV_PERMISSIONS = {
-      doctor:    { sections: ['live','hist'], hideIds: ['navDocs','mStaff','mBilling','mPricing','navSettings'], landing: 'live' },
-      reception: { sections: ['live','hist','billing'], hideIds: ['navDocs','mStaff','mPricing','navSettings','navEmr'], landing: 'live' }
+      doctor:           { sections: ['live','hist'], hideIds: ['navDocs','mStaff','mBilling','mPricing','navSettings'], landing: 'live' },
+      reception:        { sections: ['live','hist','billing'], hideIds: ['navDocs','mStaff','mPricing','navSettings','navEmr'], landing: 'live' },
+      nurse:            { sections: ['live','hist'], hideIds: ['navDocs','mStaff','mBilling','mPricing','navSettings','navEmr'], landing: 'live' },
+      doctor_assistant: { sections: ['live','hist'], hideIds: ['navDocs','mStaff','mBilling','mPricing','navSettings','navEmr'], landing: 'live' },
+      accountant:       { sections: ['live','hist','billing','stats'], hideIds: ['navDocs','mStaff','mPricing','navSettings','navEmr'], landing: 'billing' },
+      pharmacist:       { sections: ['live','hist'], hideIds: ['navDocs','mStaff','mBilling','mPricing','navSettings','navEmr'], landing: 'live' },
+      lab:              { sections: ['live','hist'], hideIds: ['navDocs','mStaff','mBilling','mPricing','navSettings','navEmr'], landing: 'live' },
+      radiology:        { sections: ['live','hist'], hideIds: ['navDocs','mStaff','mBilling','mPricing','navSettings','navEmr'], landing: 'live' }
     };
 
     function applyPermissions(role) {
@@ -3139,6 +3135,23 @@
       if (sessionStorage.getItem('clinica_auth_' + CID) === '1') {
         const el = document.getElementById('dashLogin');
         if (el) el.style.display = 'none';
+        const topUserEl = document.getElementById('topUser');
+        if(topUserEl) topUserEl.innerHTML = `<i class="fas fa-crown" style="color:var(--amber)"></i> الإدارة المركزية`;
+      } else {
+        const staffSession = window.ArgonSession && ArgonSession.isValid() ? ArgonSession.get() : null;
+        if (staffSession) {
+          const el = document.getElementById('dashLogin');
+          if (el) el.style.display = 'none';
+          
+          if (staffSession.role !== 'admin') {
+            applyPermissions(staffSession.role);
+          }
+          const topUserEl = document.getElementById('topUser');
+          if(topUserEl) {
+            const dn = window.sanitize ? window.sanitize(staffSession.displayName) : staffSession.displayName;
+            topUserEl.innerHTML = `<i class="fas fa-user-circle"></i> ${dn}`;
+          }
+        }
       }
       const b = document.getElementById('stBadge');
       if (s.status === 'suspended') {
