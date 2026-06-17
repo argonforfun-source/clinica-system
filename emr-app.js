@@ -4440,6 +4440,14 @@ function _resetVisitForms() {
   activeVisit.rx = [];
   labTestsList = [];
   radScansList = [];
+  
+  // PARANOID FIX: Force reset the complete visit button in case of any cached UI state issues
+  const btn = document.getElementById('btnCompleteVisit') || document.querySelector('[onclick*="completeWorkspaceVisit"]');
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-flag-checkered"></i> إنهاء الزيارة';
+  }
+  
   renderWorkspaceRx();
   if (typeof renderLabOrderChips === 'function') renderLabOrderChips();
   if (typeof renderRadOrderChips === 'function') renderRadOrderChips();
