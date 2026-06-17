@@ -4762,12 +4762,12 @@ function _writeVisitUpdates(updates, diag) {
     clearVisitDraft();
   }).catch(err => {
     toast('❌ خطأ أثناء الحفظ: ' + err.message, 'err');
-    // FIX v1.1: إعادة ضبط الزر عند الخطأ
+  }).finally(() => {
+    // FIX v1.2: إعادة ضبط حالة الزر دائماً (سواء نجاح أو فشل) لمنع تعليق الزيارات القادمة
     if (_visitSaveBtn) {
       _visitSaveBtn.disabled = false;
       _visitSaveBtn.innerHTML = _visitSaveBtn._origHTML || '<i class="fas fa-flag-checkered"></i> إنهاء الزيارة';
     }
-  }).finally(() => {
     _visitSaveBtn = null;
   });
 }
