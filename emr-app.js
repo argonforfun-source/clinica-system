@@ -329,7 +329,7 @@ function initEMR() {
     // UI Freeze
     const style = document.createElement('style');
     style.innerHTML = `
-      .is-readonly input, .is-readonly textarea, .is-readonly select { pointer-events:none; background:#f1f5f9!important; opacity:0.8; }
+      .is-readonly input:not(#patSearch), .is-readonly textarea, .is-readonly select { pointer-events:none; background:#f1f5f9!important; opacity:0.8; }
       .is-readonly .save-btn, .is-readonly .delete-btn, .is-readonly [onclick*="save"], .is-readonly [onclick*="delete"], .is-readonly [onclick*="remove"], .is-readonly [onclick*="reset"], .is-readonly [onclick*="clear"] { display:none!important; }
       .is-readonly [onclick^="add"], .is-readonly [onclick^="edit"] { display:none!important; }
       .is-readonly .readonly-banner { display:flex!important; }
