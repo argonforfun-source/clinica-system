@@ -3479,7 +3479,8 @@ function printPrescription(vk) {
   w.document.close();
   setTimeout(() => w.focus(), 200);
 }
-\nfunction printVisitSummary(vk) {
+
+function printVisitSummary(vk) {
   const p = _patients[activePatientId];
   const v = p.visits[vk];
   if (!v) return;
