@@ -173,16 +173,46 @@ db.ref('.info/connected').on('value',s=>{
 
 // ══ LOAD DATA ══
 function loadData(){
-    try{db.ref('clinics').off()}catch(e){}_dataMap={};data=[];
-    document.getElementById('resGrid').innerHTML='<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>جاري التحميل...</p></div>';
-    db.ref('clinics').on('child_added',snap=>{
-        const val=snap.val();
-        if(val&&typeof val==='object'){_dataMap[snap.key]={id:snap.key,...val};scheduleRender()}
-    },err=>{
-        document.getElementById('resGrid').innerHTML=`<div class="empty-state"><i class="fas fa-exclamation-triangle" style="color:var(--red)"></i><p style="color:var(--red)">خطأ في تحميل البيانات</p><small>${err.message}</small><br><button onclick="loadData()" class="btn btn-teal btn-sm" style="margin-top:12px">🔄 إعادة المحاولة</button></div>`;
+    try{db.ref('clinics').off()}catch(e){}
+    Object.keys(_dataMap).forEach(id => { try{db.ref(`clinics/${id}/settings`).off()}catch(e){} });
+    _dataMap={};data=[];
+    document.getElementById('resGrid').innerHTML='<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>جاري تحميل العيادات (سريع جداً)...</p></div>';
+    
+    const user = firebase.auth().currentUser;
+    if (!user) {
+        document.getElementById('resGrid').innerHTML='<div class="empty-state"><p>يرجى تسجيل الدخول</p></div>';
+        return;
+    }
+    
+    user.getIdToken().then(token => {
+        const dbUrl = "https://clinica-system-e71b9-default-rtdb.firebaseio.com";
+        return fetch(`${dbUrl}/clinics.json?shallow=true&auth=${token}`).then(r=>r.json()).then(clinicsList => {
+            const ids = Object.keys(clinicsList || {});
+            if (ids.length === 0) {
+                scheduleRender();
+                return;
+            }
+            ids.forEach(id => {
+                _dataMap[id] = { id: id, settings: {}, patients: {}, appointments: {}, pharmacy_inventory: {} };
+                db.ref(`clinics/${id}/settings`).on('value', snap => {
+                    _dataMap[id].settings = snap.val() || {};
+                    scheduleRender();
+                });
+                Promise.all([
+                    fetch(`${dbUrl}/clinics/${id}/patients.json?shallow=true&auth=${token}`).then(r=>r.json()).catch(()=>({})),
+                    fetch(`${dbUrl}/clinics/${id}/appointments.json?shallow=true&auth=${token}`).then(r=>r.json()).catch(()=>({})),
+                    fetch(`${dbUrl}/clinics/${id}/pharmacy_inventory.json?shallow=true&auth=${token}`).then(r=>r.json()).catch(()=>({}))
+                ]).then(([p, a, ph]) => {
+                    _dataMap[id].patients = p || {};
+                    _dataMap[id].appointments = a || {};
+                    _dataMap[id].pharmacy_inventory = ph || {};
+                    scheduleRender();
+                });
+            });
+        });
+    }).catch(err => {
+        document.getElementById('resGrid').innerHTML=`<div class="empty-state"><i class="fas fa-exclamation-triangle" style="color:var(--red)"></i><p style="color:var(--red)">خطأ في التحميل السريع</p><small>${err.message}</small><br><button onclick="loadData()" class="btn btn-teal btn-sm" style="margin-top:12px">🔄 إعادة المحاولة</button></div>`;
     });
-    db.ref('clinics').on('child_changed',snap=>{const val=snap.val();if(val&&typeof val==='object'){_dataMap[snap.key]={id:snap.key,...val};scheduleRender()}});
-    db.ref('clinics').on('child_removed',snap=>{delete _dataMap[snap.key];scheduleRender()});
 }
 
 function scheduleRender(){if(_renderTimer)clearTimeout(_renderTimer);_renderTimer=setTimeout(()=>{data=Object.values(_dataMap);updateStats();filterList()},150)}
@@ -319,6 +349,7 @@ async function addClinic(){
         document.getElementById('addResult').style.display='block';
         document.getElementById('addResult').scrollIntoView({behavior:'smooth'});
         toast(`✅ "${name}" تم إنشاؤها بنجاح!`,'ok');
+        loadData();
     }catch(err){toast('❌ '+err.message,'err')}
     finally{btn.innerHTML=orig;btn.disabled=false}
 }
@@ -373,7 +404,7 @@ function openDel(id,name){document.getElementById('delId').value=id;document.get
 async function doDelete(){
     if(!_isAdmin){toast('⚠️ غير مصرح','err');return}
     const id=_sec.sanitize(document.getElementById('delId').value);
-    try{await db.ref(`clinics/${id}`).remove();toast('🗑 تم الحذف','err');cm('delModal')}
+    try{await db.ref(`clinics/${id}`).remove();toast('🗑 تم الحذف','err');cm('delModal');loadData();}
     catch(e){toast('خطأ: '+e.message,'err')}
 }
 
