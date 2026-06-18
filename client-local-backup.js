@@ -1459,10 +1459,16 @@ window.LocalBackupEngine = (function () {
 
     const status = await getStatus();
     const log    = await getBackupLog(8);
-    let cloudFiles = [];
+    let cloudFiles = _cloudFilesCache || [];
+
+    // جلب القائمة السحابية في الخلفية حتى لا تعلق اللوحة إذا كان الاتصال بطيئاً أو محظوراً (مثل وضع التصفح الخفي)
     if (status.cloudEnabled) {
-      try { cloudFiles = await fetchCloudBackups(_clinicId); _cloudFilesCache = cloudFiles; }
-      catch (e) { console.warn('[ArgonBackup] فشل جلب قائمة النسخ السحابية:', e.message); }
+      fetchCloudBackups(_clinicId).then(function (files) {
+        _cloudFilesCache = files;
+        _refreshPanel();
+      }).catch(function (e) {
+        console.warn('[ArgonBackup] فشل جلب قائمة النسخ السحابية:', e.message);
+      });
     }
 
     const overlay = document.createElement('div');
