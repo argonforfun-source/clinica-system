@@ -535,8 +535,16 @@ window.LocalBackupEngine = (function () {
     };
 
     try {
-      await ref.put(blob, metadata);
+      const uploadTask = ref.put(blob, metadata);
+      const timeoutPromise = new Promise(function (_, reject) {
+        setTimeout(function () { reject(new Error('TIMEOUT')); }, 20000); // 20 ثانية مهلة
+      });
+
+      await Promise.race([uploadTask, timeoutPromise]);
     } catch (e) {
+      if (e && e.message === 'TIMEOUT') {
+        throw new Error('انتهى وقت الاتصال بالسحابة (20 ثانية). المتصفح يمنع الاتصال أو الإنترنت ضعيف.');
+      }
       throw new Error(_friendlyStorageError(e));
     }
 
