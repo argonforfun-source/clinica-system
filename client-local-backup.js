@@ -1449,10 +1449,14 @@ window.LocalBackupEngine = (function () {
   ════════════════════════════════════════ */
 
   async function showPanel() {
-    _injectStyles();
-    _panelOpen = true;
+    try {
+      if (!_clinicId) return alert('خطأ: المحرك لم يهيأ برقم العيادة');
+      if (_panelOpen) return;
+      
+      _injectStyles();
+      _panelOpen = true;
 
-    const old = document.getElementById('abp-panel-overlay');
+      const old = document.getElementById('abp-panel-overlay');
     if (old) old.remove();
     const wiz = document.getElementById('abp-firstrun-wizard');
     if (wiz) wiz.remove();
@@ -1474,6 +1478,10 @@ window.LocalBackupEngine = (function () {
     overlay.innerHTML = _buildPanelHTML(status, log, cloudFiles);
     document.body.appendChild(overlay);
     _bindPanelEvents(overlay, status);
+    } catch(e) {
+      alert("حدث خطأ يمنع فتح اللوحة: " + e.message + "\n" + e.stack);
+      _panelOpen = false;
+    }
   }
 
   function _closePanel() {
