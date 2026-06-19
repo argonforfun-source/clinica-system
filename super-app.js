@@ -186,7 +186,7 @@ function loadData(){
     
     user.getIdToken().then(token => {
         const dbUrl = "https://clinica-system-e71b9-default-rtdb.firebaseio.com";
-        return fetch(`${dbUrl}/clinics.json?shallow=true&auth=${token}`).then(r=>r.json()).then(clinicsList => {
+        return fetch(`${dbUrl}/clinics.json?shallow=true&auth=${token}&_t=${Date.now()}`).then(r=>r.json()).then(clinicsList => {
             const ids = Object.keys(clinicsList || {});
             if (ids.length === 0) {
                 scheduleRender();
@@ -199,9 +199,9 @@ function loadData(){
                     scheduleRender();
                 });
                 Promise.all([
-                    fetch(`${dbUrl}/clinics/${id}/patients.json?shallow=true&auth=${token}`).then(r=>r.json()).catch(()=>({})),
-                    fetch(`${dbUrl}/clinics/${id}/appointments.json?shallow=true&auth=${token}`).then(r=>r.json()).catch(()=>({})),
-                    fetch(`${dbUrl}/clinics/${id}/pharmacy_inventory.json?shallow=true&auth=${token}`).then(r=>r.json()).catch(()=>({}))
+                    fetch(`${dbUrl}/clinics/${id}/patients.json?shallow=true&auth=${token}&_t=${Date.now()}`).then(r=>r.json()).catch(()=>({})),
+                    fetch(`${dbUrl}/clinics/${id}/appointments.json?shallow=true&auth=${token}&_t=${Date.now()}`).then(r=>r.json()).catch(()=>({})),
+                    fetch(`${dbUrl}/clinics/${id}/pharmacy_inventory.json?shallow=true&auth=${token}&_t=${Date.now()}`).then(r=>r.json()).catch(()=>({}))
                 ]).then(([p, a, ph]) => {
                     _dataMap[id].patients = p || {};
                     _dataMap[id].appointments = a || {};

@@ -1686,7 +1686,7 @@
     </div>
   </div>
 
-  <div class="layout">
+  <div class="layout" id="mainLayout" style="opacity:0; pointer-events:none; transition: opacity 0.4s ease;">
     <div class="sidebar">
       <div style="padding:0 8px">
         <div class="sl">الإدارة</div>
@@ -3185,6 +3185,8 @@
         if (el) el.style.display = 'none';
         const topUserEl = document.getElementById('topUser');
         if(topUserEl) topUserEl.innerHTML = `<i class="fas fa-crown" style="color:var(--amber)"></i> الإدارة المركزية`;
+        const lOut = document.getElementById('mainLayout');
+        if(lOut) { lOut.style.opacity = '1'; lOut.style.pointerEvents = 'auto'; }
       } else {
         const staffSession = window.ArgonSession && ArgonSession.isValid() ? ArgonSession.get() : null;
         if (staffSession) {
@@ -3199,6 +3201,8 @@
             const dn = window.sanitize ? window.sanitize(staffSession.displayName) : staffSession.displayName;
             topUserEl.innerHTML = `<i class="fas fa-user-circle"></i> ${dn}`;
           }
+          const lOut = document.getElementById('mainLayout');
+          if(lOut) { lOut.style.opacity = '1'; lOut.style.pointerEvents = 'auto'; }
         }
       }
       const b = document.getElementById('stBadge');
