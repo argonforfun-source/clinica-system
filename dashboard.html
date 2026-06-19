@@ -4031,7 +4031,7 @@
       }
       
       // Filter existing bookings for this doctor and date
-      const existingBks = Object.values(window._bks || {}).filter(b => b.docKey === docKey && b.date === bDate && b.status !== 'cancelled');
+      const existingBks = Object.values(_bks || {}).filter(b => b.docKey === docKey && b.date === bDate && b.status !== 'cancelled');
       
       if (existingBks.length === 0) {
         listDiv.innerHTML = '<div style="font-size:.8rem;color:var(--green);background:rgba(16,185,129,.1);padding:6px 12px;border-radius:6px">✅ لا يوجد مواعيد محجوزة مسبقاً، الجدول متاح بالكامل.</div>';
@@ -4071,7 +4071,7 @@
       if (hasInsurance && !insProv) { toast('⚠️ التأمين مفعل: يرجى اختيار شركة التأمين', 'err'); return; }
 
       // ── Smart Conflict Validation (15 mins threshold) ──
-      const existingBks = Object.values(window._bks || {}).filter(b => b.docKey === docKey && b.date === bDate && b.status !== 'cancelled');
+      const existingBks = Object.values(_bks || {}).filter(b => b.docKey === docKey && b.date === bDate && b.status !== 'cancelled');
       const selTimeMins = parseInt(bTime.split(':')[0]) * 60 + parseInt(bTime.split(':')[1]);
       
       for (const eb of existingBks) {
