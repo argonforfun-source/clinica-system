@@ -1480,6 +1480,14 @@
     body.license-single .tab-complex {
       display: none !important;
     }
+
+    /* ── Quick Booking Time Grid ── */
+    .t-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; margin-top: 10px; margin-bottom: 10px; }
+    .t-chip { background: var(--surf); border: 1px solid var(--border); border-radius: 8px; text-align: center; padding: 10px 4px; font-size: 0.85rem; font-weight: 700; color: var(--text); cursor: pointer; transition: 0.2s; font-family: 'IBM Plex Mono', monospace; }
+    .t-chip:hover { border-color: var(--teal); background: rgba(13, 148, 136, 0.05); }
+    .t-chip.sel { background: var(--teal); color: #fff; border-color: var(--teal); box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3); }
+    .t-chip.bkd { background: rgba(239, 68, 68, 0.05); color: var(--red); border-color: rgba(239, 68, 68, 0.2); cursor: not-allowed; opacity: 0.8; }
+    .t-chip.past { background: rgba(0, 0, 0, 0.03); color: var(--muted); border-color: var(--border); cursor: not-allowed; opacity: 0.5; }
   </style>
 </head>
 
@@ -2568,10 +2576,22 @@
             <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">التاريخ *</label>
             <input type="date" id="rbDate" class="mfi" onchange="rbOnDocChange()">
           </div>
-          <div>
-            <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">الوقت *</label>
-            <input type="time" id="rbTime" class="mfi">
+          
+          <!-- Schedule Preview Grid -->
+          <div id="rbSchedulePreview" style="display:none;grid-column:1/-1;background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:8px">
+            <div style="font-size:.85rem;font-weight:800;color:var(--teal);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+              <i class="fas fa-clock"></i> اختر الوقت المناسب:
+            </div>
+            <div id="rbScheduleList" class="t-grid"></div>
           </div>
+
+          <details style="grid-column:1/-1; margin-bottom:12px;">
+            <summary style="font-size:.8rem;color:var(--muted);cursor:pointer;user-select:none;font-weight:bold;">خيارات متقدمة (إدخال الوقت يدوياً)</summary>
+            <div style="margin-top:10px;padding:10px;background:rgba(0,0,0,0.02);border-radius:8px;border:1px dashed var(--border);">
+              <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">تحديد الوقت يدوياً *</label>
+              <input type="time" id="rbTime" class="mfi">
+            </div>
+          </details>
           <div style="grid-column:1/-1; margin-top:8px;">
             <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;font-weight:700;color:var(--text);cursor:pointer;background:rgba(13,148,136,.06);padding:10px 12px;border-radius:8px;border:1px solid rgba(13,148,136,.2);width:max-content;">
               <input type="checkbox" id="rbHasInsurance" onchange="document.getElementById('rbInsuranceContainer').style.display=this.checked?'grid':'none'" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer">
@@ -2617,13 +2637,7 @@
           د.أ</span>
       </div>
 
-      <!-- Schedule Preview -->
-      <div id="rbSchedulePreview" style="display:none;background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
-        <div style="font-size:.85rem;font-weight:800;color:var(--teal);margin-bottom:12px;display:flex;align-items:center;gap:8px">
-          <i class="fas fa-clock"></i> المواعيد المحجوزة مسبقاً لهذا الطبيب في هذا اليوم:
-        </div>
-        <div id="rbScheduleList" style="display:flex;flex-wrap:wrap;gap:8px"></div>
-      </div>
+
 
       <!-- Actions -->
       <div style="display:flex;gap:10px">
@@ -4030,21 +4044,50 @@
         return;
       }
       
-      // Filter existing bookings for this doctor and date
-      const existingBks = Object.values(_bks || {}).filter(b => b.docKey === docKey && b.date === bDate && b.status !== 'cancelled');
-      
-      if (existingBks.length === 0) {
-        listDiv.innerHTML = '<div style="font-size:.8rem;color:var(--green);background:rgba(16,185,129,.1);padding:6px 12px;border-radius:6px">✅ لا يوجد مواعيد محجوزة مسبقاً، الجدول متاح بالكامل.</div>';
-      } else {
-        // Sort by time
-        existingBks.sort((a,b) => (a.time || '') > (b.time || '') ? 1 : -1);
-        listDiv.innerHTML = existingBks.map(b => {
-          return `<div style="font-size:.75rem;font-weight:700;color:var(--amber);background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);padding:4px 8px;border-radius:6px;font-family:'IBM Plex Mono',monospace">
-            ${b.time} ⏳
-          </div>`;
-        }).join('');
+      const bookedSet = new Set();
+      Object.values(_bks || {}).forEach(b => {
+        if (b.docKey === docKey && b.date === bDate && b.status !== 'cancelled' && b.time) {
+          bookedSet.add(b.time);
+        }
+      });
+
+      const doc = _docs && _docs[docKey] ? _docs[docKey] : {};
+      const ws = doc.workStart || '09:00', we = doc.workEnd || '17:00', sm = doc.slotDuration || 30;
+      const [sh, smm] = ws.split(':').map(Number), [eh, emm] = we.split(':').map(Number);
+      let cur = sh * 60 + smm; const end = eh * 60 + emm;
+
+      const now = new Date(); const nowMins = now.getHours() * 60 + now.getMinutes();
+      const isToday = bDate === new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+      const slots = [];
+      while (cur + sm <= end) {
+        const hh = String(Math.floor(cur / 60)).padStart(2, '0'), mm = String(cur % 60).padStart(2, '0');
+        slots.push(`${hh}:${mm}`);
+        cur += sm;
       }
+      if (!slots.length) { 
+        listDiv.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:0.82rem;padding:12px">لا توجد أوقات متاحة</div>`; 
+        previewDiv.style.display = 'block';
+        return; 
+      }
+
+      listDiv.innerHTML = slots.map(t => {
+        const [th, tm] = t.split(':').map(Number); const tMins = th * 60 + tm;
+        const isBooked = bookedSet.has(t);
+        const isPast = isToday && tMins <= nowMins;
+        const cls = isBooked ? 'bkd' : isPast ? 'past' : '';
+        const clickable = !isBooked && !isPast;
+        return `<div class="t-chip ${cls}" ${clickable ? `onclick="pickRbTime('${t}',this)"` : ''}>
+          ${t}${isBooked ? `<br><small>محجوز</small>` : ''}
+        </div>`;
+      }).join('');
+
       previewDiv.style.display = 'block';
+    }
+
+    function pickRbTime(t, el) {
+      document.getElementById('rbTime').value = t;
+      document.querySelectorAll('#rbScheduleList .t-chip').forEach(c => c.classList.remove('sel'));
+      el.classList.add('sel');
     }
 
     async function submitReceptionBooking() {
