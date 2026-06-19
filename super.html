@@ -98,12 +98,24 @@
                     <div class="form-grid">
                         <div class="fg"><label><i class="fas fa-hashtag"></i> المعرف السري (ID) *</label>
                             <div style="display:flex;gap:5px;">
-                                <input class="fi" id="nId" dir="ltr" readonly style="background:var(--surf);color:var(--muted);cursor:not-allowed;" title="معرف عشوائي لحماية العيادة">
-                                <button type="button" class="btn btn-outline" style="padding:0 12px;height:42px" onclick="document.getElementById('nId').value='c_'+Math.random().toString(36).substr(2,9)" title="توليد معرف جديد"><i class="fas fa-sync-alt"></i></button>
+                                <input class="fi" id="nId" dir="ltr" style="background:var(--surf);color:var(--text);" title="يتم توليده تلقائياً من اسم العيادة، ويمكنك تعديله يدوياً">
+                                <button type="button" class="btn btn-outline" style="padding:0 12px;height:42px" onclick="document.getElementById('nId').value='c_'+Math.random().toString(36).substr(2,9); _userEditedId=true;" title="توليد معرف جديد"><i class="fas fa-sync-alt"></i></button>
                             </div>
-                            <script>document.getElementById('nId').value='c_'+Math.random().toString(36).substr(2,9);</script>
+                            <script>
+                                document.getElementById('nId').value='c_'+Math.random().toString(36).substr(2,9);
+                                let _userEditedId = false;
+                                document.getElementById('nId').addEventListener('input', () => _userEditedId = true);
+                                function syncClinicId() {
+                                    if(_userEditedId) return;
+                                    const nm = document.getElementById('nName').value.trim();
+                                    if(!nm) { document.getElementById('nId').value = 'c_' + Math.random().toString(36).substr(2,6); return; }
+                                    const cleanNm = nm.replace(/[\s\.\$\#\[\]\/]/g, '-').replace(/-+/g, '-');
+                                    if(!window._cRand) window._cRand = Math.random().toString(36).substr(2,4);
+                                    document.getElementById('nId').value = cleanNm + '-' + window._cRand;
+                                }
+                            </script>
                         </div>
-                        <div class="fg"><label>🏥 اسم العيادة *</label><input class="fi" id="nName" placeholder="عيادة الشفاء"></div>
+                        <div class="fg"><label>🏥 اسم العيادة *</label><input class="fi" id="nName" placeholder="عيادة الشفاء" oninput="syncClinicId()"></div>
                         <div class="fg"><label><i class="fas fa-lock"></i> كلمة المرور *</label><input class="fi" id="nPass" type="text" autocomplete="off" spellcheck="false" style="-webkit-text-security: disc;" value="123456"></div>
                         <div class="fg"><label><i class="fas fa-phone"></i> الهاتف</label><input class="fi" id="nPhone" placeholder="+96279xxxxxxx" dir="ltr"></div>
                         <div class="fg"><label><i class="fas fa-map-marker-alt"></i> العنوان</label><input class="fi" id="nAddr" placeholder="عمّان — الأردن"></div>
