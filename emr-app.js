@@ -3369,7 +3369,7 @@ function printPrescription(vk) {
 
   const session = window.ArgonSession ? ArgonSession.get() || {} : {};
   let clinicName = session.clinicName || 'العيادة الطبية';
-  if (typeof _settings !== 'undefined' && _settings.clinicName) clinicName = _settings.clinicName;
+  if (typeof _sets !== 'undefined' && _sets.name) clinicName = _sets.name;
 
   const cleanPhone = (str) => {
     if (!str) return 'غير متوفر';
