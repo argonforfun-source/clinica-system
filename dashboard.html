@@ -4170,9 +4170,18 @@
            const fee = parseFloat(doc.fee || 0);
            const docName = doc.name || '';
            const docSpec = doc.specialty || '';
-           const bookNo = '#D' + String(Math.floor(1 + Math.random() * 99)).padStart(2, '0');
-           const age = dob ? window.ArgonCalcAge(dob) : null;
+           
+           let bno = '#D' + String(Math.floor(1 + Math.random() * 99)).padStart(2, '0');
+           try {
+             const counterResult = await db.ref(BASE + '/dailyCounters/' + bDate).transaction(cur => (cur || 0) + 1);
+             if (counterResult.committed && counterResult.snapshot) {
+               bno = '#D' + String(counterResult.snapshot.val()).padStart(2, '0');
+             }
+           } catch(e) { console.error('Counter fail', e); }
+           const bookNo = bno;
 
+           const age = dob ? window.ArgonCalcAge(dob) : null;
+           
            const bookingObj = {
              patName: sanitize(patName),
              patPhone: patPhone,
