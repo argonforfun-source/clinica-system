@@ -759,11 +759,15 @@ const liveUpdateCheck = setInterval(() => {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const ARGON_FLAGS = {
   /**
-   * shadowMode: true  → يسجّل في smart_log فقط، لا يغير أي شيء
-   *             false → يطبّق القرار فعلياً على النظام
-   *  ← ابقِها true حتى تراجع النتائج وتطمئن 100%
+   * 🛡️ SECURITY CHANGE v4.0
+   * shadowMode: false
+   * ← النظام ينتقل الآن من وضع الظل (تسجيل فقط) إلى وضع الاعتراض الفعلي.
+   * عند EXACT أو STRONG match → يُعيد توجيه المستخدم للملف الموجود تلقائياً.
+   * عند POSSIBLE match       → يعرض نافذة تأكيد للطبيب (showMatchDialog).
+   * عند NEW                  → يسمح بالإنشاء.
+   * لا تُعيد تفعيل true إلا لأغراض تشخيص مؤقتة مع توثيق السبب.
    */
-  shadowMode: true,
+  shadowMode: false,           // ← CHANGED: false = Active Blocking Mode
 
   /** تفعيل محرك المطابقة الذكية */
   enableSmartMatch: true,
@@ -782,15 +786,8 @@ const ARGON_FLAGS = {
    * 🛡️ PATIENT IDENTITY PROTECTION — Wave 2
    * ══════════════════════════════════════════════════════════════
    *
-   * REQUIRE_NID_FOR_LINKING: true
-   *   → يمنع ربط أي حجز بملف مريض بدون رقم وطني مؤكد
-   *   → يمنع إنشاء ملف مريض جديد بدون رقم وطني
-   *   → أي تطابق بالاسم أو الهاتف فقط → مراجعة بشرية
-   *
-   * ENFORCEMENT_MODE: false
-   *   → عند true: يمنع فعلياً كل عملية مخالفة
-   *   → عند false: يسجّل التحذير فقط ويسمح بالتجاوز المسجّل
-   *   → فعّله بعد أسبوع مراقبة على الأقل
+   * REQUIRE_NID_FOR_LINKING:
+   * يبقى true — الرقم الوطني إلزامي لربط الحجز بملف مريض
    */
   REQUIRE_NID_FOR_LINKING: true,
   ENFORCEMENT_MODE: false,

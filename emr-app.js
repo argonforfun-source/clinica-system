@@ -194,31 +194,53 @@ function previewPatientPhoto(event, prefix) {
 
 // ── DYNAMIC DUPLICATE ALERT ──
 function detectNewPatDuplicates() {
-  const name = document.getElementById('npName').value.trim().toLowerCase();
-  const phone = cleanPhone(document.getElementById('npPhone').value);
+  const name   = document.getElementById('npName')?.value.trim().toLowerCase() || '';
+  const phone  = cleanPhone(document.getElementById('npPhone')?.value || '');
+  // ── DEDUP v2: إضافة فحص الرقم الوطني للكشف المبكر ──
+  const nidRaw = document.getElementById('npNationalId')?.value || '';
+  const nid    = ArgonNID.cleanNID(nidRaw);
   const warningDiv = document.getElementById('npDupWarning');
 
-  if (!name && !phone) {
+  if (!name && !phone && !ArgonNID.isValidNID(nid)) {
     warningDiv.style.display = 'none';
     return;
   }
 
   const matches = Object.entries(_patients).filter(([uid, p]) => {
     const info = p.info || {};
-    const matchName = name && (info.name || '').trim().toLowerCase().includes(name);
+    // ── لا تعرض السجلات المدمجة ──
+    if (p._active === false || p._merged) return false;
+
+    // الأولوية: الرقم الوطني (أقوى معرّف) ثم الاسم + الهاتف
+    const matchNID   = ArgonNID.isValidNID(nid) && ArgonNID.cleanNID(info.nationalId || '') === nid;
+    const matchName  = name  && (info.name  || '').trim().toLowerCase().includes(name);
     const matchPhone = phone && cleanPhone(info.phone || '') === phone;
-    return matchName || matchPhone;
+
+    return matchNID || matchName || matchPhone;
   });
 
   if (matches.length > 0) {
-    let html = `<div style="font-weight:800;margin-bottom:6px"><i class="fas fa-exclamation-triangle"></i> تـنبيه: تم العثور على ملفات مشابهة (${matches.length})</div>`;
+    // رسالة تحذيرية مختلفة حسب نوع التطابق
+    const nidMatch = matches.find(([uid, p]) =>
+      ArgonNID.isValidNID(nid) && ArgonNID.cleanNID(p.info?.nationalId || '') === nid
+    );
+
+    let html = nidMatch
+      ? `<div style="font-weight:800;margin-bottom:6px"><i class="fas fa-exclamation-circle" style="color:#ef4444"></i> تحذير: رقم وطني مكرر! هذا الرقم مسجّل مسبقاً في النظام.</div>`
+      : `<div style="font-weight:800;margin-bottom:6px"><i class="fas fa-exclamation-triangle"></i> تـنبيه: تم العثور على ملفات مشابهة (${matches.length})</div>`;
+
     html += matches.map(([uid, p]) => {
       const info = p.info || {};
-      return `<div style="display:flex;justify-content:space-between;margin-top:4px;padding:4px 0;border-top:1px dashed rgba(245,158,11,0.15)">
-        <span>👤 ${sanitize(info.name)} (MRN: ${info.mrn || '—'})</span>
-        <span>📞 ${sanitize(info.phone || '')}</span>
-      </div>`;
+      const isNIDMatch = ArgonNID.isValidNID(nid) && ArgonNID.cleanNID(info.nationalId || '') === nid;
+      return `
+        <div style="display:flex;justify-content:space-between;margin-top:4px;padding:4px 0;border-top:1px dashed rgba(245,158,11,0.15)">
+          <span>👤 ${sanitize(info.name)} (MRN: ${info.mrn || '—'})
+            ${isNIDMatch ? '<span style="color:#ef4444;font-weight:900;margin-right:6px">🪪 تطابق رقم وطني!</span>' : ''}
+          </span>
+          <span>📞 ${sanitize(info.phone || '')}</span>
+        </div>`;
     }).join('');
+
     warningDiv.innerHTML = html;
     warningDiv.style.display = 'block';
   } else {
@@ -791,12 +813,29 @@ function renderPatientsList(entries) {
            🪪 لا يوجد رقم وطني
          </span>`;
 
-    /* تكرار محتمل */
-    const dupCount = Object.values(_patients).filter(pp =>
-      pp.info && pp.info.name === info.name && pp.info.phone === info.phone
-    ).length;
-    const dupBadge = dupCount > 1
-      ? `<span style="background:rgba(245,158,11,0.12);color:var(--amber);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;margin-right:5px">⚠️ تعارض</span>`
+    /* ── كشف التكرار بالرقم الوطني (أولاً) ثم الاسم+الهاتف (ثانياً) ── */
+    const cleanNidForCheck = ArgonNID.cleanNID(info.nationalId || '');
+    const dupMatches = Object.entries(_patients).filter(([dk, pp]) => {
+      if (dk === uid) return false;                            // لا تقارن المريض بنفسه
+      if (pp._active === false || pp._merged) return false;   // استبعاد المدمجة
+      const pi = pp.info || {};
+      const sameNID   = ArgonNID.isValidNID(cleanNidForCheck) &&
+                        ArgonNID.cleanNID(pi.nationalId || '') === cleanNidForCheck;
+      const samePhone = info.phone && cleanPhone(pi.phone || '') === cleanPhone(info.phone);
+      const sameName  = info.name  && (pi.name  || '').trim().toLowerCase() ===
+                                      info.name.trim().toLowerCase();
+      return sameNID || (samePhone && sameName);
+    });
+
+    const dupBadge = dupMatches.length > 0
+      ? `<span
+           onclick="event.stopPropagation(); _openDupMergeUI('${uid}', '${dupMatches[0][0]}')"
+           title="انقر لعرض خيارات الدمج"
+           style="background:rgba(245,158,11,0.15);color:var(--amber);border-radius:6px;
+                  padding:2px 7px;font-size:10px;font-weight:700;margin-right:5px;
+                  cursor:pointer;border:1px solid rgba(245,158,11,0.35)">
+           ⚠️ تعارض — دمج
+         </span>`
       : '';
 
     const avatarHTML = info.photo
@@ -922,6 +961,10 @@ function filterPatients() {
   const q = rawQuery.toLowerCase();
   const entries = Object.entries(_patients).filter(([uid, p]) => {
     const info = p.info || {};
+
+    // ── DEDUP INTEGRITY: استبعاد السجلات المدمجة مسبقاً من قائمة المرضى ──
+    // السجلات المدمجة محفوظة كمرجع تدقيق لكن لا تظهر في الواجهة
+    if (p._active === false || p._merged) return false;
 
     /* فلتر عزل الطبيب */
     if (allowedPatients !== null) {
@@ -1536,20 +1579,51 @@ async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = f
     }
   }
 
-  // ── ARGON ENTERPRISE: Prevent duplicating existing NID ──
+  // ── ARGON ENTERPRISE: Prevent duplicating existing NID (Dual-Layer Check) ──
   if (ArgonNID.isValidNID(_legacyNID)) {
-    const existing = ArgonNID.findByNIDLocal(_legacyNID, _patients);
-    if (existing) {
-      db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(existing.uid).then(() => {
-        if (startVisit) {
-          sw('newVisit');
-          loadVisitForm(existing.uid, bookingKey);
-        } else {
-          viewPatientFile(existing.uid);
-          sw('patFile');
-        }
+
+    // Layer 1: Local cache check (fast, zero network cost)
+    const existingLocal = ArgonNID.findByNIDLocal(_legacyNID, _patients);
+    if (existingLocal) {
+      db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(existingLocal.uid).then(() => {
+        if (startVisit) { sw('newVisit'); loadVisitForm(existingLocal.uid, bookingKey); }
+        else { viewPatientFile(existingLocal.uid); sw('patFile'); }
       });
       return;
+    }
+
+    // Layer 2: Server-side check (definitive — الكاش قد لا يحتوي كل المرضى)
+    // ضروري لأن ArgonPatientPager يُحمّل المرضى على دفعات (pages)
+    try {
+      const nidSnap = await db
+        .ref(`${BASE}/patients`)
+        .orderByChild('info/nationalId')
+        .equalTo(_legacyNID)
+        .once('value');
+
+      if (nidSnap.exists()) {
+        const existingUid  = Object.keys(nidSnap.val())[0];
+        const existingData = nidSnap.val()[existingUid];
+
+        // ── تحديث الكاش المحلي فوراً ──
+        _patients[existingUid] = existingData;
+
+        // ── ربط الحجز بالملف الصحيح لمنع التكرار في المستقبل ──
+        await db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(existingUid);
+        logAudit(
+          'NID_LINKED_SERVER',
+          `ربط الحجز (${bookingKey}) بمريض موجود (${existingUid}) عبر الرقم الوطني على السيرفر`,
+          'EMR_SECURITY'
+        );
+
+        if (startVisit) { sw('newVisit'); loadVisitForm(existingUid, bookingKey); }
+        else { viewPatientFile(existingUid); sw('patFile'); }
+        return;
+      }
+    } catch (err) {
+      console.error('[ARGON:Legacy_NID_Check] Server query failed:', err);
+      // Fail-open: نكمل المسار التقليدي لإنشاء ملف جديد مع تسجيل الخطأ
+      logAudit('NID_SERVER_CHECK_ERROR', `خطأ في استعلام NID للحجز (${bookingKey}): ${err.message}`, 'EMR_SECURITY');
     }
   }
 
@@ -1868,7 +1942,7 @@ async function saveNewPatient() {
       if (matchResult.result === "EXACT" || matchResult.result === "STRONG") {
         toast(`⚠️ هذا المريض موجود مسبقاً (${matchResult.matchedName})`, 'err');
         closeModal('newPatModal');
-        viewPatientFile(matchResult.patientId);
+        viewPatientFile(matchResult.matchedId);
         return;
       }
 
@@ -1897,7 +1971,60 @@ async function saveNewPatient() {
   _executeSaveNewPatient(name, phone, nationalId, _dob_np, _calcAge_np, gender, blood, allergies, chronic, notes);
 }
 
-function _executeSaveNewPatient(name, phone, nationalId, dob, age, gender, blood, allergies, chronic, notes) {
+async function _executeSaveNewPatient(name, phone, nationalId, dob, age, gender, blood, allergies, chronic, notes) {
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 🛡️ HARD NID BARRIER — LAYER 2 (Server-Side Validation, Non-Bypassable)
+  //
+  // الكاش المحلي `_patients` قد لا يحتوي جميع المرضى (Pager loads in pages).
+  // هذا الفحص يستعلم مباشرة من Firebase قبل أي عملية حفظ.
+  // حتى لو تجاوز المستخدم PatientMatch بطريقة ما، هذا السطر يوقفه.
+  // ══════════════════════════════════════════════════════════════════════════
+  const cleanNid = ArgonNID.cleanNID(nationalId);
+
+  if (ArgonNID.isValidNID(cleanNid)) {
+    let nidSnap;
+    try {
+      nidSnap = await db
+        .ref(`${BASE}/patients`)
+        .orderByChild('info/nationalId')
+        .equalTo(cleanNid)
+        .once('value');
+    } catch (nidCheckErr) {
+      // ── Fail-Safe: إذا فشل الاستعلام، نوقف الإنشاء بدلاً من المخاطرة بتكرار
+      console.error('[ARGON:NID_BARRIER] Server check failed:', nidCheckErr);
+      toast('⚠️ تعذّر التحقق من قاعدة البيانات. يرجى المحاولة مرة أخرى.', 'err');
+      logAudit('NID_CHECK_FAILED', `فشل استعلام الرقم الوطني (${cleanNid}) — تم إيقاف الإنشاء`, 'EMR_SECURITY');
+      return;
+    }
+
+    if (nidSnap && nidSnap.exists()) {
+      // ── مريض بهذا الرقم الوطني موجود فعلاً في قاعدة البيانات ──
+      const existingUid  = Object.keys(nidSnap.val())[0];
+      const existingData = nidSnap.val()[existingUid];
+      const existingName = existingData?.info?.name || 'مريض';
+
+      // ── AUDIT: تسجيل محاولة إنشاء ملف مكرر ──
+      logAudit(
+        'NID_DUPLICATE_BLOCKED',
+        `محاولة إنشاء ملف مكرر. الرقم الوطني (${cleanNid}) مسجّل مسبقاً للمريض: ${existingName} (${existingUid})`,
+        'EMR_SECURITY'
+      );
+
+      toast(`🔒 الرقم الوطني مسجّل مسبقاً للمريض: ${existingName}. جارِ فتح الملف الموجود...`, 'warn');
+      closeModal('newPatModal');
+
+      // ── تحديث الكاش المحلي فوراً لتجنب round-trip آخر ──
+      if (!_patients[existingUid]) {
+        _patients[existingUid] = existingData;
+      }
+
+      viewPatientFile(existingUid);
+      return; // ← HARD STOP: لا يكمل الإنشاء تحت أي ظرف
+    }
+  }
+
+  // ── إذا وصلنا هنا، الرقم الوطني فريد — آمن للإنشاء ──
   const session = ArgonSession.get() || {};
   const loggedInDoctorId = session.staffId || null;
 
@@ -1946,7 +2073,6 @@ function _executeSaveNewPatient(name, phone, nationalId, dob, age, gender, blood
     document.getElementById('npPhotoPreview').innerHTML = '👤';
     npPhotoData = '';
 
-    // Reset warning banner
     const warningDiv = document.getElementById('npDupWarning');
     if (warningDiv) {
       warningDiv.style.display = 'none';
@@ -5278,3 +5404,202 @@ const originalBookingsListener = db.ref(`${BASE}/bookings`).on('value', snap => 
     if(document.getElementById('calendarContent')) renderDoctorCalendar();
   }, 1000);
 });
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🛠️ DEDUP v2 — أداة دمج الملفات المكررة (Merge Tool)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function _openDupMergeUI(uid1, uid2) {
+  const p1 = _patients[uid1];
+  const p2 = _patients[uid2];
+  if (!p1 || !p2) return;
+
+  const existing = document.getElementById('_dupMergeOverlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = '_dupMergeOverlay';
+  overlay.style.cssText = `
+    position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+    z-index: 150000; display: flex; align-items: center; justify-content: center;
+    padding: 20px; font-family: 'Tajawal', sans-serif;
+  `;
+
+  // Count visits to help decide primary
+  const visits1 = Object.keys(p1.visits || {}).length;
+  const visits2 = Object.keys(p2.visits || {}).length;
+
+  overlay.innerHTML = `
+    <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 20px;
+                padding: 30px; width: 100%; max-width: 600px; box-shadow: 0 20px 50px rgba(0,0,0,0.6);">
+      <div style="text-align:center; margin-bottom: 24px;">
+        <i class="fas fa-random" style="font-size:2.5rem; color:var(--amber); margin-bottom:10px;"></i>
+        <h2 style="margin:0; font-weight:900; color:var(--text);">دمج الملفات المكررة</h2>
+        <p style="margin:5px 0 0 0; color:var(--muted); font-size:0.9rem;">سيتم نقل جميع الزيارات والفواتير من الملف المكرر إلى الملف الأساسي</p>
+      </div>
+
+      <div style="display:flex; gap:16px; margin-bottom:24px;">
+        <!-- Card 1 -->
+        <div id="card_merge_1" style="flex:1; border:2px solid var(--teal); border-radius:12px; padding:16px; background:rgba(13,148,136,0.05); cursor:pointer; position:relative; transition:all 0.2s;">
+          <i id="c1_check" class="fas fa-check-circle" style="position:absolute; top:10px; left:10px; color:var(--teal); font-size:1.2rem; display:block;"></i>
+          <div style="font-size:0.75rem; color:var(--teal); font-weight:800; margin-bottom:8px;">الملف الأساسي المقترح</div>
+          <div style="font-weight:900; font-size:1.1rem; color:var(--text);">${sanitize(p1.info?.name || '—')}</div>
+          <div style="font-size:0.85rem; color:var(--muted); margin-top:4px;">📞 ${sanitize(p1.info?.phone || '—')}</div>
+          <div style="font-size:0.85rem; color:var(--muted); margin-top:2px;">🪪 ${sanitize(p1.info?.nationalId || '—')}</div>
+          <div style="margin-top:12px; font-size:0.8rem; font-weight:bold; color:var(--sky);"><i class="fas fa-stethoscope"></i> عدد الزيارات: ${visits1}</div>
+        </div>
+
+        <!-- Card 2 -->
+        <div id="card_merge_2" style="flex:1; border:2px solid var(--border); border-radius:12px; padding:16px; background:var(--surf); cursor:pointer; position:relative; transition:all 0.2s;">
+          <i id="c2_check" class="fas fa-check-circle" style="position:absolute; top:10px; left:10px; color:var(--teal); font-size:1.2rem; display:none;"></i>
+          <div style="font-size:0.75rem; color:var(--muted); font-weight:800; margin-bottom:8px;">الملف المكرر (سيتم نقله)</div>
+          <div style="font-weight:900; font-size:1.1rem; color:var(--text);">${sanitize(p2.info?.name || '—')}</div>
+          <div style="font-size:0.85rem; color:var(--muted); margin-top:4px;">📞 ${sanitize(p2.info?.phone || '—')}</div>
+          <div style="font-size:0.85rem; color:var(--muted); margin-top:2px;">🪪 ${sanitize(p2.info?.nationalId || '—')}</div>
+          <div style="margin-top:12px; font-size:0.8rem; font-weight:bold; color:var(--sky);"><i class="fas fa-stethoscope"></i> عدد الزيارات: ${visits2}</div>
+        </div>
+      </div>
+
+      <input type="hidden" id="primarySelect" value="${uid1}">
+
+      <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); border-radius:10px; padding:12px; margin-bottom:24px;">
+        <div style="color:var(--red); font-weight:800; font-size:0.85rem; margin-bottom:4px;"><i class="fas fa-info-circle"></i> ملاحظة هامة:</div>
+        <div style="color:var(--text); font-size:0.8rem; line-height:1.5;">سيتم اعتماد الملف المحدد كملف أساسي. الملف الآخر سيتم أرشفته وإخفاؤه تماماً بعد نقل جميع زياراته وفواتيره إلى الملف الأساسي.</div>
+      </div>
+
+      <div style="display:flex; gap:12px;">
+        <button onclick="executeDuplicateMerge('${uid1}', '${uid2}')" style="flex:1; background:var(--teal); color:#fff; border:none; border-radius:10px; padding:12px; font-family:'Tajawal',sans-serif; font-weight:bold; font-size:1rem; cursor:pointer; box-shadow:0 4px 12px rgba(13,148,136,0.3);">
+          <i class="fas fa-check-double"></i> تأكيد الدمج ونقل البيانات
+        </button>
+        <button onclick="document.getElementById('_dupMergeOverlay').remove()" style="background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:10px; padding:12px 24px; font-family:'Tajawal',sans-serif; font-weight:bold; cursor:pointer;">
+          إلغاء
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const card1 = document.getElementById('card_merge_1');
+  const card2 = document.getElementById('card_merge_2');
+  const check1 = document.getElementById('c1_check');
+  const check2 = document.getElementById('c2_check');
+  const primarySelect = document.getElementById('primarySelect');
+
+  function selectCard(num) {
+    if(num === 1) {
+      primarySelect.value = uid1;
+      card1.style.borderColor = 'var(--teal)'; card1.style.background = 'rgba(13,148,136,0.05)'; check1.style.display = 'block';
+      card2.style.borderColor = 'var(--border)'; card2.style.background = 'var(--surf)'; check2.style.display = 'none';
+      card1.querySelector('div').textContent = 'الملف الأساسي المقترح';
+      card2.querySelector('div').textContent = 'الملف المكرر (سيتم نقله)';
+    } else {
+      primarySelect.value = uid2;
+      card2.style.borderColor = 'var(--teal)'; card2.style.background = 'rgba(13,148,136,0.05)'; check2.style.display = 'block';
+      card1.style.borderColor = 'var(--border)'; card1.style.background = 'var(--surf)'; check1.style.display = 'none';
+      card2.querySelector('div').textContent = 'الملف الأساسي المقترح';
+      card1.querySelector('div').textContent = 'الملف المكرر (سيتم نقله)';
+    }
+  }
+
+  card1.onclick = () => selectCard(1);
+  card2.onclick = () => selectCard(2);
+
+  // Auto-select the one with more visits, or fallback to uid1
+  if (visits2 > visits1) selectCard(2);
+  else selectCard(1);
+}
+
+async function executeDuplicateMerge(uid1, uid2) {
+  const primaryUid = document.getElementById('primarySelect').value;
+  const duplicateUid = primaryUid === uid1 ? uid2 : uid1;
+
+  if (!confirm('هل أنت متأكد من رغبتك في نقل البيانات وأرشفة الملف المكرر؟\\nهذه العملية لا يمكن التراجع عنها.')) return;
+
+  const btn = document.querySelector('#_dupMergeOverlay button');
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الدمج...'; btn.disabled = true; }
+
+  try {
+    const snap1 = await db.ref(`${BASE}/patients/${primaryUid}`).once('value');
+    const snap2 = await db.ref(`${BASE}/patients/${duplicateUid}`).once('value');
+    
+    if (!snap1.exists() || !snap2.exists()) throw new Error("أحد الملفات غير موجود");
+
+    const pPrimary = snap1.val() || {};
+    const pDuplicate = snap2.val() || {};
+
+    const updates = {};
+    
+    // 1. Move visits
+    if (pDuplicate.visits) {
+      Object.entries(pDuplicate.visits).forEach(([vId, vData]) => {
+        updates[`${BASE}/patients/${primaryUid}/visits/${vId}`] = vData;
+      });
+    }
+
+    // 2. Move invoices
+    if (pDuplicate.invoices) {
+      Object.entries(pDuplicate.invoices).forEach(([iId, iData]) => {
+        updates[`${BASE}/patients/${primaryUid}/invoices/${iId}`] = iData;
+      });
+    }
+
+    // 3. Move lab orders (Optional edge case if tied to patient explicitly)
+    // In your system, lab/rad are globally referenced by patientId. We should update them.
+    const labSnap = await db.ref(`${BASE}/lab_orders`).orderByChild('patientId').equalTo(duplicateUid).once('value');
+    labSnap.forEach(child => { updates[`${BASE}/lab_orders/${child.key}/patientId`] = primaryUid; });
+
+    const radSnap = await db.ref(`${BASE}/radiology_orders`).orderByChild('patientId').equalTo(duplicateUid).once('value');
+    radSnap.forEach(child => { updates[`${BASE}/radiology_orders/${child.key}/patientId`] = primaryUid; });
+
+    // 4. Update bookings that pointed to the duplicate
+    const bSnap = await db.ref(`${BASE}/bookings`).orderByChild('patientId').equalTo(duplicateUid).once('value');
+    bSnap.forEach(child => {
+      updates[`${BASE}/bookings/${child.key}/patientId`] = primaryUid;
+    });
+
+    // 5. Merge Medical History if primary is empty (Allergies, Chronic)
+    const priInfo = pPrimary.info || {};
+    const dupInfo = pDuplicate.info || {};
+    
+    if ((!priInfo.allergies || priInfo.allergies.length === 0) && (dupInfo.allergies && dupInfo.allergies.length > 0)) {
+      updates[`${BASE}/patients/${primaryUid}/info/allergies`] = dupInfo.allergies;
+    }
+    if ((!priInfo.chronicDiseases || priInfo.chronicDiseases.length === 0) && (dupInfo.chronicDiseases && dupInfo.chronicDiseases.length > 0)) {
+      updates[`${BASE}/patients/${primaryUid}/info/chronicDiseases`] = dupInfo.chronicDiseases;
+    }
+
+    // 6. Archive duplicate securely
+    updates[`${BASE}/patients/${duplicateUid}/_active`] = false;
+    updates[`${BASE}/patients/${duplicateUid}/_merged`] = true;
+    updates[`${BASE}/patients/${duplicateUid}/_mergedInto`] = primaryUid;
+    updates[`${BASE}/patients/${duplicateUid}/_mergedAt`] = new Date().toISOString();
+
+    await db.ref().update(updates);
+
+    // 7. Update local cache immediately
+    if (_patients[duplicateUid]) {
+      _patients[duplicateUid]._active = false;
+      _patients[duplicateUid]._merged = true;
+    }
+    
+    const freshPrimary = await db.ref(`${BASE}/patients/${primaryUid}`).once('value');
+    _patients[primaryUid] = freshPrimary.val();
+
+    // 8. Audit log
+    if (typeof logAudit === 'function') {
+      logAudit('MERGE_DUPLICATE', `تم دمج الملف المكرر (${duplicateUid}) داخل الملف الأساسي (${primaryUid}). تم نقل: ${Object.keys(pDuplicate.visits || {}).length} زيارات، و ${Object.keys(pDuplicate.invoices || {}).length} فواتير.`, 'EMR_SECURITY');
+    }
+
+    toast('✅ تم دمج الملفات ونقل البيانات بنجاح', 'ok');
+    document.getElementById('_dupMergeOverlay').remove();
+    
+    // Refresh UI
+    filterPatients();
+
+  } catch (err) {
+    console.error("[ARGON:Merge] Error:", err);
+    toast('❌ حدث خطأ أثناء الدمج. راجع الـ Console.', 'err');
+    if (btn) { btn.innerHTML = '<i class="fas fa-check-double"></i> تأكيد الدمج ونقل البيانات'; btn.disabled = false; }
+  }
+}
