@@ -49,12 +49,12 @@ function trackRecentPatient(patientId, name, phone) {
   const session = window.ArgonSession ? ArgonSession.get() : {};
   const doctorId = session?.staffId || 'unknown';
   const key = `argon_recent_patients_${doctorId}`;
-  
+
   let recent = JSON.parse(localStorage.getItem(key) || '[]');
-  
+
   // Remove if exists
   recent = recent.filter(p => p.patientId !== patientId);
-  
+
   // Add to start
   recent.unshift({
     patientId: patientId,
@@ -62,10 +62,10 @@ function trackRecentPatient(patientId, name, phone) {
     phone: phone || '',
     openedAt: Date.now()
   });
-  
+
   // Keep only 10
   if (recent.length > 10) recent = recent.slice(0, 10);
-  
+
   localStorage.setItem(key, JSON.stringify(recent));
 }
 
@@ -83,25 +83,25 @@ function toggleRecentPatientsDropdown() {
 function renderRecentPatientsDropdown() {
   const dd = document.getElementById('recentPatientsDropdown');
   if (!dd) return;
-  
+
   const session = window.ArgonSession ? ArgonSession.get() : {};
   const doctorId = session?.staffId || 'unknown';
   const key = `argon_recent_patients_${doctorId}`;
   const recent = JSON.parse(localStorage.getItem(key) || '[]');
-  
+
   if (recent.length === 0) {
     dd.innerHTML = `<div style="padding:20px;text-align:center;color:var(--muted)">لا يوجد ملفات تم فتحها مؤخراً</div>`;
     return;
   }
-  
+
   let html = `<div style="padding:12px; border-bottom:1px solid var(--border); font-weight:bold; color:var(--teal)">أحدث 10 ملفات تم فتحها</div>`;
   html += `<div style="display:flex; flex-direction:column; gap:4px; padding:8px;">`;
-  
+
   recent.forEach(p => {
     const timeAgoMs = Date.now() - p.openedAt;
     const timeAgoMins = Math.floor(timeAgoMs / 60000);
-    const timeStr = timeAgoMins === 0 ? 'الآن' : timeAgoMins < 60 ? `منذ ${timeAgoMins} دقيقة` : `منذ ${Math.floor(timeAgoMins/60)} ساعة`;
-    
+    const timeStr = timeAgoMins === 0 ? 'الآن' : timeAgoMins < 60 ? `منذ ${timeAgoMins} دقيقة` : `منذ ${Math.floor(timeAgoMins / 60)} ساعة`;
+
     html += `
       <div onclick="toggleRecentPatientsDropdown(); viewPatientFile('${p.patientId}')" style="display:flex; align-items:center; padding:10px 12px; border-radius:8px; cursor:pointer; background:rgba(0,0,0,0.02); transition:all 0.2s;" onmouseover="this.style.background='rgba(13,148,136,0.1)'" onmouseout="this.style.background='rgba(0,0,0,0.02)'">
         <div style="flex:1;">
@@ -112,7 +112,7 @@ function renderRecentPatientsDropdown() {
       </div>
     `;
   });
-  
+
   html += `</div>`;
   dd.innerHTML = html;
 }
@@ -194,11 +194,11 @@ function previewPatientPhoto(event, prefix) {
 
 // ── DYNAMIC DUPLICATE ALERT ──
 function detectNewPatDuplicates() {
-  const name   = document.getElementById('npName')?.value.trim().toLowerCase() || '';
-  const phone  = cleanPhone(document.getElementById('npPhone')?.value || '');
+  const name = document.getElementById('npName')?.value.trim().toLowerCase() || '';
+  const phone = cleanPhone(document.getElementById('npPhone')?.value || '');
   // ── DEDUP v2: إضافة فحص الرقم الوطني للكشف المبكر ──
   const nidRaw = document.getElementById('npNationalId')?.value || '';
-  const nid    = ArgonNID.cleanNID(nidRaw);
+  const nid = ArgonNID.cleanNID(nidRaw);
   const warningDiv = document.getElementById('npDupWarning');
 
   if (!name && !phone && !ArgonNID.isValidNID(nid)) {
@@ -212,8 +212,8 @@ function detectNewPatDuplicates() {
     if (p._active === false || p._merged) return false;
 
     // الأولوية: الرقم الوطني (أقوى معرّف) ثم الاسم + الهاتف
-    const matchNID   = ArgonNID.isValidNID(nid) && ArgonNID.cleanNID(info.nationalId || '') === nid;
-    const matchName  = name  && (info.name  || '').trim().toLowerCase().includes(name);
+    const matchNID = ArgonNID.isValidNID(nid) && ArgonNID.cleanNID(info.nationalId || '') === nid;
+    const matchName = name && (info.name || '').trim().toLowerCase().includes(name);
     const matchPhone = phone && cleanPhone(info.phone || '') === phone;
 
     return matchNID || matchName || matchPhone;
@@ -347,7 +347,7 @@ function initEMR() {
   if (isReadOnly) {
     window.IS_READONLY = true;
     document.body.classList.add('is-readonly');
-    
+
     // UI Freeze
     const style = document.createElement('style');
     style.innerHTML = `
@@ -378,22 +378,22 @@ function initEMR() {
 
     // Logic Freeze (Firebase override)
     const originalRef = db.ref.bind(db);
-    db.ref = function(path) {
+    db.ref = function (path) {
       const r = originalRef(path);
       const fakePromise = () => Promise.resolve();
       r.set = fakePromise;
       r.update = fakePromise;
       r.remove = fakePromise;
-      r.push = function() { return { key: 'readonly_fake_key', set: fakePromise, update: fakePromise, remove: fakePromise }; };
+      r.push = function () { return { key: 'readonly_fake_key', set: fakePromise, update: fakePromise, remove: fakePromise }; };
       return r;
     };
-    
+
     toast('⚠️ أنت الآن في وضع القراءة فقط', 'warn');
   }
 
   /* ══ تهيئة محرك التحميل المتدرج ══ */
   _pager = new ArgonPatientPager(db, BASE, {
-    pageSize:    30,
+    pageSize: 30,
     searchLimit: 25
   });
 
@@ -437,7 +437,7 @@ function initEMR() {
   _pager.onLoadingChange = (isLoading) => {
     const spinner = document.getElementById('patLoadingSpinner');
     if (spinner) spinner.style.display = isLoading ? 'flex' : 'none';
-    
+
     // إذا انتهى التحميل، أعد رسم القائمة لإزالة الـ Spinner إذا كانت فارغة
     if (!isLoading) {
       filterPatients();
@@ -495,7 +495,7 @@ function initEMR() {
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.6);
-    } catch(e) { console.log('Audio fallback'); }
+    } catch (e) { console.log('Audio fallback'); }
   }
 
   db.ref(BASE + '/bookings').on('child_added', snap => {
@@ -537,8 +537,8 @@ function initEMR() {
 
   /* ── الإشعارات ── */
   const sessionData = window.ArgonSession ? window.ArgonSession.get() : null;
-  const sessionUid  = sessionData ? sessionData.staffId : null;
-  let isInitNotify  = true;
+  const sessionUid = sessionData ? sessionData.staffId : null;
+  let isInitNotify = true;
 
   if (sessionUid) {
     db.ref(BASE + '/notifications')
@@ -574,14 +574,14 @@ function initEMR() {
       if (typeof renderReferralsList === 'function') renderReferralsList();
     }, 80);
   };
-  db.ref(BASE + '/referrals').on('child_added',   snap => { _referrals[snap.key] = snap.val(); debounceRef(); });
+  db.ref(BASE + '/referrals').on('child_added', snap => { _referrals[snap.key] = snap.val(); debounceRef(); });
   db.ref(BASE + '/referrals').on('child_changed', snap => { _referrals[snap.key] = snap.val(); debounceRef(); });
   db.ref(BASE + '/referrals').on('child_removed', snap => { delete _referrals[snap.key]; debounceRef(); });
 
   /* ── مخزون الصيدلية ── */
   let _invTimer = null;
-  const debounceInv = () => { clearTimeout(_invTimer); _invTimer = setTimeout(() => {}, 80); };
-  db.ref(BASE + '/pharmacy_inventory').on('child_added',   snap => { _pharmacyInventory[snap.key] = snap.val(); debounceInv(); });
+  const debounceInv = () => { clearTimeout(_invTimer); _invTimer = setTimeout(() => { }, 80); };
+  db.ref(BASE + '/pharmacy_inventory').on('child_added', snap => { _pharmacyInventory[snap.key] = snap.val(); debounceInv(); });
   db.ref(BASE + '/pharmacy_inventory').on('child_changed', snap => { _pharmacyInventory[snap.key] = snap.val(); debounceInv(); });
   db.ref(BASE + '/pharmacy_inventory').on('child_removed', snap => { delete _pharmacyInventory[snap.key]; debounceInv(); });
 
@@ -611,7 +611,7 @@ function initEMR() {
 
   /* ── معالجة URL Params ── */
   const urlParams = new URLSearchParams(window.location.search);
-  const urlPid    = urlParams.get('pid');
+  const urlPid = urlParams.get('pid');
   window._pendingUrlBk = urlParams.get('bk');
   window._pendingUrlBkExpectedName = decodeURIComponent(urlParams.get('expectedName') || '');
 
@@ -797,11 +797,11 @@ function renderPatientsList(entries) {
   const sliced = entries.slice(0, patPageLimit);
 
   let html = sliced.map(([uid, p]) => {
-    const info       = p.info || {};
+    const info = p.info || {};
     const genderIcon = info.gender === 'ذكر' ? '👨' : info.gender === 'أنثى' ? '👩' : '👤';
-    const ageStr     = info.age ? `${info.age} سنة` : '';
-    const genderStr  = info.gender || '';
-    const ageGender  = [ageStr, genderStr].filter(Boolean).join(' · ');
+    const ageStr = info.age ? `${info.age} سنة` : '';
+    const genderStr = info.gender || '';
+    const ageGender = [ageStr, genderStr].filter(Boolean).join(' · ');
 
     /* NID Status Badge */
     const nidValid = typeof ArgonNID !== 'undefined' && ArgonNID.isValidNID(info.nationalId || '');
@@ -819,11 +819,11 @@ function renderPatientsList(entries) {
       if (dk === uid) return false;                            // لا تقارن المريض بنفسه
       if (pp._active === false || pp._merged) return false;   // استبعاد المدمجة
       const pi = pp.info || {};
-      const sameNID   = ArgonNID.isValidNID(cleanNidForCheck) &&
-                        ArgonNID.cleanNID(pi.nationalId || '') === cleanNidForCheck;
+      const sameNID = ArgonNID.isValidNID(cleanNidForCheck) &&
+        ArgonNID.cleanNID(pi.nationalId || '') === cleanNidForCheck;
       const samePhone = info.phone && cleanPhone(pi.phone || '') === cleanPhone(info.phone);
-      const sameName  = info.name  && (pi.name  || '').trim().toLowerCase() ===
-                                      info.name.trim().toLowerCase();
+      const sameName = info.name && (pi.name || '').trim().toLowerCase() ===
+        info.name.trim().toLowerCase();
       return sameNID || (samePhone && sameName);
     });
 
@@ -916,7 +916,7 @@ async function loadMorePatientsFromServer() {
   try {
     await _pager.loadNextPage();
     /* onPageLoaded سيُستدعى → filterPatients تلقائياً */
-  } catch(e) {
+  } catch (e) {
     toast('❌ تعذّر تحميل المزيد: ' + e.message, 'err');
     if (btn) {
       btn.disabled = false;
@@ -936,13 +936,13 @@ function filterPatients() {
   /* إعادة ضبط page limit عند تغيير البحث */
   if (rawQuery !== lastQuery) {
     patPageLimit = 15;
-    lastQuery    = rawQuery;
+    lastQuery = rawQuery;
   }
 
-  const session     = ArgonSession.get() || {};
+  const session = ArgonSession.get() || {};
   const loggedInDoc = session.staffId;
-  const isAdmin     = session.role === 'admin';
-  const isComplex   = _sets && (_sets.mode === 'medical_complex' || _sets.type === 'complex');
+  const isAdmin = session.role === 'admin';
+  const isComplex = _sets && (_sets.mode === 'medical_complex' || _sets.type === 'complex');
 
   /* عزل المجمع الطبي: اعرض فقط مرضى هذا الطبيب */
   let allowedPatients = null;
@@ -952,7 +952,7 @@ function filterPatients() {
       const assignedDoc = b.doctorId || b.docKey;
       if (assignedDoc === loggedInDoc) {
         if (b.patientId) allowedPatients.add(b.patientId);
-        if (b.patPhone)  allowedPatients.add(b.patPhone);
+        if (b.patPhone) allowedPatients.add(b.patPhone);
       }
     });
   }
@@ -968,8 +968,8 @@ function filterPatients() {
 
     /* فلتر عزل الطبيب */
     if (allowedPatients !== null) {
-      const hasBooking   = allowedPatients.has(uid) || allowedPatients.has(info.phone);
-      const createdByMe  = info.createdBy === loggedInDoc;
+      const hasBooking = allowedPatients.has(uid) || allowedPatients.has(info.phone);
+      const createdByMe = info.createdBy === loggedInDoc;
       const hasPastVisit = Object.values(p.visits || {})
         .some(v => (v.doctorId || v.docKey) === loggedInDoc);
       if (!hasBooking && !createdByMe && !hasPastVisit) return false;
@@ -977,11 +977,11 @@ function filterPatients() {
 
     if (!q) return true;
 
-    return (info.phone      || '').includes(q)
-        || (info.name       || '').toLowerCase().includes(q)
-        || (info.mrn        || '').toLowerCase().includes(q)
-        || (info.nationalId || '').toLowerCase().includes(q)
-        || uid.includes(q);
+    return (info.phone || '').includes(q)
+      || (info.name || '').toLowerCase().includes(q)
+      || (info.mrn || '').toLowerCase().includes(q)
+      || (info.nationalId || '').toLowerCase().includes(q)
+      || uid.includes(q);
   });
 
   renderPatientsList(entries);
@@ -1172,31 +1172,31 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
           return;
         }
         if (matchResult.result === "POSSIBLE") {
-        // أضف البيانات الواردة للنتيجة حتى تظهر في نافذة المقارنة
-        matchResult._incomingName = bookingName;
-        matchResult._incomingPhone = booking.patPhone || rawUid;
+          // أضف البيانات الواردة للنتيجة حتى تظهر في نافذة المقارنة
+          matchResult._incomingName = bookingName;
+          matchResult._incomingPhone = booking.patPhone || rawUid;
 
-        window.ArgonMedical.showMatchDialog(
-          matchResult,
-          // ✅ المستخدم قال: نفس الشخص
-          (existingId) => {
-            if (startVisit) {
-              sw('newVisit');
-              loadVisitForm(existingId, bookingKey);
-            } else {
-              viewPatientFile(existingId);
-              sw('patFile');
+          window.ArgonMedical.showMatchDialog(
+            matchResult,
+            // ✅ المستخدم قال: نفس الشخص
+            (existingId) => {
+              if (startVisit) {
+                sw('newVisit');
+                loadVisitForm(existingId, bookingKey);
+              } else {
+                viewPatientFile(existingId);
+                sw('patFile');
+              }
+              // اربط الحجز بالملف الصحيح
+              db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(existingId).catch(() => { });
+            },
+            // 👨👩👧 المستخدم قال: فرد عائلة جديد — سكمّل المنطق القديم
+            () => {
+              _openPatientFromBookingLegacy(bookingKey, booking, startVisit);
             }
-            // اربط الحجز بالملف الصحيح
-            db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(existingId).catch(() => { });
-          },
-          // 👨👩👧 المستخدم قال: فرد عائلة جديد — سكمّل المنطق القديم
-          () => {
-            _openPatientFromBookingLegacy(bookingKey, booking, startVisit);
-          }
-        );
-        return; // أوقف التنفيذ — النافذة ستتولى الأمر
-      }
+          );
+          return; // أوقف التنفيذ — النافذة ستتولى الأمر
+        }
       } catch (e) {
         console.warn('[PatientMatch Blocking Error]', e);
       }
@@ -1347,10 +1347,10 @@ function _showNIDLinkDialog(bookingKey, booking, bookingName, startVisit) {
         <div style="font-size:1.15rem;font-weight:900;color:var(--text)">ربط ملف المريض</div>
         <div style="font-size:.82rem;color:var(--amber);font-weight:600;margin-top:4px">
           ${(() => {
-            const bnid = ArgonNID.cleanNID(booking.patNationalId || booking.nationalId || '');
-            if (bnid) return `المريض <b>${sanitize(bookingName)}</b> يحمل الرقم <b>${bnid}</b> ولكن ليس له ملف سابق.`;
-            return `الحجز لـ <b>${sanitize(bookingName)}</b> لا يحتوي على رقم وطني مؤكد.`;
-          })()}
+      const bnid = ArgonNID.cleanNID(booking.patNationalId || booking.nationalId || '');
+      if (bnid) return `المريض <b>${sanitize(bookingName)}</b> يحمل الرقم <b>${bnid}</b> ولكن ليس له ملف سابق.`;
+      return `الحجز لـ <b>${sanitize(bookingName)}</b> لا يحتوي على رقم وطني مؤكد.`;
+    })()}
         </div>
       </div>
 
@@ -1421,7 +1421,7 @@ function _showNIDLinkDialog(bookingKey, booking, bookingName, startVisit) {
 }
 
 // مطابقة بالرقم الوطني
-window._nldDoNID = async function(bookingKey, bookingName, startVisit) {
+window._nldDoNID = async function (bookingKey, bookingName, startVisit) {
   const rawNID = (document.getElementById('_nldNID')?.value || '').trim();
   const cleanNID = ArgonNID.cleanNID(rawNID);
   const resultDiv = document.getElementById('_nldNIDResult');
@@ -1438,8 +1438,8 @@ window._nldDoNID = async function(bookingKey, bookingName, startVisit) {
   if (localMatch) {
     if (resultDiv) resultDiv.innerHTML = `<span style="color:var(--green)">✅ وُجد: ${sanitize(localMatch.info?.name || '')} — سيتم الربط</span>`;
     // ربط الحجز بالمريض المكتشف
-    await db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(localMatch.uid).catch(() => {});
-    await db.ref(`${BASE}/bookings/${bookingKey}/patNationalId`).set(cleanNID).catch(() => {});
+    await db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(localMatch.uid).catch(() => { });
+    await db.ref(`${BASE}/bookings/${bookingKey}/patNationalId`).set(cleanNID).catch(() => { });
     setTimeout(() => {
       const ov = document.getElementById('_nidLinkDialogOverlay');
       if (ov) ov.remove();
@@ -1456,8 +1456,8 @@ window._nldDoNID = async function(bookingKey, bookingName, startVisit) {
       const uid = Object.keys(snap.val())[0];
       const info = snap.val()[uid]?.info || {};
       if (resultDiv) resultDiv.innerHTML = `<span style="color:var(--green)">✅ وُجد: ${sanitize(info.name || '')} — سيتم الربط</span>`;
-      await db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(uid).catch(() => {});
-      await db.ref(`${BASE}/bookings/${bookingKey}/patNationalId`).set(cleanNID).catch(() => {});
+      await db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(uid).catch(() => { });
+      await db.ref(`${BASE}/bookings/${bookingKey}/patNationalId`).set(cleanNID).catch(() => { });
       setTimeout(() => {
         const ov = document.getElementById('_nidLinkDialogOverlay');
         if (ov) ov.remove();
@@ -1473,7 +1473,7 @@ window._nldDoNID = async function(bookingKey, bookingName, startVisit) {
 };
 
 // بحث بالاسم أو الهاتف
-window._nldDoSearch = function(query) {
+window._nldDoSearch = function (query) {
   const container = document.getElementById('_nldSearchResults');
   if (!container) return;
   const q = query.trim().toLowerCase();
@@ -1482,9 +1482,9 @@ window._nldDoSearch = function(query) {
   const ctx = window._nldCtx || {};
   const results = Object.entries(_patients).filter(([uid, p]) => {
     const info = p.info || {};
-    const name  = (info.name  || '').toLowerCase();
+    const name = (info.name || '').toLowerCase();
     const phone = (info.phone || '').toLowerCase();
-    const nid   = (info.nationalId || '').toLowerCase();
+    const nid = (info.nationalId || '').toLowerCase();
     return name.includes(q) || phone.includes(q) || nid.includes(q);
   }).slice(0, 8);
 
@@ -1517,8 +1517,8 @@ window._nldDoSearch = function(query) {
 };
 
 // اختيار مريض من نتائج البحث
-window._nldSelectPatient = async function(uid, bookingKey, startVisit) {
-  await db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(uid).catch(() => {});
+window._nldSelectPatient = async function (uid, bookingKey, startVisit) {
+  await db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(uid).catch(() => { });
   const ov = document.getElementById('_nidLinkDialogOverlay');
   if (ov) ov.remove();
   if (startVisit) { sw('newVisit'); loadVisitForm(uid, bookingKey); }
@@ -1527,20 +1527,20 @@ window._nldSelectPatient = async function(uid, bookingKey, startVisit) {
 };
 
 // فتح كمريض جديد (يُحوَّل لنموذج التسجيل مع بيانات الحجز مُعبَّأة مسبقاً)
-window._nldOpenNew = function(bookingKey, startVisit) {
+window._nldOpenNew = function (bookingKey, startVisit) {
   const ov = document.getElementById('_nidLinkDialogOverlay');
   if (ov) ov.remove();
 
   const booking = _liveBookings[bookingKey] || {};
 
   // عبِّئ نموذج المريض الجديد بالبيانات المتاحة من الحجز
-  const nameEl  = document.getElementById('npName');
+  const nameEl = document.getElementById('npName');
   const phoneEl = document.getElementById('npPhone');
-  const nidEl   = document.getElementById('npNationalId');
-  const dobEl   = document.getElementById('npDob');
+  const nidEl = document.getElementById('npNationalId');
+  const dobEl = document.getElementById('npDob');
   const genderEl = document.getElementById('npGender');
-  
-  if (nameEl  && booking.patName)  nameEl.value  = booking.patName;
+
+  if (nameEl && booking.patName) nameEl.value = booking.patName;
   if (phoneEl && booking.patPhone) phoneEl.value = booking.patPhone;
   if (nidEl) {
     const bnid = ArgonNID.cleanNID(booking.patNationalId || booking.nationalId || '');
@@ -1602,7 +1602,7 @@ async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = f
         .once('value');
 
       if (nidSnap.exists()) {
-        const existingUid  = Object.keys(nidSnap.val())[0];
+        const existingUid = Object.keys(nidSnap.val())[0];
         const existingData = nidSnap.val()[existingUid];
 
         // ── تحديث الكاش المحلي فوراً ──
@@ -2000,7 +2000,7 @@ async function _executeSaveNewPatient(name, phone, nationalId, dob, age, gender,
 
     if (nidSnap && nidSnap.exists()) {
       // ── مريض بهذا الرقم الوطني موجود فعلاً في قاعدة البيانات ──
-      const existingUid  = Object.keys(nidSnap.val())[0];
+      const existingUid = Object.keys(nidSnap.val())[0];
       const existingData = nidSnap.val()[existingUid];
       const existingName = existingData?.info?.name || 'مريض';
 
@@ -2337,14 +2337,14 @@ function generatePatientFileHTML(uid) {
             <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px; background:rgba(0,0,0,0.15); padding:10px; border-radius:8px;">
               <div style="font-size:0.8rem; font-weight:bold; color:var(--sky); margin-bottom:4px;">🖼️ المرفقات والصور التشخيصية:</div>
               ${o.images.map(img => {
-                const isPdf = (img.fileName || '').toLowerCase().endsWith('.pdf') || (img.downloadUrl || '').toLowerCase().includes('.pdf');
-                const type = isPdf ? 'pdf' : 'image';
-                const icon = isPdf ? 'fa-file-pdf' : 'fa-image';
-                return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+        const isPdf = (img.fileName || '').toLowerCase().endsWith('.pdf') || (img.downloadUrl || '').toLowerCase().includes('.pdf');
+        const type = isPdf ? 'pdf' : 'image';
+        const icon = isPdf ? 'fa-file-pdf' : 'fa-image';
+        return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
                   <span style="font-size:0.75rem; color:var(--text);"><i class="fas ${icon}" style="margin-left:6px; color:var(--sky);"></i>${sanitize(img.fileName || 'صورة أشعة')}</span>
                   <button class="btn-secondary btn-sm" onclick="openAttachment('${img.downloadUrl}', '${type}')" style="font-size:0.7rem; padding:4px 10px; background:rgba(14,165,233,0.1); color:var(--sky); border:1px solid rgba(14,165,233,0.3);"><i class="fas fa-eye"></i> عرض</button>
                 </div>`;
-              }).join('')}
+      }).join('')}
             </div>
           ` : (o.image ? `
             <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.15);padding:10px;border-radius:8px;">
@@ -2545,7 +2545,7 @@ function generatePatientFileHTML(uid) {
 
 function refreshPatientFileUI(uid) {
   if (activePatientId !== uid) return;
-  
+
   const mainDiv = document.querySelector('.main');
   const scrollPos = mainDiv ? mainDiv.scrollTop : window.scrollY;
 
@@ -2553,7 +2553,7 @@ function refreshPatientFileUI(uid) {
   const container = document.getElementById('patFileContent');
   if (container) {
     container.innerHTML = fileHTML;
-    
+
     if (activeEmrTab === 'dental-chart-tab' && window.DentalChartModule && typeof window.DentalChartModule.render === 'function') {
       window.DentalChartModule.render('_patFileDentalChart', uid);
       _restoreScroll(mainDiv, scrollPos);
@@ -3061,10 +3061,10 @@ function searchDrug() {
   if (!inp || !dd) return;
   const q = inp.value.trim();
   if (!q) { dd.style.display = 'none'; return; }
-  
+
   if (typeof ArgonLicense !== 'undefined' && ArgonLicense.type === 'single') {
-     dd.style.display = 'none';
-     return;
+    dd.style.display = 'none';
+    return;
   }
 
   dd.innerHTML = _buildDrugDropdownHTML(_searchInventoryLogic(q), q, 'selectDrug');
@@ -3089,8 +3089,8 @@ function searchWorkspaceDrug() {
   if (!q) { dd.style.display = 'none'; return; }
 
   if (typeof ArgonLicense !== 'undefined' && ArgonLicense.type === 'single') {
-     dd.style.display = 'none';
-     return;
+    dd.style.display = 'none';
+    return;
   }
 
   dd.innerHTML = _buildDrugDropdownHTML(_searchInventoryLogic(q), q, 'selectWorkspaceDrug');
@@ -3593,7 +3593,7 @@ function printPrescription(vk) {
         <div class="footer">
           <div>
              <div class="qr-placeholder"><i class="fas fa-qrcode fa-2x"></i></div>
-             <div style="font-size:0.8rem; color:#94a3b8; margin-top:8px;">رقم الزيارة: ${vk.substring(0,8)}</div>
+             <div style="font-size:0.8rem; color:#94a3b8; margin-top:8px;">رقم الزيارة: ${vk.substring(0, 8)}</div>
           </div>
           <div class="sig-box">
             <div class="sig-line">توقيع الطبيب والختم الرسمي</div>
@@ -4097,12 +4097,40 @@ function switchEmrTab(tabId) {
     });
     const el = document.getElementById('emr-tab-treatment-plan');
     if (el) { el.style.display = 'block'; el.classList.add('active-content'); }
+    
+    // Background connection (UI kept as 'under development' per request)
+    if (window.TreatmentPlanModule && typeof window.TreatmentPlanModule.render === 'function') {
+      const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
+      window.TreatmentPlanModule.render('_treatmentPlanContainer', pid);
+    } else if (window.ArgonSpecialtyLoader && typeof window.ArgonSpecialtyLoader.loadModule === 'function') {
+      window.ArgonSpecialtyLoader.loadModule('treatment_plan_module');
+      setTimeout(function () {
+        if (window.TreatmentPlanModule) {
+          const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
+          window.TreatmentPlanModule.render('_treatmentPlanContainer', pid);
+        }
+      }, 1000);
+    }
   } else if (tabId === 'dental-media-tab') {
     document.querySelectorAll('.emr-tab-btn').forEach(b => {
       if (b.textContent.includes('معرض الصور')) b.classList.add('active');
     });
     const el = document.getElementById('emr-tab-dental-media');
     if (el) { el.style.display = 'block'; el.classList.add('active-content'); }
+    
+    // Background connection (UI kept as 'under development' per request)
+    if (window.DentalMediaModule && typeof window.DentalMediaModule.render === 'function') {
+      const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
+      window.DentalMediaModule.render('_dentalMediaContainer', pid);
+    } else if (window.ArgonSpecialtyLoader && typeof window.ArgonSpecialtyLoader.loadModule === 'function') {
+      window.ArgonSpecialtyLoader.loadModule('dental_media_module');
+      setTimeout(function () {
+        if (window.DentalMediaModule) {
+          const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
+          window.DentalMediaModule.render('_dentalMediaContainer', pid);
+        }
+      }, 1000);
+    }
   } else if (tabId === 'growth-chart-tab') {
     document.querySelectorAll('.emr-tab-btn').forEach(b => {
       if (b.textContent.includes('نمو')) b.classList.add('active');
@@ -4685,14 +4713,14 @@ function _resetVisitForms() {
   activeVisit.rx = [];
   labTestsList = [];
   radScansList = [];
-  
+
   // PARANOID FIX: Force reset the complete visit button in case of any cached UI state issues
   const btn = document.getElementById('btnCompleteVisit') || document.querySelector('[onclick*="completeWorkspaceVisit"]');
   if (btn) {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-flag-checkered"></i> إنهاء الزيارة';
   }
-  
+
   renderWorkspaceRx();
   if (typeof renderLabOrderChips === 'function') renderLabOrderChips();
   if (typeof renderRadOrderChips === 'function') renderRadOrderChips();
@@ -4970,29 +4998,29 @@ function completeWorkspaceVisit() {
 }
 
 function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx, addConsultation, docName) {
-    if (!visitKey) return;
-    
-    // SAFETY CHECK: Single clinics strictly do NOT bill for lab, radiology, or pharmacy
-    const isSingle = (typeof ArgonLicense !== 'undefined' && ArgonLicense.type === 'single');
+  if (!visitKey) return;
 
-    const payload = {
-       patientId: patientId,
-       patientName: patientName,
-       patientPhone: patientPhone,
-       visitKey: visitKey,
-       docName: docName || '',
-       addConsultation: addConsultation === true,
-       orders: {
-          lab: isSingle ? [] : (labs || []),
-          radiology: isSingle ? [] : (rads || []),
-          pharmacy: isSingle ? [] : (rx || []).map(r => r.drug)
-       },
-       createdAt: new Date().toISOString(),
-       processedAt: null,
-       processingLock: null,
-       processingStatus: 'pending'
-    };
-    db.ref(`${BASE}/billing_triggers/${visitKey}`).set(payload).catch(e => console.error("Billing trigger failed", e));
+  // SAFETY CHECK: Single clinics strictly do NOT bill for lab, radiology, or pharmacy
+  const isSingle = (typeof ArgonLicense !== 'undefined' && ArgonLicense.type === 'single');
+
+  const payload = {
+    patientId: patientId,
+    patientName: patientName,
+    patientPhone: patientPhone,
+    visitKey: visitKey,
+    docName: docName || '',
+    addConsultation: addConsultation === true,
+    orders: {
+      lab: isSingle ? [] : (labs || []),
+      radiology: isSingle ? [] : (rads || []),
+      pharmacy: isSingle ? [] : (rx || []).map(r => r.drug)
+    },
+    createdAt: new Date().toISOString(),
+    processedAt: null,
+    processingLock: null,
+    processingStatus: 'pending'
+  };
+  db.ref(`${BASE}/billing_triggers/${visitKey}`).set(payload).catch(e => console.error("Billing trigger failed", e));
 }
 
 // FIX v1.1: حفظ مرجع زر الإنهاء لإعادة ضبطه عند الخطأ
@@ -5152,7 +5180,7 @@ async function getPatientSafe(uid) {
       _patients[uid] = p;
       return p;
     }
-  } catch(e) {
+  } catch (e) {
     console.warn('[getPatientSafe] Firebase fetch failed:', e);
   }
 
@@ -5164,7 +5192,7 @@ async function getPatientSafe(uid) {
       _patients[uid] = p;
       return p;
     }
-  } catch(e) {
+  } catch (e) {
     console.warn('[getPatientSafe] Direct Firebase fetch failed:', e);
   }
 
@@ -5176,21 +5204,21 @@ async function getPatientSafe(uid) {
 // DOCTOR TASKS MANAGER (إدارة المهام والملاحظات الشخصية)
 // ══════════════════════════════════════════════════════════════
 
-window.addDoctorTask = function() {
+window.addDoctorTask = function () {
   const inputEl = document.getElementById('newTaskInput');
   if (!inputEl) return;
   const text = inputEl.value.trim();
   if (!text) return;
-  
+
   const session = ArgonSession.get() || {};
   const docId = session.staffId;
   if (!docId) {
     alert("عذراً، يجب تسجيل الدخول كطبيب لإضافة المهام.");
     return;
   }
-  
+
   const taskId = db.ref(`${BASE}/tasks/${docId}`).push().key;
-  
+
   db.ref(`${BASE}/tasks/${docId}/${taskId}`).set({
     text: text,
     status: 'pending',
@@ -5204,21 +5232,21 @@ window.addDoctorTask = function() {
   });
 };
 
-window.toggleTaskStatus = function(taskId, currentStatus) {
+window.toggleTaskStatus = function (taskId, currentStatus) {
   const session = ArgonSession.get() || {};
   const docId = session.staffId;
   if (!docId) return;
-  
+
   const newStatus = (currentStatus === 'pending') ? 'completed' : 'pending';
   db.ref(`${BASE}/tasks/${docId}/${taskId}/status`).set(newStatus);
 };
 
-window.deleteTask = function(taskId) {
-  if(!confirm('هل أنت متأكد من حذف هذه المهمة؟')) return;
+window.deleteTask = function (taskId) {
+  if (!confirm('هل أنت متأكد من حذف هذه المهمة؟')) return;
   const session = ArgonSession.get() || {};
   const docId = session.staffId;
   if (!docId) return;
-  
+
   db.ref(`${BASE}/tasks/${docId}/${taskId}`).remove();
 };
 
@@ -5226,23 +5254,23 @@ function renderDoctorTasks(tasksObj) {
   const pendingEl = document.getElementById('tasksPending');
   const completedEl = document.getElementById('tasksCompleted');
   if (!pendingEl || !completedEl) return;
-  
+
   if (!tasksObj) {
     pendingEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.9rem;">لا توجد مهام معلقة.</div>';
     completedEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.9rem;">لا توجد مهام منجزة.</div>';
     return;
   }
-  
+
   let pendingHtml = '';
   let completedHtml = '';
-  
+
   // Sort tasks by timestamp (newest first)
   const tasks = Object.entries(tasksObj).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
-  
+
   tasks.forEach(([id, t]) => {
     const isCompleted = t.status === 'completed';
-    const dateStr = new Date(t.timestamp).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
-    
+    const dateStr = new Date(t.timestamp).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
     const cardHtml = `
       <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; align-items:flex-start; gap:10px; transition:0.2s;">
         <button onclick="window.toggleTaskStatus('${id}', '${t.status}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem; color:${isCompleted ? 'var(--green)' : 'var(--muted)'}; padding:0;">
@@ -5261,14 +5289,14 @@ function renderDoctorTasks(tasksObj) {
         </button>
       </div>
     `;
-    
+
     if (isCompleted) {
       completedHtml += cardHtml;
     } else {
       pendingHtml += cardHtml;
     }
   });
-  
+
   pendingEl.innerHTML = pendingHtml || '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.9rem;">لا توجد مهام معلقة. رائعة! 🎉</div>';
   completedEl.innerHTML = completedHtml || '<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.9rem;">لا توجد مهام منجزة.</div>';
 }
@@ -5279,11 +5307,11 @@ function initDoctorTasksListener() {
   const session = ArgonSession.get() || {};
   const docId = session.staffId;
   if (!docId) return;
-  
+
   if (_tasksListener) db.ref(`${BASE}/tasks/${docId}`).off('value', _tasksListener);
-  
+
   _tasksListener = db.ref(`${BASE}/tasks/${docId}`).on('value', snap => {
-    if(document.getElementById('tasksPending')) {
+    if (document.getElementById('tasksPending')) {
       renderDoctorTasks(snap.val());
     }
   });
@@ -5294,9 +5322,9 @@ setTimeout(initDoctorTasksListener, 2000);
 
 // Also re-init if they open the inbox specifically
 const oldSwTasks = window.sw;
-window.sw = function(id, el) {
+window.sw = function (id, el) {
   oldSwTasks(id, el);
-  if(id === 'inbox') {
+  if (id === 'inbox') {
     initDoctorTasksListener();
   }
 };
@@ -5306,7 +5334,7 @@ window.sw = function(id, el) {
 // SMART CLINICAL ASSISTANT (المساعد السريري الذكي)
 // ══════════════════════════════════════════════════════════════
 
-window.calcBMI = function() {
+window.calcBMI = function () {
   const w = parseFloat(document.getElementById('calcWeight').value);
   const h = parseFloat(document.getElementById('calcHeight').value) / 100;
   const resEl = document.getElementById('bmiResult');
@@ -5320,11 +5348,11 @@ window.calcBMI = function() {
   else if (bmi < 25) { status = 'وزن طبيعي'; color = 'var(--green)'; }
   else if (bmi < 30) { status = 'زيادة في الوزن'; color = 'var(--amber)'; }
   else { status = 'سمنة'; color = 'var(--red)'; }
-  
+
   resEl.innerHTML = `<span style="font-size:1.5rem;color:${color}">${bmi}</span><br><span style="color:${color}">${status}</span>`;
 };
 
-window.calcEDD = function() {
+window.calcEDD = function () {
   const lmpStr = document.getElementById('calcLMP').value;
   const resEl = document.getElementById('eddResult');
   if (!lmpStr) {
@@ -5337,7 +5365,7 @@ window.calcEDD = function() {
   edd.setDate(edd.getDate() + 7);
   edd.setMonth(edd.getMonth() - 3);
   edd.setFullYear(edd.getFullYear() + 1);
-  
+
   resEl.innerHTML = `<span style="font-size:1.3rem;color:var(--purple)">موعد الولادة: ${edd.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</span>`;
 };
 
@@ -5351,25 +5379,25 @@ function renderDoctorCalendar() {
   const isAdmin = session.role === 'admin';
   const content = document.getElementById('calendarContent');
   if (!content) return;
-  
+
   let myBookings = Object.entries(_liveBookings).filter(([k, b]) => {
     const assigned = b.doctorId || b.docKey;
     if (!isAdmin && assigned !== loggedInDoc) return false;
     return true;
   });
-  
+
   // Sort by date and time
   myBookings.sort((a, b) => {
     const tA = (a[1].date || '') + ' ' + (a[1].time || '');
     const tB = (b[1].date || '') + ' ' + (b[1].time || '');
     return tA.localeCompare(tB);
   });
-  
+
   if (myBookings.length === 0) {
     content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">لا توجد حجوزات قادمة مجدولة.</div>';
     return;
   }
-  
+
   let html = '<div style="display:grid; gap:10px;">';
   myBookings.forEach(([k, b]) => {
     let statusBadge = '';
@@ -5377,7 +5405,7 @@ function renderDoctorCalendar() {
     else if (b.status === 'confirmed') statusBadge = '<span style="background:var(--teal);color:#fff;padding:2px 6px;border-radius:4px;font-size:0.7rem;">مؤكد</span>';
     else if (b.status === 'waiting') statusBadge = '<span style="background:var(--amber);color:#fff;padding:2px 6px;border-radius:4px;font-size:0.7rem;">في الانتظار</span>';
     else statusBadge = `<span style="background:#888;color:#fff;padding:2px 6px;border-radius:4px;font-size:0.7rem;">${b.status}</span>`;
-    
+
     html += `
       <div style="background:#fff; border:1px solid var(--border); border-left:4px solid var(--teal); border-radius:8px; padding:12px; display:flex; align-items:center; gap:12px;">
         <div style="min-width:70px; font-weight:bold; color:var(--teal); font-size:1.1rem; text-align:center;">
@@ -5399,9 +5427,9 @@ function renderDoctorCalendar() {
 
 // Hook into the bookings listener to update calendar
 const originalBookingsListener = db.ref(`${BASE}/bookings`).on('value', snap => {
-  if(window._timeoutCalendarRender) clearTimeout(window._timeoutCalendarRender);
+  if (window._timeoutCalendarRender) clearTimeout(window._timeoutCalendarRender);
   window._timeoutCalendarRender = setTimeout(() => {
-    if(document.getElementById('calendarContent')) renderDoctorCalendar();
+    if (document.getElementById('calendarContent')) renderDoctorCalendar();
   }, 1000);
 });
 
@@ -5487,7 +5515,7 @@ function _openDupMergeUI(uid1, uid2) {
   const primarySelect = document.getElementById('primarySelect');
 
   function selectCard(num) {
-    if(num === 1) {
+    if (num === 1) {
       primarySelect.value = uid1;
       card1.style.borderColor = 'var(--teal)'; card1.style.background = 'rgba(13,148,136,0.05)'; check1.style.display = 'block';
       card2.style.borderColor = 'var(--border)'; card2.style.background = 'var(--surf)'; check2.style.display = 'none';
@@ -5522,14 +5550,14 @@ async function executeDuplicateMerge(uid1, uid2) {
   try {
     const snap1 = await db.ref(`${BASE}/patients/${primaryUid}`).once('value');
     const snap2 = await db.ref(`${BASE}/patients/${duplicateUid}`).once('value');
-    
+
     if (!snap1.exists() || !snap2.exists()) throw new Error("أحد الملفات غير موجود");
 
     const pPrimary = snap1.val() || {};
     const pDuplicate = snap2.val() || {};
 
     const updates = {};
-    
+
     // 1. Move visits
     if (pDuplicate.visits) {
       Object.entries(pDuplicate.visits).forEach(([vId, vData]) => {
@@ -5561,7 +5589,7 @@ async function executeDuplicateMerge(uid1, uid2) {
     // 5. Merge Medical History if primary is empty (Allergies, Chronic)
     const priInfo = pPrimary.info || {};
     const dupInfo = pDuplicate.info || {};
-    
+
     if ((!priInfo.allergies || priInfo.allergies.length === 0) && (dupInfo.allergies && dupInfo.allergies.length > 0)) {
       updates[`${BASE}/patients/${primaryUid}/info/allergies`] = dupInfo.allergies;
     }
@@ -5582,7 +5610,7 @@ async function executeDuplicateMerge(uid1, uid2) {
       _patients[duplicateUid]._active = false;
       _patients[duplicateUid]._merged = true;
     }
-    
+
     const freshPrimary = await db.ref(`${BASE}/patients/${primaryUid}`).once('value');
     _patients[primaryUid] = freshPrimary.val();
 
@@ -5593,7 +5621,7 @@ async function executeDuplicateMerge(uid1, uid2) {
 
     toast('✅ تم دمج الملفات ونقل البيانات بنجاح', 'ok');
     document.getElementById('_dupMergeOverlay').remove();
-    
+
     // Refresh UI
     filterPatients();
 
