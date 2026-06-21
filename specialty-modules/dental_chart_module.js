@@ -659,7 +659,92 @@
   }
 
   function _buildSummary() {
-    return '<div>ملخص الأسنان</div>';
+    var groups = {};
+    var hasData = false;
+
+    Object.keys(_chart).forEach(function (numStr) {
+      var num = parseInt(numStr, 10);
+      var data = _chart[num];
+      if (!data) return;
+
+      var origin = ORIGINS[data.statusOrigin] || ORIGINS.existing;
+
+      // Group by whole-tooth status
+      if (data.status && data.status !== 'healthy' && data.status !== 'bridge_abutment' && data.status !== 'bridge_pontic') {
+        var stObj = TOOTH_STATUSES[data.status];
+        if (stObj) {
+          if (!groups[data.status]) groups[data.status] = { label: stObj.labelAr, icon: stObj.emoji, color: stObj.color, items: [] };
+          groups[data.status].items.push({ num: num, origin: origin, notes: data.notes, reqRx: data.requiresTreatment, material: data.material });
+          hasData = true;
+        }
+      }
+
+      // Group by surface conditions
+      if (data.surfaces) {
+        Object.keys(data.surfaces).forEach(function(surf) {
+          var sData = data.surfaces[surf];
+          if (sData && sData.condition && sData.condition !== 'healthy') {
+            var cObj = SURFACE_CONDITIONS[sData.condition];
+            if (cObj) {
+              var gKey = 'surf_' + sData.condition;
+              if (!groups[gKey]) groups[gKey] = { label: cObj.labelAr, icon: cObj.glyph, color: cObj.color, items: [] };
+              groups[gKey].items.push({ num: num, surface: surf, origin: ORIGINS[sData.origin] || ORIGINS.existing });
+              hasData = true;
+            }
+          }
+        });
+      }
+    });
+
+    if (!hasData) {
+      return '<div style="text-align:center; padding: 30px; background: #f8fafc; border-radius: 10px; border: 1px dashed #cbd5e1; margin-top: 20px;">' +
+             '<i class="fas fa-smile-beam" style="font-size: 2.5rem; color: #10b981; margin-bottom: 15px; display: block;"></i>' +
+             '<div style="font-weight: bold; color: #334155; font-size: 1.1rem;">أسنان سليمة (لا يوجد تدخلات)</div>' +
+             '<div style="color: #64748b; font-size: 0.9rem; margin-top: 5px;">لم يتم تسجيل أي تسوس، حشوات، أو تركيبات على المخطط حتى الآن.</div>' +
+             '</div>';
+    }
+
+    var html = '<div class="chart-full-summary" style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">';
+    
+    Object.keys(groups).forEach(function(gKey) {
+      var group = groups[gKey];
+      var toothMap = {};
+      
+      group.items.forEach(function(item) {
+        if (!toothMap[item.num]) toothMap[item.num] = { num: item.num, surfaces: [], notes: item.notes, origin: item.origin, material: item.material, reqRx: item.reqRx };
+        if (item.surface) {
+          var sName = { top:'العلوي', bottom:'السفلي', center:'المركز', left:'اليسار', right:'اليمين' }[item.surface] || item.surface;
+          if (toothMap[item.num].surfaces.indexOf(sName) === -1) toothMap[item.num].surfaces.push(sName);
+        }
+      });
+
+      var rows = Object.keys(toothMap).sort(function(a,b){return parseInt(a)-parseInt(b);}).map(function(numStr) {
+        var tData = toothMap[numStr];
+        var sHtml = tData.surfaces.length > 0 ? '<span style="display: flex; align-items: center; gap: 4px; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;"><i class="fas fa-border-all" style="color: #94a3b8;"></i> <b>الأسطح:</b> ' + tData.surfaces.join('، ') + '</span>' : '';
+        var nHtml = tData.notes ? '<span style="display: flex; align-items: center; gap: 4px; width: 100%; margin-top: 5px; color: #b45309;"><i class="fas fa-sticky-note" style="color: #f59e0b;"></i> <b>ملاحظات:</b> ' + tData.notes + '</span>' : '';
+        var mHtml = tData.material ? '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-fill-drip" style="color: #94a3b8;"></i> <b>المادة:</b> ' + tData.material + '</span>' : '';
+        var rHtml = tData.reqRx ? '<span style="display: flex; align-items: center; gap: 4px; color: #ef4444;"><i class="fas fa-prescription" style="color: #ef4444;"></i> بحاجة لوصفة</span>' : '';
+
+        return '<div class="summary-tooth-item" style="padding: 12px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
+                 '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '8px' : '0') + '; border-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '1px dashed #e2e8f0' : 'none') + '; padding-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '8px' : '0') + ';">' +
+                   '<b style="color: #0f172a; font-size: 0.95rem;"><i class="fas fa-tooth" style="color: ' + group.color + '; margin-left: 5px;"></i> السن رقم (' + tData.num + ')</b>' +
+                   '<span style="font-size: 0.8rem; background: #f8fafc; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 12px; color: #475569;"><i class="fas fa-tag"></i> ' + tData.origin.labelAr + '</span>' +
+                 '</div>' +
+                 (sHtml || nHtml || mHtml || rHtml ? '<div style="font-size: 0.85rem; color: #475569; display: flex; gap: 10px; flex-wrap: wrap;">' + sHtml + mHtml + rHtml + nHtml + '</div>' : '') +
+               '</div>';
+      }).join('');
+
+      html += '<div class="summary-group-panel" style="background: #f8fafc; border-radius: 10px; border: 1px solid #cbd5e1; padding: 15px;">' +
+               '<div style="font-weight: bold; color: #1e293b; font-size: 1.05rem; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">' +
+                 '<span style="font-size: 1.2rem;">' + group.icon + '</span> <span style="color: ' + group.color + ';">' + group.label + '</span>' +
+                 '<span style="background: ' + group.color + '20; color: ' + group.color + '; font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; margin-right: auto; font-weight: bold;">' + Object.keys(toothMap).length + ' أسنان</span>' +
+               '</div>' +
+               '<div style="display: flex; flex-direction: column; gap: 8px;">' + rows + '</div>' +
+             '</div>';
+    });
+    
+    html += '</div>';
+    return html;
   }
 
   function _rerenderChart() {
