@@ -691,7 +691,7 @@
     var style = document.createElement('style');
     style.id = '_dental-chart-v2-styles';
     style.textContent = `
-      .argon-dental-chart-v2 { font-family: 'Tajawal', sans-serif; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+      .argon-dental-chart-v2 { font-family: 'Tajawal', sans-serif; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; overflow: visible; }
       .argon-dental-toolbar { background: #f8fafc; border-radius: 10px; padding: 12px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
       .toolbar-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
       .toolbar-group { display: flex; align-items: center; gap: 6px; }
@@ -705,7 +705,7 @@
       .origin-btn { padding: 4px 10px; border: none; border-radius: 5px; cursor: pointer; }
       .origin-btn.origin-active { background: var(--oc); color: #fff; }
       .argon-jaw-label { text-align: center; font-size: 0.85rem; font-weight: bold; margin: 15px 0 5px; background: #f8fafc; padding: 6px; border-radius: 6px; }
-      .argon-tooth-row { display: flex; justify-content: center; gap: 4px; overflow-x: auto; padding: 4px 0; }
+      .argon-tooth-row { display: flex; justify-content: center; gap: 6px; overflow: visible; padding: 14px 10px; }
       .argon-tooth-cell-v2 { width: 44px; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s ease; }
       .argon-tooth-cell-v2:hover { transform: scale(1.22); z-index: 5; }
       .argon-tooth-cell-v2:hover .tooth-svg-wrap { box-shadow: 0 0 0 2px rgba(13,148,136,0.6), 0 8px 20px rgba(13,148,136,0.25); }
