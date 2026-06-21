@@ -5685,8 +5685,7 @@ function showAddonAlertModal(data) {
   document.getElementById('addonAlertIcon').textContent = data.icon || '✨';
   document.getElementById('addonAlertTitle').textContent = data.title || 'ميزة جديدة';
   
-  // Enhance description to sound more professional
-  const customDesc = \`يسعدنا إعلامكم بأنه تم بنجاح تفعيل <b>\${data.title}</b>. <br><br> \${data.description} <br><br>نحن في ARGON ملتزمون دائماً بتقديم أحدث التقنيات وأفضل الحلول لعيادتكم.\`;
+  const customDesc = `يسعدنا إعلامكم بأنه تم بنجاح تفعيل <b>${data.title}</b>. <br><br> ${data.description} <br><br>نحن في ARGON ملتزمون دائماً بتقديم أحدث التقنيات وأفضل الحلول لعيادتكم.`;
   document.getElementById('addonAlertDesc').innerHTML = customDesc;
   
   // Add a little floating animation to the icon
