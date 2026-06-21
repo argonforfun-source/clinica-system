@@ -378,12 +378,29 @@ async function toggleAddon(id, addonKey, cur){
     if(!_isAdmin){toast('⚠️ غير مصرح','err');return}
     const newVal = !cur;
     const labels = {treatmentPlanAddon: 'خطة العلاج والتسعير', dentalMediaAddon: 'معرض الصور والأشعة'};
+    const icons = {treatmentPlanAddon: '📋', dentalMediaAddon: '📸'};
+    const descriptions = {
+        treatmentPlanAddon: 'تخطيط الإجراءات العلاجية المستقبلية على عدة مراحل مع التسعير التلقائي ومتابعة التقدم وطباعة خطة العلاج',
+        dentalMediaAddon: 'أرشفة صور الأشعة السينية والصور السريرية وربطها بالأسنان مع عارض احترافي ومقارنة قبل وبعد'
+    };
     const label = labels[addonKey] || addonKey;
     try{
         await db.ref(`clinics/${id}/settings/addons/${addonKey}`).set(newVal);
+        if(newVal){
+            await db.ref(`clinics/${id}/settings/addon_alerts/${addonKey}`).set({
+                title: label,
+                icon: icons[addonKey] || '🧩',
+                description: descriptions[addonKey] || '',
+                activatedAt: new Date().toISOString(),
+                dismissed: false
+            });
+        } else {
+            await db.ref(`clinics/${id}/settings/addon_alerts/${addonKey}`).remove();
+        }
         toast(newVal ? `✅ تم تفعيل إضافة "${label}"` : `⏸ تم تعطيل إضافة "${label}"`, newVal ? 'ok' : 'err');
     }catch(e){toast('❌ خطأ: '+e.message,'err')}
 }
+
 
 // ══ TOGGLE STATUS ══
 async function toggleStatus(id,cur){

@@ -275,6 +275,9 @@ window.addEventListener('DOMContentLoaded', () => {
       // Only set clinic name in topbar if doctor hasn't logged in yet
       if (elTopName && !window._doctorLoggedIn) elTopName.textContent = _sets.name || 'العيادة الطبية';
       if (elTlogo) elTlogo.textContent = _sets.emoji ? `ARGON ${_sets.emoji}` : 'ARGON EMR';
+      
+      // Check for newly activated addons
+      setTimeout(checkAddonAlerts, 1000);
     } else {
       const elClinicName = document.getElementById('lClinicName');
       if (elClinicName) elClinicName.textContent = 'العيادة غير موجودة';
@@ -5641,5 +5644,83 @@ async function executeDuplicateMerge(uid1, uid2) {
     console.error("[ARGON:Merge] Error:", err);
     toast('❌ حدث خطأ أثناء الدمج. راجع الـ Console.', 'err');
     if (btn) { btn.innerHTML = '<i class="fas fa-check-double"></i> تأكيد الدمج ونقل البيانات'; btn.disabled = false; }
+  }
+}
+// ======== ADDON ALERTS (PROFESSIONAL POPUP) ========
+let _currentAlertKey = null;
+function checkAddonAlerts() {
+  if (!_sets || !_sets.addon_alerts) return;
+  const alerts = Object.keys(_sets.addon_alerts);
+  for (let key of alerts) {
+    const alertData = _sets.addon_alerts[key];
+    if (!alertData.dismissed) {
+      _currentAlertKey = key;
+      showAddonAlertModal(alertData);
+      break; // Show one at a time
+    }
+  }
+}
+
+function showAddonAlertModal(data) {
+  let modal = document.getElementById('addonAlertModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'addonAlertModal';
+    modal.style.cssText = 'display:flex;align-items:center;justify-content:center;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15, 23, 42, 0.7);backdrop-filter:blur(8px);z-index:99999;opacity:0;transition:opacity 0.4s ease;pointer-events:none';
+    modal.innerHTML = `
+      <div id="addonAlertBox" style="background:var(--surf);width:90%;max-width:520px;border-radius:28px;padding:40px 32px;box-shadow:0 25px 50px rgba(0,0,0,0.3);transform:translateY(30px) scale(0.95);transition:all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);border:1px solid rgba(255,255,255,0.1);text-align:center;position:relative;overflow:hidden">
+        <div style="position:absolute;top:-50px;left:-50px;width:150px;height:150px;background:radial-gradient(circle, var(--teal) 0%, transparent 70%);opacity:0.1;border-radius:50%"></div>
+        <div style="position:absolute;bottom:-50px;right:-50px;width:200px;height:200px;background:radial-gradient(circle, #6366f1 0%, transparent 70%);opacity:0.05;border-radius:50%"></div>
+        
+        <div style="font-size:4.5rem;margin-bottom:20px;display:inline-block" id="addonAlertIcon">✨</div>
+        <h2 style="font-size:1.7rem;font-weight:900;color:var(--text);margin-bottom:14px;letter-spacing:-0.5px">ترقية استثنائية لنظامكم 🎉</h2>
+        <div style="font-size:1.15rem;font-weight:800;color:var(--teal);margin-bottom:20px;background:rgba(13,148,136,0.08);padding:10px 20px;border-radius:14px;display:inline-block;border:1px solid rgba(13,148,136,0.2)" id="addonAlertTitle">وحدة خطة العلاج والتسعير</div>
+        <p style="color:var(--muted);line-height:1.7;margin-bottom:32px;font-size:1rem;position:relative;z-index:2" id="addonAlertDesc">تم تطوير وتفعيل هذه الوحدة باحترافية عالية لعيادتكم لتوفير أفضل تجربة إدارة ممكنة.</p>
+        <button onclick="dismissAddonAlert()" style="position:relative;z-index:2;background:linear-gradient(135deg, var(--teal), #0f766e);color:white;border:none;padding:16px 44px;border-radius:16px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:1.1rem;cursor:pointer;box-shadow:0 8px 20px rgba(13,148,136,0.35);transition:all 0.25s ease" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 12px 24px rgba(13,148,136,0.45)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 20px rgba(13,148,136,0.35)'">بدء الاستخدام الآن 🚀</button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  
+  document.getElementById('addonAlertIcon').textContent = data.icon || '✨';
+  document.getElementById('addonAlertTitle').textContent = data.title || 'ميزة جديدة';
+  
+  // Enhance description to sound more professional
+  const customDesc = \`يسعدنا إعلامكم بأنه تم بنجاح تفعيل <b>\${data.title}</b>. <br><br> \${data.description} <br><br>نحن في ARGON ملتزمون دائماً بتقديم أحدث التقنيات وأفضل الحلول لعيادتكم.\`;
+  document.getElementById('addonAlertDesc').innerHTML = customDesc;
+  
+  // Add a little floating animation to the icon
+  const iconEl = document.getElementById('addonAlertIcon');
+  iconEl.animate([
+    { transform: 'translateY(0px)' },
+    { transform: 'translateY(-8px)' },
+    { transform: 'translateY(0px)' }
+  ], { duration: 2500, iterations: Infinity, easing: 'ease-in-out' });
+  
+  // Animate in
+  setTimeout(() => {
+    modal.style.opacity = '1';
+    modal.style.pointerEvents = 'auto';
+    document.getElementById('addonAlertBox').style.transform = 'translateY(0) scale(1)';
+  }, 100);
+}
+
+window.dismissAddonAlert = function() {
+  const modal = document.getElementById('addonAlertModal');
+  if (modal) {
+    modal.style.opacity = '0';
+    modal.style.pointerEvents = 'none';
+    document.getElementById('addonAlertBox').style.transform = 'translateY(30px) scale(0.95)';
+    setTimeout(() => {
+      if(modal.parentNode) modal.parentNode.removeChild(modal);
+    }, 500);
+  }
+  if (_currentAlertKey) {
+    // Mark as dismissed in Firebase
+    db.ref(BASE + '/settings/addon_alerts/' + _currentAlertKey).update({ dismissed: true }).then(() => {
+      // Re-check in case there are other pending alerts
+      setTimeout(checkAddonAlerts, 500);
+    }).catch(console.error);
+    _currentAlertKey = null;
   }
 }
