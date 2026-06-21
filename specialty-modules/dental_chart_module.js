@@ -543,7 +543,7 @@
     var panel = document.getElementById('_dental-bridge-panel');
     if (!panel) return;
     if (!_bridgeMode) { panel.innerHTML = ''; return; }
-    var chips = _bridgeSelection.map(function (n) { return '<span class="chip">' + n + '</span>'; }).join('');
+    var chips = _bridgeSelection.map(function (n) { return '<span class="chip">' + n + '</span>'; }).join('<span class="chip-sep"> – </span>');
     var body = _bridgeSelection.length >= 2 ? '<div class="bridge-panel-form"><select id="_bridge-material" class="det-input"><option value="pfm">خزف-معدن (PFM)</option><option value="zirconia">زيركونيا</option></select><button class="det-btn det-btn-save" onclick="DentalChartModule.createBridge()">✅ إنشاء الجسر</button></div>' : '<div class="bridge-panel-hint">اختر سنّين متجاورين لإنشاء جسر.</div>';
     panel.innerHTML = '<div class="bridge-panel"><div class="bridge-panel-title">🔗 وضع الربط نشط — (' + _bridgeSelection.length + ' محدد)</div><div class="bridge-panel-chips">' + chips + '</div>' + body + '<button class="det-btn det-btn-cancel" onclick="DentalChartModule.toggleBridgeMode()">إنهاء</button></div>';
   }
@@ -735,6 +735,9 @@
       .bridge-mode .argon-tooth-cell-v2.bridge-selected { opacity: 1; transform: scale(1.1); }
       .bridge-mode .argon-tooth-cell-v2.bridge-selected .tooth-svg-wrap { box-shadow: 0 0 0 3px #0ea5e9; border-radius: 12px; }
       .bridge-panel { background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 10px; padding: 12px; margin-bottom: 16px; }
+      .bridge-panel-chips { display: flex; align-items: center; justify-content: center; gap: 2px; flex-wrap: wrap; margin: 6px 0; }
+      .chip { display: inline-block; background: #fff; color: #0284c7; padding: 3px 10px; border-radius: 6px; font-weight: 800; font-size: 0.9rem; border: 1px solid #7dd3fc; }
+      .chip-sep { color: #64748b; font-weight: 700; font-size: 0.85rem; padding: 0 2px; }
       .argon-bridge-row { display: flex; justify-content: center; gap: 4px; height: 12px; padding: 0 22px; margin: -4px 0 4px; }
       .bseg { width: 44px; border-top: 4px solid transparent; position: relative; }
       .bseg-on { cursor: pointer; }
