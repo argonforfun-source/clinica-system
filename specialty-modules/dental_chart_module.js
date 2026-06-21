@@ -651,7 +651,76 @@
     var chartHtml = document.querySelector('.argon-dental-chart-v2');
     var chartContent = chartHtml ? chartHtml.outerHTML : '<p>لا يوجد رسم بياني</p>';
 
-    var html = '<html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير الأسنان السريري</title><style>body { font-family: sans-serif; padding: 20px; } .argon-tooth-row { display: flex; justify-content: center; gap: 4px; margin: 10px 0; } .argon-tooth-cell-v2 { text-align: center; } .tooth-icon { width: 30px; height: 30px; } .det-btn, .origin-bar, .toolbar-actions { display: none !important; }</style></head><body><h1>تقرير الأسنان السريري</h1><div>المريض: ' + _esc(patientName) + ' | التاريخ: ' + date + '</div><div>' + chartContent + '</div><div><h3>التشخيص السريري:</h3><div>' + summary + '</div></div><script>setTimeout(function(){ window.print(); window.close(); }, 800);</script></body></html>';
+    // سحب ستايلات CSS الخاصة بالأسنان لضمان الطباعة الصحيحة
+    var cssRules = '';
+    var styleEl = document.getElementById('_dental-chart-v2-styles');
+    if (styleEl) cssRules = styleEl.textContent;
+
+    var html = [
+      '<!DOCTYPE html>',
+      '<html dir="rtl" lang="ar">',
+      '<head>',
+        '<meta charset="UTF-8">',
+        '<title>تقرير الأسنان السريري</title>',
+        '<style>',
+          '@import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap");',
+          'body { font-family: "Tajawal", sans-serif; padding: 40px; background: #f8fafc; color: #0f172a; }',
+          '.print-container { max-width: 900px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }',
+          '.print-header { border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }',
+          '.print-title { margin: 0; font-size: 24px; color: #0f172a; font-weight: 900; }',
+          '.print-meta { font-size: 14px; color: #475569; line-height: 1.6; }',
+          '.print-meta b { color: #0f172a; }',
+          '.clinic-brand { text-align: left; }',
+          '.clinic-brand h2 { margin: 0; color: #0ea5e9; font-size: 20px; }',
+          '.print-section { margin-bottom: 30px; }',
+          '.print-section h3 { border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 15px; font-size: 18px; color: #0f172a; }',
+          '.summary-text { font-size: 15px; line-height: 1.8; background: #f1f5f9; padding: 20px; border-radius: 8px; border-right: 4px solid #0ea5e9; }',
+          '@media print {',
+            'body { background: #fff; padding: 0; }',
+            '.print-container { box-shadow: none; padding: 0; }',
+            '.origin-btn, .mode-btn { border: 1px solid #ccc !important; }',
+          '}',
+          /* إخفاء عناصر التحكم للطباعة */
+          '.argon-dental-toolbar, .det-btn, .origin-bar button:not(.origin-active), .bridge-panel-form, #_dental-unsaved { display: none !important; }',
+          '.argon-dental-chart-v2 { border: none !important; padding: 0 !important; background: transparent !important; }',
+          cssRules
+        ].join('\n') + '</style>',
+      '</head>',
+      '<body>',
+        '<div class="print-container">',
+          '<div class="print-header">',
+            '<div>',
+              '<h1 class="print-title">تقرير الأسنان السريري (Dental Chart Report)</h1>',
+              '<div class="print-meta" style="margin-top: 10px;">',
+                '<div><b>اسم المريض:</b> ' + _esc(patientName) + '</div>',
+                '<div><b>تاريخ التقرير:</b> ' + date + '</div>',
+              '</div>',
+            '</div>',
+            '<div class="clinic-brand">',
+              '<h2>ARGON EMR</h2>',
+              '<div style="color:#64748b;font-size:12px;">نظام إدارة العيادات الذكي</div>',
+            '</div>',
+          '</div>',
+          
+          '<div class="print-section">',
+            '<h3>المخطط السريري للأسنان</h3>',
+            '<div>' + chartContent + '</div>',
+          '</div>',
+          
+          '<div class="print-section" style="page-break-inside: avoid;">',
+            '<h3>التشخيص السريري والتوصيات</h3>',
+            '<div class="summary-text">' + summary + '</div>',
+          '</div>',
+          
+          '<div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #64748b; border-top: 1px dashed #cbd5e1; padding-top: 20px;">',
+            '<div>توقيع الطبيب المعالج: _____________________</div>',
+            '<div>تم إنشاء هذا التقرير عبر نظام Argon EMR &copy;</div>',
+          '</div>',
+        '</div>',
+        '<script>setTimeout(function(){ window.print(); window.close(); }, 800);</script>',
+      '</body>',
+      '</html>'
+    ].join('\n');
     
     printWindow.document.write(html);
     printWindow.document.close();
@@ -659,6 +728,12 @@
 
   function saveChart() {
     if (!_currentPatientId || typeof db === 'undefined') return;
+
+    // إذا كان المستخدم في وضع الربط وحدد أكثر من سن، يتم إنشاء الجسر تلقائياً قبل الحفظ
+    if (_bridgeMode && _bridgeSelection.length >= 2) {
+      createBridge();
+    }
+
     var btn = document.getElementById('_dental-save-btn');
     if (btn) btn.innerHTML = 'جاري الحفظ...';
 
@@ -666,7 +741,7 @@
     db.ref(BASE + '/patients/' + _currentPatientId + '/specialty_data/dental').set(saveData).then(function () {
       _unsavedChanges = false; _showUnsaved();
       if (btn) btn.innerHTML = '<i class="fas fa-save"></i> حفظ الرسم';
-      if (typeof window.toast === 'function') window.toast('✅ تم الحفظ', 'ok');
+      if (typeof window.toast === 'function') window.toast('✅ تم الحفظ بنجاح', 'ok');
     });
   }
 
