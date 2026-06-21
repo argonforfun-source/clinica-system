@@ -2502,12 +2502,13 @@ function generatePatientFileHTML(uid) {
     ${window.ArgonSpecialtyLoader && window.ArgonSpecialtyLoader.hasFeature('treatmentPlan') ? `
     <div id="emr-tab-treatment-plan" class="emr-tab-content ${activeEmrTab === 'treatment-plan-tab' ? 'active-content' : ''}" style="display:${activeEmrTab === 'treatment-plan-tab' ? 'block' : 'none'}">
       <div class="ph" style="margin-bottom:12px">
-        <div><div class="pt" style="font-size:1.15rem;color:#6366f1">📋 وحدة خطة العلاج والتسعير</div><div class="ps">تخطيط الإجراءات المستقبلية وتتبع التكاليف — <span style="color:var(--red);font-weight:bold;">(قيد التطوير للاستخدام المهني)</span></div></div>
+        <div><div class="pt" style="font-size:1.15rem;color:#6366f1">📋 تقرير خطة العلاج والتسعير التفصيلي</div><div class="ps">تتبع حالة أسنان المريض والتدخلات المخططة بدقة عالية</div></div>
       </div>
-      <div style="padding:40px;text-align:center;background:rgba(99, 102, 241, 0.05);border-radius:12px;border:1px dashed rgba(99, 102, 241, 0.3);">
-        <i class="fas fa-tools" style="font-size:3rem;color:rgba(99, 102, 241, 0.4);margin-bottom:16px;"></i>
-        <h3 style="color:#6366f1;margin-bottom:8px;">وحدة خطة العلاج قيد التجهيز</h3>
-        <p style="color:var(--muted);font-size:0.9rem;max-width:400px;margin:0 auto;">يتم حالياً تطوير هذه الوحدة لتمكين الطبيب من جدولة الإجراءات المستقبلية (مثل الزرع وسحب العصب) على عدة جلسات مع حساب التسعير التلقائي.</p>
+      <div id="_dental-treatment-plan-content" style="padding:10px;">
+        ${window.DentalChartModule ? window.DentalChartModule.getHtmlSummary() : '<div style="padding:40px;text-align:center;background:rgba(99,102,241,0.05);border-radius:12px;border:1px dashed rgba(99,102,241,0.3);"><i class="fas fa-tooth" style="font-size:3rem;color:rgba(99,102,241,0.4);margin-bottom:16px;"></i><h3 style="color:#6366f1;">جاري تحميل بيانات المخطط...</h3><p style="color:var(--muted);font-size:0.9rem;">الرجاء فتح "الرسم البياني للأسنان" لتفعيل ومزامنة التقرير</p></div>'}
+      </div>
+      <div style="margin-top:20px;text-align:center;">
+        <button class="det-btn det-btn-print" style="background:#6366f1;color:#fff;padding:8px 20px;font-size:1rem;border-radius:8px;" onclick="window.DentalChartModule && window.DentalChartModule.printChart()"><i class="fas fa-print"></i> طباعة التقرير</button>
       </div>
     </div>` : ''}
 

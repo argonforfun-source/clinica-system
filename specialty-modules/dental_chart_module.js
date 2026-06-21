@@ -762,8 +762,12 @@
   }
 
   function _updateSummaryUI() {
+    var html = _buildSummary();
     var summaryGrid = document.querySelector('.summary-grid');
-    if (summaryGrid) summaryGrid.innerHTML = _buildSummary();
+    if (summaryGrid) summaryGrid.innerHTML = html;
+    
+    var tpContainer = document.getElementById('_dental-treatment-plan-content');
+    if (tpContainer) tpContainer.innerHTML = html;
   }
 
   function _rerenderChart() {
@@ -771,6 +775,7 @@
     if (!container) return;
     container.innerHTML = _buildChartHTML();
     _attachStyles();
+    _updateSummaryUI(); // Ensure external containers like Treatment Plan are synced
   }
 
   function setDentitionMode(mode) {
@@ -1001,7 +1006,7 @@
     saveChart: saveChart, resetChart: resetChart, setOriginMode: setOriginMode,
     setDentitionMode: setDentitionMode, toggleBridgeMode: toggleBridgeMode,
     createBridge: createBridge, removeBridge: removeBridge, printChart: printChart,
-    getChartData: getChartData, getTextSummary: getTextSummary,
+    getChartData: getChartData, getTextSummary: getTextSummary, getHtmlSummary: _buildSummary,
     _onToothClick: _onToothClick, _onStatusChange: _onStatusChange,
     _selectPalette: _selectPalette, _applySurface: _applySurface,
     _applyOriginHighlight: _applyOriginHighlight,
