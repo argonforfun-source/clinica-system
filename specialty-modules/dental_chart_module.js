@@ -198,6 +198,15 @@
         } else if (data.meta.bridges && typeof data.meta.bridges === 'object') {
           _meta.bridges = Object.keys(data.meta.bridges).map(function(k) { return data.meta.bridges[k]; });
         }
+        _meta.bridges.forEach(function(b) {
+          if (b.teeth && !Array.isArray(b.teeth) && typeof b.teeth === 'object') {
+            b.teeth = Object.keys(b.teeth).map(function(k) { return b.teeth[k]; });
+          } else if (!b.teeth) { b.teeth = []; }
+          
+          if (b.pontics && !Array.isArray(b.pontics) && typeof b.pontics === 'object') {
+            b.pontics = Object.keys(b.pontics).map(function(k) { return b.pontics[k]; });
+          } else if (!b.pontics) { b.pontics = []; }
+        });
       }
       _unsavedChanges = false;
       container.innerHTML = _buildChartHTML();
