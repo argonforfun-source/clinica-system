@@ -289,6 +289,19 @@ function renderCards(d){
       </div>
     </div>
   </div>
+  <div class="rc-controls" style="margin-top:8px;border-top:1px dashed var(--border);padding-top:12px">
+    <div class="ctrl-label" style="color:var(--purple,#8b5cf6)"><i class="fas fa-puzzle-piece"></i> الإضافات المدفوعة</div>
+    <div class="ctrl-row">
+      <div class="ctrl-toggle" onclick="toggleAddon('${safeId}','treatmentPlanAddon',${!!(s.addons&&s.addons.treatmentPlanAddon)})">
+        <div><span class="ct-lbl" style="color:${s.addons&&s.addons.treatmentPlanAddon?'var(--green)':'var(--muted)'}"><i class="fas fa-list-check" style="margin-left:4px"></i>${s.addons&&s.addons.treatmentPlanAddon?'مفعّلة':'معطّلة'}</span><br><span class="ct-sub">📋 خطة العلاج والتسعير</span></div>
+        <label class="tog" onclick="event.stopPropagation()"><input type="checkbox" ${s.addons&&s.addons.treatmentPlanAddon?'checked':''} onchange="toggleAddon('${safeId}','treatmentPlanAddon',${!!(s.addons&&s.addons.treatmentPlanAddon)})"><span class="tslider"></span></label>
+      </div>
+      <div class="ctrl-toggle" onclick="toggleAddon('${safeId}','dentalMediaAddon',${!!(s.addons&&s.addons.dentalMediaAddon)})">
+        <div><span class="ct-lbl" style="color:${s.addons&&s.addons.dentalMediaAddon?'var(--green)':'var(--muted)'}"><i class="fas fa-camera-retro" style="margin-left:4px"></i>${s.addons&&s.addons.dentalMediaAddon?'مفعّلة':'معطّلة'}</span><br><span class="ct-sub">📸 معرض الصور والأشعة</span></div>
+        <label class="tog" onclick="event.stopPropagation()"><input type="checkbox" ${s.addons&&s.addons.dentalMediaAddon?'checked':''} onchange="toggleAddon('${safeId}','dentalMediaAddon',${!!(s.addons&&s.addons.dentalMediaAddon)})"><span class="tslider"></span></label>
+      </div>
+    </div>
+  </div>
   <div class="rc-actions">
     <button class="act-btn teal" onclick="showLinks('${safeId}','${encodeURIComponent(s.name||'')}','${type}')"><i class="fas fa-link"></i> روابط</button>
     <button class="act-btn blue" onclick="window.open('${base}dashboard.html?id=${r.id}','_blank')"><i class="fas fa-tachometer-alt"></i> لوحة</button>
@@ -358,6 +371,18 @@ function clearAdd(){
     ['nId','nName','nPhone','nAddr'].forEach(i=>document.getElementById(i).value='');
     document.getElementById('nPass').value='123456';document.getElementById('nColor').value='#0d9488';
     document.getElementById('addResult').style.display='none';selectType('single');
+}
+
+// ══ TOGGLE ADDON ══
+async function toggleAddon(id, addonKey, cur){
+    if(!_isAdmin){toast('⚠️ غير مصرح','err');return}
+    const newVal = !cur;
+    const labels = {treatmentPlanAddon: 'خطة العلاج والتسعير', dentalMediaAddon: 'معرض الصور والأشعة'};
+    const label = labels[addonKey] || addonKey;
+    try{
+        await db.ref(`clinics/${id}/settings/addons/${addonKey}`).set(newVal);
+        toast(newVal ? `✅ تم تفعيل إضافة "${label}"` : `⏸ تم تعطيل إضافة "${label}"`, newVal ? 'ok' : 'err');
+    }catch(e){toast('❌ خطأ: '+e.message,'err')}
 }
 
 // ══ TOGGLE STATUS ══

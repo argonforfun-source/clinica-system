@@ -21,39 +21,39 @@
   var PRIMARY_LOWER = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
 
   var TOOTH_STATUSES = {
-    healthy:         { labelAr: 'سليم',                 color: '#10b981', emoji: '🦷' },
-    crown:           { labelAr: 'تاج',                   color: '#3b82f6', emoji: '👑' },
-    root_canal:      { labelAr: 'علاج عصب',              color: '#ef4444', emoji: '🩹' },
-    veneer:          { labelAr: 'قشرة تجميلية',          color: '#ec4899', emoji: '✨' },
-    bridge_abutment: { labelAr: 'دعامة جسر',             color: '#0891b2', emoji: '🌉' },
-    bridge_pontic:   { labelAr: 'تعويض جسر (فاقد)',      color: '#0891b2', emoji: '➖' },
-    implant:         { labelAr: 'زرعة',                  color: '#8b5cf6', emoji: '🔩' },
-    impacted:        { labelAr: 'مطمور',                 color: '#7c3aed', emoji: '🔒' },
-    unerupted:       { labelAr: 'لم يبزغ بعد',           color: '#cbd5e1', emoji: '⏳' },
-    missing:         { labelAr: 'مفقود / مخلوع',         color: '#94a3b8', emoji: '❌' }
+    healthy: { labelAr: 'سليم', color: '#10b981', emoji: '🦷' },
+    crown: { labelAr: 'تاج', color: '#3b82f6', emoji: '👑' },
+    root_canal: { labelAr: 'علاج عصب', color: '#ef4444', emoji: '🩹' },
+    veneer: { labelAr: 'قشرة تجميلية', color: '#ec4899', emoji: '✨' },
+    bridge_abutment: { labelAr: 'دعامة جسر', color: '#0891b2', emoji: '🌉' },
+    bridge_pontic: { labelAr: 'تعويض جسر (فاقد)', color: '#0891b2', emoji: '➖' },
+    implant: { labelAr: 'زرعة', color: '#8b5cf6', emoji: '🔩' },
+    impacted: { labelAr: 'مطمور', color: '#7c3aed', emoji: '🔒' },
+    unerupted: { labelAr: 'لم يبزغ بعد', color: '#cbd5e1', emoji: '⏳' },
+    missing: { labelAr: 'مفقود / مخلوع', color: '#94a3b8', emoji: '❌' }
   };
 
   var SURFACE_CONDITIONS = {
-    decay:    { labelAr: 'تسوس',       color: '#dc2626', glyph: '🔴' },
-    filling:  { labelAr: 'حشوة',       color: '#f59e0b', glyph: '🟧' },
-    sealant:  { labelAr: 'مادة سادة',  color: '#38bdf8', glyph: '🔵' },
-    fracture: { labelAr: 'كسر / شرخ',  color: '#7f1d1d', glyph: '⚡' },
-    wear:     { labelAr: 'تآكل/برادة', color: '#a16207', glyph: '🟫' }
+    decay: { labelAr: 'تسوس', color: '#dc2626', glyph: '🔴' },
+    filling: { labelAr: 'حشوة', color: '#f59e0b', glyph: '🟧' },
+    sealant: { labelAr: 'مادة سادة', color: '#38bdf8', glyph: '🔵' },
+    fracture: { labelAr: 'كسر / شرخ', color: '#7f1d1d', glyph: '⚡' },
+    wear: { labelAr: 'تآكل/برادة', color: '#a16207', glyph: '🟫' }
   };
 
   var ORIGINS = {
-    existing:  { labelAr: 'موجود مسبقاً', badge: '',   accent: '#94a3b8' },
-    planned:   { labelAr: 'مخطط للعلاج',  badge: '🗓️', accent: '#0ea5e9' },
-    completed: { labelAr: 'منجز اليوم',   badge: '✅', accent: '#10b981' }
+    existing: { labelAr: 'موجود مسبقاً', badge: '', accent: '#94a3b8' },
+    planned: { labelAr: 'مخطط للعلاج', badge: '🗓️', accent: '#0ea5e9' },
+    completed: { labelAr: 'منجز اليوم', badge: '✅', accent: '#10b981' }
   };
 
   var SURFACE_REGIONS = ['top', 'right', 'bottom', 'left', 'center'];
 
   var REGION_PATHS = {
-    top:    'M2,2 L42,2 L29,15 L15,15 Z',
-    right:  'M42,2 L29,15 L29,29 L42,42 Z',
+    top: 'M2,2 L42,2 L29,15 L15,15 Z',
+    right: 'M42,2 L29,15 L29,29 L42,42 Z',
     bottom: 'M2,42 L42,42 L29,29 L15,29 Z',
-    left:   'M2,2 L15,15 L15,29 L2,42 Z',
+    left: 'M2,2 L15,15 L15,29 L2,42 Z',
     center: 'M15,15 L29,15 L29,29 L15,29 Z'
   };
   var REGION_LABEL_POS = {
@@ -62,10 +62,10 @@
 
   var PERM_NAMES = { 1: 'القاطعة المركزية', 2: 'القاطعة الجانبية', 3: 'الناب', 4: 'الضاحك الأول', 5: 'الضاحك الثاني', 6: 'الرحى الأولى', 7: 'الرحى الثانية', 8: 'رحى العقل (الثالثة)' };
   var PRIM_NAMES = { 1: 'القاطعة المركزية اللبنية', 2: 'القاطعة الجانبية اللبنية', 3: 'الناب اللبني', 4: 'الرحى الأولى اللبنية', 5: 'الرحى الثانية اللبنية' };
-  var QUAD_SIDE   = { 1: 'العلوي الأيمن', 2: 'العلوي الأيسر', 3: 'السفلي الأيسر', 4: 'السفلي الأيمن', 5: 'العلوي الأيمن', 6: 'العلوي الأيسر', 7: 'السفلي الأيسر', 8: 'السفلي الأيمن' };
+  var QUAD_SIDE = { 1: 'العلوي الأيمن', 2: 'العلوي الأيسر', 3: 'السفلي الأيسر', 4: 'السفلي الأيمن', 5: 'العلوي الأيمن', 6: 'العلوي الأيسر', 7: 'السفلي الأيسر', 8: 'السفلي الأيمن' };
 
   var _chart = {};
-  var _meta  = { dentitionMode: 'adult', bridges: [] };
+  var _meta = { dentitionMode: 'adult', bridges: [] };
   var _currentPatientId = null;
   var _containerId = null;
   var _unsavedChanges = false;
@@ -76,9 +76,9 @@
   var _bridgeSelection = [];
 
   function _esc(str) { return String(str == null ? '' : str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
-  function _isPrimary(num)  { return num >= 51 && num <= 85; }
+  function _isPrimary(num) { return num >= 51 && num <= 85; }
   function _isAnterior(num) { var p = num % 10; return p >= 1 && p <= 3; }
-  function _isUpper(num)    { var q = Math.floor(num / 10); return q === 1 || q === 2 || q === 5 || q === 6; }
+  function _isUpper(num) { var q = Math.floor(num / 10); return q === 1 || q === 2 || q === 5 || q === 6; }
   function _getSideLabels(num) { var q = Math.floor(num / 10); var leftIsMesial = (q === 1 || q === 4 || q === 5 || q === 8); return leftIsMesial ? { left: 'M', right: 'D' } : { left: 'D', right: 'M' }; }
 
   function _regionLabel(num, region) {
@@ -196,15 +196,15 @@
         if (Array.isArray(data.meta.bridges)) {
           _meta.bridges = data.meta.bridges;
         } else if (data.meta.bridges && typeof data.meta.bridges === 'object') {
-          _meta.bridges = Object.keys(data.meta.bridges).map(function(k) { return data.meta.bridges[k]; });
+          _meta.bridges = Object.keys(data.meta.bridges).map(function (k) { return data.meta.bridges[k]; });
         }
-        _meta.bridges.forEach(function(b) {
+        _meta.bridges.forEach(function (b) {
           if (b.teeth && !Array.isArray(b.teeth) && typeof b.teeth === 'object') {
-            b.teeth = Object.keys(b.teeth).map(function(k) { return b.teeth[k]; });
+            b.teeth = Object.keys(b.teeth).map(function (k) { return b.teeth[k]; });
           } else if (!b.teeth) { b.teeth = []; }
-          
+
           if (b.pontics && !Array.isArray(b.pontics) && typeof b.pontics === 'object') {
-            b.pontics = Object.keys(b.pontics).map(function(k) { return b.pontics[k]; });
+            b.pontics = Object.keys(b.pontics).map(function (k) { return b.pontics[k]; });
           } else if (!b.pontics) { b.pontics = []; }
         });
       }
@@ -238,14 +238,14 @@
 
     return [
       '<div class="argon-dental-chart-v2" dir="rtl">',
-        _buildToolbarHTML(),
-        '<div id="_dental-unsaved" style="display:', (_unsavedChanges ? 'block' : 'none'), ';font-size:0.75rem;color:#f59e0b;font-weight:700;margin-bottom:8px">● تغييرات غير محفوظة</div>',
-        '<div id="_dental-bridge-panel"></div>',
-        sections,
-        _buildBridgeListPanel(),
-        '<div class="summary-grid">',
-        _buildSummary(),
-        '</div>',
+      _buildToolbarHTML(),
+      '<div id="_dental-unsaved" style="display:', (_unsavedChanges ? 'block' : 'none'), ';font-size:0.75rem;color:#f59e0b;font-weight:700;margin-bottom:8px">● تغييرات غير محفوظة</div>',
+      '<div id="_dental-bridge-panel"></div>',
+      sections,
+      _buildBridgeListPanel(),
+      '<div class="summary-grid">',
+      _buildSummary(),
+      '</div>',
       '</div>'
     ].join('');
   }
@@ -259,19 +259,19 @@
 
     return [
       '<div class="argon-dental-toolbar">',
-        '<div class="toolbar-row">',
-          '<div class="toolbar-group"><span class="toolbar-label">🗂️ نوع المخطط:</span>', modeBtns, '</div>',
-          '<div class="toolbar-group toolbar-actions">',
-            '<button class="det-btn det-btn-save" id="_dental-save-btn" onclick="DentalChartModule.saveChart()"><i class="fas fa-save"></i> حفظ الرسم</button>',
-            '<button class="det-btn det-btn-bridge" id="_dental-bridge-btn" onclick="DentalChartModule.toggleBridgeMode()"><i class="fas fa-link"></i> ربط / جسر</button>',
-            '<button class="det-btn det-btn-print" onclick="DentalChartModule.printChart()"><i class="fas fa-print"></i> طباعة التقرير</button>',
-            '<button class="det-btn det-btn-cancel" onclick="DentalChartModule.resetChart()"><i class="fas fa-undo"></i> إعادة تعيين</button>',
-          '</div>',
-        '</div>',
-        '<div class="toolbar-row">',
-          '<span class="toolbar-label">📌 نمط الإدخال الحالي:</span>',
-          '<div id="_dental-origin-toolbar" class="origin-bar">', _buildOriginSelector(), '</div>',
-        '</div>',
+      '<div class="toolbar-row">',
+      '<div class="toolbar-group"><span class="toolbar-label">🗂️ نوع المخطط:</span>', modeBtns, '</div>',
+      '<div class="toolbar-group toolbar-actions">',
+      '<button class="det-btn det-btn-save" id="_dental-save-btn" onclick="DentalChartModule.saveChart()"><i class="fas fa-save"></i> حفظ الرسم</button>',
+      '<button class="det-btn det-btn-bridge" id="_dental-bridge-btn" onclick="DentalChartModule.toggleBridgeMode()"><i class="fas fa-link"></i> ربط / جسر</button>',
+      '<button class="det-btn det-btn-print" onclick="DentalChartModule.printChart()"><i class="fas fa-print"></i> طباعة التقرير</button>',
+      '<button class="det-btn det-btn-cancel" onclick="DentalChartModule.resetChart()"><i class="fas fa-undo"></i> إعادة تعيين</button>',
+      '</div>',
+      '</div>',
+      '<div class="toolbar-row">',
+      '<span class="toolbar-label">📌 نمط الإدخال الحالي:</span>',
+      '<div id="_dental-origin-toolbar" class="origin-bar">', _buildOriginSelector(), '</div>',
+      '</div>',
       '</div>'
     ].join('');
   }
@@ -305,7 +305,7 @@
     var uni = _fdiToUniversal(num);
     var tooltip = 'FDI ' + num + ' (Universal ' + uni + ') — ' + anat;
     if (data.notes) tooltip += '\n📝 ' + data.notes;
-    
+
     var badges = '';
     if (_toothHasOrigin(data, 'planned')) badges += '<span class="tb tb-tl">🗓️</span>';
     if (_toothHasOrigin(data, 'completed')) badges += '<span class="tb tb-tl2">✅</span>';
@@ -324,8 +324,8 @@
 
     return [
       '<div class="argon-tooth-cell-v2', hlClass, '" data-tooth="', num, '" data-status="', (data.status || 'healthy'), '" title="', _esc(tooltip), '" onclick="DentalChartModule._onToothClick(', num, ')">',
-        '<div class="tooth-svg-wrap">', svg, badges, '</div>',
-        '<div class="tooth-num">', num, '</div>',
+      '<div class="tooth-svg-wrap">', svg, badges, '</div>',
+      '<div class="tooth-num">', num, '</div>',
       '</div>'
     ].join('');
   }
@@ -393,12 +393,12 @@
     overlay.id = '_dental-editor-overlay';
     overlay.className = 'dental-editor-overlay';
 
-    var statusOptions = Object.keys(TOOTH_STATUSES).map(function(k) { return '<option value="' + k + '" ' + (k === status ? 'selected' : '') + '>' + TOOTH_STATUSES[k].emoji + ' ' + TOOTH_STATUSES[k].labelAr + '</option>'; }).join('');
-    
-    var mats = [['', '—'], ['composite', 'مركبة (Composite)'], ['amalgam', 'أملغم (Amalgam)'], ['zirconia', 'زيركونيا (Zirconia)'], ['pfm', 'خزف-معدن (PFM)']];
-    var materialOptions = mats.map(function(m) { return '<option value="' + m[0] + '" ' + (m[0] === (data.material || '') ? 'selected' : '') + '>' + m[1] + '</option>'; }).join('');
+    var statusOptions = Object.keys(TOOTH_STATUSES).map(function (k) { return '<option value="' + k + '" ' + (k === status ? 'selected' : '') + '>' + TOOTH_STATUSES[k].emoji + ' ' + TOOTH_STATUSES[k].labelAr + '</option>'; }).join('');
 
-    var palette = Object.keys(SURFACE_CONDITIONS).map(function(k) {
+    var mats = [['', '—'], ['composite', 'مركبة (Composite)'], ['amalgam', 'أملغم (Amalgam)'], ['zirconia', 'زيركونيا (Zirconia)'], ['pfm', 'خزف-معدن (PFM)']];
+    var materialOptions = mats.map(function (m) { return '<option value="' + m[0] + '" ' + (m[0] === (data.material || '') ? 'selected' : '') + '>' + m[1] + '</option>'; }).join('');
+
+    var palette = Object.keys(SURFACE_CONDITIONS).map(function (k) {
       var c = SURFACE_CONDITIONS[k];
       return '<button type="button" class="palette-btn' + (_selectedSurfaceCond === k ? ' palette-active' : '') + '" style="--pc:' + c.color + '" onclick="DentalChartModule._selectPalette(\'' + k + '\')">' + c.glyph + '</button>';
     }).join('');
@@ -406,17 +406,17 @@
 
     overlay.innerHTML = [
       '<div class="dental-editor-card">',
-        '<div class="dental-editor-head"><div class="det-title">🦷 السن ', num, ' — ', anat, '</div><div class="det-sub">Universal: ', uni, '</div></div>',
-        '<div class="det-section"><label class="det-label">📌 وضع الإدخال الحالي</label><div id="_dental-origin-editor" class="origin-bar">', _buildOriginSelector(), '</div></div>',
-        '<div class="det-section"><label class="det-label">🦷 الحالة العامة للسن</label><select id="_dental-status-sel" class="det-input" onchange="DentalChartModule._onStatusChange(', num, ')">', statusOptions, '</select></div>',
-        '<div class="det-section" id="_dental-surfsection-', num, '" style="', (status === 'healthy' ? '' : 'display:none'), '">',
-          '<label class="det-label">🗺️ خريطة أسطح السن</label><div class="surf-editor"><div id="_dental-surfmap-', num, '">', _buildSurfaceMapSVG(num, data, true), '</div><div id="_dental-palette" class="palette-row">', palette, '</div></div>',
-        '</div>',
-        '<div class="det-section"><label class="det-label">🧪 مادة العلاج (اختياري)</label><select id="_dental-material-sel" class="det-input">', materialOptions, '</select></div>',
-        '<div class="det-section det-row"><input type="checkbox" id="_dental-needs-rx" ', (data.requiresTreatment ? 'checked' : ''), '><label for="_dental-needs-rx" class="det-check-label">⚠️ مُدرج ضمن خطة العلاج الحالية</label></div>',
-        '<div class="det-section"><label class="det-label">📝 ملاحظة سريرية (اختياري)</label><input type="text" id="_dental-note-inp" class="det-input" value="', _esc(data.notes || ''), '" placeholder="ملاحظات..."></div>',
-        bridgeBlock,
-        '<div class="det-actions"><button onclick="DentalChartModule.saveToothData(', num, ')" class="det-btn det-btn-save"><i class="fas fa-save"></i> حفظ</button><button onclick="document.getElementById(\'_dental-editor-overlay\').remove()" class="det-btn det-btn-cancel">إلغاء</button></div>',
+      '<div class="dental-editor-head"><div class="det-title">🦷 السن ', num, ' — ', anat, '</div><div class="det-sub">Universal: ', uni, '</div></div>',
+      '<div class="det-section"><label class="det-label">📌 وضع الإدخال الحالي</label><div id="_dental-origin-editor" class="origin-bar">', _buildOriginSelector(), '</div></div>',
+      '<div class="det-section"><label class="det-label">🦷 الحالة العامة للسن</label><select id="_dental-status-sel" class="det-input" onchange="DentalChartModule._onStatusChange(', num, ')">', statusOptions, '</select></div>',
+      '<div class="det-section" id="_dental-surfsection-', num, '" style="', (status === 'healthy' ? '' : 'display:none'), '">',
+      '<label class="det-label">🗺️ خريطة أسطح السن</label><div class="surf-editor"><div id="_dental-surfmap-', num, '">', _buildSurfaceMapSVG(num, data, true), '</div><div id="_dental-palette" class="palette-row">', palette, '</div></div>',
+      '</div>',
+      '<div class="det-section"><label class="det-label">🧪 مادة العلاج (اختياري)</label><select id="_dental-material-sel" class="det-input">', materialOptions, '</select></div>',
+      '<div class="det-section det-row"><input type="checkbox" id="_dental-needs-rx" ', (data.requiresTreatment ? 'checked' : ''), '><label for="_dental-needs-rx" class="det-check-label">⚠️ مُدرج ضمن خطة العلاج الحالية</label></div>',
+      '<div class="det-section"><label class="det-label">📝 ملاحظة سريرية (اختياري)</label><input type="text" id="_dental-note-inp" class="det-input" value="', _esc(data.notes || ''), '" placeholder="ملاحظات..."></div>',
+      bridgeBlock,
+      '<div class="det-actions"><button onclick="DentalChartModule.saveToothData(', num, ')" class="det-btn det-btn-save"><i class="fas fa-save"></i> حفظ</button><button onclick="document.getElementById(\'_dental-editor-overlay\').remove()" class="det-btn det-btn-cancel">إلغاء</button></div>',
       '</div>'
     ].join('');
 
@@ -427,7 +427,7 @@
   function _selectPalette(key) {
     _selectedSurfaceCond = key;
     var btns = document.querySelectorAll('#_dental-palette .palette-btn');
-    btns.forEach(function(b) { b.classList.remove('palette-active'); });
+    btns.forEach(function (b) { b.classList.remove('palette-active'); });
     event.currentTarget.classList.add('palette-active');
   }
 
@@ -438,8 +438,8 @@
 
     if (_selectedSurfaceCond === 'clear') { _chart[num].surfaces[region] = null; }
     else if (current && current.condition === _selectedSurfaceCond && current.origin === _currentOriginMode) { _chart[num].surfaces[region] = null; }
-    else { 
-      _chart[num].surfaces[region] = { condition: _selectedSurfaceCond, origin: _currentOriginMode }; 
+    else {
+      _chart[num].surfaces[region] = { condition: _selectedSurfaceCond, origin: _currentOriginMode };
       if (_chart[num].status && _chart[num].status !== 'healthy' && _chart[num].status !== 'bridge_abutment' && _chart[num].status !== 'bridge_pontic') {
         _chart[num].status = 'healthy';
         delete _chart[num].statusOrigin;
@@ -486,7 +486,7 @@
    */
   function _applyOriginHighlight() {
     var cells = document.querySelectorAll('.argon-tooth-cell-v2');
-    cells.forEach(function(cell) {
+    cells.forEach(function (cell) {
       var num = parseInt(cell.getAttribute('data-tooth'), 10);
       var data = _chart[num] || {};
 
@@ -509,7 +509,7 @@
     var requiresTreatment = document.getElementById('_dental-needs-rx').checked;
 
     if (!_chart[num]) _chart[num] = { surfaces: { center: null, top: null, bottom: null, left: null, right: null }, _v2: true };
-    
+
     var oldStatus = _chart[num].status || 'healthy';
     if (status !== oldStatus) {
       _chart[num].surfaces = { center: null, top: null, bottom: null, left: null, right: null };
@@ -583,7 +583,7 @@
     var teeth = _bridgeSelection.slice();
     var pontics = teeth.filter(function (n) { return _chart[n] && _chart[n].status === 'missing'; });
     if (!pontics.length && teeth.length > 2) pontics = teeth.slice(1, teeth.length - 1);
-    
+
     var bridge = { id: 'bridge_' + Date.now(), teeth: teeth, pontics: pontics, material: materialSel ? materialSel.value : 'pfm', origin: _currentOriginMode };
     _meta.bridges = _meta.bridges || [];
     _meta.bridges.push(bridge);
@@ -652,24 +652,24 @@
       var matStr = b.material === 'zirconia' ? 'زيركونيا' : (b.material === 'pfm' ? 'بورسلان-معدن (PFM)' : (b.material || 'غير محدد'));
       var tStr = (b.teeth || []).join(' - ');
       var pCount = (b.pontics || []).length;
-      
+
       return '<div class="bridge-list-item" style="padding: 12px; margin-bottom: 10px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
-               '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">' +
-                 '<b style="color: #0f172a; font-size: 0.95rem;"><i class="fas fa-link" style="color: var(--oc); margin-left: 5px;"></i> 🌉 جسر للأسنان (' + tStr + ')</b>' +
-                 '<button type="button" class="det-btn det-btn-cancel" style="padding: 4px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;" onclick="DentalChartModule.removeBridge(\'' + b.id + '\')"><i class="fas fa-trash-alt"></i> إزالة</button>' +
-               '</div>' +
-               '<div style="font-size: 0.85rem; color: #475569; display: flex; gap: 15px; flex-wrap: wrap;">' +
-                 '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-tooth" style="color: #94a3b8;"></i> <b>المادة:</b> ' + matStr + '</span>' +
-                 '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-tags" style="color: #94a3b8;"></i> <b>الحالة:</b> ' + origin.labelAr + '</span>' +
-                 (pCount > 0 ? '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-layer-group" style="color: #94a3b8;"></i> <b>عدد التعويضات:</b> ' + pCount + '</span>' : '') +
-               '</div>' +
-             '</div>';
+        '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">' +
+        '<b style="color: #0f172a; font-size: 0.95rem;"><i class="fas fa-link" style="color: var(--oc); margin-left: 5px;"></i> 🌉 جسر للأسنان (' + tStr + ')</b>' +
+        '<button type="button" class="det-btn det-btn-cancel" style="padding: 4px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;" onclick="DentalChartModule.removeBridge(\'' + b.id + '\')"><i class="fas fa-trash-alt"></i> إزالة</button>' +
+        '</div>' +
+        '<div style="font-size: 0.85rem; color: #475569; display: flex; gap: 15px; flex-wrap: wrap;">' +
+        '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-tooth" style="color: #94a3b8;"></i> <b>المادة:</b> ' + matStr + '</span>' +
+        '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-tags" style="color: #94a3b8;"></i> <b>الحالة:</b> ' + origin.labelAr + '</span>' +
+        (pCount > 0 ? '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-layer-group" style="color: #94a3b8;"></i> <b>عدد التعويضات:</b> ' + pCount + '</span>' : '') +
+        '</div>' +
+        '</div>';
     }).join('');
-    
+
     return '<div class="bridge-list-panel" style="background: #f8fafc; border-radius: 10px; border: 1px solid #cbd5e1; margin-top: 20px; padding: 15px;">' +
-             '<div style="font-weight: bold; color: #1e293b; font-size: 1.05rem; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;"><i class="fas fa-project-diagram" style="color: var(--oc); margin-left: 8px;"></i> تفاصيل الجسور والتركيبات</div>' +
-             rows + 
-           '</div>';
+      '<div style="font-weight: bold; color: #1e293b; font-size: 1.05rem; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;"><i class="fas fa-project-diagram" style="color: var(--oc); margin-left: 8px;"></i> تفاصيل الجسور والتركيبات</div>' +
+      rows +
+      '</div>';
   }
 
   function _buildSummary() {
@@ -695,7 +695,7 @@
 
       // Group by surface conditions
       if (data.surfaces) {
-        Object.keys(data.surfaces).forEach(function(surf) {
+        Object.keys(data.surfaces).forEach(function (surf) {
           var sData = data.surfaces[surf];
           if (sData && sData.condition && sData.condition !== 'healthy') {
             var cObj = SURFACE_CONDITIONS[sData.condition];
@@ -712,27 +712,27 @@
 
     if (!hasData) {
       return '<div style="text-align:center; padding: 30px; background: #f8fafc; border-radius: 10px; border: 1px dashed #cbd5e1; margin-top: 20px;">' +
-             '<i class="fas fa-smile-beam" style="font-size: 2.5rem; color: #10b981; margin-bottom: 15px; display: block;"></i>' +
-             '<div style="font-weight: bold; color: #334155; font-size: 1.1rem;">أسنان سليمة (لا يوجد تدخلات)</div>' +
-             '<div style="color: #64748b; font-size: 0.9rem; margin-top: 5px;">لم يتم تسجيل أي تسوس، حشوات، أو تركيبات على المخطط حتى الآن.</div>' +
-             '</div>';
+        '<i class="fas fa-smile-beam" style="font-size: 2.5rem; color: #10b981; margin-bottom: 15px; display: block;"></i>' +
+        '<div style="font-weight: bold; color: #334155; font-size: 1.1rem;">أسنان سليمة (لا يوجد تدخلات)</div>' +
+        '<div style="color: #64748b; font-size: 0.9rem; margin-top: 5px;">لم يتم تسجيل أي تسوس، حشوات، أو تركيبات على المخطط حتى الآن.</div>' +
+        '</div>';
     }
 
     var html = '<div class="chart-full-summary" style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">';
-    
-    Object.keys(groups).forEach(function(gKey) {
+
+    Object.keys(groups).forEach(function (gKey) {
       var group = groups[gKey];
       var toothMap = {};
-      
-      group.items.forEach(function(item) {
+
+      group.items.forEach(function (item) {
         if (!toothMap[item.num]) toothMap[item.num] = { num: item.num, surfaces: [], notes: item.notes, origin: item.origin, material: item.material, reqRx: item.reqRx };
         if (item.surface) {
-          var sName = { top:'العلوي', bottom:'السفلي', center:'المركز', left:'اليسار', right:'اليمين' }[item.surface] || item.surface;
+          var sName = { top: 'العلوي', bottom: 'السفلي', center: 'المركز', left: 'اليسار', right: 'اليمين' }[item.surface] || item.surface;
           if (toothMap[item.num].surfaces.indexOf(sName) === -1) toothMap[item.num].surfaces.push(sName);
         }
       });
 
-      var rows = Object.keys(toothMap).sort(function(a,b){return parseInt(a)-parseInt(b);}).map(function(numStr) {
+      var rows = Object.keys(toothMap).sort(function (a, b) { return parseInt(a) - parseInt(b); }).map(function (numStr) {
         var tData = toothMap[numStr];
         var sHtml = tData.surfaces.length > 0 ? '<span style="display: flex; align-items: center; gap: 4px; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;"><i class="fas fa-border-all" style="color: #94a3b8;"></i> <b>الأسطح:</b> ' + tData.surfaces.join('، ') + '</span>' : '';
         var nHtml = tData.notes ? '<span style="display: flex; align-items: center; gap: 4px; width: 100%; margin-top: 5px; color: #b45309;"><i class="fas fa-sticky-note" style="color: #f59e0b;"></i> <b>ملاحظات:</b> ' + tData.notes + '</span>' : '';
@@ -740,23 +740,23 @@
         var rHtml = tData.reqRx ? '<span style="display: flex; align-items: center; gap: 4px; color: #ef4444;"><i class="fas fa-prescription" style="color: #ef4444;"></i> بحاجة لوصفة</span>' : '';
 
         return '<div class="summary-tooth-item" style="padding: 12px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
-                 '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '8px' : '0') + '; border-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '1px dashed #e2e8f0' : 'none') + '; padding-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '8px' : '0') + ';">' +
-                   '<b style="color: #0f172a; font-size: 0.95rem;"><i class="fas fa-tooth" style="color: ' + group.color + '; margin-left: 5px;"></i> السن رقم (' + tData.num + ')</b>' +
-                   '<span style="font-size: 0.8rem; background: #f8fafc; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 12px; color: #475569;"><i class="fas fa-tag"></i> ' + tData.origin.labelAr + '</span>' +
-                 '</div>' +
-                 (sHtml || nHtml || mHtml || rHtml ? '<div style="font-size: 0.85rem; color: #475569; display: flex; gap: 10px; flex-wrap: wrap;">' + sHtml + mHtml + rHtml + nHtml + '</div>' : '') +
-               '</div>';
+          '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '8px' : '0') + '; border-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '1px dashed #e2e8f0' : 'none') + '; padding-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '8px' : '0') + ';">' +
+          '<b style="color: #0f172a; font-size: 0.95rem;"><i class="fas fa-tooth" style="color: ' + group.color + '; margin-left: 5px;"></i> السن رقم (' + tData.num + ')</b>' +
+          '<span style="font-size: 0.8rem; background: #f8fafc; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 12px; color: #475569;"><i class="fas fa-tag"></i> ' + tData.origin.labelAr + '</span>' +
+          '</div>' +
+          (sHtml || nHtml || mHtml || rHtml ? '<div style="font-size: 0.85rem; color: #475569; display: flex; gap: 10px; flex-wrap: wrap;">' + sHtml + mHtml + rHtml + nHtml + '</div>' : '') +
+          '</div>';
       }).join('');
 
       html += '<div class="summary-group-panel" style="background: #f8fafc; border-radius: 10px; border: 1px solid #cbd5e1; padding: 15px;">' +
-               '<div style="font-weight: bold; color: #1e293b; font-size: 1.05rem; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">' +
-                 '<span style="font-size: 1.2rem;">' + group.icon + '</span> <span style="color: ' + group.color + ';">' + group.label + '</span>' +
-                 '<span style="background: ' + group.color + '20; color: ' + group.color + '; font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; margin-right: auto; font-weight: bold;">' + Object.keys(toothMap).length + ' أسنان</span>' +
-               '</div>' +
-               '<div style="display: flex; flex-direction: column; gap: 8px;">' + rows + '</div>' +
-             '</div>';
+        '<div style="font-weight: bold; color: #1e293b; font-size: 1.05rem; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">' +
+        '<span style="font-size: 1.2rem;">' + group.icon + '</span> <span style="color: ' + group.color + ';">' + group.label + '</span>' +
+        '<span style="background: ' + group.color + '20; color: ' + group.color + '; font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; margin-right: auto; font-weight: bold;">' + Object.keys(toothMap).length + ' أسنان</span>' +
+        '</div>' +
+        '<div style="display: flex; flex-direction: column; gap: 8px;">' + rows + '</div>' +
+        '</div>';
     });
-    
+
     html += '</div>';
     return html;
   }
@@ -781,7 +781,7 @@
   function printChart() {
     var printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    
+
     var summary = getTextSummary();
     var patientName = _getPatientName();
     var date = new Date().toLocaleDateString('ar-JO');
@@ -797,68 +797,68 @@
       '<!DOCTYPE html>',
       '<html dir="rtl" lang="ar">',
       '<head>',
-        '<meta charset="UTF-8">',
-        '<title>تقرير الأسنان السريري</title>',
-        '<style>',
-          '@import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap");',
-          'body { font-family: "Tajawal", sans-serif; padding: 40px; background: #f8fafc; color: #0f172a; }',
-          '.print-container { max-width: 900px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }',
-          '.print-header { border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }',
-          '.print-title { margin: 0; font-size: 24px; color: #0f172a; font-weight: 900; }',
-          '.print-meta { font-size: 14px; color: #475569; line-height: 1.6; }',
-          '.print-meta b { color: #0f172a; }',
-          '.clinic-brand { text-align: left; }',
-          '.clinic-brand h2 { margin: 0; color: #0ea5e9; font-size: 20px; }',
-          '.print-section { margin-bottom: 30px; }',
-          '.print-section h3 { border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 15px; font-size: 18px; color: #0f172a; }',
-          '.summary-text { font-size: 15px; line-height: 1.8; background: #f1f5f9; padding: 20px; border-radius: 8px; border-right: 4px solid #0ea5e9; }',
-          '@media print {',
-            'body { background: #fff; padding: 0; }',
-            '.print-container { box-shadow: none; padding: 0; }',
-            '.origin-btn, .mode-btn { border: 1px solid #ccc !important; }',
-          '}',
-          /* إخفاء عناصر التحكم للطباعة */
-          '.argon-dental-toolbar, .det-btn, .origin-bar button:not(.origin-active), .bridge-panel-form, #_dental-unsaved { display: none !important; }',
-          '.argon-dental-chart-v2 { border: none !important; padding: 0 !important; background: transparent !important; }',
-          cssRules,
-        '</style>',
+      '<meta charset="UTF-8">',
+      '<title>تقرير الأسنان السريري</title>',
+      '<style>',
+      '@import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap");',
+      'body { font-family: "Tajawal", sans-serif; padding: 40px; background: #f8fafc; color: #0f172a; }',
+      '.print-container { max-width: 900px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }',
+      '.print-header { border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }',
+      '.print-title { margin: 0; font-size: 24px; color: #0f172a; font-weight: 900; }',
+      '.print-meta { font-size: 14px; color: #475569; line-height: 1.6; }',
+      '.print-meta b { color: #0f172a; }',
+      '.clinic-brand { text-align: left; }',
+      '.clinic-brand h2 { margin: 0; color: #0ea5e9; font-size: 20px; }',
+      '.print-section { margin-bottom: 30px; }',
+      '.print-section h3 { border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 15px; font-size: 18px; color: #0f172a; }',
+      '.summary-text { font-size: 15px; line-height: 1.8; background: #f1f5f9; padding: 20px; border-radius: 8px; border-right: 4px solid #0ea5e9; }',
+      '@media print {',
+      'body { background: #fff; padding: 0; }',
+      '.print-container { box-shadow: none; padding: 0; }',
+      '.origin-btn, .mode-btn { border: 1px solid #ccc !important; }',
+      '}',
+      /* إخفاء عناصر التحكم للطباعة */
+      '.argon-dental-toolbar, .det-btn, .origin-bar button:not(.origin-active), .bridge-panel-form, #_dental-unsaved { display: none !important; }',
+      '.argon-dental-chart-v2 { border: none !important; padding: 0 !important; background: transparent !important; }',
+      cssRules,
+      '</style>',
       '</head>',
       '<body>',
-        '<div class="print-container">',
-          '<div class="print-header">',
-            '<div>',
-              '<h1 class="print-title">تقرير الأسنان السريري (Dental Chart Report)</h1>',
-              '<div class="print-meta" style="margin-top: 10px;">',
-                '<div><b>اسم المريض:</b> ' + _esc(patientName) + '</div>',
-                '<div><b>تاريخ التقرير:</b> ' + date + '</div>',
-              '</div>',
-            '</div>',
-            '<div class="clinic-brand">',
-              '<h2>ARGON EMR</h2>',
-              '<div style="color:#64748b;font-size:12px;">نظام إدارة العيادات الذكي</div>',
-            '</div>',
-          '</div>',
-          
-          '<div class="print-section">',
-            '<h3>المخطط السريري للأسنان</h3>',
-            '<div>' + chartContent + '</div>',
-          '</div>',
-          
-          '<div class="print-section" style="page-break-inside: avoid;">',
-            '<h3>التشخيص السريري والتوصيات</h3>',
-            '<div class="summary-text">' + summary + '</div>',
-          '</div>',
-          
-          '<div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #64748b; border-top: 1px dashed #cbd5e1; padding-top: 20px;">',
-            '<div>توقيع الطبيب المعالج: _____________________</div>',
-            '<div>تم إنشاء هذا التقرير عبر نظام Argon EMR &copy;</div>',
-          '</div>',
-        '</div>',
-        '<script>setTimeout(function(){ window.print(); window.close(); }, 800);</script>',
+      '<div class="print-container">',
+      '<div class="print-header">',
+      '<div>',
+      '<h1 class="print-title">تقرير الأسنان السريري (Dental Chart Report)</h1>',
+      '<div class="print-meta" style="margin-top: 10px;">',
+      '<div><b>اسم المريض:</b> ' + _esc(patientName) + '</div>',
+      '<div><b>تاريخ التقرير:</b> ' + date + '</div>',
+      '</div>',
+      '</div>',
+      '<div class="clinic-brand">',
+      '<h2>ARGON EMR</h2>',
+      '<div style="color:#64748b;font-size:12px;">نظام إدارة العيادات الذكي</div>',
+      '</div>',
+      '</div>',
+
+      '<div class="print-section">',
+      '<h3>المخطط السريري للأسنان</h3>',
+      '<div>' + chartContent + '</div>',
+      '</div>',
+
+      '<div class="print-section" style="page-break-inside: avoid;">',
+      '<h3>التشخيص السريري والتوصيات</h3>',
+      '<div class="summary-text">' + summary + '</div>',
+      '</div>',
+
+      '<div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #64748b; border-top: 1px dashed #cbd5e1; padding-top: 20px;">',
+      '<div>توقيع الطبيب المعالج: _____________________</div>',
+      '<div>تم إنشاء هذا التقرير عبر نظام Argon EMR &copy;</div>',
+      '</div>',
+      '</div>',
+      '<script>setTimeout(function(){ window.print(); window.close(); }, 800);</script>',
       '</body>',
       '</html>'
     ].join('\n');
-    
+
     printWindow.document.write(html);
     printWindow.document.close();
   }
@@ -883,7 +883,7 @@
 
     // تنظيف _chart من أي قيم فارغة قبل الحفظ لتجنب مشاكل المصفوفات
     var cleanChart = {};
-    Object.keys(_chart).forEach(function(k) {
+    Object.keys(_chart).forEach(function (k) {
       if (_chart[k]) cleanChart[k] = _chart[k];
     });
 

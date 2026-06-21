@@ -2501,26 +2501,34 @@ function generatePatientFileHTML(uid) {
 
     ${window.ArgonSpecialtyLoader && window.ArgonSpecialtyLoader.hasFeature('treatmentPlan') ? `
     <div id="emr-tab-treatment-plan" class="emr-tab-content ${activeEmrTab === 'treatment-plan-tab' ? 'active-content' : ''}" style="display:${activeEmrTab === 'treatment-plan-tab' ? 'block' : 'none'}">
-      <div class="ph" style="margin-bottom:12px">
-        <div><div class="pt" style="font-size:1.15rem;color:#6366f1">📋 وحدة خطة العلاج والتسعير</div><div class="ps">تخطيط الإجراءات المستقبلية وتتبع التكاليف — <span style="color:var(--red);font-weight:bold;">(قيد التطوير للاستخدام المهني)</span></div></div>
-      </div>
-      <div style="padding:40px;text-align:center;background:rgba(99, 102, 241, 0.05);border-radius:12px;border:1px dashed rgba(99, 102, 241, 0.3);">
-        <i class="fas fa-tools" style="font-size:3rem;color:rgba(99, 102, 241, 0.4);margin-bottom:16px;"></i>
-        <h3 style="color:#6366f1;margin-bottom:8px;">وحدة خطة العلاج قيد التجهيز</h3>
-        <p style="color:var(--muted);font-size:0.9rem;max-width:400px;margin:0 auto;">يتم حالياً تطوير هذه الوحدة لتمكين الطبيب من جدولة الإجراءات المستقبلية (مثل الزرع وسحب العصب) على عدة جلسات مع حساب التسعير التلقائي.</p>
-      </div>
+      ${_sets && _sets.addons && _sets.addons.treatmentPlanAddon ? `
+        <div id="_treatmentPlanContainer" style="padding:10px"></div>
+      ` : `
+        <div style="padding:50px 40px;text-align:center;background:rgba(99, 102, 241, 0.04);border-radius:16px;border:1px dashed rgba(99, 102, 241, 0.25);margin:10px">
+          <i class="fas fa-lock" style="font-size:3rem;color:rgba(99, 102, 241, 0.3);margin-bottom:16px;display:block"></i>
+          <h3 style="color:#6366f1;margin-bottom:8px;font-weight:900;font-size:1.1rem">وحدة خطة العلاج والتسعير — قيد التطوير</h3>
+          <p style="color:var(--muted);font-size:0.88rem;max-width:420px;margin:0 auto 16px">هذه الإضافة تتيح تخطيط الإجراءات المستقبلية (مثل الزرع وسحب العصب) على عدة جلسات مع حساب التسعير التلقائي.</p>
+          <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(99,102,241,0.08);padding:8px 18px;border-radius:10px;font-size:0.82rem;color:#6366f1;font-weight:700">
+            <i class="fas fa-phone-alt"></i> تواصل مع الإدارة لتفعيل هذه الإضافة
+          </div>
+        </div>
+      `}
     </div>` : ''}
 
     ${window.ArgonSpecialtyLoader && window.ArgonSpecialtyLoader.hasFeature('beforeAfterPhotos') ? `
     <div id="emr-tab-dental-media" class="emr-tab-content ${activeEmrTab === 'dental-media-tab' ? 'active-content' : ''}" style="display:${activeEmrTab === 'dental-media-tab' ? 'block' : 'none'}">
-      <div class="ph" style="margin-bottom:12px">
-        <div><div class="pt" style="font-size:1.15rem;color:#0ea5e9">📸 معرض الصور والأشعة</div><div class="ps">توثيق صور قبل وبعد (Before & After) وأشعة الأسنان السينية — <span style="color:var(--red);font-weight:bold;">(قيد التطوير للاستخدام المهني)</span></div></div>
-      </div>
-      <div style="padding:40px;text-align:center;background:rgba(14, 165, 233, 0.05);border-radius:12px;border:1px dashed rgba(14, 165, 233, 0.3);">
-        <i class="fas fa-camera-retro" style="font-size:3rem;color:rgba(14, 165, 233, 0.4);margin-bottom:16px;"></i>
-        <h3 style="color:#0ea5e9;margin-bottom:8px;">وحدة معرض الصور والأشعة قيد التجهيز</h3>
-        <p style="color:var(--muted);font-size:0.9rem;max-width:400px;margin:0 auto;">هذه الوحدة ستتيح ربط صور الأشعة السينية البانورامية والموضعية بأسنان محددة لتسهيل المقارنة المباشرة وتتبع تقدم العلاج.</p>
-      </div>
+      ${_sets && _sets.addons && _sets.addons.dentalMediaAddon ? `
+        <div id="_dentalMediaContainer" style="padding:10px"></div>
+      ` : `
+        <div style="padding:50px 40px;text-align:center;background:rgba(14, 165, 233, 0.04);border-radius:16px;border:1px dashed rgba(14, 165, 233, 0.25);margin:10px">
+          <i class="fas fa-lock" style="font-size:3rem;color:rgba(14, 165, 233, 0.3);margin-bottom:16px;display:block"></i>
+          <h3 style="color:#0ea5e9;margin-bottom:8px;font-weight:900;font-size:1.1rem">وحدة معرض الصور والأشعة — قيد التطوير</h3>
+          <p style="color:var(--muted);font-size:0.88rem;max-width:420px;margin:0 auto 16px">هذه الإضافة تتيح ربط صور الأشعة السينية والصور السريرية بأسنان محددة لتسهيل المقارنة وتتبع تقدم العلاج.</p>
+          <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(14,165,233,0.08);padding:8px 18px;border-radius:10px;font-size:0.82rem;color:#0ea5e9;font-weight:700">
+            <i class="fas fa-phone-alt"></i> تواصل مع الإدارة لتفعيل هذه الإضافة
+          </div>
+        </div>
+      `}
     </div>` : ''}
 
     ${window.ArgonSpecialtyLoader && window.ArgonSpecialtyLoader.hasFeature('growthCharts') ? `
@@ -4098,18 +4106,20 @@ function switchEmrTab(tabId) {
     const el = document.getElementById('emr-tab-treatment-plan');
     if (el) { el.style.display = 'block'; el.classList.add('active-content'); }
     
-    // Background connection (UI kept as 'under development' per request)
-    if (window.TreatmentPlanModule && typeof window.TreatmentPlanModule.render === 'function') {
-      const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
-      window.TreatmentPlanModule.render('_treatmentPlanContainer', pid);
-    } else if (window.ArgonSpecialtyLoader && typeof window.ArgonSpecialtyLoader.loadModule === 'function') {
-      window.ArgonSpecialtyLoader.loadModule('treatment_plan_module');
-      setTimeout(function () {
-        if (window.TreatmentPlanModule) {
-          const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
-          window.TreatmentPlanModule.render('_treatmentPlanContainer', pid);
-        }
-      }, 1000);
+    // ══ ADDON GATE: Treatment Plan ══
+    if (_sets && _sets.addons && _sets.addons.treatmentPlanAddon) {
+      if (window.TreatmentPlanModule && typeof window.TreatmentPlanModule.render === 'function') {
+        const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
+        window.TreatmentPlanModule.render('_treatmentPlanContainer', pid);
+      } else if (window.ArgonSpecialtyLoader && typeof window.ArgonSpecialtyLoader.loadModule === 'function') {
+        window.ArgonSpecialtyLoader.loadModule('treatment_plan_module');
+        setTimeout(function () {
+          if (window.TreatmentPlanModule) {
+            const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
+            window.TreatmentPlanModule.render('_treatmentPlanContainer', pid);
+          }
+        }, 1000);
+      }
     }
   } else if (tabId === 'dental-media-tab') {
     document.querySelectorAll('.emr-tab-btn').forEach(b => {
@@ -4118,18 +4128,20 @@ function switchEmrTab(tabId) {
     const el = document.getElementById('emr-tab-dental-media');
     if (el) { el.style.display = 'block'; el.classList.add('active-content'); }
     
-    // Background connection (UI kept as 'under development' per request)
-    if (window.DentalMediaModule && typeof window.DentalMediaModule.render === 'function') {
-      const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
-      window.DentalMediaModule.render('_dentalMediaContainer', pid);
-    } else if (window.ArgonSpecialtyLoader && typeof window.ArgonSpecialtyLoader.loadModule === 'function') {
-      window.ArgonSpecialtyLoader.loadModule('dental_media_module');
-      setTimeout(function () {
-        if (window.DentalMediaModule) {
-          const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
-          window.DentalMediaModule.render('_dentalMediaContainer', pid);
-        }
-      }, 1000);
+    // ══ ADDON GATE: Dental Media ══
+    if (_sets && _sets.addons && _sets.addons.dentalMediaAddon) {
+      if (window.DentalMediaModule && typeof window.DentalMediaModule.render === 'function') {
+        const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
+        window.DentalMediaModule.render('_dentalMediaContainer', pid);
+      } else if (window.ArgonSpecialtyLoader && typeof window.ArgonSpecialtyLoader.loadModule === 'function') {
+        window.ArgonSpecialtyLoader.loadModule('dental_media_module');
+        setTimeout(function () {
+          if (window.DentalMediaModule) {
+            const pid = window.activePatientId || (window.EMRContext && window.EMRContext.activePatientId) || null;
+            window.DentalMediaModule.render('_dentalMediaContainer', pid);
+          }
+        }, 1000);
+      }
     }
   } else if (tabId === 'growth-chart-tab') {
     document.querySelectorAll('.emr-tab-btn').forEach(b => {
