@@ -438,7 +438,13 @@
 
     if (_selectedSurfaceCond === 'clear') { _chart[num].surfaces[region] = null; }
     else if (current && current.condition === _selectedSurfaceCond && current.origin === _currentOriginMode) { _chart[num].surfaces[region] = null; }
-    else { _chart[num].surfaces[region] = { condition: _selectedSurfaceCond, origin: _currentOriginMode }; }
+    else { 
+      _chart[num].surfaces[region] = { condition: _selectedSurfaceCond, origin: _currentOriginMode }; 
+      if (_chart[num].status && _chart[num].status !== 'healthy' && _chart[num].status !== 'bridge_abutment' && _chart[num].status !== 'bridge_pontic') {
+        _chart[num].status = 'healthy';
+        delete _chart[num].statusOrigin;
+      }
+    }
 
     _chart[num].updatedAt = new Date().toISOString();
     _unsavedChanges = true;
@@ -446,6 +452,7 @@
     var wrap = document.getElementById('_dental-surfmap-' + num);
     if (wrap) wrap.innerHTML = _buildSurfaceMapSVG(num, _chart[num], true);
     _refreshToothCell(num);
+    _updateSummaryUI();
   }
 
   function _onStatusChange(num) {
@@ -502,6 +509,12 @@
     var requiresTreatment = document.getElementById('_dental-needs-rx').checked;
 
     if (!_chart[num]) _chart[num] = { surfaces: { center: null, top: null, bottom: null, left: null, right: null }, _v2: true };
+    
+    var oldStatus = _chart[num].status || 'healthy';
+    if (status !== oldStatus) {
+      _chart[num].surfaces = { center: null, top: null, bottom: null, left: null, right: null };
+    }
+
     _chart[num].status = status;
     if (status !== 'healthy') { _chart[num].statusOrigin = _currentOriginMode; } else { delete _chart[num].statusOrigin; }
     _chart[num].material = material || null;
@@ -514,6 +527,7 @@
     var overlay = document.getElementById('_dental-editor-overlay');
     if (overlay) overlay.remove();
     _refreshToothCell(num);
+    _updateSummaryUI();
     _showUnsaved();
     if (typeof window.toast === 'function') window.toast('✅ تم تحديث السن ' + num, 'ok');
   }
@@ -745,6 +759,11 @@
     
     html += '</div>';
     return html;
+  }
+
+  function _updateSummaryUI() {
+    var summaryGrid = document.querySelector('.summary-grid');
+    if (summaryGrid) summaryGrid.innerHTML = _buildSummary();
   }
 
   function _rerenderChart() {
