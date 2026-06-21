@@ -706,9 +706,12 @@
       .origin-btn.origin-active { background: var(--oc); color: #fff; }
       .argon-jaw-label { text-align: center; font-size: 0.85rem; font-weight: bold; margin: 15px 0 5px; background: #f8fafc; padding: 6px; border-radius: 6px; }
       .argon-tooth-row { display: flex; justify-content: center; gap: 4px; overflow-x: auto; padding: 4px 0; }
-      .argon-tooth-cell-v2 { width: 44px; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
-      .tooth-svg-wrap { width: 44px; height: 44px; position: relative; }
-      .tooth-num { font-size: 0.65rem; font-weight: bold; margin-top: 4px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0; }
+      .argon-tooth-cell-v2 { width: 44px; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s ease; }
+      .argon-tooth-cell-v2:hover { transform: scale(1.22); z-index: 5; }
+      .argon-tooth-cell-v2:hover .tooth-svg-wrap { box-shadow: 0 0 0 2px rgba(13,148,136,0.6), 0 8px 20px rgba(13,148,136,0.25); }
+      .argon-tooth-cell-v2:hover .tooth-num { background: rgba(13,148,136,0.12); border-color: #0d9488; color: #0d9488; font-weight: 900; transform: scale(1.05); }
+      .tooth-svg-wrap { width: 44px; height: 44px; position: relative; border-radius: 10px; transition: box-shadow 0.2s ease; }
+      .tooth-num { font-size: 0.65rem; font-weight: bold; margin-top: 4px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0; transition: all 0.2s ease; }
       .tb { position: absolute; width: 14px; height: 14px; font-size: 0.55rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
       .tb-tl { top: -4px; left: -4px; }
       .tb-tl2 { top: 12px; left: -6px; }
