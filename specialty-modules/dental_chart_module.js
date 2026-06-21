@@ -70,6 +70,7 @@
   var _containerId = null;
   var _unsavedChanges = false;
   var _currentOriginMode = 'existing';
+  var _highlightOrigin = null; // null = عرض عادي, أو 'existing'/'planned'/'completed' = تمييز بصري
   var _selectedSurfaceCond = 'decay';
   var _bridgeMode = false;
   var _bridgeSelection = [];
@@ -264,7 +265,8 @@
     return Object.keys(ORIGINS).map(function (key) {
       var o = ORIGINS[key];
       var active = _currentOriginMode === key ? ' origin-active' : '';
-      return '<button type="button" class="origin-btn' + active + '" style="--oc:' + o.accent + '" onclick="DentalChartModule.setOriginMode(\'' + key + '\')">' + (o.badge || '📋') + ' ' + o.labelAr + '</button>';
+      var filtering = _highlightOrigin === key ? ' origin-filtering' : '';
+      return '<button type="button" class="origin-btn' + active + filtering + '" style="--oc:' + o.accent + '" onclick="DentalChartModule.setOriginMode(\'' + key + '\')">' + (o.badge || '📋') + ' ' + o.labelAr + '</button>';
     }).join('');
   }
 
@@ -295,8 +297,18 @@
     if (data.requiresTreatment) badges += '<span class="tb tb-tr">⚠️</span>';
     if (data.notes) badges += '<span class="tb tb-br">📝</span>';
 
+    /* ── Origin Highlight: حساب class التمييز البصري ── */
+    var hlClass = '';
+    if (_highlightOrigin) {
+      if (_toothHasOrigin(data, _highlightOrigin)) {
+        hlClass = ' origin-glow origin-glow-' + _highlightOrigin;
+      } else if (data.status && data.status !== 'healthy') {
+        hlClass = ' origin-dim';
+      }
+    }
+
     return [
-      '<div class="argon-tooth-cell-v2" data-tooth="', num, '" data-status="', (data.status || 'healthy'), '" title="', _esc(tooltip), '" onclick="DentalChartModule._onToothClick(', num, ')">',
+      '<div class="argon-tooth-cell-v2', hlClass, '" data-tooth="', num, '" data-status="', (data.status || 'healthy'), '" title="', _esc(tooltip), '" onclick="DentalChartModule._onToothClick(', num, ')">',
         '<div class="tooth-svg-wrap">', svg, badges, '</div>',
         '<div class="tooth-num">', num, '</div>',
       '</div>'
@@ -429,11 +441,43 @@
 
   function setOriginMode(mode) {
     if (!ORIGINS[mode]) return;
-    _currentOriginMode = mode;
+
+    if (_currentOriginMode === mode) {
+      // نفس الزر → تبديل التمييز البصري فقط (toggle)
+      _highlightOrigin = (_highlightOrigin === mode) ? null : mode;
+    } else {
+      // زر مختلف → تغيير نمط الإدخال وتفعيل التمييز
+      _currentOriginMode = mode;
+      _highlightOrigin = mode;
+    }
+
     var bar1 = document.getElementById('_dental-origin-toolbar');
     if (bar1) bar1.innerHTML = _buildOriginSelector();
     var bar2 = document.getElementById('_dental-origin-editor');
     if (bar2) bar2.innerHTML = _buildOriginSelector();
+    _applyOriginHighlight();
+  }
+
+  /**
+   * ── تطبيق التمييز البصري على الأسنان في الرسم البياني ──
+   * يُضاف/يُزال CSS classes بدون إعادة رسم (أداء عالي)
+   */
+  function _applyOriginHighlight() {
+    var cells = document.querySelectorAll('.argon-tooth-cell-v2');
+    cells.forEach(function(cell) {
+      var num = parseInt(cell.getAttribute('data-tooth'), 10);
+      var data = _chart[num] || {};
+
+      cell.classList.remove('origin-glow', 'origin-glow-existing', 'origin-glow-planned', 'origin-glow-completed', 'origin-dim');
+
+      if (_highlightOrigin) {
+        if (_toothHasOrigin(data, _highlightOrigin)) {
+          cell.classList.add('origin-glow', 'origin-glow-' + _highlightOrigin);
+        } else if (data.status && data.status !== 'healthy') {
+          cell.classList.add('origin-dim');
+        }
+      }
+    });
   }
 
   function saveToothData(num) {
@@ -692,6 +736,18 @@
       .bseg { width: 44px; border-top: 4px solid transparent; position: relative; }
       .bseg-on { cursor: pointer; }
       .bseg-pontic::after { content: ''; position: absolute; left: 50%; top: -8px; width: 8px; height: 8px; background: inherit; border-radius: 50%; transform: translateX(-50%); }
+      /* ── Origin Highlight & Filter System ── */
+      .origin-glow { z-index: 2; position: relative; transform: scale(1.06); transition: all 0.3s ease; }
+      .origin-glow .tooth-svg-wrap { border-radius: 10px; transition: box-shadow 0.3s ease; }
+      .origin-glow-existing .tooth-svg-wrap { box-shadow: 0 0 0 2.5px #94a3b8, 0 0 12px rgba(148,163,184,0.5); }
+      .origin-glow-planned .tooth-svg-wrap { box-shadow: 0 0 0 2.5px #0ea5e9, 0 0 12px rgba(14,165,233,0.5); }
+      .origin-glow-completed .tooth-svg-wrap { box-shadow: 0 0 0 2.5px #10b981, 0 0 12px rgba(16,185,129,0.5); }
+      .origin-glow .tooth-num { font-weight: 900; }
+      .origin-glow-existing .tooth-num { background: rgba(148,163,184,0.12); border-color: #94a3b8; color: #64748b; }
+      .origin-glow-planned .tooth-num { background: rgba(14,165,233,0.12); border-color: #0ea5e9; color: #0284c7; }
+      .origin-glow-completed .tooth-num { background: rgba(16,185,129,0.12); border-color: #10b981; color: #059669; }
+      .origin-dim { opacity: 0.22; filter: grayscale(0.7); transition: all 0.3s ease; }
+      .origin-btn.origin-filtering { box-shadow: 0 0 0 2px var(--oc); font-weight: 900; }
     `;
     document.head.appendChild(style);
   }
@@ -704,6 +760,7 @@
     getChartData: getChartData, getTextSummary: getTextSummary,
     _onToothClick: _onToothClick, _onStatusChange: _onStatusChange,
     _selectPalette: _selectPalette, _applySurface: _applySurface,
+    _applyOriginHighlight: _applyOriginHighlight,
     init: function () { console.log('[DentalChartModule] v2.0 "Clinical Pro" initialized.'); }
   };
 }(window));
