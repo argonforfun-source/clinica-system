@@ -683,8 +683,8 @@
           /* إخفاء عناصر التحكم للطباعة */
           '.argon-dental-toolbar, .det-btn, .origin-bar button:not(.origin-active), .bridge-panel-form, #_dental-unsaved { display: none !important; }',
           '.argon-dental-chart-v2 { border: none !important; padding: 0 !important; background: transparent !important; }',
-          cssRules
-        ].join('\n') + '</style>',
+          cssRules,
+        '</style>',
       '</head>',
       '<body>',
         '<div class="print-container">',
