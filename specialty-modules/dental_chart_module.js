@@ -186,7 +186,9 @@
       _chart = {};
       Object.keys(rawChart).forEach(function (numStr) {
         var num = parseInt(numStr, 10);
-        if (!isNaN(num)) _chart[num] = _migrateLegacyTooth(num, rawChart[numStr]);
+        if (!isNaN(num) && rawChart[numStr]) {
+          _chart[num] = _migrateLegacyTooth(num, rawChart[numStr]);
+        }
       });
       _meta = { dentitionMode: 'adult', bridges: [] };
       if (data && data.meta) {
@@ -729,6 +731,13 @@
   function saveChart() {
     if (!_currentPatientId || typeof db === 'undefined') return;
 
+    // حفظ المحرر المفتوح تلقائياً لتجنب ضياع التعديلات
+    var overlay = document.getElementById('_dental-editor-overlay');
+    if (overlay) {
+      var saveBtn = overlay.querySelector('.det-btn-save');
+      if (saveBtn) saveBtn.click();
+    }
+
     // إذا كان المستخدم في وضع الربط وحدد أكثر من سن، يتم إنشاء الجسر تلقائياً قبل الحفظ
     if (_bridgeMode && _bridgeSelection.length >= 2) {
       createBridge();
@@ -737,7 +746,13 @@
     var btn = document.getElementById('_dental-save-btn');
     if (btn) btn.innerHTML = 'جاري الحفظ...';
 
-    var saveData = { chart: _chart, meta: _meta, savedAt: new Date().toISOString() };
+    // تنظيف _chart من أي قيم فارغة قبل الحفظ لتجنب مشاكل المصفوفات
+    var cleanChart = {};
+    Object.keys(_chart).forEach(function(k) {
+      if (_chart[k] && _chart[k].status) cleanChart[k] = _chart[k];
+    });
+
+    var saveData = { chart: cleanChart, meta: _meta, savedAt: new Date().toISOString() };
     db.ref(BASE + '/patients/' + _currentPatientId + '/specialty_data/dental').set(saveData).then(function () {
       _unsavedChanges = false; _showUnsaved();
       if (btn) btn.innerHTML = '<i class="fas fa-save"></i> حفظ الرسم';
@@ -751,9 +766,9 @@
     var parts = [];
     Object.keys(_chart).sort().forEach(function (n) {
       var t = _chart[n];
-      if (t.status && t.status !== 'healthy') parts.push('سن ' + n + ': ' + (TOOTH_STATUSES[t.status] ? TOOTH_STATUSES[t.status].labelAr : t.status));
+      if (t && t.status && t.status !== 'healthy') parts.push('سن ' + n + ': ' + (TOOTH_STATUSES[t.status] ? TOOTH_STATUSES[t.status].labelAr : t.status));
     });
-    return parts.length ? parts.join('<br>') : 'الأسنان سليمة';
+    return parts.join(' | ') || 'لا توجد ملاحظات سريرية.';
   }
 
   function resetChart() {
