@@ -193,7 +193,11 @@
       _meta = { dentitionMode: 'adult', bridges: [] };
       if (data && data.meta) {
         if (data.meta.dentitionMode) _meta.dentitionMode = data.meta.dentitionMode;
-        if (Array.isArray(data.meta.bridges)) _meta.bridges = data.meta.bridges;
+        if (Array.isArray(data.meta.bridges)) {
+          _meta.bridges = data.meta.bridges;
+        } else if (data.meta.bridges && typeof data.meta.bridges === 'object') {
+          _meta.bridges = Object.keys(data.meta.bridges).map(function(k) { return data.meta.bridges[k]; });
+        }
       }
       _unsavedChanges = false;
       container.innerHTML = _buildChartHTML();
@@ -749,7 +753,7 @@
     // تنظيف _chart من أي قيم فارغة قبل الحفظ لتجنب مشاكل المصفوفات
     var cleanChart = {};
     Object.keys(_chart).forEach(function(k) {
-      if (_chart[k] && _chart[k].status) cleanChart[k] = _chart[k];
+      if (_chart[k]) cleanChart[k] = _chart[k];
     });
 
     var saveData = { chart: cleanChart, meta: _meta, savedAt: new Date().toISOString() };
