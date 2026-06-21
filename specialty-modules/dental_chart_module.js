@@ -635,9 +635,27 @@
     if (!bridges.length) return '';
     var rows = bridges.map(function (b) {
       var origin = ORIGINS[b.origin] || ORIGINS.existing;
-      return '<div class="bridge-list-item"><div><b>🌉 ' + b.teeth.join(' - ') + '</b></div><button type="button" class="det-btn det-btn-cancel" onclick="DentalChartModule.removeBridge(\'' + b.id + '\')">إزالة</button></div>';
+      var matStr = b.material === 'zirconia' ? 'زيركونيا' : (b.material === 'pfm' ? 'بورسلان-معدن (PFM)' : (b.material || 'غير محدد'));
+      var tStr = (b.teeth || []).join(' - ');
+      var pCount = (b.pontics || []).length;
+      
+      return '<div class="bridge-list-item" style="padding: 12px; margin-bottom: 10px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
+               '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">' +
+                 '<b style="color: #0f172a; font-size: 0.95rem;"><i class="fas fa-link" style="color: var(--oc); margin-left: 5px;"></i> 🌉 جسر للأسنان (' + tStr + ')</b>' +
+                 '<button type="button" class="det-btn det-btn-cancel" style="padding: 4px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;" onclick="DentalChartModule.removeBridge(\'' + b.id + '\')"><i class="fas fa-trash-alt"></i> إزالة</button>' +
+               '</div>' +
+               '<div style="font-size: 0.85rem; color: #475569; display: flex; gap: 15px; flex-wrap: wrap;">' +
+                 '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-tooth" style="color: #94a3b8;"></i> <b>المادة:</b> ' + matStr + '</span>' +
+                 '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-tags" style="color: #94a3b8;"></i> <b>الحالة:</b> ' + origin.labelAr + '</span>' +
+                 (pCount > 0 ? '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-layer-group" style="color: #94a3b8;"></i> <b>عدد التعويضات:</b> ' + pCount + '</span>' : '') +
+               '</div>' +
+             '</div>';
     }).join('');
-    return '<div class="bridge-list-panel">' + rows + '</div>';
+    
+    return '<div class="bridge-list-panel" style="background: #f8fafc; border-radius: 10px; border: 1px solid #cbd5e1; margin-top: 20px; padding: 15px;">' +
+             '<div style="font-weight: bold; color: #1e293b; font-size: 1.05rem; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;"><i class="fas fa-project-diagram" style="color: var(--oc); margin-left: 8px;"></i> تفاصيل الجسور والتركيبات</div>' +
+             rows + 
+           '</div>';
   }
 
   function _buildSummary() {
