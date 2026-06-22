@@ -70,6 +70,17 @@ service firebase.storage {
     }
 
     // ════════════════════════════════════════════════════════════
+    // مسار معرض الصور والأشعة (Dental Media)
+    // clinics/{clinicId}/patients/{patientId}/media/{fileName}
+    // ════════════════════════════════════════════════════════════
+    match /clinics/{clinicId}/patients/{patientId}/media/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                      && request.resource.size <= 20 * 1024 * 1024;
+      allow delete: if request.auth != null;
+    }
+
+    // ════════════════════════════════════════════════════════════
     // مسار اللوغوهات والصور (إذا كانت تُرفع للـ Storage)
     // logos/{clinicId}/{imageFile}
     // ════════════════════════════════════════════════════════════
