@@ -2568,6 +2568,12 @@ function refreshPatientFileUI(uid) {
     if (activeEmrTab === 'dental-chart-tab' && window.DentalChartModule && typeof window.DentalChartModule.render === 'function') {
       window.DentalChartModule.render('_patFileDentalChart', uid);
       _restoreScroll(mainDiv, scrollPos);
+    } else if (activeEmrTab === 'treatment-plan-tab' && window.TreatmentPlanModule && typeof window.TreatmentPlanModule.render === 'function') {
+      window.TreatmentPlanModule.render('_treatmentPlanContainer', uid);
+      _restoreScroll(mainDiv, scrollPos);
+    } else if (activeEmrTab === 'dental-media-tab' && window.DentalMediaModule && typeof window.DentalMediaModule.render === 'function') {
+      window.DentalMediaModule.render('_dentalMediaContainer', uid);
+      _restoreScroll(mainDiv, scrollPos);
     } else if (activeEmrTab === 'growth-chart-tab' && window.GrowthChartModule && typeof window.GrowthChartModule.render === 'function') {
       window.GrowthChartModule.render('_growthChartContainer', uid);
       _restoreScroll(mainDiv, scrollPos);
