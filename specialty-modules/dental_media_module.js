@@ -1146,8 +1146,10 @@
           ctx.drawImage(img, 0, 0, width, height);
           canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', quality);
         };
+        img.onerror = () => resolve(file); // fallback to original if error
         img.src = e.target.result;
       };
+      reader.onerror = () => resolve(file); // fallback to original if error
       reader.readAsDataURL(file);
     });
   }
