@@ -2826,7 +2826,7 @@
       if (subs[2]) subs[2].innerHTML = DT('statLiveSub');
 
       // Refresh UI
-      renderLive();
+      if (typeof recalcBookings === 'function') recalcBookings();
       renderHist();
       renderDocs();
     }
@@ -3380,15 +3380,15 @@
       const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
       const DAY_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
-      const stMap = { new: 'جديد', confirmed: 'مؤكد ✅', waiting: 'بالانتظار ⏳' };
-      const stColor = { new: 'var(--amber)', confirmed: 'var(--green)', waiting: 'var(--sky)' };
-      const stBg = { new: 'rgba(245,158,11,.12)', confirmed: 'rgba(16,185,129,.12)', waiting: 'rgba(14,165,233,.12)' };
+      const stMap = { new: 'جديد', confirmed: 'مؤكد ✅', waiting: 'بالانتظار ⏳', with_doctor: 'عند الطبيب 🩺' };
+      const stColor = { new: 'var(--amber)', confirmed: 'var(--green)', waiting: 'var(--sky)', with_doctor: '#a855f7' };
+      const stBg = { new: 'rgba(245,158,11,.12)', confirmed: 'rgba(16,185,129,.12)', waiting: 'rgba(14,165,233,.12)', with_doctor: 'rgba(168,85,247,.12)' };
 
       // ── Group bookings by date ──
       const groups = {};
       filteredKeys.forEach(k => {
         const b = _bks[k];
-        const d = b.date || 'unknown';
+        const d = b.date || todayStr;
         if (!groups[d]) groups[d] = [];
         groups[d].push(k);
       });

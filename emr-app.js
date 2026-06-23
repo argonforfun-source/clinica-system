@@ -1075,7 +1075,13 @@ function renderWaitingRoom() {
   };
 
   wrList.innerHTML = activeBookings.map(([k, b]) => {
-    const isDoc = b.status === 'with_doctor';
+    const showBtn = b.status === 'waiting' || b.status === 'with_doctor';
+    const btnText = b.status === 'waiting' ? 'بدء زيارة طبية' : 'متابعة الزيارة';
+    const btnIcon = b.status === 'waiting' ? 'fa-stethoscope' : 'fa-folder-open';
+    const btnStyle = b.status === 'waiting' 
+      ? 'background:rgba(14,165,233,0.1);color:var(--sky);border:1px solid rgba(14,165,233,0.3)'
+      : 'background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)';
+
     // Pass booking key so we can resolve by name+phone
     return `<div class="glass-panel" style="padding:16px;border-right:4px solid ${stColor[b.status] || 'var(--teal)'}; cursor:pointer; transition:all 0.2s" onclick="openPatientFromBooking('${k}')">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -1084,7 +1090,7 @@ function renderWaitingRoom() {
       </div>
       <div style="font-weight:800;font-size:1.05rem;margin-bottom:4px">${sanitize(b.patName)}</div>
       <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px">📞 ${sanitize(b.patPhone)}</div>
-      ${isDoc ? `<button class="btn-primary btn-sm" style="width:100%;background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)" onclick="event.stopPropagation(); openPatientFromBooking('${k}', true)"><i class="fas fa-stethoscope"></i> بدء زيارة طبية</button>` : ''}
+      ${showBtn ? `<button class="btn-primary btn-sm" style="width:100%;${btnStyle}" onclick="event.stopPropagation(); openPatientFromBooking('${k}', true)"><i class="fas ${btnIcon}"></i> ${btnText}</button>` : ''}
     </div>`;
   }).join('');
 }
