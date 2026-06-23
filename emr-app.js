@@ -4670,6 +4670,23 @@ function resolvePatientUid(rawUid, expectedName = '') {
 function loadVisitForm(rawUid, bookingId, expectedName = '') {
   const uid = resolvePatientUid(rawUid, expectedName);
 
+  // --- BUG FIX: AUTO-DETECT ACTIVE BOOKING ---
+  // إذا فتح الطبيب "بدء زيارة" من ملف المريض مباشرة، سيكون bookingId مفقوداً.
+  // سنبحث في الحجوزات الحية (غرفة الانتظار) عن حجز نشط لهذا المريض ونربطه تلقائياً!
+  if (!bookingId && uid && typeof _liveBookings !== 'undefined' && typeof _patients !== 'undefined') {
+    const activeEntry = Object.entries(_liveBookings).find(([k, b]) => {
+      if (b.status === 'done' || b.status === 'completed' || b.status === 'cancelled') return false;
+      if (b.patientId === uid) return true;
+      const p = _patients[uid];
+      if (p && p.info && b.patPhone && cleanPhone(p.info.phone) === cleanPhone(b.patPhone)) return true;
+      return false;
+    });
+    if (activeEntry) {
+      bookingId = activeEntry[0];
+      console.log('Auto-linked visit to active waiting room booking:', bookingId);
+    }
+  }
+
   if (bookingId && !window.IS_READONLY) {
     db.ref(`${BASE}/bookings/${bookingId}/status`).set('with_doctor').catch(() => { });
   }
