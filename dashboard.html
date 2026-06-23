@@ -2881,6 +2881,8 @@
         setTimeout(() => {
           el.style.display = 'none';
           toast('✅ أهلاً بك!', 'ok');
+          const lOut = document.getElementById('mainLayout');
+          if (lOut) { lOut.style.opacity = '1'; lOut.style.pointerEvents = 'auto'; }
 
           // ══ FIX: إعادة تفعيل محرك الفوترة بعد تسجيل الدخول ══
           // السبب: BillingEngine.init() يعمل قبل الدخول → isUiAuthorized=false
