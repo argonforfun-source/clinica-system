@@ -221,19 +221,33 @@
       await _originalAddClinic.apply(this, arguments);
 
       /* الدالة الأصلية تكتب clinicData — نُكمل بكتابة حقل specialty */
+      /* تأكد أولاً أن العملية نجحت ولم يتم إيقافها بسبب الـ Validation */
+      var addResult = document.getElementById('addResult');
+      var isSuccess = addResult && addResult.style.display === 'block';
+
+      if (!isSuccess) {
+          console.warn('[ArgonSpecialtyPatch] Original addClinic aborted (validation failed). Skipping specialty write.');
+          return; /* Abort the patch */
+      }
+
       var idInp = document.getElementById('nId');
-      var clinicId = idInp ? idInp.value.trim().toLowerCase() : null;
+      /* تطابق نفس معالجة ID في الدالة الأصلية لتجنب المسافات */
+      var clinicId = idInp ? String(idInp.value||'').trim().toLowerCase().replace(/\s+/g,'-') : null;
 
       if (clinicId && window._pendingClinicSpecialty && typeof db !== 'undefined') {
         try {
-          await db.ref('clinics/' + clinicId + '/settings').update({
-            specialty:       window._pendingClinicSpecialty.specialty,
-            specialtyName:   window._pendingClinicSpecialty.specialtyName,
-            specialtyEmoji:  window._pendingClinicSpecialty.specialtyEmoji,
-            specialtyColor:  window._pendingClinicSpecialty.specialtyColor,
-            specialtyModules: window._pendingClinicSpecialty.specialtyModules
-          });
-          console.log('[ArgonSpecialtyPatch] specialty saved:', specialty, 'for clinic:', clinicId);
+          /* تأكد من وجود الإعدادات قبل التحديث لتجنب إنشاء عيادات وهمية */
+          var snap = await db.ref('clinics/' + clinicId + '/settings').once('value');
+          if (snap.exists()) {
+              await db.ref('clinics/' + clinicId + '/settings').update({
+                specialty:       window._pendingClinicSpecialty.specialty,
+                specialtyName:   window._pendingClinicSpecialty.specialtyName,
+                specialtyEmoji:  window._pendingClinicSpecialty.specialtyEmoji,
+                specialtyColor:  window._pendingClinicSpecialty.specialtyColor,
+                specialtyModules: window._pendingClinicSpecialty.specialtyModules
+              });
+              console.log('[ArgonSpecialtyPatch] specialty saved:', specialty, 'for clinic:', clinicId);
+          }
         } catch (e) {
           console.warn('[ArgonSpecialtyPatch] Failed to write specialty — non-critical:', e.message);
         }
