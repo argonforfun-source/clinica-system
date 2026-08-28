@@ -853,7 +853,15 @@ const BillingEngine = {
         else if (provName === 'nic') provName = 'الوطنية للتأمين';
         else if (provName === 'solidarity') provName = 'سوليدرتي';
 
-        insBadge.innerHTML = `<i class="fas fa-shield-halved"></i> تأمين فعال: ${provName} (${patInsurance.coveragePct || 0}%)`;
+        let actualCoverage = 0;
+        if (patInsurance.coveragePct !== undefined) {
+          actualCoverage = patInsurance.coveragePct;
+        } else if (patInsurance.providerId && this._billingPolicy && this._billingPolicy.insuranceProviders) {
+          const provider = this._billingPolicy.insuranceProviders[patInsurance.providerId];
+          if (provider && provider.coveragePct !== undefined) actualCoverage = provider.coveragePct;
+        }
+
+        insBadge.innerHTML = `<i class="fas fa-shield-halved"></i> تأمين فعال: ${provName} (${actualCoverage}%)`;
       } else {
         insBadge.style.display = 'none';
       }
