@@ -223,6 +223,51 @@ const BillingEngine = {
     return 'unified';
   },
 
+  _resolveFinancialPolicy: function (docName, dept, insuranceObj) {
+    let discountPct = 0;
+    let insurancePct = 0;
+
+    // 1. Discount Policy (from Doctor or Global)
+    if (docName && this._clinicDocs) {
+      const cName = docName.trim();
+      const doc = Object.values(this._clinicDocs).find(d => {
+        if (!d.name) return false;
+        const dn = d.name.trim();
+        return dn === cName || cName.includes(dn) || dn.includes(cName) || `د. ${dn}` === cName;
+      });
+      
+      // Check doc-specific policy
+      if (doc && doc.financialPolicy && doc.financialPolicy.discountPct !== undefined) {
+         discountPct = parseFloat(doc.financialPolicy.discountPct) || 0;
+      }
+    }
+    
+    // Fallback to global discount if no doc specific
+    if (discountPct === 0 && this._billingPolicy && this._billingPolicy.globalDiscountPct) {
+       discountPct = parseFloat(this._billingPolicy.globalDiscountPct) || 0;
+    }
+
+    // 2. Insurance Policy
+    if (insuranceObj) {
+       if (insuranceObj.coveragePct !== undefined) {
+         insurancePct = parseFloat(insuranceObj.coveragePct) || 0;
+       } else if (insuranceObj.providerId && this._billingPolicy && this._billingPolicy.insuranceProviders) {
+         const provider = this._billingPolicy.insuranceProviders[insuranceObj.providerId];
+         if (provider && provider.coveragePct !== undefined) {
+            insurancePct = parseFloat(provider.coveragePct) || 0;
+         }
+       }
+    }
+
+    // Validation
+    if (discountPct < 0 || discountPct > 100) discountPct = 0;
+    if (insurancePct < 0 || insurancePct > 100) insurancePct = 0;
+
+    if (discountPct === 0 && insurancePct === 0) return null;
+
+    return { discountPct, insurancePct };
+  },
+
   // ════════════════════════════════════════════
   // 🔁 DUPLICATE PREVENTION
   // ════════════════════════════════════════════
@@ -269,19 +314,55 @@ const BillingEngine = {
 
     // ── 2. تحديد السعر ──
     const priceFromCatalog = this.lookupPrice(eventData.serviceId, eventData.department);
-    let price = eventData.price !== undefined ? parseFloat(eventData.price) : priceFromCatalog;
+    let grossPrice = eventData.price !== undefined ? parseFloat(eventData.price) : priceFromCatalog;
     let requiresReview = false;
 
-    if (price === null || isNaN(price)) {
-      price = 0;
+    if (grossPrice === null || isNaN(grossPrice)) {
+      grossPrice = 0;
       requiresReview = true;
       _B.audit('MISSING_PRICE', `خدمة غير مسعرة: ${eventData.serviceId}`);
+    }
+
+    // ── 3. حساب سياسة التأمين والخصم ──
+    let discountAmt = 0;
+    let insuranceAmt = 0;
+    let discountPct = 0;
+    let insurancePct = 0;
+
+    const finPolicy = this._resolveFinancialPolicy(eventData.docName, eventData.department, eventData.insurance);
+    
+    if (finPolicy) {
+      discountPct = finPolicy.discountPct;
+      insurancePct = finPolicy.insurancePct;
+      
+      if (discountPct > 0) {
+        discountAmt = parseFloat((grossPrice * (discountPct / 100)).toFixed(3));
+      }
+      if (insurancePct > 0) {
+        const afterDiscount = grossPrice - discountAmt;
+        insuranceAmt = parseFloat((afterDiscount * (insurancePct / 100)).toFixed(3));
+      }
+    }
+
+    const netPrice = parseFloat((grossPrice - discountAmt - insuranceAmt).toFixed(3));
+    let finalPrice = netPrice;
+
+    // Reject invalid
+    if (netPrice < 0) {
+       _B.toast('⚠️ سياسة التسعير نتج عنها قيمة سالبة. تم تجاهل السياسة.', 'err');
+       finalPrice = grossPrice;
+       discountPct = 0; discountAmt = 0; insurancePct = 0; insuranceAmt = 0;
     }
 
     const item = {
       serviceId:           eventData.serviceId,
       name:                _B.san(eventData.customName || eventData.serviceId),
-      price:               price,
+      price:               finalPrice,
+      grossPrice:          grossPrice,
+      discountPct:         discountPct,
+      discountAmount:      discountAmt,
+      insurancePct:        insurancePct,
+      insuranceAmount:     insuranceAmt,
       billingReferenceId:  billingRefId,
       requiresBillingReview: requiresReview,
       department:          eventData.department,
@@ -329,7 +410,10 @@ const BillingEngine = {
       if (currentItems.some(i => i.billingReferenceId === item.billingReferenceId)) return;
 
       currentItems.push(item);
-      const newTotal  = currentItems.reduce((s, i) => s + (parseFloat(i.price) || 0), 0);
+      const newTotal       = currentItems.reduce((s, i) => s + (parseFloat(i.price) || 0), 0);
+      const grossTotal     = currentItems.reduce((s, i) => s + (parseFloat(i.grossPrice !== undefined ? i.grossPrice : i.price) || 0), 0);
+      const discountTotal  = currentItems.reduce((s, i) => s + (parseFloat(i.discountAmount) || 0), 0);
+      const insuranceTotal = currentItems.reduce((s, i) => s + (parseFloat(i.insuranceAmount) || 0), 0);
       let   newStatus = existing.status;
 
       if (requiresReview) newStatus = 'pending_review';
@@ -337,19 +421,25 @@ const BillingEngine = {
 
       // .update() متوافق مع Rules (newData.exists() = true) ✅
       invRef.update({
-        items:    currentItems,
-        total:    parseFloat(newTotal.toFixed(3)),
-        status:   newStatus,
-        locked:   false,
+        items:          currentItems,
+        total:          parseFloat(newTotal.toFixed(3)),
+        grossTotal:     parseFloat(grossTotal.toFixed(3)),
+        discountTotal:  parseFloat(discountTotal.toFixed(3)),
+        insuranceTotal: parseFloat(insuranceTotal.toFixed(3)),
+        status:         newStatus,
+        locked:         false,
         ...(requiresReview ? { financialBlocked: true } : {})
       });
 
       // تحديث الـ cache المحلي لمنع race condition في التكرار
       this._invoices[invId] = {
         ...existing,
-        items:  currentItems,
-        total:  parseFloat(newTotal.toFixed(3)),
-        status: newStatus
+        items:          currentItems,
+        total:          parseFloat(newTotal.toFixed(3)),
+        grossTotal:     parseFloat(grossTotal.toFixed(3)),
+        discountTotal:  parseFloat(discountTotal.toFixed(3)),
+        insuranceTotal: parseFloat(insuranceTotal.toFixed(3)),
+        status:         newStatus
       };
 
       _B.audit('INVOICE_ITEM_ADDED', `إضافة "${item.name}" للفاتورة ${invId}`);
@@ -369,7 +459,14 @@ const BillingEngine = {
           ? `${(eventData.department || 'general')}_invoice`
           : 'visit_invoice',
         items:       [item],
-        total:       parseFloat((item.price || 0).toFixed(3)),
+        total:          parseFloat((item.price || 0).toFixed(3)),
+        grossTotal:     parseFloat((item.grossPrice !== undefined ? item.grossPrice : item.price || 0).toFixed(3)),
+        discountTotal:  parseFloat((item.discountAmount || 0).toFixed(3)),
+        insuranceTotal: parseFloat((item.insuranceAmount || 0).toFixed(3)),
+        insurance:   eventData.insurance || null,
+        taxNumber:   (typeof _sets !== 'undefined' && _sets.taxNumber) ? _sets.taxNumber : '',
+        nationalInvoiceNumber: '',
+        invoiceUUID: 'UUID-' + Date.now() + Math.floor(Math.random()*1000),
         status:      requiresReview ? 'pending_review' : 'unpaid',
         locked:      false,
         createdAt:   _B.now(),
@@ -803,13 +900,24 @@ const BillingEngine = {
             <div style="font-size:.7rem;font-weight:800;color:${cfg.color};margin-bottom:3px">${cfg.icon} ${cfg.label}</div>
             ${items.map(i => {
               const isPending = i.requiresBillingReview;
+              const hasPolicy = (i.discountAmount > 0 || i.insuranceAmount > 0);
+              const priceDisplay = hasPolicy 
+                ? `<div style="text-align:left;">
+                     <span style="font-family:'IBM Plex Mono',monospace;font-size:.65rem;color:var(--muted);text-decoration:line-through;">${_B.jod(i.grossPrice)}</span><br>
+                     <span style="font-family:'IBM Plex Mono',monospace;font-size:.77rem;font-weight:700;color:${cfg.color}">${_B.jod(i.price)}</span>
+                   </div>`
+                : `<span style="font-family:'IBM Plex Mono',monospace;font-size:.77rem;font-weight:700;color:${cfg.color}">${_B.jod(i.price)}</span>`;
+
               return `<div style="display:flex;justify-content:space-between;padding:2px 6px;border-radius:4px;
                 background:${isPending ? 'rgba(239,68,68,.08)' : 'rgba(0,0,0,.02)'};
                 border:1px solid ${isPending ? 'rgba(239,68,68,.25)' : 'var(--border)'};margin-bottom:2px">
-                <span style="font-size:.77rem;${isPending?'color:var(--red)':''}">${_B.san(i.name)}</span>
+                <div>
+                  <span style="font-size:.77rem;${isPending?'color:var(--red)':''}">${_B.san(i.name)}</span>
+                  ${hasPolicy ? `<div style="font-size:.6rem;color:var(--muted)">خصم: ${_B.jod(i.discountAmount)} | تأمين: ${_B.jod(i.insuranceAmount)}</div>` : ''}
+                </div>
                 ${isPending
                   ? `<span style="font-size:.65rem;color:var(--red);font-weight:700">⚠️ قيد المراجعة</span>`
-                  : `<span style="font-family:'IBM Plex Mono',monospace;font-size:.77rem;font-weight:700;color:${cfg.color}">${_B.jod(i.price)}</span>`
+                  : priceDisplay
                 }
               </div>`;
             }).join('')}
@@ -841,11 +949,20 @@ const BillingEngine = {
         const printBtn = `<button class="tbtn" onclick="BillingEngine.printSingleInvoice('${_B.san(k)}')"
                style="background:rgba(13,148,136,.08);color:var(--teal);border-color:rgba(13,148,136,.2);margin-right:4px;" title="طباعة هذه الفاتورة">
                <i class="fas fa-print"></i></button>`;
+        const hasInvPolicy = (inv.discountTotal > 0 || inv.insuranceTotal > 0);
+        const invTotalHtml = hasInvPolicy
+          ? `<div style="font-size:0.7rem;color:var(--muted);text-decoration:line-through">${_B.jod(inv.grossTotal)} الإجمالي</div>
+             <div style="font-size:0.75rem;color:var(--purple);margin-top:2px">
+               ${inv.discountTotal > 0 ? `<i class="fas fa-tags"></i> خصم: ${_B.jod(inv.discountTotal)}<br>` : ''}
+               ${inv.insuranceTotal > 0 ? `<i class="fas fa-shield-halved"></i> تأمين: ${_B.jod(inv.insuranceTotal)}` : ''}
+             </div>
+             <div style="font-size:0.95rem;color:var(--teal);margin-top:2px;font-weight:900">المريض: ${_B.jod(total)}</div>`
+          : `<div style="font-size:1rem">${_B.jod(total)}</div>`;
 
         return `<tr>
           <td style="font-size:.75rem;white-space:nowrap">${dateStr}</td>
           <td style="min-width:220px">${itemsHtml}</td>
-          <td style="font-family:'IBM Plex Mono',monospace;font-weight:900;font-size:1rem">${_B.jod(total)}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-weight:900;">${invTotalHtml}</td>
           <td>${statusHtml}</td>
           <td style="text-align:center;white-space:nowrap">${editBtn}${printBtn}</td>
         </tr>`;
@@ -1076,20 +1193,29 @@ const BillingEngine = {
     if (!tbody) return;
     let total = 0;
     tbody.innerHTML = this.activeEditItems.map((item, idx) => {
-      const price = parseFloat(item.price || 0);
-      total += price;
+      const netPrice = parseFloat(item.price || 0);
+      const grossPrice = parseFloat(item.grossPrice !== undefined ? item.grossPrice : item.price || 0);
+      total += netPrice;
+      
+      const hasPolicy = (item.discountAmount > 0 || item.insuranceAmount > 0);
+      const policyHtml = hasPolicy 
+        ? `<div style="font-size:0.65rem;color:var(--muted);margin-top:2px;">خصم: ${_B.jod(item.discountAmount)} | تأمين: ${_B.jod(item.insuranceAmount)} | مريض: ${_B.jod(netPrice)}</div>` 
+        : '';
+
       return `<tr style="border-bottom:1px solid rgba(0,0,0,.04)">
         <td style="padding:6px 10px">
           <input type="text" class="mfi" value="${_B.san(item.name)}"
             onchange="BillingEngine._updateItemName(${idx},this.value)"
-            style="padding:4px;font-size:.8rem;margin:0;border:none;background:transparent">
+            style="padding:4px;font-size:.8rem;margin:0;border:none;background:transparent;width:100%">
+          ${policyHtml}
         </td>
-        <td style="padding:6px 10px">
-          <input type="number" class="mfi" value="${price.toFixed(3)}" step="0.001"
+        <td style="padding:6px 10px;vertical-align:top;">
+          <input type="number" class="mfi" value="${grossPrice.toFixed(3)}" step="0.001"
             onchange="BillingEngine._updateItemPrice(${idx},this.value)"
-            style="padding:4px;font-size:.8rem;margin:0;font-family:'IBM Plex Mono',monospace;border:none;background:transparent">
+            title="السعر الأساسي (قبل الخصم والتأمين)"
+            style="padding:4px;font-size:.8rem;margin:0;font-family:'IBM Plex Mono',monospace;border:none;background:transparent;width:80px">
         </td>
-        <td style="padding:6px;text-align:center"></td>
+        <td style="padding:6px;text-align:center;vertical-align:top;"></td>
       </tr>`;
     }).join('') ||
       `<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--muted)">لا توجد بنود</td></tr>`;
@@ -1099,7 +1225,30 @@ const BillingEngine = {
   },
 
   _updateItemName:  function (idx, val) { if (this.activeEditItems[idx]) this.activeEditItems[idx].name  = val.trim(); },
-  _updateItemPrice: function (idx, val) { if (this.activeEditItems[idx]) { this.activeEditItems[idx].price = parseFloat(val) || 0; this._renderEditorItems(); } },
+  _updateItemPrice: function (idx, val) { 
+    if (this.activeEditItems[idx]) { 
+      let gross = parseFloat(val) || 0; 
+      let item = this.activeEditItems[idx];
+      item.grossPrice = gross;
+      
+      let discountAmt = 0;
+      if (item.discountPct > 0) {
+        discountAmt = parseFloat((gross * (item.discountPct / 100)).toFixed(3));
+      }
+      item.discountAmount = discountAmt;
+      
+      let insuranceAmt = 0;
+      if (item.insurancePct > 0) {
+        let afterDiscount = gross - discountAmt;
+        insuranceAmt = parseFloat((afterDiscount * (item.insurancePct / 100)).toFixed(3));
+      }
+      item.insuranceAmount = insuranceAmt;
+      
+      item.price = parseFloat((gross - discountAmt - insuranceAmt).toFixed(3));
+      
+      this._renderEditorItems(); 
+    } 
+  },
 
   addInvoiceItemUI: function () {
     const nameEl  = document.getElementById('invEdNewName');
@@ -1107,7 +1256,17 @@ const BillingEngine = {
     const name    = nameEl?.value.trim();
     const price   = parseFloat(priceEl?.value) || 0;
     if (!name) { _B.toast('⚠️ أدخل اسم البند', 'err'); return; }
-    this.activeEditItems.push({ id: `MANUAL-${Date.now()}`, name, price, addedAt: _B.now() });
+    this.activeEditItems.push({ 
+      id: `MANUAL-${Date.now()}`, 
+      name, 
+      price, 
+      grossPrice: price,
+      discountPct: 0,
+      discountAmount: 0,
+      insurancePct: 0,
+      insuranceAmount: 0,
+      addedAt: _B.now() 
+    });
     if (nameEl) nameEl.value = '';
     if (priceEl) priceEl.value = '';
     this._renderEditorItems();
@@ -1119,6 +1278,11 @@ const BillingEngine = {
       id: `TAX-${Date.now()}`,
       name:  'ضريبة مبيعات 16%',
       price: parseFloat((total * 0.16).toFixed(3)),
+      grossPrice: parseFloat((total * 0.16).toFixed(3)),
+      discountPct: 0,
+      discountAmount: 0,
+      insurancePct: 0,
+      insuranceAmount: 0,
       addedAt: _B.now()
     });
     this._renderEditorItems();
@@ -1158,12 +1322,24 @@ const BillingEngine = {
     if (!inv) return;
 
     const newTotal = this.activeEditItems.reduce((s, i) => s + (parseFloat(i.price) || 0), 0);
+    const newGrossTotal = this.activeEditItems.reduce((s, i) => s + (parseFloat(i.grossPrice !== undefined ? i.grossPrice : i.price) || 0), 0);
+    const newDiscountTotal = this.activeEditItems.reduce((s, i) => s + (parseFloat(i.discountAmount) || 0), 0);
+    const newInsuranceTotal = this.activeEditItems.reduce((s, i) => s + (parseFloat(i.insuranceAmount) || 0), 0);
     const oldTotal = parseFloat(inv.total || 0);
+    
+    const paidAmount = this.calculateInvoicePaid(invId);
+    if (newTotal < paidAmount) {
+       _B.toast(`❌ لا يمكن جعل إجمالي الفاتورة (${_B.jod(newTotal)}) أقل من المبلغ المدفوع مسبقاً (${_B.jod(paidAmount)})`, 'err');
+       return;
+    }
 
     // .update() ✅ — تحديث فاتورة موجودة
     db.ref(`${BASE}/invoices/${invId}`).update({
       items:            this.activeEditItems,
       total:            parseFloat(newTotal.toFixed(3)),
+      grossTotal:       parseFloat(newGrossTotal.toFixed(3)),
+      discountTotal:    parseFloat(newDiscountTotal.toFixed(3)),
+      insuranceTotal:   parseFloat(newInsuranceTotal.toFixed(3)),
       status:           'unpaid',
       financialBlocked: null,
       lastEditedAt:     _B.now()

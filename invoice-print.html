@@ -831,16 +831,30 @@ function renderInvoice(inv, settings) {
   const itemsHtml = items.length
     ? items.map(item => {
         const qty     = parseFloat(item.qty || 1);
-        const price   = parseFloat(item.price || 0);
-        const total   = qty * price;
+        const netPrice = parseFloat(item.price || 0);
+        const grossPrice = parseFloat(item.grossPrice !== undefined ? item.grossPrice : item.price || 0);
+        const total   = qty * netPrice;
         subtotal     += total;
         const typeKey = (item.type || 'other').toLowerCase();
         const tm      = TYPE_MAP[typeKey] || TYPE_MAP.other;
+        
+        const hasPolicy = (item.discountAmount > 0 || item.insuranceAmount > 0);
+        const priceDisplay = hasPolicy
+          ? `<div style="text-align:left;line-height:1.2;">
+               <span style="font-size:0.65rem;color:var(--muted);text-decoration:line-through;">${fmt(grossPrice)}</span><br>
+               <span style="font-weight:700;">${fmt(netPrice)}</span>
+             </div>`
+          : `${fmt(netPrice)}`;
+
+        const nameSubDisplay = hasPolicy 
+          ? `<div style="font-size:0.6rem;color:var(--muted);margin-top:2px;">خصم: ${fmt(item.discountAmount)} | تأمين: ${fmt(item.insuranceAmount)}</div>`
+          : (item.note ? `<div class="item-name-sub">${sanitize(item.note)}</div>` : '');
+
         return `
           <div class="item-row">
             <div>
               <div class="item-name-main">${sanitize(item.name || '—')}</div>
-              ${item.note ? `<div class="item-name-sub">${sanitize(item.note)}</div>` : ''}
+              ${nameSubDisplay}
             </div>
             <div class="item-cell">
               <span class="item-badge ${tm.cls}">
@@ -848,7 +862,7 @@ function renderInvoice(inv, settings) {
               </span>
             </div>
             <div class="item-cell">${qty}</div>
-            <div class="item-cell">${fmt(price)} د.أ</div>
+            <div class="item-cell">${priceDisplay} د.أ</div>
             <div class="item-total-cell">${fmt(total)} د.أ</div>
           </div>`;
       }).join('')
@@ -861,6 +875,35 @@ function renderInvoice(inv, settings) {
   const grandTotal = subtotal - discount + tax;
   const paidAmt    = parseFloat(inv.paidAmount || (s === 'paid' ? grandTotal : 0));
   const remaining  = grandTotal - paidAmt;
+
+  const hasInvPolicy = (inv.discountTotal > 0 || inv.insuranceTotal > 0);
+  
+  // If there is an insurance policy, update the DOM to show the original gross total
+  if (hasInvPolicy) {
+     const subtotalRow = document.getElementById('tSubtotal').parentElement;
+     if (subtotalRow) {
+         // Insert gross total row before subtotal
+         const grossRow = document.createElement('div');
+         grossRow.className = 'totals-row';
+         grossRow.innerHTML = `<span class="totals-label">إجمالي الخدمات (قبل الخصم والتأمين)</span><span class="totals-value">${fmt(inv.grossTotal || 0)} د.أ</span>`;
+         subtotalRow.parentElement.insertBefore(grossRow, subtotalRow);
+         
+         if (inv.discountTotal > 0) {
+           const discRow = document.createElement('div');
+           discRow.className = 'totals-row';
+           discRow.innerHTML = `<span class="totals-label" style="color:var(--amber)">إجمالي الخصم الممنوح</span><span class="totals-value" style="color:var(--amber)">- ${fmt(inv.discountTotal)} د.أ</span>`;
+           subtotalRow.parentElement.insertBefore(discRow, subtotalRow);
+         }
+         if (inv.insuranceTotal > 0) {
+           const insRow = document.createElement('div');
+           insRow.className = 'totals-row';
+           insRow.innerHTML = `<span class="totals-label" style="color:var(--purple)">مساهمة التأمين</span><span class="totals-value" style="color:var(--purple)">- ${fmt(inv.insuranceTotal)} د.أ</span>`;
+           subtotalRow.parentElement.insertBefore(insRow, subtotalRow);
+         }
+         
+         subtotalRow.querySelector('.totals-label').textContent = 'إجمالي حصة المريض';
+     }
+  }
 
   document.getElementById('tSubtotal').textContent = `${fmt(subtotal)} د.أ`;
   document.getElementById('tDiscount').textContent = discount ? `- ${fmt(discount)} د.أ` : `0.000 د.أ`;

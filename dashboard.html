@@ -2282,6 +2282,35 @@
                       class="fas fa-plus"></i> إضافة</button>
                 </div>
               </div>
+
+              <!-- INSURANCE AND GLOBAL DISCOUNT SETTINGS -->
+              <div style="background:rgba(0,0,0,0.02);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
+                <label class="setl" style="color:var(--purple);font-weight:bold;font-size:0.9rem;border-bottom:1px dashed var(--border);padding-bottom:8px;margin-bottom:10px">سياسات الخصم والتأمين (Insurance & Discounts)</label>
+                
+                <div style="margin-bottom:14px;border-bottom:1px dashed var(--border);padding-bottom:12px">
+                  <label class="setl" style="font-size:0.8rem">الخصم العام التلقائي (%)</label>
+                  <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">خصم تلقائي يطبق على جميع المرضى ما لم يكن هناك خصم خاص للطبيب. ضع 0 للإلغاء.</div>
+                  <input type="number" id="globalDiscountPct" class="seti" placeholder="مثال: 10" min="0" max="100" style="width:120px">
+                </div>
+
+                <div style="font-size:0.8rem;font-weight:600;margin-bottom:8px">شركات التأمين المعتمدة ونسبة التغطية:</div>
+                <div id="insuranceProvidersList" style="margin-bottom:10px"></div>
+                <div style="display:flex;gap:8px">
+                  <select id="insProviderId" class="seti" style="flex:2;font-size:0.8rem;padding:6px;margin:0">
+                    <option value="">— اختر شركة —</option>
+                    <option value="nathealth">نات هيلث (NatHealth)</option>
+                    <option value="gig">الخليج للتأمين (GIG)</option>
+                    <option value="mednet">ميد نت (MedNet)</option>
+                    <option value="globe">جلوب ميد (GlobeMed)</option>
+                    <option value="omn">أومني كير (OmniCare)</option>
+                    <option value="jic">الأردنية للتأمين (JIC)</option>
+                    <option value="nic">الوطنية للتأمين (NIC)</option>
+                    <option value="solidarity">سوليدرتي (Solidarity)</option>
+                  </select>
+                  <input type="number" id="insCoveragePct" class="seti" placeholder="التغطية (%)" step="1" min="1" max="100" style="flex:1;font-size:0.8rem;padding:6px;margin:0">
+                  <button type="button" onclick="window.addInsuranceProvider()" style="background:var(--purple);color:white;border:none;border-radius:6px;padding:6px 12px;font-size:0.8rem;cursor:pointer"><i class="fas fa-plus"></i> إضافة</button>
+                </div>
+              </div>
               <div style="display:flex;gap:8px">
                 <button class="complex-only" onclick="sw('pricing',document.getElementById('mPricing'))"
                   style="flex:1;background:rgba(14,165,233,.1);color:var(--sky);border:1px solid rgba(14,165,233,.2);padding:6px 10px;border-radius:6px;font-size:0.8rem;cursor:pointer;font-weight:bold"><i
@@ -2756,6 +2785,46 @@
       document.getElementById('afName').value = '';
       document.getElementById('afPrice').value = '';
       window.renderAutoFees();
+    };
+
+    // ==========================================
+    // Insurance Providers Logic
+    // ==========================================
+    window._insuranceProviders = {};
+    window.renderInsuranceProviders = function () {
+      const container = document.getElementById('insuranceProvidersList');
+      if (!container) return;
+      const providers = Object.entries(window._insuranceProviders || {});
+      if (providers.length === 0) {
+        container.innerHTML = '<div style="font-size:0.75rem;color:var(--muted);text-align:center;padding:10px">لا يوجد شركات تأمين مضافة حالياً.</div>';
+        return;
+      }
+      
+      const PROVIDER_NAMES = {
+        nathealth: "نات هيلث (NatHealth)", gig: "الخليج للتأمين (GIG)", mednet: "ميد نت (MedNet)",
+        globe: "جلوب ميد (GlobeMed)", omn: "أومني كير (OmniCare)", jic: "الأردنية للتأمين (JIC)",
+        nic: "الوطنية للتأمين (NIC)", solidarity: "سوليدرتي (Solidarity)"
+      };
+
+      container.innerHTML = providers.map(([id, provider]) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;background:white;border:1px solid var(--border);border-radius:6px;padding:6px 10px;margin-bottom:6px">
+      <span style="font-size:0.8rem;font-weight:600"><i class="fas fa-shield-halved" style="color:var(--purple);margin-left:5px"></i>${PROVIDER_NAMES[id] || id}</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--purple);font-weight:bold">${Number(provider.coveragePct).toFixed(0)}%</span>
+        <button onclick="delete window._insuranceProviders['${id}'];window.renderInsuranceProviders()" style="background:none;border:none;color:var(--red);cursor:pointer;padding:0"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+    };
+
+    window.addInsuranceProvider = function () {
+      const id = document.getElementById('insProviderId').value;
+      const pct = parseFloat(document.getElementById('insCoveragePct').value);
+      if (!id || isNaN(pct) || pct <= 0 || pct > 100) { toast('⚠️ أدخل شركة تأمين ونسبة تغطية صحيحة (1-100)', 'err'); return; }
+      window._insuranceProviders[id] = { coveragePct: pct };
+      document.getElementById('insProviderId').value = '';
+      document.getElementById('insCoveragePct').value = '';
+      window.renderInsuranceProviders();
     };
 
     // ── DASHBOARD MULTI-LANGUAGE (i18n) ENGINE ──
@@ -3239,6 +3308,12 @@
       const deptsBp = advBp.departments || {};
       window._autoFees = advBp.autoFees || [];
       if (typeof window.renderAutoFees === 'function') window.renderAutoFees();
+
+      window._insuranceProviders = advBp.insuranceProviders || {};
+      if (typeof window.renderInsuranceProviders === 'function') window.renderInsuranceProviders();
+      
+      const glDiscount = document.getElementById('globalDiscountPct');
+      if (glDiscount) glDiscount.value = advBp.globalDiscountPct || '';
       const bpLab = document.getElementById('bpLab');
       const bpRad = document.getElementById('bpRad');
       const bpPharm = document.getElementById('bpPharm');
@@ -4468,7 +4543,9 @@
             rad: bpRadVal,
             pharmacy: bpPharmVal
           },
-          autoFees: window._autoFees
+          autoFees: window._autoFees,
+          insuranceProviders: window._insuranceProviders || {},
+          globalDiscountPct: parseFloat(document.getElementById('globalDiscountPct')?.value) || 0
         },
         color
       };

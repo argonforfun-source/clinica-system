@@ -561,8 +561,12 @@ const ArgonEnterprise = {
                         invData.push({
                             "رقم الفاتورة": invId, "التاريخ": invDate,
                             "اسم المريض": patName, "الهاتف": patPhone,
-                            "البند": "-", "القسم": "-", "السعر (د.أ)": 0,
-                            "إجمالي الفاتورة": invTotal, "المدفوع": invPaid,
+                            "البند": "-", "القسم": "-",
+                            "السعر الأساسي (د.أ)": 0, "قيمة الخصم (د.أ)": 0, "تغطية التأمين (د.أ)": 0, "سعر المريض (د.أ)": 0,
+                            "إجمالي الفاتورة": invTotal,
+                            "إجمالي الخصم": parseFloat(inv.discountTotal) || 0,
+                            "إجمالي التأمين": parseFloat(inv.insuranceTotal) || 0,
+                            "المدفوع": invPaid,
                             "المتبقي": invRemaining, "حالة الدفع": payStatus
                         });
                     } else {
@@ -581,8 +585,13 @@ const ArgonEnterprise = {
                                 "الهاتف": idx === 0 ? patPhone : '',
                                 "البند": item.name || '-',
                                 "القسم": dept,
-                                "السعر (د.أ)": parseFloat(item.price) || 0,
+                                "السعر الأساسي (د.أ)": parseFloat(item.grossPrice !== undefined ? item.grossPrice : item.price) || 0,
+                                "قيمة الخصم (د.أ)": parseFloat(item.discountAmount) || 0,
+                                "تغطية التأمين (د.أ)": parseFloat(item.insuranceAmount) || 0,
+                                "سعر المريض (د.أ)": parseFloat(item.price) || 0,
                                 "إجمالي الفاتورة": idx === 0 ? invTotal : '',
+                                "إجمالي الخصم": idx === 0 ? (parseFloat(inv.discountTotal) || 0) : '',
+                                "إجمالي التأمين": idx === 0 ? (parseFloat(inv.insuranceTotal) || 0) : '',
                                 "المدفوع": idx === 0 ? invPaid : '',
                                 "المتبقي": idx === 0 ? invRemaining : '',
                                 "حالة الدفع": idx === 0 ? payStatus : ''
