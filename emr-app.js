@@ -4897,6 +4897,13 @@ function completeWorkspaceVisit() {
 
   // --- Case 1: Patient is registered with a UUID ---
   if (uid && _patients[uid]) {
+    if (bookingId && _liveBookings[bookingId] && _liveBookings[bookingId].insProv) {
+      updates[`${BASE}/patients/${uid}/insurance`] = {
+        providerId: _liveBookings[bookingId].insProv,
+        policyNumber: _liveBookings[bookingId].insPol || ''
+      };
+      _patients[uid].insurance = updates[`${BASE}/patients/${uid}/insurance`];
+    }
     const timelineKey = db.ref(`${BASE}/patients/${uid}/visits`).push().key;
     updates[`${BASE}/patients/${uid}/visits/${timelineKey}`] = visitObj;
     if (bookingId) {
@@ -4983,6 +4990,12 @@ function completeWorkspaceVisit() {
       age: '',
       createdAt: new Date().toISOString()
     };
+    if (booking.insProv) {
+      updates[`${BASE}/patients/${newUid}/insurance`] = {
+        providerId: booking.insProv,
+        policyNumber: booking.insPol || ''
+      };
+    }
     const timelineKey = db.ref(`${BASE}/patients/${newUid}/visits`).push().key;
     updates[`${BASE}/patients/${newUid}/visits/${timelineKey}`] = visitObj;
     if (bookingId) {
