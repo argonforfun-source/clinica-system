@@ -1209,10 +1209,16 @@ const BillingEngine = {
 
     const el = id => document.getElementById(id);
     if (el('invEdId'))     el('invEdId').textContent   = invId;
-    if (el('invEdStatus')) el('invEdStatus').innerHTML =
-      inv.status === 'pending_review'
+    if (el('invEdStatus')) {
+      const stHtml = inv.status === 'pending_review'
         ? '<span style="color:var(--amber)">⚠️ قيد التسعير</span>'
         : '<span style="color:var(--sky)">قيد المراجعة</span>';
+      
+      const globDisc = (this._billingPolicy && this._billingPolicy.globalDiscountPct) || 0;
+      const dbgHtml = `<div style="font-size:0.7rem; color:var(--muted); margin-top:4px;">الخصم العام المُسجل في الإعدادات: ${globDisc}%</div>`;
+      
+      el('invEdStatus').innerHTML = stHtml + dbgHtml;
+    }
 
     this._renderEditorItems();
     const modal = document.getElementById('invoiceEditorModal');
