@@ -1525,8 +1525,11 @@
       <div
         style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:12px">
         <div>
-          <h3 style="font-weight:900;margin:0" id="blPatName">كشف حساب المريض</h3>
-          <div style="font-size:0.8rem;color:var(--muted);font-family:'IBM Plex Mono',monospace" id="blPatUID">...</div>
+          <h3 style="font-weight:900;margin:0;display:flex;align-items:center;gap:8px" id="blPatName">كشف حساب المريض</h3>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+            <div style="font-size:0.8rem;color:var(--muted);font-family:'IBM Plex Mono',monospace" id="blPatUID">...</div>
+            <div id="blPatInsuranceBadge" style="display:none;font-size:0.75rem;padding:2px 8px;border-radius:12px;font-weight:bold"></div>
+          </div>
         </div>
         <div style="display:flex;gap:10px">
           <button class="tbtn" onclick="BillingEngine.printPatientInvoice()"

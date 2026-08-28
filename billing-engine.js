@@ -329,7 +329,13 @@ const BillingEngine = {
     let discountPct = 0;
     let insurancePct = 0;
 
-    const finPolicy = this._resolveFinancialPolicy(eventData.docName, eventData.department, eventData.insurance);
+    let patInsurance = eventData.insurance;
+    if (!patInsurance && eventData.patientId && this._patientsRef && this._patientsRef[eventData.patientId]) {
+       const pat = this._patientsRef[eventData.patientId];
+       patInsurance = pat.insurance || (pat.info && pat.info.insurance) || null;
+    }
+
+    const finPolicy = this._resolveFinancialPolicy(eventData.docName, eventData.department, patInsurance);
     
     if (finPolicy) {
       discountPct = finPolicy.discountPct;
@@ -815,9 +821,34 @@ const BillingEngine = {
       if (inv) { patName = inv.patientName || patName; patPhone = inv.patientPhone || patPhone; }
     }
 
-    document.getElementById('blPatName').textContent = _B.san(patName);
+    document.getElementById('blPatName').innerHTML = _B.san(patName);
     document.getElementById('blPatUID').textContent  = 'UID: ' + patientId;
     document.getElementById('blPatUID').dataset.patientId = patientId;
+
+    const insBadge = document.getElementById('blPatInsuranceBadge');
+    if (insBadge) {
+      let patInsurance = pat.insurance || (info && info.insurance) || null;
+      if (patInsurance) {
+        insBadge.style.display = 'block';
+        insBadge.style.background = 'rgba(139,92,246,0.15)';
+        insBadge.style.border = '1px solid rgba(139,92,246,0.3)';
+        insBadge.style.color = 'var(--purple)';
+        
+        let provName = patInsurance.providerId || 'غير محدد';
+        if (provName === 'nathealth') provName = 'نات هيلث';
+        else if (provName === 'gig') provName = 'الخليج GIG';
+        else if (provName === 'mednet') provName = 'ميد نت';
+        else if (provName === 'globe') provName = 'جلوب ميد';
+        else if (provName === 'omn') provName = 'أومني كير';
+        else if (provName === 'jic') provName = 'الأردنية للتأمين';
+        else if (provName === 'nic') provName = 'الوطنية للتأمين';
+        else if (provName === 'solidarity') provName = 'سوليدرتي';
+
+        insBadge.innerHTML = `<i class="fas fa-shield-halved"></i> تأمين فعال: ${provName} (${patInsurance.coveragePct || 0}%)`;
+      } else {
+        insBadge.style.display = 'none';
+      }
+    }
 
     // زر واتساب
     const waBtn = document.getElementById('blWaBtn');
