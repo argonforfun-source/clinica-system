@@ -1083,12 +1083,29 @@ function renderWaitingRoom() {
       : 'background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.3)';
 
     // Pass booking key so we can resolve by name+phone
+    let patInsurance = null;
+    let patNameStr = (b.patName || '').trim();
+    if (b.patientId && _patients && _patients[b.patientId]) {
+      const p = _patients[b.patientId];
+      patInsurance = p.insurance || (p.info && p.info.insurance) || null;
+    } else if (_patients) {
+      const possiblePat = Object.values(_patients).find(p => p.info && p.info.phone === b.patPhone && p.info.name === patNameStr);
+      if (possiblePat) patInsurance = possiblePat.insurance || (possiblePat.info && possiblePat.info.insurance) || null;
+    }
+
+    const insBadgeHtml = patInsurance 
+      ? `<span style="display:inline-block; margin-right:8px; font-size:0.7rem; font-weight:bold; color:var(--purple); background:rgba(139,92,246,0.15); padding:2px 6px; border-radius:6px; border:1px solid rgba(139,92,246,0.3)"><i class="fas fa-shield-halved"></i> تأمين: ${patInsurance.providerId || 'مفعل'}</span>` 
+      : '';
+
     return `<div class="glass-panel" style="padding:16px;border-right:4px solid ${stColor[b.status] || 'var(--teal)'}; cursor:pointer; transition:all 0.2s" onclick="openPatientFromBooking('${k}')">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <span style="font-size:0.75rem;font-weight:800;color:${stColor[b.status]};background:rgba(255,255,255,0.05);padding:3px 8px;border-radius:12px">${stMap[b.status] || b.status}</span>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem">${b.time || '—'}</span>
       </div>
-      <div style="font-weight:800;font-size:1.05rem;margin-bottom:4px">${sanitize(b.patName)}</div>
+      <div style="font-weight:800;font-size:1.05rem;margin-bottom:4px;display:flex;align-items:center;gap:4px">
+        ${sanitize(b.patName)}
+        ${insBadgeHtml}
+      </div>
       <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px">📞 ${sanitize(b.patPhone)}</div>
       ${showBtn ? `<button class="btn-primary btn-sm" style="width:100%;${btnStyle}" onclick="event.stopPropagation(); openPatientFromBooking('${k}', true)"><i class="fas ${btnIcon}"></i> ${btnText}</button>` : ''}
     </div>`;
@@ -5036,12 +5053,20 @@ function completeWorkspaceVisit() {
     _writeVisitUpdates(updates, diag);
     const finalVisitKey = bookingId || timelineKey;
     const currentDoc = (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب';
-    _emitBillingTrigger(newUid, booking.patName || activeVisit.name || 'مريض', booking.patPhone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc);
+    
+    let insObj = null;
+    if (booking.insProv) {
+      insObj = { providerId: booking.insProv, policyNumber: booking.insPol || '' };
+    } else if (newUid && _patients[newUid]) {
+      insObj = _patients[newUid].insurance || (_patients[newUid].info && _patients[newUid].info.insurance) || null;
+    }
+    
+    _emitBillingTrigger(newUid, booking.patName || activeVisit.name || 'مريض', booking.patPhone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc, insObj);
     toast('تم تسجيل المريض تلقائياً في النظام', 'ok');
   }
 }
 
-function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx, addConsultation, docName) {
+function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx, addConsultation, docName, insurance) {
   if (!visitKey) return;
 
   // SAFETY CHECK: Single clinics strictly do NOT bill for lab, radiology, or pharmacy
@@ -5053,6 +5078,7 @@ function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, lab
     patientPhone: patientPhone,
     visitKey: visitKey,
     docName: docName || '',
+    insurance: insurance || null,
     addConsultation: addConsultation === true,
     orders: {
       lab: isSingle ? [] : (labs || []),
