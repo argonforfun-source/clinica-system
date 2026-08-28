@@ -2059,9 +2059,18 @@
             <div style="display:flex; gap:8px;">
               <input type="text" id="blSearch" onkeyup="renderReceivables()" placeholder="بحث باسم المريض أو الرقم..."
                 class="mfi" style="width:250px; padding:6px 10px; font-size:0.85rem;">
+              <select id="blSort" class="mfi" onchange="renderReceivables()"
+                style="width:140px; padding:6px; font-size:0.85rem; border-left: 2px solid var(--border);">
+                <option value="date_desc">الأحدث أولاً</option>
+                <option value="date_asc">الأقدم أولاً</option>
+                <option value="amount_desc">الأعلى رصيداً</option>
+                <option value="amount_asc">الأقل رصيداً</option>
+                <option value="name_asc">الاسم (أ-ي)</option>
+                <option value="name_desc">الاسم (ي-أ)</option>
+              </select>
               <select id="blFilter" class="mfi" onchange="renderReceivables()"
-                style="width:150px; padding:6px; font-size:0.85rem;">
-                <option value="all">جميع الذمم النشطة</option>
+                style="width:140px; padding:6px; font-size:0.85rem;">
+                <option value="all">جميع الذمم</option>
                 <option value="paid">مسدد بالكامل</option>
                 <option value="unpaid">غير مدفوع كامل</option>
                 <option value="partial">مدفوع جزئي</option>
@@ -5023,7 +5032,7 @@
   <!-- نهاية مودال محرر الفواتير -->
 
   <script src="specialty-config.js?v=1.0"></script>
-  <script src="billing-engine.js?v=13.004"></script>
+  <script src="billing-engine.js?v=13.005"></script>
 
   <script src="client-local-backup.js?v=3.0.7"></script>
   <script>

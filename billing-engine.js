@@ -691,6 +691,7 @@ const BillingEngine = {
 
     const searchQ  = (document.getElementById('blSearch')?.value || '').trim().toLowerCase();
     const filterQ  = document.getElementById('blFilter')?.value || 'all';
+    const sortQ    = document.getElementById('blSort')?.value || 'date_desc';
     const pts      = this._patientsRef || {};
     const today    = new Date();
 
@@ -738,10 +739,26 @@ const BillingEngine = {
 
     // بناء الجدول
     let rows = '';
-    for (const p of Object.values(balances)) {
+    
+    let balanceArr = Object.values(balances);
+    balanceArr.forEach(p => {
       p.total = parseFloat(p.total.toFixed(3));
       p.paid  = parseFloat(p.paid.toFixed(3));
-      const remaining = parseFloat((p.total - p.paid).toFixed(3));
+      p.remaining = parseFloat((p.total - p.paid).toFixed(3));
+    });
+
+    balanceArr.sort((a, b) => {
+      if (sortQ === 'date_desc') return (b.lastDate || '') > (a.lastDate || '') ? 1 : -1;
+      if (sortQ === 'date_asc') return (a.lastDate || '') > (b.lastDate || '') ? 1 : -1;
+      if (sortQ === 'amount_desc') return b.remaining - a.remaining;
+      if (sortQ === 'amount_asc') return a.remaining - b.remaining;
+      if (sortQ === 'name_asc') return a.patientName.localeCompare(b.patientName, 'ar');
+      if (sortQ === 'name_desc') return b.patientName.localeCompare(a.patientName, 'ar');
+      return 0;
+    });
+
+    for (const p of balanceArr) {
+      const remaining = p.remaining;
       const diffDays  = p.lastDate
         ? Math.floor((today - new Date(p.lastDate)) / 86400000)
         : 0;
