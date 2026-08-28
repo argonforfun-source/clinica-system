@@ -1354,7 +1354,9 @@ const BillingEngine = {
 
     if (modified) {
       this._renderEditorItems();
-      if (typeof toast !== 'undefined') toast('✅ تم إعادة تطبيق السياسات المالية بنجاح', 'ok');
+      let firstItem = this.activeEditItems.find(i => !i.name || !i.name.includes('ضريبة'));
+      let debugMsg = firstItem ? ` (خصم: ${firstItem.discountPct}% | تأمين: ${firstItem.insurancePct}%)` : '';
+      if (typeof toast !== 'undefined') toast('✅ تم تحديث الأسعار' + debugMsg, 'ok');
     }
   },
 

@@ -130,7 +130,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .vital-lbl{font-size:.6rem;color:var(--muted);margin-top:2px;font-weight:700;text-transform:uppercase}
 
 /* TOAST */
-#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--surf);border:1px solid rgba(13,148,136,.3);color:var(--teal);padding:10px 20px;border-radius:12px;font-size:.85rem;font-weight:600;opacity:0;transition:.3s;z-index:9999;pointer-events:none;max-width:90vw;text-align:center}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--surf);border:1px solid rgba(13,148,136,.3);color:var(--teal);padding:10px 20px;border-radius:12px;font-size:.85rem;font-weight:600;opacity:0;transition:.3s;z-index:999999;pointer-events:none;max-width:90vw;text-align:center}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.ok{border-color:rgba(16,185,129,.4);color:var(--green)}
 #toast.err{border-color:rgba(239,68,68,.4);color:var(--red)}
