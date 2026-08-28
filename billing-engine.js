@@ -1303,6 +1303,61 @@ const BillingEngine = {
     this._renderEditorItems();
   },
 
+  recalculatePoliciesUI: function () {
+    const invId = this.activeEditInvId;
+    const inv   = this._invoices[invId];
+    if (!inv) return;
+    
+    // Fetch patient insurance
+    let patInsurance = null;
+    const patId = inv.patientId;
+    if (patId && this._patientsRef && this._patientsRef[patId]) {
+       const pat = this._patientsRef[patId];
+       patInsurance = pat.insurance || (pat.info && pat.info.insurance) || null;
+    }
+
+    let modified = false;
+    for (let i = 0; i < this.activeEditItems.length; i++) {
+      let item = this.activeEditItems[i];
+      // Do not recalculate manual tax items
+      if (item.name && item.name.includes('ضريبة')) continue;
+      
+      const finPolicy = this._resolveFinancialPolicy(inv.docName, item.department || inv.department, patInsurance);
+      let grossPrice = item.grossPrice !== undefined ? item.grossPrice : item.price;
+      item.grossPrice = grossPrice;
+      
+      let discountPct = 0;
+      let insurancePct = 0;
+      let discountAmt = 0;
+      let insuranceAmt = 0;
+
+      if (finPolicy) {
+        discountPct = finPolicy.discountPct;
+        insurancePct = finPolicy.insurancePct;
+        
+        if (discountPct > 0) {
+          discountAmt = parseFloat((grossPrice * (discountPct / 100)).toFixed(3));
+        }
+        if (insurancePct > 0) {
+          const afterDiscount = grossPrice - discountAmt;
+          insuranceAmt = parseFloat((afterDiscount * (insurancePct / 100)).toFixed(3));
+        }
+      }
+
+      item.discountPct = discountPct;
+      item.discountAmount = discountAmt;
+      item.insurancePct = insurancePct;
+      item.insuranceAmount = insuranceAmt;
+      item.price = parseFloat((grossPrice - discountAmt - insuranceAmt).toFixed(3));
+      modified = true;
+    }
+
+    if (modified) {
+      this._renderEditorItems();
+      if (typeof toast !== 'undefined') toast('✅ تم إعادة تطبيق السياسات المالية بنجاح', 'ok');
+    }
+  },
+
   addTax16UI: function () {
     const total = this.activeEditItems.reduce((s, i) => s + (parseFloat(i.price) || 0), 0);
     this.activeEditItems.push({
