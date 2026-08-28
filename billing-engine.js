@@ -780,10 +780,19 @@ const BillingEngine = {
         overdue: `<span style="color:var(--red);background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);padding:3px 8px;border-radius:6px;font-size:.7rem;font-weight:800">متأخر الدفع ⚠️</span>`
       };
 
+      let insBadgeHtml = '';
+      if (p.patientId && pts[p.patientId]) {
+        const patIns = pts[p.patientId].insurance || (pts[p.patientId].info && pts[p.patientId].info.insurance);
+        if (patIns) {
+           insBadgeHtml = `<div style="font-size:0.65rem;font-weight:bold;color:var(--purple);background:rgba(139,92,246,0.1);display:inline-block;padding:2px 6px;border-radius:4px;border:1px solid rgba(139,92,246,0.3);margin-top:4px;"><i class="fas fa-shield-halved"></i> تأمين: ${patIns.providerId || 'مفعل'}</div>`;
+        }
+      }
+
       rows += `<tr>
         <td>
           <div style="font-weight:800;color:var(--teal)">${_B.san(p.patientName)}</div>
           <div style="font-size:.68rem;color:var(--muted);font-family:'IBM Plex Mono',monospace">${p.patientId.substring(0,8)}…</div>
+          ${insBadgeHtml}
         </td>
         <td style="font-family:'IBM Plex Mono',monospace;font-weight:700">${_B.jod(p.total)}</td>
         <td style="font-family:'IBM Plex Mono',monospace;color:var(--green)">${_B.jod(p.paid)}</td>
