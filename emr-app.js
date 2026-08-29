@@ -1753,10 +1753,28 @@ function openEditPatient(uid) {
     document.getElementById('epPhotoPreview').innerHTML = '👤';
   }
 
+  // ── ADMIN BYPASS CHECKBOX (Temporary — appears only for admin/superadmin) ──
+  const _epBypassContainer = document.getElementById('epAdminBypassContainer');
+  if (_epBypassContainer) _epBypassContainer.remove();
+  const _epSession = window.ArgonSession ? window.ArgonSession.get() : null;
+  if (_epSession && (_epSession.role === 'admin' || _epSession.role === 'superadmin')) {
+    const _bypassDiv = document.createElement('div');
+    _bypassDiv.id = 'epAdminBypassContainer';
+    _bypassDiv.style.cssText = 'margin:12px 0 0;padding:10px 12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;';
+    _bypassDiv.innerHTML = `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.82rem;color:#f59e0b;font-weight:700">
+      <input type="checkbox" id="epAdminBypass" style="accent-color:#f59e0b;width:16px;height:16px">
+      تحديث بيانات الهوية فوراً بدون موافقة إدارية (صلاحية مدير)
+    </label>`;
+    const _epNotesField = document.getElementById('epNotes');
+    if (_epNotesField && _epNotesField.parentNode) {
+      _epNotesField.parentNode.after(_bypassDiv);
+    }
+  }
+
   document.getElementById('editPatModal').style.display = 'flex';
 }
 
-function saveEditPatient() {
+async function saveEditPatient() {
   const uid = document.getElementById('epOldPhone').value;
   if (!uid || !_patients[uid]) return;
 
@@ -1861,7 +1879,13 @@ function saveEditPatient() {
   const pendingIdentityChanges = {};
   let hasIdentityChanges = false;
 
-  if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
+  // ── ADMIN DIRECT-EDIT AUTHORIZATION CHECK ──
+  const _saveSession = window.ArgonSession ? window.ArgonSession.get() : null;
+  const _isAdminRole = _saveSession && (_saveSession.role === 'admin' || _saveSession.role === 'superadmin');
+  const _bypassCheckbox = document.getElementById('epAdminBypass');
+  const _isDirectEditAuthorized = _isAdminRole && _bypassCheckbox && _bypassCheckbox.checked;
+
+  if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING && !_isDirectEditAuthorized) {
     protectedFields.forEach(field => {
       if (changes[field]) {
         pendingIdentityChanges[field] = {
@@ -1875,6 +1899,36 @@ function saveEditPatient() {
         delete changes[field];
       }
     });
+  }
+
+  // ── ADMIN DIRECT-EDIT: NID UNIQUENESS CHECK (before any write) ──
+  if (_isDirectEditAuthorized && changes['nationalId']) {
+    const _newNid = updates.nationalId ? ArgonNID.cleanNID(updates.nationalId) : null;
+    if (_newNid && _newNid !== ArgonNID.cleanNID(oldInfo.nationalId || '')) {
+      // Local check
+      const _localDup = Object.entries(_patients).find(([k, p]) =>
+        k !== uid && ArgonNID.cleanNID(p.info?.nationalId || '') === _newNid
+      );
+      if (_localDup) {
+        toast('⚠️ الرقم الوطني مسجل لمريض آخر: ' + (_localDup[1].info?.name || _localDup[0]), 'err');
+        return;
+      }
+      // Server check
+      try {
+        const _nidSnap = await db.ref(`${BASE}/patients`).orderByChild('info/nationalId').equalTo(_newNid).once('value');
+        if (_nidSnap.exists()) {
+          const _serverDup = Object.keys(_nidSnap.val()).find(k => k !== uid);
+          if (_serverDup) {
+            toast('⚠️ الرقم الوطني مسجل لمريض آخر في قاعدة البيانات', 'err');
+            return;
+          }
+        }
+      } catch (_nidErr) {
+        toast('❌ فشل التحقق من الرقم الوطني. لم يتم الحفظ.', 'err');
+        logAudit('NID_UNIQUENESS_CHECK_FAILED', `فشل فحص تكرار NID للمريض (${uid}): ${_nidErr.message}`, 'EMR_SECURITY');
+        return;
+      }
+    }
   }
 
   if (Object.keys(changes).length > 0) {
@@ -1900,6 +1954,12 @@ function saveEditPatient() {
       });
       toast('✅ تم حفظ التحديثات. تعديلات الهوية (الاسم/الرقم/العمر) أُرسلت للإدارة للاعتماد.', 'ok');
       logAudit('EDIT_PATIENT_IDENTITY_REQ', `طلب تعديل هوية المريض (${uid})`, 'EMR');
+    } else if (_isDirectEditAuthorized) {
+      toast('✅ تم تحديث بيانات المريض فوراً (صلاحية مدير)', 'ok');
+      logAudit('ADMIN_IDENTITY_BYPASS', `تعديل مباشر لهوية المريض (${uid}) بصلاحية مدير (${_saveSession.staffId})`, 'EMR_SECURITY');
+      if (window.ArgonAuditLog) {
+        window.ArgonAuditLog.log('PATIENT_IDENTITY', uid, 'ADMIN_DIRECT_UPDATE', oldInfo, updates, 'Admin Direct Edit Bypass');
+      }
     } else {
       toast('✅ تم تحديث بيانات المريض بنجاح', 'ok');
     }
