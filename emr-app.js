@@ -1734,7 +1734,7 @@ function openEditPatient(uid) {
   }
   document.getElementById('epGender').value = p.info.gender || '';
   document.getElementById('epBlood').value = p.info.bloodType || '';
-  if (window.ArgonClinicalParser && window.ARGON_FEATURES.ENABLE_CLINICAL_VERSIONING) {
+  if (window.ArgonClinicalParser && window.ARGON_FEATURES && window.ARGON_FEATURES.ENABLE_CLINICAL_VERSIONING) {
     const algList = ArgonClinicalParser.getClinicalList(p.info, 'allergies');
     const chrList = ArgonClinicalParser.getClinicalList(p.info, 'chronicDiseases');
     document.getElementById('epAllergies').value = ArgonClinicalParser.toLegacyText(algList);
@@ -1781,7 +1781,7 @@ function saveEditPatient() {
   let finalChronic = chronic;
   let summaryVersion = 1;
 
-  if (window.ArgonClinicalParser && window.ARGON_FEATURES.ENABLE_CLINICAL_VERSIONING) {
+  if (window.ArgonClinicalParser && window.ARGON_FEATURES && window.ARGON_FEATURES.ENABLE_CLINICAL_VERSIONING) {
     summaryVersion = 2;
     const session = ArgonSession.get() || {};
     const nowIso = new Date().toISOString();
@@ -1839,7 +1839,7 @@ function saveEditPatient() {
     bloodType: sanitize(blood),
     allergies: finalAllergies.length ? finalAllergies : null,
     chronicDiseases: finalChronic.length ? finalChronic : null,
-    criticalAlerts: window._tempCriticalAlerts.length ? window._tempCriticalAlerts : null,
+    criticalAlerts: (window._tempCriticalAlerts && window._tempCriticalAlerts.length) ? window._tempCriticalAlerts : null,
     clinicalSummaryVersion: summaryVersion,
     notes: sanitize(notes),
     photo: epPhotoData || null
