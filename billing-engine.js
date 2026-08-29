@@ -531,8 +531,8 @@ const BillingEngine = {
       (existingInv.items || []).some(i => i.serviceId === 'CONSULT' || i.name === 'كشفية الطبيب');
 
     if (!hasConsult) {
-      let docFee = 15;
-      if (docName && this._clinicDocs) {
+      let docFee = trigger.docFee !== undefined && trigger.docFee !== null ? parseFloat(trigger.docFee) : 15;
+      if ((trigger.docFee === undefined || trigger.docFee === null) && docName && this._clinicDocs) {
         const cName = docName.trim();
         const d = Object.values(this._clinicDocs).find(d => {
           if (!d.name) return false;

@@ -5034,7 +5034,16 @@ function completeWorkspaceVisit() {
     _writeVisitUpdates(updates, diag);
     const finalVisitKey = bookingId || timelineKey;
     const currentDoc = (window.ArgonSession ? window.ArgonSession.get()?.displayName : null) || 'طبيب';
-    _emitBillingTrigger(uid, _patients[uid]?.info?.name || activeVisit.name || 'مريض', _patients[uid]?.info?.phone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc);
+    const _staffId = window.ArgonSession ? window.ArgonSession.get()?.staffId : null;
+    const _docInfo = _staffId && typeof _doctors !== 'undefined' ? _doctors[_staffId] : null;
+    let _docFeeVal = undefined;
+    if (bookingId && _liveBookings[bookingId] && _liveBookings[bookingId].fee !== undefined) {
+       _docFeeVal = parseFloat(_liveBookings[bookingId].fee);
+    } else if (_docInfo && _docInfo.fee !== undefined) {
+       _docFeeVal = parseFloat(_docInfo.fee);
+    }
+    
+    _emitBillingTrigger(uid, _patients[uid]?.info?.name || activeVisit.name || 'مريض', _patients[uid]?.info?.phone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc, undefined, _docFeeVal);
   }
   // --- Case 2: Unregistered patient — auto-register then save ---
   else {
@@ -5133,13 +5142,21 @@ function completeWorkspaceVisit() {
     } else if (newUid && _patients[newUid]) {
       insObj = _patients[newUid].insurance || (_patients[newUid].info && _patients[newUid].info.insurance) || null;
     }
-    
-    _emitBillingTrigger(newUid, booking.patName || activeVisit.name || 'مريض', booking.patPhone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc, insObj);
+    const _staffId = window.ArgonSession ? window.ArgonSession.get()?.staffId : null;
+    const _docInfo = _staffId && typeof _doctors !== 'undefined' ? _doctors[_staffId] : null;
+    let _docFeeVal = undefined;
+    if (bookingId && _liveBookings[bookingId] && _liveBookings[bookingId].fee !== undefined) {
+       _docFeeVal = parseFloat(_liveBookings[bookingId].fee);
+    } else if (_docInfo && _docInfo.fee !== undefined) {
+       _docFeeVal = parseFloat(_docInfo.fee);
+    }
+
+    _emitBillingTrigger(newUid, booking.patName || activeVisit.name || 'مريض', booking.patPhone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc, insObj, _docFeeVal);
     toast('تم تسجيل المريض تلقائياً في النظام', 'ok');
   }
 }
 
-function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx, addConsultation, docName, insurance) {
+function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx, addConsultation, docName, insurance, docFee) {
   if (!visitKey) return;
 
   // SAFETY CHECK: Single clinics strictly do NOT bill for lab, radiology, or pharmacy
@@ -5152,6 +5169,7 @@ function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, lab
     visitKey: visitKey,
     docName: docName || '',
     insurance: insurance || null,
+    docFee: docFee !== undefined ? parseFloat(docFee) : null,
     addConsultation: addConsultation === true,
     orders: {
       lab: isSingle ? [] : (labs || []),
