@@ -870,10 +870,11 @@ function renderInvoice(inv, settings) {
           ? `<div style="font-size:0.6rem;color:var(--muted);margin-top:2px;">خصم: ${fmt(item.discountAmount)} | تأمين: ${fmt(item.insuranceAmount)}</div>`
           : (item.note ? `<div class="item-name-sub">${sanitize(item.note)}</div>` : '');
 
+        const toothLabel = item.tooth ? ` - سن ${item.tooth}` : '';
         return `
           <div class="item-row">
             <div>
-              <div class="item-name-main">${sanitize(item.name || '—')}</div>
+              <div class="item-name-main">${sanitize(item.name || '—')}${toothLabel}</div>
               ${nameSubDisplay}
             </div>
             <div class="item-cell">

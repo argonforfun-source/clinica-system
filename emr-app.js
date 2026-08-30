@@ -2897,6 +2897,7 @@ async function safeViewPatientFile(phoneOrUid) {
 // Load Visit Form
 let labTestsList = [];
 let radScansList = [];
+let dentalProceduresList = [];
 
 function loadVisitForm(uid, bookingId = null) {
   const p = _patients[uid];
@@ -3054,8 +3055,10 @@ function loadVisitForm(uid, bookingId = null) {
         if (document.getElementById('vNotes') && d.notes) document.getElementById('vNotes').value = d.notes;
 
         if (d.rxItems && d.rxItems.length) { rxItems = d.rxItems; renderRxTable(); }
-        if (d.labTestsList && d.labTestsList.length) { labTestsList = d.labTestsList; renderLabOrderList(); }
-        if (d.radScansList && d.radScansList.length) { radScansList = d.radScansList; renderRadOrderList(); }
+        if (d.labTestsList && d.labTestsList.length) { labTestsList = d.labTestsList; renderLabOrderChips(); }
+        if (d.radScansList && d.radScansList.length) { radScansList = d.radScansList; renderRadOrderChips(); }
+        if (d.dentalProceduresList && d.dentalProceduresList.length) { dentalProceduresList = d.dentalProceduresList; renderDentalOrderChips(); }
+
 
         toast('🔄 تم استعادة البيانات غير المكتملة تلقائياً', 'ok');
       }
@@ -3579,7 +3582,8 @@ setInterval(() => {
     notes: document.getElementById('vNotes') ? document.getElementById('vNotes').value : '',
     rxItems: rxItems || [],
     labTestsList: labTestsList || [],
-    radScansList: radScansList || []
+    radScansList: radScansList || [],
+    dentalProceduresList: typeof dentalProceduresList !== 'undefined' ? dentalProceduresList : []
   };
 
   if (data.diagnosis || data.complaint || data.rxItems.length || data.labTestsList.length || data.radScansList.length) {
@@ -4122,6 +4126,72 @@ function renderDynamicCatalogTags() {
       radDiv.innerHTML = '<span style="font-size:0.7rem;color:var(--muted)">لا توجد صور أشعة في الكتالوج لتسريع الاختيار</span>';
     }
   }
+
+  const dentalDiv = document.getElementById('commonDentalProcs');
+  if (dentalDiv) {
+    const dentalItems = items.filter(i => i.type === 'dental').slice(0, 15);
+    if (dentalItems.length) {
+      dentalDiv.innerHTML = dentalItems.map(i => `<span class="tag" style="background:rgba(139,92,246,0.1);color:var(--purple);border:1px solid var(--purple);cursor:pointer;font-size:0.72rem" onclick="addQuickDental('${i.name.replace(/'/g, "\\'")}', '${i.serviceId}', ${i.price || 0}, 'pricing_catalog')">${sanitize(i.name)} 🦷</span>`).join('');
+    } else {
+      // Default static if no catalog items found
+      dentalDiv.innerHTML = `
+        <span class="tag" style="background:rgba(139,92,246,0.1);color:var(--purple);cursor:pointer;font-size:0.72rem" onclick="addQuickDental('حشوة تجميلية')">حشوة تجميلية ✨</span>
+        <span class="tag" style="background:rgba(139,92,246,0.1);color:var(--purple);cursor:pointer;font-size:0.72rem" onclick="addQuickDental('خلع بسيط')">خلع بسيط 🦷</span>
+        <span class="tag" style="background:rgba(139,92,246,0.1);color:var(--purple);cursor:pointer;font-size:0.72rem" onclick="addQuickDental('سحب عصب')">سحب عصب ⚕️</span>
+        <span class="tag" style="background:rgba(139,92,246,0.1);color:var(--purple);cursor:pointer;font-size:0.72rem" onclick="addQuickDental('تنظيف جير')">تنظيف جير 🪥</span>
+      `;
+    }
+  }
+}
+
+// --- Dental Orders UI ---
+function addDentalProcedure() {
+  const procInp = document.getElementById('dentalProcInput');
+  const toothInp = document.getElementById('dentalToothInput');
+  const val = procInp.value.trim();
+  const toothVal = toothInp.value.trim();
+  if (val) {
+    const sId = procInp.dataset.serviceId;
+    const sPrice = procInp.dataset.unitPrice;
+    
+    if (sId && procInp.dataset.lastSelectedName === val) {
+      addQuickDental(val, sId, parseFloat(sPrice), 'pricing_catalog', toothVal);
+    } else {
+      addQuickDental(val, 'external', 0, 'manual', toothVal);
+    }
+    procInp.value = '';
+    toothInp.value = '';
+    delete procInp.dataset.serviceId;
+    delete procInp.dataset.unitPrice;
+    delete procInp.dataset.lastSelectedName;
+  }
+}
+
+function addQuickDental(name, serviceId = 'external', unitPrice = 0, source = 'manual', tooth = '') {
+  // Use occurrenceId to allow same procedure on same tooth multiple times if needed (e.g., surface differences)
+  const occurrenceId = _B.generateId ? _B.generateId() : Date.now() + Math.random().toString(36).substring(2,6);
+  dentalProceduresList.push({ name, serviceId, unitPrice, source, tooth, occurrenceId, requiresBillingReview: source === 'manual' });
+  renderDentalOrderChips();
+}
+
+function removeDentalProc(occurrenceId) {
+  dentalProceduresList = dentalProceduresList.filter(x => x.occurrenceId !== occurrenceId);
+  renderDentalOrderChips();
+}
+
+function renderDentalOrderChips() {
+  if (typeof saveVisitDraft === "function") saveVisitDraft();
+  const div = document.getElementById('dentalOrderList');
+  if (!div) return;
+  if (!dentalProceduresList.length) {
+    div.innerHTML = \`<span style="color:var(--muted);font-size:0.75rem" id="dentalPlaceholder">لا توجد إجراءات سنية مسجلة في هذه الزيارة</span>\`;
+    return;
+  }
+  div.innerHTML = dentalProceduresList.map(t => \`
+    <span class="tag" style="background:rgba(139,92,246,0.15);border:1px solid var(--purple);color:var(--purple)">
+      \${sanitize(t.name)} \${t.tooth ? \` <span style="font-size:0.7rem;background:var(--purple);color:#fff;padding:2px 4px;border-radius:4px;margin:0 4px">سن \${sanitize(t.tooth)}</span>\` : ''} \${t.source === 'manual' ? '<i class="fas fa-exclamation-triangle" style="color:var(--amber);margin-right:4px" title="إجراء خارجي غير مسعر"></i>' : ''} <span onclick="removeDentalProc('\${t.occurrenceId}')" style="cursor:pointer;margin-right:6px;font-weight:bold;color:var(--red)">✕</span>
+    </span>
+  \`).join('');
 }
 
 // Sanitization
@@ -4816,12 +4886,26 @@ function loadVisitForm(rawUid, bookingId, expectedName = '') {
   if (firstTab) switchVisitTab('tabVitals', firstTab);
 }
 
-// Helper: apply clinic/complex mode to tab visibility using cached _sets
 function _applyComplexMode() {
   // Use already-loaded _sets to avoid a Firebase round-trip
   const isComplex = _sets && (_sets.mode === 'medical_complex' || _sets.type === 'complex');
+  
+  // Check if current booking is for a dental department
+  let isDentalDept = false;
+  if (activeVisit && activeVisit.bookingId && typeof _liveBookings !== 'undefined') {
+    const b = _liveBookings[activeVisit.bookingId];
+    if (b && b.department === 'dental') {
+      isDentalDept = true;
+    }
+  }
+
   document.querySelectorAll('.tab-complex').forEach(el => {
-    el.style.display = isComplex ? '' : 'none';
+    // If this is the dental tab, only show it if it's a dental booking
+    if (el.id === 'tabDental' || el.getAttribute('onclick')?.includes('tabDental')) {
+      el.style.display = (isComplex && isDentalDept) ? '' : 'none';
+    } else {
+      el.style.display = isComplex ? '' : 'none';
+    }
   });
 }
 
@@ -4919,6 +5003,25 @@ function completeWorkspaceVisit() {
   if (pendingRad && !radScansList.includes(pendingRad)) {
     radScansList.push(pendingRad);
     renderRadOrderTags();
+  }
+
+  const pendingDentalProc = document.getElementById('dentalProcInput')?.value.trim();
+  const pendingDentalTooth = document.getElementById('dentalToothInput')?.value.trim();
+  if (pendingDentalProc) {
+    // Check if it already exists to avoid duplicates
+    if (!dentalProceduresList.some(p => p.name === pendingDentalProc && p.tooth === pendingDentalTooth)) {
+      const occId = typeof _B !== 'undefined' && _B.generateId ? _B.generateId() : Date.now() + Math.random().toString(36).substring(2,6);
+      dentalProceduresList.push({ 
+        name: pendingDentalProc, 
+        serviceId: 'external', 
+        unitPrice: 0, 
+        source: 'manual', 
+        tooth: pendingDentalTooth || '', 
+        occurrenceId: occId, 
+        requiresBillingReview: true 
+      });
+      if (typeof renderDentalOrderChips === 'function') renderDentalOrderChips();
+    }
   }
 
   // Build visit object with field names matching what the Timeline renderer reads
@@ -5151,12 +5254,12 @@ function completeWorkspaceVisit() {
        _docFeeVal = parseFloat(_docInfo.fee);
     }
 
-    _emitBillingTrigger(newUid, booking.patName || activeVisit.name || 'مريض', booking.patPhone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc, insObj, _docFeeVal);
+    _emitBillingTrigger(newUid, booking.patName || activeVisit.name || 'مريض', booking.patPhone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc, insObj, _docFeeVal, dentalProceduresList);
     toast('تم تسجيل المريض تلقائياً في النظام', 'ok');
   }
 }
 
-function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx, addConsultation, docName, insurance, docFee) {
+function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx, addConsultation, docName, insurance, docFee, dentalProcs) {
   if (!visitKey) return;
 
   // SAFETY CHECK: Single clinics strictly do NOT bill for lab, radiology, or pharmacy
@@ -5174,7 +5277,8 @@ function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, lab
     orders: {
       lab: isSingle ? [] : (labs || []),
       radiology: isSingle ? [] : (rads || []),
-      pharmacy: isSingle ? [] : (rx || []).map(r => r.drug)
+      pharmacy: isSingle ? [] : (rx || []).map(r => r.drug),
+      dental: isSingle ? [] : (dentalProcs || [])
     },
     createdAt: new Date().toISOString(),
     processedAt: null,

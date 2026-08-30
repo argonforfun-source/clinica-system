@@ -303,8 +303,12 @@ const BillingEngine = {
         serviceId, customName, docName, price? (override)
       }
     */
-    const billingRefId =
+    let billingRefId =
       `${CID}-${eventData.visitId}-${eventData.serviceId}-${(eventData.department || '').toUpperCase()}`;
+    
+    // Add unique dental procedure identity to prevent duplicate rejection of valid separate occurrences
+    if (eventData.tooth) billingRefId += `-T${eventData.tooth}`;
+    if (eventData.occurrenceId) billingRefId += `-${eventData.occurrenceId}`;
 
     // ── 1. منع التكرار ──
     if (this.isDuplicateCharge(billingRefId)) {
@@ -372,6 +376,8 @@ const BillingEngine = {
       billingReferenceId:  billingRefId,
       requiresBillingReview: requiresReview,
       department:          eventData.department,
+      tooth:               eventData.tooth || null,
+      occurrenceId:        eventData.occurrenceId || null,
       addedAt:             _B.now()
     };
 
@@ -574,10 +580,26 @@ const BillingEngine = {
     processOrders(orders.lab,       'lab');
     processOrders(orders.radiology, 'radiology');
     processOrders(orders.pharmacy,  'pharmacy');
+    
+    // ── Dental Orders Processing (with detailed metadata) ──
+    if (orders.dental && Array.isArray(orders.dental)) {
+      for (const d of orders.dental) {
+        if (!d || !d.name) continue;
+        this.addCharge({
+          patientId: patId, patientName: patName,
+          visitId: visitKey, docName, department: 'dental',
+          serviceId: d.serviceId || 'external',
+          customName: d.name,
+          price: d.unitPrice !== undefined ? parseFloat(d.unitPrice) : undefined,
+          tooth: d.tooth,
+          occurrenceId: d.occurrenceId
+        });
+      }
+    }
 
     // ── الرسوم والضرائب التلقائية (Auto-Added Fees) ──
     if (this._billingPolicy && Array.isArray(this._billingPolicy.autoFees)) {
-      if (!hasConsult || (orders.lab && orders.lab.length) || (orders.radiology && orders.radiology.length) || (orders.pharmacy && orders.pharmacy.length)) {
+      if (!hasConsult || (orders.lab && orders.lab.length) || (orders.radiology && orders.radiology.length) || (orders.pharmacy && orders.pharmacy.length) || (orders.dental && orders.dental.length)) {
         this._billingPolicy.autoFees.forEach((fee, index) => {
           if (!fee.name || !fee.price) return;
           this.addCharge({
@@ -1273,9 +1295,10 @@ const BillingEngine = {
         ? `<div style="font-size:0.65rem;color:var(--muted);margin-top:2px;">خصم: ${_B.jod(item.discountAmount)} | تأمين: ${_B.jod(item.insuranceAmount)} | مريض: ${_B.jod(netPrice)}</div>` 
         : '';
 
+      const toothLabel = item.tooth ? ` - سن ${item.tooth}` : '';
       return `<tr style="border-bottom:1px solid rgba(0,0,0,.04)">
         <td style="padding:6px 10px">
-          <input type="text" class="mfi" value="${_B.san(item.name)}"
+          <input type="text" class="mfi" value="${_B.san(item.name)}${toothLabel}"
             onchange="BillingEngine._updateItemName(${idx},this.value)"
             style="padding:4px;font-size:.8rem;margin:0;border:none;background:transparent;width:100%">
           ${policyHtml}

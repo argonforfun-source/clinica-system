@@ -219,6 +219,7 @@
         <button class="visit-tab" onclick="switchVisitTab('tabRx', this)"><i class="fas fa-pills"></i> الوصفة الطبية</button>
         <button class="visit-tab tab-complex" onclick="switchVisitTab('tabLab', this)"><i class="fas fa-vial"></i> طلب مختبر</button>
         <button class="visit-tab tab-complex" onclick="switchVisitTab('tabRad', this)"><i class="fas fa-x-ray"></i> صورة أشعة</button>
+        <button class="visit-tab tab-complex" onclick="switchVisitTab('tabDental', this)"><i class="fas fa-tooth"></i> إجراءات سنية</button>
       </div>
 
       <!-- Tab Contents -->
@@ -314,6 +315,26 @@
             <div id="radOrderList" style="display:flex;flex-wrap:wrap;gap:6px;background:rgba(255,255,255,0.02);padding:12px;border-radius:8px;border:1px solid var(--border);min-height:50px;align-items:center">
               <span style="color:var(--muted);font-size:0.75rem" id="radPlaceholder">لا توجد صور أشعة مطلوبة</span>
             </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 6: Dental Procedures (Complex Only) -->
+        <div id="tabDental" class="tab-content tab-complex">
+          <div class="vform">
+            <div class="vform-title" style="color:var(--purple)"><i class="fas fa-tooth"></i> الإجراءات السنية (Dental Procedures)</div>
+            <div class="fg">
+              <div style="display:flex;gap:6px;margin-bottom:8px">
+                <input id="dentalProcInput" class="fi" style="height:36px;font-size:0.8rem;flex:2" placeholder="اسم الإجراء (مثال: حشوة تجميلية)" oninput="if(typeof saveVisitDraft === \"function\") saveVisitDraft()">
+                <input id="dentalToothInput" class="fi" style="height:36px;font-size:0.8rem;flex:1" placeholder="رقم السن (اختياري)" oninput="if(typeof saveVisitDraft === \"function\") saveVisitDraft()">
+                <button type="button" class="btn-primary" onclick="addDentalProcedure()" style="height:36px;padding:0 12px;background:var(--purple);border:none;border-radius:8px;cursor:pointer"><i class="fas fa-plus"></i></button>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px" id="commonDentalProcs">
+                <!-- Dynamically populated from catalog, or static defaults if empty -->
+              </div>
+              <div id="dentalOrderList" style="display:flex;flex-wrap:wrap;gap:6px;background:rgba(255,255,255,0.02);padding:12px;border-radius:8px;border:1px solid var(--border);min-height:50px;align-items:center">
+                <span style="color:var(--muted);font-size:0.75rem" id="dentalPlaceholder">لا توجد إجراءات سنية مسجلة في هذه الزيارة</span>
+              </div>
             </div>
           </div>
         </div>
