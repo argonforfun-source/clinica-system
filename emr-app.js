@@ -413,6 +413,7 @@ function initEMR() {
     pageSize: 30,
     searchLimit: 25
   });
+  window._pager = _pager;
 
   /* ── ربط الكاشات: _patients ← _pager.cache ── */
   /* بدلاً من كائن جديد، نُعيّن نفس المرجع حتى لا يكون هناك نسختان */
@@ -1162,7 +1163,7 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
         }, db);
       }
       if (startVisit) { sw('newVisit'); loadVisitForm(_nidHit.uid, bookingKey); }
-      else { viewPatientFile(_nidHit.uid); sw('patFile'); }
+      else { viewPatientFile(_nidHit.uid); }
       return; // ← أوقف كل المنطق الآخر
     }
   }
@@ -1207,7 +1208,6 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
             loadVisitForm(matchResult.matchedId, bookingKey);
           } else {
             viewPatientFile(matchResult.matchedId);
-            sw('patFile');
           }
           return;
         }
@@ -1225,7 +1225,6 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
                 loadVisitForm(existingId, bookingKey);
               } else {
                 viewPatientFile(existingId);
-                sw('patFile');
               }
               // اربط الحجز بالملف الصحيح
               db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(existingId).catch(() => { });
@@ -1276,7 +1275,6 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
         loadVisitForm(booking.patientId, bookingKey);
       } else {
         viewPatientFile(booking.patientId);
-        sw('patFile');
       }
       return;
     } else {
@@ -1321,7 +1319,7 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
         db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(selectedUid).catch(() => { });
       }
       if (startVisit) { sw('newVisit'); loadVisitForm(selectedUid, bookingKey); }
-      else { viewPatientFile(selectedUid); sw('patFile'); }
+      else { viewPatientFile(selectedUid); }
     });
     return;
   }
@@ -1341,7 +1339,7 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
 
     if (namesMatch) {
       if (startVisit) { sw('newVisit'); loadVisitForm(matched[0][0], bookingKey); }
-      else { viewPatientFile(matched[0][0]); sw('patFile'); }
+      else { viewPatientFile(matched[0][0]); }
       return;
     } else {
       // الاسم مختلف — لا نفتح تلقائياً، نعرض selector
@@ -1350,7 +1348,7 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
           db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(selectedUid).catch(() => { });
         }
         if (startVisit) { sw('newVisit'); loadVisitForm(selectedUid, bookingKey); }
-        else { viewPatientFile(selectedUid); sw('patFile'); }
+        else { viewPatientFile(selectedUid); }
       });
       return;
     }
@@ -1484,7 +1482,7 @@ window._nldDoNID = async function (bookingKey, bookingName, startVisit) {
       const ov = document.getElementById('_nidLinkDialogOverlay');
       if (ov) ov.remove();
       if (startVisit) { sw('newVisit'); loadVisitForm(localMatch.uid, bookingKey); }
-      else { viewPatientFile(localMatch.uid); sw('patFile'); }
+      else { viewPatientFile(localMatch.uid); }
     }, 700);
     return;
   }
@@ -1502,7 +1500,7 @@ window._nldDoNID = async function (bookingKey, bookingName, startVisit) {
         const ov = document.getElementById('_nidLinkDialogOverlay');
         if (ov) ov.remove();
         if (startVisit) { sw('newVisit'); loadVisitForm(uid, bookingKey); }
-        else { viewPatientFile(uid); sw('patFile'); }
+        else { viewPatientFile(uid); }
       }, 700);
     } else {
       if (resultDiv) resultDiv.innerHTML = `<span style="color:var(--amber)">لم يُعثر على ملف بهذا الرقم. اضغط "فتح كمريض جديد" لإنشاء ملف.</span>`;
@@ -1562,7 +1560,7 @@ window._nldSelectPatient = async function (uid, bookingKey, startVisit) {
   const ov = document.getElementById('_nidLinkDialogOverlay');
   if (ov) ov.remove();
   if (startVisit) { sw('newVisit'); loadVisitForm(uid, bookingKey); }
-  else { viewPatientFile(uid); sw('patFile'); }
+  else { viewPatientFile(uid); }
   toast('✅ تم ربط الملف الطبي بالحجز', 'ok');
 };
 
@@ -1627,7 +1625,7 @@ async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = f
     if (existingLocal) {
       db.ref(`${BASE}/bookings/${bookingKey}/patientId`).set(existingLocal.uid).then(() => {
         if (startVisit) { sw('newVisit'); loadVisitForm(existingLocal.uid, bookingKey); }
-        else { viewPatientFile(existingLocal.uid); sw('patFile'); }
+        else { viewPatientFile(existingLocal.uid); }
       });
       return;
     }
@@ -1657,7 +1655,7 @@ async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = f
         );
 
         if (startVisit) { sw('newVisit'); loadVisitForm(existingUid, bookingKey); }
-        else { viewPatientFile(existingUid); sw('patFile'); }
+        else { viewPatientFile(existingUid); }
         return;
       }
     } catch (err) {
@@ -1701,7 +1699,6 @@ async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = f
         loadVisitForm(newRef.key, bookingKey);
       } else {
         viewPatientFile(newRef.key);
-        sw('patFile');
       }
     });
   });
@@ -3253,10 +3250,10 @@ document.addEventListener('click', (e) => {
 function _searchCatalogLogic(query, type) {
   const items = Object.entries(_pricingCatalogCache || {}).map(([key, val]) => ({ ...val, serviceId: key }));
   const q = query.trim().toLowerCase();
-  if (!q) return [];
 
   return items.filter(item => {
     if (item.type !== type || item.active === false) return false;
+    if (!q) return true; // Show all if no query
     return (item.name && item.name.toLowerCase().includes(q));
   });
 }
@@ -3294,8 +3291,13 @@ function searchCatalog(type) {
   if (!inp || !dd) return;
 
   const q = inp.value.trim();
-  if (!q) { dd.style.display = 'none'; return; }
-  dd.innerHTML = _buildCatalogDropdownHTML(_searchCatalogLogic(q, type), q, type);
+  const matched = _searchCatalogLogic(q, type);
+  
+  if (matched.length === 0) { 
+    if (!q) { dd.style.display = 'none'; return; }
+  }
+  
+  dd.innerHTML = _buildCatalogDropdownHTML(matched, q, type);
   dd.style.display = 'block';
 }
 
@@ -3312,6 +3314,11 @@ function selectCatalogItem(type, serviceId, name, price) {
     inp.dataset.serviceId = serviceId;
     inp.dataset.unitPrice = price;
     inp.dataset.lastSelectedName = name;
+    
+    if (type === 'procedure') {
+      const priceInp = document.getElementById('procPriceInput');
+      if (priceInp) priceInp.value = price;
+    }
   }
   if (dd) dd.style.display = 'none';
 }
@@ -4639,7 +4646,7 @@ function showDoctorProfileSelector(matchedPats, originalSearchTerm, onSelectCall
     const regDate = info.createdAt ? new Date(info.createdAt).toLocaleDateString('ar-JO') : '—';
 
     // Default action if no callback is provided
-    let clickAction = `document.getElementById('doctorProfileSelectorOverlay').remove(); viewPatientFile('${uid}'); sw('patFile');`;
+    let clickAction = `document.getElementById('doctorProfileSelectorOverlay').remove(); viewPatientFile('${uid}');`;
     if (onSelectCallback) {
       clickAction = `document.getElementById('doctorProfileSelectorOverlay').remove(); if(window._tempProfileSelectorCallback) window._tempProfileSelectorCallback('${uid}');`;
     }
@@ -5976,9 +5983,7 @@ async function executeDuplicateMerge(uid1, uid2) {
 
     // 4. Update bookings that pointed to the duplicate
     const bSnap = await db.ref(`${BASE}/bookings`).orderByChild('patientId').equalTo(duplicateUid).once('value');
-    bSnap.forEach(child => {
-      updates[`${BASE}/bookings/${child.key}/patientId`] = primaryUid;
-    });
+    bSnap.forEach(child => { updates[`${BASE}/bookings/${child.key}/patientId`] = primaryUid; });
 
     // 5. Merge Medical History if primary is empty (Allergies, Chronic)
     const priInfo = pPrimary.info || {};
@@ -6301,5 +6306,89 @@ window.saveDoctorPricing = function() {
     alert("حدث خطأ أثناء الحفظ.");
   }).finally(() => {
     if (btn) btn.disabled = false;
+  });
+};
+/* ════════════════════════════════════════════════════════════════════════
+ * PROCEDURES CATALOG MANAGEMENT (GENERAL PROCEDURES) - ADDITIVE v1.1
+ * ════════════════════════════════════════════════════════════════════════ */
+window.loadGlobalProceduresCatalog = function() {
+  if (typeof db === 'undefined' || !BASE) return;
+  const tbody = document.getElementById('catalogProceduresList');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted)">جاري تحميل الكتالوج...</td></tr>';
+  
+  db.ref(BASE + '/pricing_catalog').orderByChild('type').equalTo('procedure').once('value', snap => {
+    tbody.innerHTML = '';
+    const procs = [];
+    snap.forEach(child => {
+      procs.push({ id: child.key, ...child.val() });
+    });
+    
+    if (procs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted)">لا يوجد إجراءات في الكتالوج</td></tr>';
+      return;
+    }
+    
+    procs.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid var(--border)';
+      tr.innerHTML = `
+        <td style="padding:10px;font-weight:600;color:var(--text);">${p.name || ''}</td>
+        <td style="padding:10px;color:var(--green);font-weight:bold;">${parseFloat(p.price || 0).toFixed(3)}</td>
+        <td style="padding:10px;text-align:left;">
+          <button class="btn-primary" onclick="deleteProcedureFromGlobalCatalog('${p.id}', '${p.name}')" style="background:#fee2e2;color:#ef4444;border:none;padding:4px 10px;font-size:0.8rem;border-radius:6px;"><i class="fas fa-trash"></i> حذف</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }).catch(err => {
+    console.error(err);
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#ef4444">خطأ في التحميل</td></tr>';
+  });
+};
+
+window.addProcedureToGlobalCatalog = function() {
+  const nameInp = document.getElementById('catalogNewProcName');
+  const priceInp = document.getElementById('catalogNewProcPrice');
+  if (!nameInp || !priceInp) return;
+  
+  const name = nameInp.value.trim();
+  const price = parseFloat(priceInp.value);
+  
+  if (!name) { if(typeof toast==='function') toast('يرجى إدخال اسم الإجراء', 'err'); return; }
+  if (isNaN(price) || price < 0) { if(typeof toast==='function') toast('يرجى إدخال سعر صحيح', 'err'); return; }
+  
+  const btn = event.currentTarget || document.querySelector('#catalogSection .btn-primary');
+  const oldText = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  btn.disabled = true;
+  
+  db.ref(BASE + '/pricing_catalog').push({
+    name: window.sanitize ? sanitize(name) : name,
+    type: 'procedure',
+    price: price,
+    active: true,
+    updatedAt: new Date().toISOString()
+  }).then(() => {
+    nameInp.value = '';
+    priceInp.value = '';
+    if(typeof toast==='function') toast('تمت الإضافة للكتالوج بنجاح', 'ok');
+    window.loadGlobalProceduresCatalog();
+  }).catch(err => {
+    console.error(err);
+    if(typeof toast==='function') toast('خطأ أثناء الإضافة', 'err');
+  }).finally(() => {
+    if(btn){ btn.innerHTML = oldText; btn.disabled = false; }
+  });
+};
+
+window.deleteProcedureFromGlobalCatalog = function(id, name) {
+  if (!confirm('هل أنت متأكد من حذف الإجراء ' + name + ' من الكتالوج؟')) return;
+  db.ref(BASE + '/pricing_catalog/' + id).remove().then(() => {
+    if(typeof toast==='function') toast('تم الحذف بنجاح', 'ok');
+    window.loadGlobalProceduresCatalog();
+  }).catch(err => {
+    console.error(err);
+    if(typeof toast==='function') toast('خطأ في الحذف', 'err');
   });
 };

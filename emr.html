@@ -66,6 +66,7 @@
       <div class="ni" onclick="sw('calendar',this); if(window.renderDoctorCalendar) window.renderDoctorCalendar();"><i class="fas fa-calendar-alt" style="color:var(--teal)"></i>جدول المواعيد</div>
       <div class="ni" onclick="sw('inbox',this)"><i class="fas fa-inbox" style="color:var(--sky)"></i>المهام والملاحظات</div>
       <div class="ni" onclick="sw('assistant',this)"><i class="fas fa-laptop-medical" style="color:var(--purple)"></i>المساعد السريري</div>
+      <div class="ni" onclick="sw('catalogSection',this); if(window.loadGlobalProceduresCatalog) window.loadGlobalProceduresCatalog();"><i class="fas fa-briefcase-medical" style="color:var(--green)"></i>الإجراءات والأسعار</div>
       <div class="ni" id="referralsMenuBtn" onclick="sw('referralList',this)" style="display:none"><i class="fas fa-exchange-alt" style="color:var(--purple)"></i>التحويلات الداخلية</div>
     </div>
     <div class="royal-foot">
@@ -183,6 +184,35 @@
       </div>
     </div>
 
+    <!-- PROCEDURES CATALOG SECTION -->
+    <div id="catalogSection" class="sec">
+      <div class="ph">
+        <div><div class="pt"><i class="fas fa-briefcase-medical" style="color:var(--green)"></i> الإجراءات والأسعار</div><div class="ps">إدارة الكتالوج العام للإجراءات والخدمات وتحديد أسعارها الثابتة</div></div>
+      </div>
+      <div style="padding:20px;">
+        <div style="background:var(--surf); border:1px solid var(--border); border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); max-width:800px; margin:0 auto;">
+          <div style="font-weight:900; margin-bottom:14px; font-size:1.1rem; color:var(--green)"><i class="fas fa-plus"></i> إضافة إجراء جديد للكتالوج</div>
+          <div style="display:flex;gap:10px;margin-bottom:20px;">
+            <input type="text" id="catalogNewProcName" class="fi" placeholder="اسم الإجراء (مثال: غسيل أذن، خياطة جرح...)" style="flex:2;">
+            <input type="number" id="catalogNewProcPrice" class="fi" placeholder="السعر" style="flex:1;" dir="ltr">
+            <button class="btn-primary" onclick="if(window.addProcedureToGlobalCatalog) window.addProcedureToGlobalCatalog()" style="background:var(--green);border:none;border-radius:8px;padding:0 20px;color:#fff;"><i class="fas fa-plus"></i> حفظ في الكتالوج</button>
+          </div>
+          <table style="width:100%; border-collapse:collapse; text-align:right; color:var(--text);">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border); color:var(--muted); font-size:0.85rem;">
+                <th style="padding:10px;">اسم الإجراء</th>
+                <th style="padding:10px;">السعر الأساسي</th>
+                <th style="padding:10px;width:50px;"></th>
+              </tr>
+            </thead>
+            <tbody id="catalogProceduresList">
+              <tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted)">جاري تحميل الكتالوج...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- PATIENT FILE SECTION -->
     <div id="patFile" class="sec">
       <div id="patFileContent">
@@ -221,7 +251,7 @@
         <button class="visit-tab" onclick="switchVisitTab('tabProcedures', this)"><i class="fas fa-briefcase-medical"></i> الإجراءات</button>
         <button class="visit-tab tab-complex" onclick="switchVisitTab('tabLab', this)"><i class="fas fa-vial"></i> طلب مختبر</button>
         <button class="visit-tab tab-complex" onclick="switchVisitTab('tabRad', this)"><i class="fas fa-x-ray"></i> صورة أشعة</button>
-        <button class="visit-tab tab-complex" onclick="switchVisitTab('tabDental', this)"><i class="fas fa-tooth"></i> إجراءات سنية</button>
+        <button class="visit-tab tab-complex" onclick="switchVisitTab('tabDental', this)" style="display:none !important;"><i class="fas fa-tooth"></i> إجراءات سنية</button>
       </div>
 
       <!-- Tab Contents -->
@@ -351,7 +381,7 @@
         </div>
 
         <!-- Tab 6: Dental Procedures (Complex Only) -->
-        <div id="tabDental" class="tab-content tab-complex">
+        <div id="tabDental" class="tab-content tab-complex" style="display:none !important;">
           <div class="vform">
             <div class="vform-title" style="color:var(--purple);display:flex;justify-content:space-between;align-items:center;">
               <div><i class="fas fa-tooth"></i> الإجراءات السنية (Dental Procedures)</div>

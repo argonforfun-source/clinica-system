@@ -335,7 +335,7 @@
     if (status !== 'healthy' && TOOTH_STATUSES[status]) return _buildWholeToothSVG(num, data);
     var hasFindings = data.surfaces && Object.keys(data.surfaces).some(function (k) { return !!data.surfaces[k]; });
     if (hasFindings) return _buildSurfaceMapSVG(num, data, false);
-    return '<svg viewBox="0 0 44 44" class="tooth-icon"><rect x="1" y="1" width="42" height="42" rx="8" fill="#f0fdf4" stroke="#10b981" stroke-width="1.5"/><text x="22" y="29" font-size="20" text-anchor="middle">🦷</text></svg>';
+    return '<svg viewBox="0 0 44 44" class="tooth-icon"><rect x="1" y="1" width="42" height="42" rx="8" fill="var(--bg)" stroke="#10b981" stroke-width="1.5"/><text x="22" y="29" font-size="20" text-anchor="middle">🦷</text></svg>';
   }
 
   function _buildWholeToothSVG(num, data) {
@@ -362,15 +362,15 @@
         } else { fill = color; }
       }
       var clickAttr = interactive ? ' class="surf-region" onclick="DentalChartModule._applySurface(' + num + ',\'' + region + '\')"' : '';
-      return '<path d="' + REGION_PATHS[region] + '" fill="' + fill + '" stroke="#cbd5e1" stroke-width="0.6" data-region="' + region + '"' + clickAttr + '/>';
+      return '<path d="' + REGION_PATHS[region] + '" fill="' + fill + '" stroke="var(--border)" stroke-width="0.6" data-region="' + region + '"' + clickAttr + '/>';
     }).join('');
 
     var labels = interactive ? SURFACE_REGIONS.map(function (region) {
       var pos = REGION_LABEL_POS[region];
-      return '<text x="' + pos[0] + '" y="' + pos[1] + '" font-size="6.5" font-weight="900" text-anchor="middle" fill="#475569" style="pointer-events:none">' + _regionLabel(num, region) + '</text>';
+      return '<text x="' + pos[0] + '" y="' + pos[1] + '" font-size="6.5" font-weight="900" text-anchor="middle" fill="var(--text)" style="pointer-events:none">' + _regionLabel(num, region) + '</text>';
     }).join('') : '';
 
-    return '<svg viewBox="0 0 44 44" class="tooth-icon' + (interactive ? ' tooth-icon-lg' : '') + '"><defs>' + defs + '</defs><rect x="1" y="1" width="42" height="42" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1"/>' + paths + labels + '</svg>';
+    return '<svg viewBox="0 0 44 44" class="tooth-icon' + (interactive ? ' tooth-icon-lg' : '') + '"><defs>' + defs + '</defs><rect x="1" y="1" width="42" height="42" rx="8" fill="var(--bg)" stroke="var(--muted)" stroke-width="1"/>' + paths + labels + '</svg>';
   }
 
   function openToothEditor(num) {
@@ -653,12 +653,12 @@
       var tStr = (b.teeth || []).join(' - ');
       var pCount = (b.pontics || []).length;
 
-      return '<div class="bridge-list-item" style="padding: 12px; margin-bottom: 10px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
-        '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">' +
-        '<b style="color: #0f172a; font-size: 0.95rem;"><i class="fas fa-link" style="color: var(--oc); margin-left: 5px;"></i> 🌉 جسر للأسنان (' + tStr + ')</b>' +
+      return '<div class="bridge-list-item" style="padding: 12px; margin-bottom: 10px; background: var(--surf); border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
+        '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px dashed var(--border); padding-bottom: 8px;">' +
+        '<b style="color: var(--text); font-size: 0.95rem;"><i class="fas fa-link" style="color: var(--oc); margin-left: 5px;"></i> 🌉 جسر للأسنان (' + tStr + ')</b>' +
         '<button type="button" class="det-btn det-btn-cancel" style="padding: 4px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;" onclick="DentalChartModule.removeBridge(\'' + b.id + '\')"><i class="fas fa-trash-alt"></i> إزالة</button>' +
         '</div>' +
-        '<div style="font-size: 0.85rem; color: #475569; display: flex; gap: 15px; flex-wrap: wrap;">' +
+        '<div style="font-size: 0.85rem; color: var(--muted); display: flex; gap: 15px; flex-wrap: wrap;">' +
         '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-tooth" style="color: #94a3b8;"></i> <b>المادة:</b> ' + matStr + '</span>' +
         '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-tags" style="color: #94a3b8;"></i> <b>الحالة:</b> ' + origin.labelAr + '</span>' +
         (pCount > 0 ? '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-layer-group" style="color: #94a3b8;"></i> <b>عدد التعويضات:</b> ' + pCount + '</span>' : '') +
@@ -666,8 +666,8 @@
         '</div>';
     }).join('');
 
-    return '<div class="bridge-list-panel" style="background: #f8fafc; border-radius: 10px; border: 1px solid #cbd5e1; margin-top: 20px; padding: 15px;">' +
-      '<div style="font-weight: bold; color: #1e293b; font-size: 1.05rem; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;"><i class="fas fa-project-diagram" style="color: var(--oc); margin-left: 8px;"></i> تفاصيل الجسور والتركيبات</div>' +
+    return '<div class="bridge-list-panel" style="background: var(--bg); border-radius: 10px; border: 1px solid var(--border); margin-top: 20px; padding: 15px;">' +
+      '<div style="font-weight: bold; color: var(--text); font-size: 1.05rem; margin-bottom: 15px; border-bottom: 2px solid var(--border); padding-bottom: 8px;"><i class="fas fa-project-diagram" style="color: var(--oc); margin-left: 8px;"></i> تفاصيل الجسور والتركيبات</div>' +
       rows +
       '</div>';
   }
@@ -711,9 +711,9 @@
     });
 
     if (!hasData) {
-      return '<div style="text-align:center; padding: 30px; background: #f8fafc; border-radius: 10px; border: 1px dashed #cbd5e1; margin-top: 20px;">' +
+      return '<div style="text-align:center; padding: 30px; background: var(--bg); border-radius: 10px; border: 1px dashed #cbd5e1; margin-top: 20px;">' +
         '<i class="fas fa-smile-beam" style="font-size: 2.5rem; color: #10b981; margin-bottom: 15px; display: block;"></i>' +
-        '<div style="font-weight: bold; color: #334155; font-size: 1.1rem;">أسنان سليمة (لا يوجد تدخلات)</div>' +
+        '<div style="font-weight: bold; color: var(--text); font-size: 1.1rem;">أسنان سليمة (لا يوجد تدخلات)</div>' +
         '<div style="color: #64748b; font-size: 0.9rem; margin-top: 5px;">لم يتم تسجيل أي تسوس، حشوات، أو تركيبات على المخطط حتى الآن.</div>' +
         '</div>';
     }
@@ -734,22 +734,22 @@
 
       var rows = Object.keys(toothMap).sort(function (a, b) { return parseInt(a) - parseInt(b); }).map(function (numStr) {
         var tData = toothMap[numStr];
-        var sHtml = tData.surfaces.length > 0 ? '<span style="display: flex; align-items: center; gap: 4px; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;"><i class="fas fa-border-all" style="color: #94a3b8;"></i> <b>الأسطح:</b> ' + tData.surfaces.join('، ') + '</span>' : '';
+        var sHtml = tData.surfaces.length > 0 ? '<span style="display: flex; align-items: center; gap: 4px; background: var(--bg); padding: 2px 8px; border-radius: 4px;"><i class="fas fa-border-all" style="color: #94a3b8;"></i> <b>الأسطح:</b> ' + tData.surfaces.join('، ') + '</span>' : '';
         var nHtml = tData.notes ? '<span style="display: flex; align-items: center; gap: 4px; width: 100%; margin-top: 5px; color: #b45309;"><i class="fas fa-sticky-note" style="color: #f59e0b;"></i> <b>ملاحظات:</b> ' + tData.notes + '</span>' : '';
         var mHtml = tData.material ? '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-fill-drip" style="color: #94a3b8;"></i> <b>المادة:</b> ' + tData.material + '</span>' : '';
         var rHtml = tData.reqRx ? '<span style="display: flex; align-items: center; gap: 4px; color: #ef4444;"><i class="fas fa-prescription" style="color: #ef4444;"></i> بحاجة لوصفة</span>' : '';
 
-        return '<div class="summary-tooth-item" style="padding: 12px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
+        return '<div class="summary-tooth-item" style="padding: 12px; background: var(--surf); border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
           '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '8px' : '0') + '; border-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '1px dashed #e2e8f0' : 'none') + '; padding-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '8px' : '0') + ';">' +
-          '<b style="color: #0f172a; font-size: 0.95rem;"><i class="fas fa-tooth" style="color: ' + group.color + '; margin-left: 5px;"></i> السن رقم (' + tData.num + ')</b>' +
-          '<span style="font-size: 0.8rem; background: #f8fafc; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 12px; color: #475569;"><i class="fas fa-tag"></i> ' + tData.origin.labelAr + '</span>' +
+          '<b style="color: var(--text); font-size: 0.95rem;"><i class="fas fa-tooth" style="color: ' + group.color + '; margin-left: 5px;"></i> السن رقم (' + tData.num + ')</b>' +
+          '<span style="font-size: 0.8rem; background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 12px; color: var(--muted);"><i class="fas fa-tag"></i> ' + tData.origin.labelAr + '</span>' +
           '</div>' +
-          (sHtml || nHtml || mHtml || rHtml ? '<div style="font-size: 0.85rem; color: #475569; display: flex; gap: 10px; flex-wrap: wrap;">' + sHtml + mHtml + rHtml + nHtml + '</div>' : '') +
+          (sHtml || nHtml || mHtml || rHtml ? '<div style="font-size: 0.85rem; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap;">' + sHtml + mHtml + rHtml + nHtml + '</div>' : '') +
           '</div>';
       }).join('');
 
-      html += '<div class="summary-group-panel" style="background: #f8fafc; border-radius: 10px; border: 1px solid #cbd5e1; padding: 15px;">' +
-        '<div style="font-weight: bold; color: #1e293b; font-size: 1.05rem; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">' +
+      html += '<div class="summary-group-panel" style="background: var(--bg); border-radius: 10px; border: 1px solid var(--border); padding: 15px;">' +
+        '<div style="font-weight: bold; color: var(--text); font-size: 1.05rem; margin-bottom: 15px; border-bottom: 2px solid var(--border); padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">' +
         '<span style="font-size: 1.2rem;">' + group.icon + '</span> <span style="color: ' + group.color + ';">' + group.label + '</span>' +
         '<span style="background: ' + group.color + '20; color: ' + group.color + '; font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; margin-right: auto; font-weight: bold;">' + Object.keys(toothMap).length + ' أسنان</span>' +
         '</div>' +
@@ -801,19 +801,19 @@
       '<title>تقرير الأسنان السريري</title>',
       '<style>',
       '@import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap");',
-      'body { font-family: "Tajawal", sans-serif; padding: 40px; background: #f8fafc; color: #0f172a; }',
-      '.print-container { max-width: 900px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }',
-      '.print-header { border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }',
-      '.print-title { margin: 0; font-size: 24px; color: #0f172a; font-weight: 900; }',
-      '.print-meta { font-size: 14px; color: #475569; line-height: 1.6; }',
-      '.print-meta b { color: #0f172a; }',
+      'body { font-family: "Tajawal", sans-serif; padding: 40px; background: var(--bg); color: var(--text); }',
+      '.print-container { max-width: 900px; margin: 0 auto; background: var(--surf); padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }',
+      '.print-header { border-bottom: 2px solid var(--border); padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }',
+      '.print-title { margin: 0; font-size: 24px; color: var(--text); font-weight: 900; }',
+      '.print-meta { font-size: 14px; color: var(--muted); line-height: 1.6; }',
+      '.print-meta b { color: var(--text); }',
       '.clinic-brand { text-align: left; }',
       '.clinic-brand h2 { margin: 0; color: #0ea5e9; font-size: 20px; }',
       '.print-section { margin-bottom: 30px; }',
-      '.print-section h3 { border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 15px; font-size: 18px; color: #0f172a; }',
-      '.summary-text { font-size: 15px; line-height: 1.8; background: #f1f5f9; padding: 20px; border-radius: 8px; border-right: 4px solid #0ea5e9; }',
+      '.print-section h3 { border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 15px; font-size: 18px; color: var(--text); }',
+      '.summary-text { font-size: 15px; line-height: 1.8; background: var(--bg); padding: 20px; border-radius: 8px; border-right: 4px solid #0ea5e9; }',
       '@media print {',
-      'body { background: #fff; padding: 0; }',
+      'body { background: var(--surf); padding: 0; }',
       '.print-container { box-shadow: none; padding: 0; }',
       '.origin-btn, .mode-btn { border: 1px solid #ccc !important; }',
       '}',
@@ -849,7 +849,7 @@
       '<div class="summary-text">' + summary + '</div>',
       '</div>',
 
-      '<div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #64748b; border-top: 1px dashed #cbd5e1; padding-top: 20px;">',
+      '<div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #64748b; border-top: 1px dashed var(--border); padding-top: 20px;">',
       '<div>توقيع الطبيب المعالج: _____________________</div>',
       '<div>تم إنشاء هذا التقرير عبر نظام Argon EMR &copy;</div>',
       '</div>',
@@ -916,52 +916,52 @@
     var style = document.createElement('style');
     style.id = '_dental-chart-v2-styles';
     style.textContent = `
-      .argon-dental-chart-v2 { font-family: 'Tajawal', sans-serif; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; overflow: visible; }
-      .argon-dental-toolbar { background: #f8fafc; border-radius: 10px; padding: 12px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
+      .argon-dental-chart-v2 { font-family: 'Tajawal', sans-serif; background: var(--surf); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; overflow: visible; }
+      .argon-dental-toolbar { background: var(--bg); border-radius: 10px; padding: 12px; margin-bottom: 20px; border: 1px solid var(--border); }
       .toolbar-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
       .toolbar-group { display: flex; align-items: center; gap: 6px; }
-      .mode-btn { padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; }
-      .mode-btn.mode-active { background: #e0f2fe; border-color: #0ea5e9; }
+      .mode-btn { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+      .mode-btn.mode-active { background: rgba(14, 165, 233, 0.1); border-color: #0ea5e9; }
       .det-btn { padding: 6px 14px; border-radius: 6px; cursor: pointer; border: none; }
       .det-btn-save { background: #10b981; color: #fff; }
       .det-btn-bridge { background: #0891b2; color: #fff; }
-      .det-btn-cancel { background: #f1f5f9; color: #475569; }
-      .origin-bar { display: inline-flex; gap: 4px; background: #fff; padding: 3px; border-radius: 8px; border: 1px solid #e2e8f0; }
+      .det-btn-cancel { background: var(--bg); color: var(--muted); }
+      .origin-bar { display: inline-flex; gap: 4px; background: var(--surf); padding: 3px; border-radius: 8px; border: 1px solid var(--border); }
       .origin-btn { padding: 4px 10px; border: none; border-radius: 5px; cursor: pointer; }
       .origin-btn.origin-active { background: var(--oc); color: #fff; }
-      .argon-jaw-label { text-align: center; font-size: 0.85rem; font-weight: bold; margin: 15px 0 5px; background: #f8fafc; padding: 6px; border-radius: 6px; }
+      .argon-jaw-label { text-align: center; font-size: 0.85rem; font-weight: bold; margin: 15px 0 5px; background: var(--bg); padding: 6px; border-radius: 6px; }
       .argon-tooth-row { display: flex; justify-content: center; gap: 6px; overflow: visible; padding: 14px 10px; }
       .argon-tooth-cell-v2 { width: 44px; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s ease; }
       .argon-tooth-cell-v2:hover { transform: scale(1.22); z-index: 5; }
       .argon-tooth-cell-v2:hover .tooth-svg-wrap { box-shadow: 0 0 0 2px rgba(13,148,136,0.6), 0 8px 20px rgba(13,148,136,0.25); }
       .argon-tooth-cell-v2:hover .tooth-num { background: rgba(13,148,136,0.12); border-color: #0d9488; color: #0d9488; font-weight: 900; transform: scale(1.05); }
       .tooth-svg-wrap { width: 44px; height: 44px; position: relative; border-radius: 10px; transition: box-shadow 0.2s ease; }
-      .tooth-num { font-size: 0.65rem; font-weight: bold; margin-top: 4px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0; transition: all 0.2s ease; }
-      .tb { position: absolute; width: 14px; height: 14px; font-size: 0.55rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+      .tooth-num { font-size: 0.65rem; font-weight: bold; margin-top: 4px; background: var(--bg); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); transition: all 0.2s ease; }
+      .tb { position: absolute; width: 14px; height: 14px; font-size: 0.55rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--surf); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
       .tb-tl { top: -4px; left: -4px; }
       .tb-tl2 { top: 12px; left: -6px; }
       .tb-tr { top: -4px; right: -4px; }
       .tb-br { bottom: -4px; right: -4px; }
-      .argon-midline { text-align: center; border-top: 1px dashed #cbd5e1; border-bottom: 1px dashed #cbd5e1; padding: 4px 0; margin: 10px 0; font-size: 0.7rem; color: #94a3b8; }
+      .argon-midline { text-align: center; border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border); padding: 4px 0; margin: 10px 0; font-size: 0.7rem; color: #94a3b8; }
       .dental-editor-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-      .dental-editor-card { background: #fff; border-radius: 12px; padding: 20px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
+      .dental-editor-card { background: var(--surf); border-radius: 12px; padding: 20px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
       .det-title { font-size: 1.1rem; font-weight: bold; }
       .det-section { margin-bottom: 16px; }
       .det-label { display: block; font-size: 0.8rem; font-weight: bold; margin-bottom: 6px; }
-      .det-input { width: 100%; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; }
+      .det-input { width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
       .det-actions { display: flex; gap: 8px; margin-top: 20px; }
-      .surf-editor { display: flex; align-items: center; gap: 16px; background: #f8fafc; padding: 12px; border-radius: 8px; }
+      .surf-editor { display: flex; align-items: center; gap: 16px; background: var(--bg); padding: 12px; border-radius: 8px; }
       .tooth-icon-lg { width: 80px; height: 80px; }
       .surf-region { cursor: pointer; }
       .palette-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-      .palette-btn { padding: 6px; background: #fff; border: 2px solid #e2e8f0; border-radius: 6px; cursor: pointer; }
+      .palette-btn { padding: 6px; background: var(--surf); border: 2px solid var(--border); border-radius: 6px; cursor: pointer; }
       .palette-btn.palette-active { border-color: var(--pc); background: var(--pc); color: #fff; }
       .bridge-mode .argon-tooth-cell-v2 { opacity: 0.5; }
       .bridge-mode .argon-tooth-cell-v2.bridge-selected { opacity: 1; transform: scale(1.1); }
       .bridge-mode .argon-tooth-cell-v2.bridge-selected .tooth-svg-wrap { box-shadow: 0 0 0 3px #0ea5e9; border-radius: 12px; }
-      .bridge-panel { background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 10px; padding: 12px; margin-bottom: 16px; }
+      .bridge-panel { background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 10px; padding: 12px; margin-bottom: 16px; }
       .bridge-panel-chips { display: flex; align-items: center; justify-content: center; gap: 2px; flex-wrap: wrap; margin: 6px 0; }
-      .chip { display: inline-block; background: #fff; color: #0284c7; padding: 3px 10px; border-radius: 6px; font-weight: 800; font-size: 0.9rem; border: 1px solid #7dd3fc; }
+      .chip { display: inline-block; background: var(--surf); color: #0284c7; padding: 3px 10px; border-radius: 6px; font-weight: 800; font-size: 0.9rem; border: 1px solid rgba(14, 165, 233, 0.3); }
       .chip-sep { color: #64748b; font-weight: 700; font-size: 0.85rem; padding: 0 2px; }
       .argon-bridge-row { display: flex; justify-content: center; gap: 4px; height: 12px; padding: 0 22px; margin: -4px 0 4px; }
       .bseg { width: 44px; border-top: 4px solid transparent; position: relative; }
