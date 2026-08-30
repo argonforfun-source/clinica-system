@@ -5278,7 +5278,7 @@ function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, lab
       lab: isSingle ? [] : (labs || []),
       radiology: isSingle ? [] : (rads || []),
       pharmacy: isSingle ? [] : (rx || []).map(r => r.drug),
-      dental: isSingle ? [] : (dentalProcs || [])
+      dental: dentalProcs || []
     },
     createdAt: new Date().toISOString(),
     processedAt: null,
