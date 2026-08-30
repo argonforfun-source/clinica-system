@@ -507,7 +507,8 @@ const BillingEngine = {
   _initBillingTriggerWatcher: function () {
     const handle = snap => {
       const t = snap.val();
-      if (t && !t.processedAt && !this._processedTriggers.has(snap.key)) {
+      // Allow re-processing if processedAt is null (meaning the visit was updated with new orders)
+      if (t && !t.processedAt) {
         this._processBillingTrigger(snap.key, t);
       }
     };
@@ -516,13 +517,13 @@ const BillingEngine = {
   },
 
   _processBillingTrigger: async function (triggerKey, trigger) {
-    if (this._processedTriggers.has(triggerKey)) return;
-    this._processedTriggers.add(triggerKey);
+    // We removed the local memory lock so that updated visits can be re-billed.
+    // addCharge automatically prevents duplicate billing lines using billingReferenceId.
 
-    // قفل متزامن لمنع المعالجة المزدوجة
+    // قفل متزامن لمنع المعالجة المزدوجة من أكثر من نافذة مفتوحة
     try {
       const lockSnap = await db.ref(`${BASE}/billing_triggers/${triggerKey}/processingLock`).once('value');
-      if (lockSnap.val()) { this._processedTriggers.delete(triggerKey); return; }
+      if (lockSnap.val()) { return; }
       // .update() على trigger موجود ✅ (newData.exists())
       await db.ref(`${BASE}/billing_triggers/${triggerKey}`).update({ processingLock: Date.now() });
     } catch (e) { return; }
@@ -597,9 +598,24 @@ const BillingEngine = {
       }
     }
 
+    // ── Procedures Processing (إجراءات عامة — كل التخصصات، ADDITIVE v1.0) ──
+    if (orders.procedures && Array.isArray(orders.procedures)) {
+      for (const p of orders.procedures) {
+        if (!p || !p.name) continue;
+        this.addCharge({
+          patientId: patId, patientName: patName,
+          visitId: visitKey, docName, department: 'procedure',
+          serviceId: p.serviceId || 'external',
+          customName: p.name,
+          price: p.unitPrice !== undefined ? parseFloat(p.unitPrice) : undefined,
+          occurrenceId: p.occurrenceId
+        });
+      }
+    }
+
     // ── الرسوم والضرائب التلقائية (Auto-Added Fees) ──
     if (this._billingPolicy && Array.isArray(this._billingPolicy.autoFees)) {
-      if (!hasConsult || (orders.lab && orders.lab.length) || (orders.radiology && orders.radiology.length) || (orders.pharmacy && orders.pharmacy.length) || (orders.dental && orders.dental.length)) {
+      if (!hasConsult || (orders.lab && orders.lab.length) || (orders.radiology && orders.radiology.length) || (orders.pharmacy && orders.pharmacy.length) || (orders.dental && orders.dental.length) || (orders.procedures && orders.procedures.length)) {
         this._billingPolicy.autoFees.forEach((fee, index) => {
           if (!fee.name || !fee.price) return;
           this.addCharge({
@@ -952,6 +968,8 @@ const BillingEngine = {
         radiology: { icon: '🩻', label: 'صور الأشعة',         color: 'var(--sky)'    },
         rad:       { icon: '🩻', label: 'صور الأشعة',         color: 'var(--sky)'    },
         pharmacy:  { icon: '💊', label: 'الصيدلية',           color: 'var(--amber)'  },
+        dental:    { icon: '🦷', label: 'إجراءات سنية',       color: 'var(--purple)' },
+        procedure: { icon: '🛠️', label: 'إجراءات عامة',        color: 'var(--green)'  }, // ADDITIVE v1.0
         other:     { icon: '📋', label: 'خدمات أخرى',         color: 'var(--purple)' }
       };
 
@@ -962,6 +980,8 @@ const BillingEngine = {
         if (d === 'lab'  || n.includes('تحليل') || n.includes('فحص دم'))      return 'lab';
         if (['radiology','rad'].includes(d) || n.includes('أشعة') || n.includes('x-ray')) return 'radiology';
         if (['pharmacy','pharm'].includes(d) || n.includes('دواء') || n.includes('صيدل')) return 'pharmacy';
+        if (d === 'dental' || n.includes('سن')) return 'dental';
+        if (d === 'procedure') return 'procedure'; // ADDITIVE v1.0
         return 'other';
       };
 
@@ -1715,12 +1735,14 @@ function closeBillingModal() {
 function renderPricingTables() {
   const labBody = document.getElementById('pricingLabBody');
   const radBody = document.getElementById('pricingRadBody');
-  if (!labBody && !radBody) return;
+  const procBody = document.getElementById('pricingProcBody'); // ADDITIVE v1.0 — يبقى null بأمان لحد ما يُضاف الجدول بالواجهة الإدارية
+  if (!labBody && !radBody && !procBody) return;
 
   const catalog  = BillingEngine._pricingCatalog || {};
   const entries  = Object.entries(catalog).filter(([, v]) => !v.deleted);
   const labItems = entries.filter(([, v]) => v.type === 'lab');
   const radItems = entries.filter(([, v]) => v.type === 'radiology');
+  const procItems = entries.filter(([, v]) => v.type === 'procedure'); // ADDITIVE v1.0
 
   const buildRows = (items) => items.map(([k, item]) => {
     const isActive = item.active !== false;
@@ -1765,6 +1787,7 @@ function renderPricingTables() {
 
   if (labBody) labBody.innerHTML = labItems.length ? buildRows(labItems) : emptyMsg('مختبرية');
   if (radBody) radBody.innerHTML = radItems.length ? buildRows(radItems) : emptyMsg('أشعة');
+  if (procBody) procBody.innerHTML = procItems.length ? buildRows(procItems) : emptyMsg('عامة'); // ADDITIVE v1.0
 }
 
 function openAddPricingItem(type) {
@@ -1775,7 +1798,7 @@ function openAddPricingItem(type) {
   const typeEl = document.getElementById('prEditType');
   const titleEl = document.getElementById('pricingModalTitle');
   if (typeEl)  typeEl.value = type;
-  if (titleEl) titleEl.textContent = type === 'lab' ? 'إضافة فحص مختبري جديد' : 'إضافة فحص أشعة جديد';
+  if (titleEl) titleEl.textContent = type === 'lab' ? 'إضافة فحص مختبري جديد' : (type === 'procedure' ? 'إضافة إجراء عام جديد' : 'إضافة فحص أشعة جديد'); // ADDITIVE v1.0: فرع 'procedure'
   const modal = document.getElementById('pricingModal');
   if (modal) {
     modal.style.display = 'flex';

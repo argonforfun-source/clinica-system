@@ -2168,6 +2168,31 @@
             </table>
           </div>
         </div>
+
+        <!-- General Procedures Pricing -->
+        <div class="glass-panel complex-only" style="overflow:hidden;border-radius:13px;border:1px solid var(--border);margin-top:20px">
+          <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--surf)">
+            <div style="font-weight:800;font-size:1rem"><i class="fas fa-briefcase-medical" style="color:var(--green);margin-left:6px"></i> تسعيرة الإجراءات العامة</div>
+            <button onclick="openAddPricingItem('procedure')" class="tbtn" style="background:rgba(16,185,129,.1);color:var(--green);border-color:rgba(16,185,129,.2)"><i class="fas fa-plus"></i> إضافة إجراء</button>
+          </div>
+          <div class="htw">
+            <table>
+              <thead>
+                <tr>
+                  <th>اسم الإجراء</th>
+                  <th>السعر (د.أ)</th>
+                  <th>الحالة</th>
+                  <th style="text-align:center">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="pricingProcBody">
+                <tr>
+                  <td colspan="4" style="text-align:center;padding:30px;color:var(--muted)">جاري التحميل...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- PRICING ADD/EDIT MODAL -->

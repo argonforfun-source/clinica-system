@@ -329,6 +329,20 @@ window.addEventListener('DOMContentLoaded', () => {
     _pricingCatalogCache = snap.val() || {};
     if (typeof renderDynamicCatalogTags === 'function') renderDynamicCatalogTags();
   });
+
+  // Load Doctor Specific Dental Pricing
+  window.doctorDentalPricing = {};
+  const currentDocId = (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor';
+  if (currentDocId) {
+    db.ref(BASE + '/doctor_pricing/' + currentDocId).on('value', snap => {
+      window.doctorDentalPricing = snap.val() || {};
+      if (typeof updateDentalPriceDisplay === 'function') updateDentalPriceDisplay();
+      if (typeof renderDynamicCatalogTags === 'function') renderDynamicCatalogTags();
+      if (document.getElementById('doctorPricingModal')?.style.display === 'flex') {
+        window.openDoctorPricingModal(); // refresh UI if open
+      }
+    });
+  }
 });
 
 // Initialize Patient Count Badge
@@ -2898,6 +2912,7 @@ async function safeViewPatientFile(phoneOrUid) {
 let labTestsList = [];
 let radScansList = [];
 let dentalProceduresList = [];
+let generalProceduresList = []; // ADDITIVE v1.0 — كتالوج الإجراءات العامة (غرفة الفحص، أي تخصص)
 
 function loadVisitForm(uid, bookingId = null) {
   const p = _patients[uid];
@@ -3058,6 +3073,7 @@ function loadVisitForm(uid, bookingId = null) {
         if (d.labTestsList && d.labTestsList.length) { labTestsList = d.labTestsList; renderLabOrderChips(); }
         if (d.radScansList && d.radScansList.length) { radScansList = d.radScansList; renderRadOrderChips(); }
         if (d.dentalProceduresList && d.dentalProceduresList.length) { dentalProceduresList = d.dentalProceduresList; renderDentalOrderChips(); }
+        if (d.generalProceduresList && d.generalProceduresList.length) { generalProceduresList = d.generalProceduresList; renderGeneralProcedureChips(); }
 
 
         toast('🔄 تم استعادة البيانات غير المكتملة تلقائياً', 'ok');
@@ -3226,6 +3242,11 @@ document.addEventListener('click', (e) => {
   const dd4 = document.getElementById('radCatalogDropdown');
   const inp4 = document.getElementById('radScanInput');
   if (dd4 && inp4 && e.target !== inp4 && !dd4.contains(e.target)) dd4.style.display = 'none';
+
+  // ADDITIVE v1.0 — قائمة كتالوج الإجراءات العامة (تبويب غرفة الفحص)
+  const dd5 = document.getElementById('procCatalogDropdown');
+  const inp5 = document.getElementById('procInput');
+  if (dd5 && inp5 && e.target !== inp5 && !dd5.contains(e.target)) dd5.style.display = 'none';
 });
 
 // ── SMART PRICING CATALOG AUTOCOMPLETE ENGINE ──
@@ -3257,9 +3278,17 @@ function _buildCatalogDropdownHTML(matched, query, type) {
   }).join('');
 }
 
+// ADDITIVE v1.0 — خريطة عناصر الكتالوج لكل نوع (وسّعت الشرط الثنائي القديم لدعم 'procedure' بدون كسره)
+const _CATALOG_TYPE_ELEMENTS = {
+  lab:       { inpId: 'labTestInput',  ddId: 'labCatalogDropdown' },
+  radiology: { inpId: 'radScanInput',  ddId: 'radCatalogDropdown' },
+  procedure: { inpId: 'procInput',     ddId: 'procCatalogDropdown' }
+};
+
 function searchCatalog(type) {
-  const inpId = type === 'lab' ? 'labTestInput' : 'radScanInput';
-  const ddId = type === 'lab' ? 'labCatalogDropdown' : 'radCatalogDropdown';
+  const map = _CATALOG_TYPE_ELEMENTS[type] || { inpId: 'radScanInput', ddId: 'radCatalogDropdown' };
+  const inpId = map.inpId;
+  const ddId = map.ddId;
   const inp = document.getElementById(inpId);
   const dd = document.getElementById(ddId);
   if (!inp || !dd) return;
@@ -3271,8 +3300,9 @@ function searchCatalog(type) {
 }
 
 function selectCatalogItem(type, serviceId, name, price) {
-  const inpId = type === 'lab' ? 'labTestInput' : 'radScanInput';
-  const ddId = type === 'lab' ? 'labCatalogDropdown' : 'radCatalogDropdown';
+  const map = _CATALOG_TYPE_ELEMENTS[type] || { inpId: 'radScanInput', ddId: 'radCatalogDropdown' };
+  const inpId = map.inpId;
+  const ddId = map.ddId;
   const inp = document.getElementById(inpId);
   const dd = document.getElementById(ddId);
 
@@ -3583,7 +3613,8 @@ setInterval(() => {
     rxItems: rxItems || [],
     labTestsList: labTestsList || [],
     radScansList: radScansList || [],
-    dentalProceduresList: typeof dentalProceduresList !== 'undefined' ? dentalProceduresList : []
+    dentalProceduresList: typeof dentalProceduresList !== 'undefined' ? dentalProceduresList : [],
+    generalProceduresList: typeof generalProceduresList !== 'undefined' ? generalProceduresList : []
   };
 
   if (data.diagnosis || data.complaint || data.rxItems.length || data.labTestsList.length || data.radScansList.length) {
@@ -4128,44 +4159,140 @@ function renderDynamicCatalogTags() {
   }
 
   const dentalDiv = document.getElementById('commonDentalProcs');
-  if (dentalDiv) {
-    const dentalItems = items.filter(i => i.type === 'dental').slice(0, 15);
-    if (dentalItems.length) {
-      dentalDiv.innerHTML = dentalItems.map(i => `<span class="tag" style="background:rgba(139,92,246,0.1);color:var(--purple);border:1px solid var(--purple);cursor:pointer;font-size:0.72rem" onclick="addQuickDental('${i.name.replace(/'/g, "\\'")}', '${i.serviceId}', ${i.price || 0}, 'pricing_catalog')">${sanitize(i.name)} 🦷</span>`).join('');
-    } else {
-      // Default static if no catalog items found
-      dentalDiv.innerHTML = `
-        <span class="tag" style="background:rgba(139,92,246,0.1);color:var(--purple);cursor:pointer;font-size:0.72rem" onclick="addQuickDental('حشوة تجميلية')">حشوة تجميلية ✨</span>
-        <span class="tag" style="background:rgba(139,92,246,0.1);color:var(--purple);cursor:pointer;font-size:0.72rem" onclick="addQuickDental('خلع بسيط')">خلع بسيط 🦷</span>
-        <span class="tag" style="background:rgba(139,92,246,0.1);color:var(--purple);cursor:pointer;font-size:0.72rem" onclick="addQuickDental('سحب عصب')">سحب عصب ⚕️</span>
-        <span class="tag" style="background:rgba(139,92,246,0.1);color:var(--purple);cursor:pointer;font-size:0.72rem" onclick="addQuickDental('تنظيف جير')">تنظيف جير 🪥</span>
-      `;
+  const dentalDatalist = document.getElementById('dentalProcsList');
+  if (dentalDiv || dentalDatalist) {
+    const dentalItems = items.filter(i => i.type === 'dental');
+    
+    // Populate datalist
+    if (dentalDatalist) {
+      dentalDatalist.innerHTML = dentalItems.map(i => `<option value="${sanitize(i.name)}"></option>`).join('');
+    }
+
+    // Populate quick tags (max 15)
+    if (dentalDiv) {
+      const quickItems = dentalItems.slice(0, 15);
+      if (quickItems.length) {
+        dentalDiv.innerHTML = quickItems.map(i => `<span class="tag" style="background:rgba(139,92,246,0.1);color:var(--purple);border:1px solid var(--purple);cursor:pointer;font-size:0.72rem" onclick="handleAddQuickDentalTag('${i.name.replace(/'/g, "\\'")}', '${i.serviceId}')">${sanitize(i.name)} 🦷</span>`).join('');
+      } else {
+        // Default static if no catalog items found
+        dentalDiv.innerHTML = `
+          <span style="color:var(--muted);font-size:0.8rem">لا يوجد إجراءات في الكتالوج</span>
+        `;
+      }
     }
   }
 }
 
 // --- Dental Orders UI ---
-function addDentalProcedure() {
-  const procInp = document.getElementById('dentalProcInput');
-  const toothInp = document.getElementById('dentalToothInput');
-  const val = procInp.value.trim();
-  const toothVal = toothInp.value.trim();
+function updateDentalPriceDisplay() {
+  const inp = document.getElementById('dentalProcInput');
+  const disp = document.getElementById('dentalPriceDisplay');
+  if (!inp || !disp) return;
+  
+  const val = inp.value.trim();
   if (val) {
-    const sId = procInp.dataset.serviceId;
-    const sPrice = procInp.dataset.unitPrice;
+    const allItems = Object.values(_pricingCatalogCache || {});
+    const matched = allItems.find(i => i.type === 'dental' && i.name === val);
     
-    if (sId && procInp.dataset.lastSelectedName === val) {
-      addQuickDental(val, sId, parseFloat(sPrice), 'pricing_catalog', toothVal);
+    if (matched) {
+      const sId = matched.serviceId;
+      let docPrice = (window.doctorDentalPricing && sId) ? window.doctorDentalPricing[sId] : undefined;
+      
+      if (docPrice !== undefined && docPrice !== null && !isNaN(docPrice)) {
+        disp.textContent = parseFloat(docPrice).toFixed(3);
+        disp.style.color = '#10b981'; // Green to indicate matched price
+      } else {
+        disp.textContent = 'تسعير سريع';
+        disp.style.color = 'var(--amber)';
+      }
     } else {
-      addQuickDental(val, 'external', 0, 'manual', toothVal);
+      disp.textContent = 'إجراء جديد';
+      disp.style.color = 'var(--amber)';
     }
-    procInp.value = '';
-    toothInp.value = '';
-    delete procInp.dataset.serviceId;
-    delete procInp.dataset.unitPrice;
-    delete procInp.dataset.lastSelectedName;
+  } else {
+    disp.textContent = '0.000';
+    disp.style.color = 'var(--teal)';
   }
 }
+
+function addDentalProcedure() {
+  const inp = document.getElementById('dentalProcInput');
+  const toothInp = document.getElementById('dentalToothInput');
+  if (!inp) return;
+  
+  const val = inp.value.trim();
+  const toothVal = toothInp ? toothInp.value.trim() : '';
+  
+  if (val) {
+    const allItems = Object.values(_pricingCatalogCache || {});
+    const matched = allItems.find(i => i.type === 'dental' && i.name === val);
+    const currentDocId = (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor';
+    
+    if (!matched) {
+      // Brand new procedure not in catalog
+      const userPrice = prompt(`الإجراء "${val}" جديد غير مسجل.\nأدخل السعر الآن ليتم حفظه دائماً وإضافته للفاتورة:`);
+      if (userPrice !== null && userPrice.trim() !== '' && !isNaN(userPrice) && parseFloat(userPrice) >= 0) {
+        const docPrice = parseFloat(userPrice);
+        const serviceId = 'DENT-' + Date.now() + Math.floor(Math.random() * 1000);
+        
+        // Save to global catalog
+        db.ref(BASE + '/pricing_catalog/' + serviceId).set({
+          name: val,
+          type: 'dental',
+          price: docPrice,
+          active: true
+        });
+        // Save to doctor catalog
+        db.ref(BASE + '/doctor_pricing/' + currentDocId + '/' + serviceId).set(docPrice);
+        
+        addQuickDental(val, serviceId, docPrice, 'doctor_pricing', toothVal);
+        inp.value = '';
+        if (toothInp) toothInp.value = '';
+        updateDentalPriceDisplay();
+      }
+      return;
+    }
+
+    // Existing procedure
+    const sId = matched.serviceId;
+    let docPrice = (window.doctorDentalPricing && sId) ? window.doctorDentalPricing[sId] : undefined;
+    
+    if (docPrice === undefined || docPrice === null || docPrice === '' || isNaN(docPrice) || docPrice < 0) {
+      const userPrice = prompt(`الإجراء (${val}) غير مسعر في الكتالوج الخاص بك.\nأدخل السعر الآن ليتم حفظه واعتماده دائماً:`);
+      if (userPrice !== null && userPrice.trim() !== '' && !isNaN(userPrice) && parseFloat(userPrice) >= 0) {
+        docPrice = parseFloat(userPrice);
+        db.ref(BASE + '/doctor_pricing/' + currentDocId + '/' + sId).set(docPrice);
+      } else {
+        return; // User cancelled
+      }
+    }
+
+    addQuickDental(val, sId, parseFloat(docPrice), 'doctor_pricing', toothVal);
+    
+    inp.value = '';
+    if (toothInp) toothInp.value = '';
+    updateDentalPriceDisplay();
+  }
+}
+
+window.handleAddQuickDentalTag = function(name, serviceId) {
+  let docPrice = (window.doctorDentalPricing && serviceId) ? window.doctorDentalPricing[serviceId] : undefined;
+  
+  if (docPrice === undefined || docPrice === null || docPrice === '' || isNaN(docPrice) || docPrice < 0) {
+    const userPrice = prompt(`الإجراء (${name}) غير مسعر في الكتالوج الخاص بك.\nأدخل السعر الآن ليتم حفظه واعتماده دائماً:`);
+    if (userPrice !== null && userPrice.trim() !== '' && !isNaN(userPrice) && parseFloat(userPrice) >= 0) {
+      docPrice = parseFloat(userPrice);
+      // Save to Firebase immediately
+      const currentDocId = (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor';
+      db.ref(BASE + '/doctor_pricing/' + currentDocId + '/' + serviceId).set(docPrice);
+    } else {
+      return; // User cancelled or entered invalid price
+    }
+  }
+  
+  // No tooth input provided via quick tags, so tooth = ''
+  addQuickDental(name, serviceId, parseFloat(docPrice), 'doctor_pricing', '');
+};
 
 function addQuickDental(name, serviceId = 'external', unitPrice = 0, source = 'manual', tooth = '') {
   // Use occurrenceId to allow same procedure on same tooth multiple times if needed (e.g., surface differences)
@@ -5146,7 +5273,8 @@ function completeWorkspaceVisit() {
        _docFeeVal = parseFloat(_docInfo.fee);
     }
     
-    _emitBillingTrigger(uid, _patients[uid]?.info?.name || activeVisit.name || 'مريض', _patients[uid]?.info?.phone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc, undefined, _docFeeVal);
+    // ملاحظة: باراميتر dentalProcs بقي undefined هون كما كان قبل هذا التعديل — لم يُلمس سلوك الأسنان بهذا المسار
+    _emitBillingTrigger(uid, _patients[uid]?.info?.name || activeVisit.name || 'مريض', _patients[uid]?.info?.phone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc, undefined, _docFeeVal, undefined, generalProceduresList);
   }
   // --- Case 2: Unregistered patient — auto-register then save ---
   else {
@@ -5254,12 +5382,12 @@ function completeWorkspaceVisit() {
        _docFeeVal = parseFloat(_docInfo.fee);
     }
 
-    _emitBillingTrigger(newUid, booking.patName || activeVisit.name || 'مريض', booking.patPhone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc, insObj, _docFeeVal, dentalProceduresList);
+    _emitBillingTrigger(newUid, booking.patName || activeVisit.name || 'مريض', booking.patPhone || activeVisit.phone || '', finalVisitKey, labTestsList, radScansList, activeVisit.rx, !bookingId, currentDoc, insObj, _docFeeVal, dentalProceduresList, generalProceduresList);
     toast('تم تسجيل المريض تلقائياً في النظام', 'ok');
   }
 }
 
-function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx, addConsultation, docName, insurance, docFee, dentalProcs) {
+function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, labs, rads, rx, addConsultation, docName, insurance, docFee, dentalProcs, generalProcs) {
   if (!visitKey) return;
 
   // SAFETY CHECK: Single clinics strictly do NOT bill for lab, radiology, or pharmacy
@@ -5278,7 +5406,8 @@ function _emitBillingTrigger(patientId, patientName, patientPhone, visitKey, lab
       lab: isSingle ? [] : (labs || []),
       radiology: isSingle ? [] : (rads || []),
       pharmacy: isSingle ? [] : (rx || []).map(r => r.drug),
-      dental: dentalProcs || []
+      dental: dentalProcs || [],
+      procedures: generalProcs || [] // ADDITIVE v1.0 — إجراءات عامة (كل التخصصات)
     },
     createdAt: new Date().toISOString(),
     processedAt: null,
@@ -5973,3 +6102,204 @@ window.dismissAddonAlert = function() {
     _currentAlertKey = null;
   }
 }
+
+// ══════════════════════════════════════════════════════════════════
+// ADDITIVE v1.0 — الإجراءات العامة (غرفة الفحص، كل التخصصات)
+// نفس نمط الإجراءات السنية بالضبط + سعر يدوي + خيار حفظ بالكتالوج الدائم
+// ══════════════════════════════════════════════════════════════════
+function addGeneralProcedure() {
+  const nameInp  = document.getElementById('procInput');
+  const priceInp = document.getElementById('procPriceInput');
+  const saveChk  = document.getElementById('procSaveToCatalog');
+  if (!nameInp) return;
+
+  const name = nameInp.value.trim();
+  if (!name) { toast('⚠️ أدخل اسم الإجراء', 'err'); return; }
+
+  const sId    = nameInp.dataset.serviceId;
+  const sPrice = nameInp.dataset.unitPrice;
+
+  // ── حالة 1: تم اختياره من الكتالوج الموجود (سعر مثبت) ──
+  if (sId && nameInp.dataset.lastSelectedName === name) {
+    addQuickProcedure(name, sId, parseFloat(sPrice) || 0, 'pricing_catalog');
+    _resetProcInput();
+    return;
+  }
+
+  // ── حالة 2: إجراء جديد — يتطلب سعر صريح من الطبيب ──
+  const price = parseFloat(priceInp ? priceInp.value : NaN);
+  if (isNaN(price) || price < 0) {
+    toast('⚠️ أدخل سعراً صحيحاً للإجراء الجديد', 'err');
+    return;
+  }
+
+  if (saveChk && saveChk.checked) {
+    // يُحفظ بالكتالوج الدائم أولاً (متاح لباقي الزيارات مستقبلاً)، ثم يُضاف لهذه الزيارة
+    if (typeof db === 'undefined' || !BASE) { toast('❌ لا يوجد اتصال بقاعدة البيانات', 'err'); return; }
+    const ref = db.ref(`${BASE}/pricing_catalog`).push();
+    ref.set({ name: sanitize(name), type: 'procedure', price: price, active: true, updatedAt: new Date().toISOString() })
+      .then(() => {
+        if (typeof ArgonCore !== 'undefined' && ArgonCore.logAudit) {
+          ArgonCore.logAudit('PRICE_ADD', `إضافة إجراء عام جديد "${name}" — ${price} د.أ (من غرفة الفحص)`, 'BILLING');
+        }
+        addQuickProcedure(name, ref.key, price, 'pricing_catalog');
+        _resetProcInput();
+      })
+      .catch(() => toast('❌ فشل حفظ الإجراء بالكتالوج', 'err'));
+  } else {
+    // خاص بهذا المريض/الزيارة فقط — لا يُضاف للكتالوج الدائم
+    addQuickProcedure(name, 'external', price, 'manual');
+    _resetProcInput();
+  }
+}
+
+function _resetProcInput() {
+  const nameInp  = document.getElementById('procInput');
+  const priceInp = document.getElementById('procPriceInput');
+  const saveChk  = document.getElementById('procSaveToCatalog');
+  if (nameInp) {
+    nameInp.value = '';
+    delete nameInp.dataset.serviceId;
+    delete nameInp.dataset.unitPrice;
+    delete nameInp.dataset.lastSelectedName;
+  }
+  if (priceInp) priceInp.value = '';
+  if (saveChk)  saveChk.checked = false;
+}
+
+function addQuickProcedure(name, serviceId = 'external', price = 0, source = 'manual') {
+  const occurrenceId = (typeof _B !== 'undefined' && _B.generateId) ? _B.generateId() : (Date.now() + Math.random().toString(36).substring(2, 6));
+  generalProceduresList.push({ name, serviceId, unitPrice: parseFloat(price) || 0, source, occurrenceId });
+  renderGeneralProcedureChips();
+}
+
+function removeGeneralProc(occurrenceId) {
+  generalProceduresList = generalProceduresList.filter(x => x.occurrenceId !== occurrenceId);
+  renderGeneralProcedureChips();
+}
+
+function renderGeneralProcedureChips() {
+  if (typeof saveVisitDraft === 'function') saveVisitDraft();
+  const div = document.getElementById('procedureOrderList');
+  if (!div) return;
+  if (!generalProceduresList.length) {
+    div.innerHTML = `<span style="color:var(--muted);font-size:0.75rem" id="procPlaceholder">لا توجد إجراءات مسجلة في هذه الزيارة</span>`;
+    return;
+  }
+  div.innerHTML = generalProceduresList.map(t => `
+    <span class="tag" style="background:rgba(16,185,129,0.15);border:1px solid var(--green);color:var(--green)">
+      ${sanitize(t.name)}
+      <span style="font-size:0.7rem;background:var(--green);color:#fff;padding:2px 5px;border-radius:4px;margin:0 4px;font-family:'IBM Plex Mono',monospace">${parseFloat(t.unitPrice || 0).toFixed(3)} د.أ</span>
+      ${t.source === 'manual' ? '<i class="fas fa-star" style="color:var(--amber);margin-right:4px" title="خاص بهذه الزيارة فقط — لن يُحفظ بالكتالوج"></i>' : ''}
+      <span onclick="removeGeneralProc('${t.occurrenceId}')" style="cursor:pointer;margin-right:6px;font-weight:bold;color:var(--red)">✕</span>
+    </span>
+  `).join('');
+}
+
+// --- Doctor Pricing UI Logic ---
+window.addNewDentalProcedureToCatalog = function() {
+  const name = prompt("أدخل اسم الإجراء السني الجديد (مثال: حشوة تجميلية):");
+  if (!name || name.trim() === '') return;
+  
+  const priceInput = prompt(`أدخل السعر الخاص بك للإجراء "${name}" (بالدينار):`);
+  if (!priceInput || isNaN(priceInput) || parseFloat(priceInput) < 0) {
+    alert("لم يتم إضافة الإجراء لعدم إدخال سعر صحيح.");
+    return;
+  }
+  
+  if (typeof db === 'undefined' || !BASE) {
+    alert("خطأ في الاتصال.");
+    return;
+  }
+  
+  // 1. Generate a new service ID for the catalog
+  const serviceId = 'DENT-' + Date.now() + Math.floor(Math.random() * 1000);
+  
+  // 2. Save to global pricing catalog
+  db.ref(BASE + '/pricing_catalog/' + serviceId).set({
+    name: name.trim(),
+    type: 'dental',
+    price: parseFloat(priceInput), // default global price
+    active: true
+  }).then(() => {
+    // 3. Save directly to doctor's own catalog as well
+    const currentDocId = (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor';
+    return db.ref(BASE + '/doctor_pricing/' + currentDocId + '/' + serviceId).set(parseFloat(priceInput));
+  }).then(() => {
+    alert(`تم إضافة الإجراء "${name}" بنجاح!`);
+    // Note: the real-time listener will auto-update the modal list and the select dropdown.
+  }).catch(err => {
+    console.error(err);
+    alert("حدث خطأ أثناء الإضافة.");
+  });
+};
+
+window.openDoctorPricingModal = function() {
+  const modal = document.getElementById('doctorPricingModal');
+  const listDiv = document.getElementById('doctorPricingList');
+  if (!modal || !listDiv) return;
+
+  const allItems = Object.values(_pricingCatalogCache || {});
+  const dentalItems = allItems.filter(i => i.type === 'dental');
+  
+  if (!dentalItems.length) {
+    listDiv.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px 20px;">لا توجد أي إجراءات سنية مسجلة بعد.<br><br>يمكنك إضافة إجراءات جديدة بالضغط على زر "إضافة إجراء جديد" بالأسفل.</div>';
+  } else {
+    // Build the list
+    listDiv.innerHTML = dentalItems.map(item => {
+      const sId = item.serviceId;
+      const currentPrice = (window.doctorDentalPricing && window.doctorDentalPricing[sId] !== undefined) ? window.doctorDentalPricing[sId] : '';
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;background:#fff;padding:12px;border:1px solid var(--border);border-radius:8px;">
+          <div style="font-weight:bold;color:var(--text);font-size:0.95rem;max-width:60%;">${sanitize(item.name)}</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="number" step="any" min="0" data-pricing-sid="${sId}" value="${currentPrice}" placeholder="غير محدد" style="width:100px;padding:8px;border:1px solid var(--border);border-radius:6px;outline:none;text-align:center;">
+            <span style="color:var(--muted);font-size:0.8rem;">JD</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  modal.style.display = 'flex';
+};
+
+window.saveDoctorPricing = function() {
+  const currentDocId = (window.ArgonSession ? window.ArgonSession.get()?.staffId : null) || 'doctor';
+  if (!currentDocId) {
+    alert("تعذر تحديد هوية الطبيب للحفظ.");
+    return;
+  }
+
+  const inputs = document.querySelectorAll('input[data-pricing-sid]');
+  let updates = {};
+  
+  inputs.forEach(inp => {
+    const sId = inp.getAttribute('data-pricing-sid');
+    const rawVal = inp.value;
+    if (rawVal !== '') {
+      const p = parseFloat(rawVal);
+      if (!isNaN(p) && p >= 0) {
+        updates[sId] = p;
+      }
+    }
+  });
+
+  if (typeof db === 'undefined' || !BASE) {
+    alert("خطأ في الاتصال بقاعدة البيانات.");
+    return;
+  }
+
+  // Disable save button to prevent double clicks
+  const btn = document.querySelector('#doctorPricingModal .btn-primary');
+  if (btn) btn.disabled = true;
+
+  db.ref(BASE + '/doctor_pricing/' + currentDocId).set(updates).then(() => {
+    document.getElementById('doctorPricingModal').style.display = 'none';
+  }).catch(err => {
+    console.error(err);
+    alert("حدث خطأ أثناء الحفظ.");
+  }).finally(() => {
+    if (btn) btn.disabled = false;
+  });
+};

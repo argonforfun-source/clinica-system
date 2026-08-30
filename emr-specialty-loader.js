@@ -199,6 +199,15 @@
     if (vitalsTab && cfg.vitals && cfg.vitals.note) {
       vitalsTab.title = cfg.vitals.note;
     }
+
+    /* Override for Single Clinics with Dentistry Specialty: 
+       We must expose the Dental Procedures tab even if it's a single clinic */
+    if (cfg.id === 'dentistry') {
+      var dBtn = document.querySelector('[onclick*="tabDental"]');
+      var dTab = document.getElementById('tabDental');
+      if (dBtn) dBtn.classList.remove('tab-complex');
+      if (dTab) dTab.classList.remove('tab-complex');
+    }
   }
 
   /* ══════════════════════════════════════════════════════════════════
