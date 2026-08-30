@@ -4184,14 +4184,14 @@ function renderDentalOrderChips() {
   const div = document.getElementById('dentalOrderList');
   if (!div) return;
   if (!dentalProceduresList.length) {
-    div.innerHTML = \`<span style="color:var(--muted);font-size:0.75rem" id="dentalPlaceholder">لا توجد إجراءات سنية مسجلة في هذه الزيارة</span>\`;
+    div.innerHTML = `<span style="color:var(--muted);font-size:0.75rem" id="dentalPlaceholder">لا توجد إجراءات سنية مسجلة في هذه الزيارة</span>`;
     return;
   }
-  div.innerHTML = dentalProceduresList.map(t => \`
+  div.innerHTML = dentalProceduresList.map(t => `
     <span class="tag" style="background:rgba(139,92,246,0.15);border:1px solid var(--purple);color:var(--purple)">
-      \${sanitize(t.name)} \${t.tooth ? \` <span style="font-size:0.7rem;background:var(--purple);color:#fff;padding:2px 4px;border-radius:4px;margin:0 4px">سن \${sanitize(t.tooth)}</span>\` : ''} \${t.source === 'manual' ? '<i class="fas fa-exclamation-triangle" style="color:var(--amber);margin-right:4px" title="إجراء خارجي غير مسعر"></i>' : ''} <span onclick="removeDentalProc('\${t.occurrenceId}')" style="cursor:pointer;margin-right:6px;font-weight:bold;color:var(--red)">✕</span>
+      ${sanitize(t.name)} ${t.tooth ? ` <span style="font-size:0.7rem;background:var(--purple);color:#fff;padding:2px 4px;border-radius:4px;margin:0 4px">سن ${sanitize(t.tooth)}</span>` : ''} ${t.source === 'manual' ? '<i class="fas fa-exclamation-triangle" style="color:var(--amber);margin-right:4px" title="إجراء خارجي غير مسعر"></i>' : ''} <span onclick="removeDentalProc('${t.occurrenceId}')" style="cursor:pointer;margin-right:6px;font-weight:bold;color:var(--red)">✕</span>
     </span>
-  \`).join('');
+  `).join('');
 }
 
 // Sanitization
