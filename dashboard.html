@@ -2857,8 +2857,8 @@
       // Populate reception dropdown dynamically to include custom providers
       const rbSelect = document.getElementById('rbInsProv');
       if (rbSelect) {
-        rbSelect.innerHTML = \`<option value="">— اختر شركة التأمين —</option>\` + 
-          providers.map(([id, provider]) => \`<option value="\${id}">\${PROVIDER_NAMES[id] || provider.name || id}</option>\`).join('');
+        rbSelect.innerHTML = `<option value="">— اختر شركة التأمين —</option>` + 
+          providers.map(([id, provider]) => `<option value="${id}">${PROVIDER_NAMES[id] || provider.name || id}</option>`).join('');
       }
     };
 
