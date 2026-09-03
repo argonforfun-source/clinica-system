@@ -1307,10 +1307,7 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
     cleanPhone(k) === phone
   );
 
-  if (!matched.length) {
-    toast('⚠️ ملف المريض غير موجود. يرجى تسجيله من لوحة الاستقبال.', 'err');
-    return;
-  }
+
 
   // 3️⃣ ARGON ENTERPRISE: Block Ambiguous Auto-Open
   if (matched.length > 1) {
