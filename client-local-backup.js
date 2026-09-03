@@ -861,6 +861,16 @@ window.LocalBackupEngine = (function () {
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       rawText = await resp.text();
     } catch (e) {
+      if (e instanceof TypeError || e.message === 'Failed to fetch') {
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.target = '_blank';
+        a.download = fileRefOrUrl.split('/').pop() || 'backup.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        throw new Error('حماية المتصفح (CORS) تمنع القراءة المباشرة من السحابة. تم تنزيل الملف لجهازك، يرجى إعادة رفعه باستخدام زر "استعادة من ملف محلي".');
+      }
       throw new Error('فشل تحميل محتوى النسخة الاحتياطية: ' + e.message);
     }
 
