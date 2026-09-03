@@ -2204,7 +2204,7 @@ async function _executeSaveNewPatient(name, phone, nationalId, dob, age, gender,
   }).catch(() => toast('❌ فشل حفظ المريض', 'err'));
 }
 
-function generatePatientFileHTML(uid) {
+function generatePatientFileHTML(uid, options = {}) {
   const p = _patients[uid];
   if (!p) return '';
   const info = p.info || {};
@@ -2248,6 +2248,35 @@ function generatePatientFileHTML(uid) {
   } else {
     allergiesHTML = (info.allergies || []).map(a => `<span class="tag">${sanitize(a)}</span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
     chronicHTML = (info.chronicDiseases || []).map(c => `<span class="tag blue">${sanitize(c)}</span>`).join('') || '<span style="color:var(--muted)">لا يوجد</span>';
+  }
+
+  if (options.shellOnly) {
+     return `
+      <!-- PROFILE HEADER SHELL ONLY -->
+      <div class="pf-header">
+        <div class="pf-avatar">
+          <i class="fas fa-user-injured" style="font-size:3rem;color:var(--teal)"></i>
+        </div>
+        <div class="pf-details">
+          <h2 style="margin:0;font-size:1.5rem">${sanitize(info.name)}</h2>
+          <div style="font-size:0.9rem;color:var(--muted);margin-top:6px;display:flex;gap:16px;flex-wrap:wrap">
+            <span>📞 ${sanitize(info.phone || '—')}</span>
+            <span>📅 ${sanitize(info.dob || '—')}</span>
+            <span>🆔 ${sanitize(info.nationalId || '—')}</span>
+            <span><i class="fas fa-folder-open"></i> ${sanitize(info.fileNumber || '—')}</span>
+            ${info.gender ? `<span><i class="fas fa-venus-mars"></i> ${info.gender === 'M' ? 'ذكر' : 'أنثى'}</span>` : ''}
+          </div>
+          <div class="pf-clinical-tags">
+            <div class="pf-clinical-tag"><i class="fas fa-allergies" style="color:#ef4444"></i> ${allergiesHTML}</div>
+            <div class="pf-clinical-tag"><i class="fas fa-heartbeat" style="color:#3b82f6"></i> ${chronicHTML}</div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align: center; padding: 40px; color: var(--muted);">
+         <i class="fas fa-spinner fa-spin fa-2x" style="color:var(--teal); margin-bottom:10px;"></i>
+         <div>جاري تحميل السجل الطبي وتاريخ الزيارات...</div>
+      </div>
+     `;
   }
 
   let visitsTimelineHTML = `<div style="color:var(--muted);text-align:center;padding:20px;">لا يوجد زيارات سابقة</div>`;
@@ -2789,61 +2818,75 @@ async function safeViewPatientFile(phoneOrUid) {
     }
   }
 
-  // Global Soft Lock Check
+  // Global Soft Lock Check - ATOMIC ACQUISITION
   if (typeof BASE !== 'undefined') {
     const lockRef = db.ref(`${BASE}/active_sessions/${uid}`);
-    const lockSnap = await lockRef.once('value');
-    if (lockSnap.exists()) {
-      const lockData = lockSnap.val();
-      if (!isAdmin && lockData.doctorId !== loggedInDoctorId) {
-        // ── ARGON ENTERPRISE: Session Lock Takeover ──
-        const lockAgeMs = Date.now() - (lockData.lockedAt || Date.now());
+    
+    let abortReason = null;
+    const { committed, snapshot } = await lockRef.transaction((currentData) => {
+      if (currentData && currentData.doctorId !== loggedInDoctorId && !isAdmin) {
+        const lockAgeMs = Date.now() - (currentData.lockedAt || Date.now());
         const isExpired = lockAgeMs > 30 * 60 * 1000; // 30 minutes
-
-        if (isExpired) {
-          const tl = document.getElementById('timelineList');
-          if (tl) tl.innerHTML = `
-            <div style="text-align:center; padding: 40px; background: rgba(245,158,11,0.05); border-radius: 12px; border: 1px solid rgba(245,158,11,0.2);">
-              <div style="font-size: 3rem; margin-bottom: 12px;">⏳</div>
-              <h3 style="color: var(--amber); margin-bottom: 8px;">الجلسة قديمة (Expired Session)</h3>
-              <p style="color: var(--muted); margin-bottom: 20px; line-height: 1.6;">الملف الطبي مقفل بواسطة د. <b>${sanitize(lockData.doctorName)}</b><br>ولكن الجلسة تجاوزت 30 دقيقة ولم تُغلق. يمكنك الاستيلاء على الجلسة الآن.</p>
-              <button class="btn-primary" onclick="executeLockTakeover('${uid}', '${lockData.doctorId}', '${sanitize(lockData.doctorName)}')" style="background:var(--amber); border-color:var(--amber); color: #000; font-weight: bold; font-size: 1rem;"><i class="fas fa-unlock-alt"></i> الاستيلاء على الجلسة ومتابعة العمل</button>
-            </div>`;
-          return;
-        }
-
+        
         let isEmergencyGranted = false;
         if (window.ARGON_FEATURES && window.ARGON_FEATURES.ENABLE_BREAK_GLASS) {
-          const grant = lockData.emergencyGrants ? lockData.emergencyGrants[loggedInDoctorId] : null;
+          const grant = currentData.emergencyGrants ? currentData.emergencyGrants[loggedInDoctorId] : null;
           if (grant && Date.now() < grant.expiresAt) {
             isEmergencyGranted = true;
           }
         }
 
-        if (!isEmergencyGranted) {
-          toast(`الملف الطبي مفتوح لتعديله بواسطة ${lockData.doctorName}`, 'err');
-
-          if (window.ARGON_FEATURES && window.ARGON_FEATURES.ENABLE_BREAK_GLASS) {
-            // Show Break Glass Button in UI
-            const tl = document.getElementById('timelineList');
-            if (tl) tl.innerHTML = `<div style="text-align:center; padding: 40px;"><p>الملف مقفل بواسطة ${lockData.doctorName}</p><button class="btn-primary" onclick="requestBreakGlass('${uid}')" style="background:#dc2626; border-color:#b91c1c;">🚨 تفعيل وصول الطوارئ (Break Glass)</button></div>`;
-          }
-
-          if (window.AuditAPI) window.AuditAPI.log('PATIENT_FILE_LOCKED_CONFLICT', { patientId: uid, lockedBy: lockData.doctorId });
-          return;
-        } else {
-          toast('🚨 تم الدخول بوضع الطوارئ.', 'warn');
+        if (isExpired) {
+           abortReason = 'expired';
+           return; // Abort transaction to show Takeover UI
         }
-      }
-    }
+        
+        if (isEmergencyGranted) {
+           abortReason = 'emergency_granted';
+           return {
+             doctorId: loggedInDoctorId,
+             doctorName: session?.displayName || session?.name || 'طبيب',
+             lockedAt: Date.now()
+           }; // Proceed with overwrite
+        }
 
-    // Acquire Global Soft Lock
-    await lockRef.set({
-      doctorId: loggedInDoctorId,
-      doctorName: session?.displayName || session?.name || 'طبيب',
-      lockedAt: Date.now()
+        abortReason = 'locked';
+        return; // Abort transaction to show Lockout UI
+      }
+
+      // No conflict, acquire lock!
+      return {
+        doctorId: loggedInDoctorId,
+        doctorName: session?.displayName || session?.name || 'طبيب',
+        lockedAt: Date.now()
+      };
     });
-    lockRef.onDisconnect().remove();
+
+    if (!committed && abortReason !== 'emergency_granted') {
+      const lockData = snapshot.val();
+      if (abortReason === 'expired') {
+        const tl = document.getElementById('timelineList');
+        if (tl) tl.innerHTML = `
+          <div style="text-align:center; padding: 40px; background: rgba(245,158,11,0.05); border-radius: 12px; border: 1px solid rgba(245,158,11,0.2);">
+            <div style="font-size: 3rem; margin-bottom: 12px;">⏳</div>
+            <h3 style="color: var(--amber); margin-bottom: 8px;">الجلسة قديمة (Expired Session)</h3>
+            <p style="color: var(--muted); margin-bottom: 20px; line-height: 1.6;">الملف الطبي مقفل بواسطة د. <b>${sanitize(lockData.doctorName)}</b><br>ولكن الجلسة تجاوزت 30 دقيقة ولم تُغلق. يمكنك الاستيلاء على الجلسة الآن.</p>
+            <button class="btn-primary" onclick="executeLockTakeover('${uid}', '${lockData.doctorId}', '${sanitize(lockData.doctorName)}')" style="background:var(--amber); border-color:var(--amber); color: #000; font-weight: bold; font-size: 1rem;"><i class="fas fa-unlock-alt"></i> الاستيلاء على الجلسة ومتابعة العمل</button>
+          </div>`;
+        return;
+      } else if (abortReason === 'locked') {
+        toast(`الملف الطبي مفتوح لتعديله بواسطة ${lockData.doctorName}`, 'err');
+        if (window.ARGON_FEATURES && window.ARGON_FEATURES.ENABLE_BREAK_GLASS) {
+          const tl = document.getElementById('timelineList');
+          if (tl) tl.innerHTML = `<div style="text-align:center; padding: 40px;"><p>الملف مقفل بواسطة ${lockData.doctorName}</p><button class="btn-primary" onclick="requestBreakGlass('${uid}')" style="background:#dc2626; border-color:#b91c1c;">🚨 تفعيل وصول الطوارئ (Break Glass)</button></div>`;
+        }
+        if (window.AuditAPI) window.AuditAPI.log('PATIENT_FILE_LOCKED_CONFLICT', { patientId: uid, lockedBy: lockData.doctorId });
+        return;
+      }
+    } else {
+      if (abortReason === 'emergency_granted') toast('🚨 تم الدخول بوضع الطوارئ.', 'warn');
+      lockRef.onDisconnect().remove();
+    }
   }
 
   // Lock Context
@@ -2926,9 +2969,26 @@ async function safeViewPatientFile(phoneOrUid) {
     trackRecentPatient(uid, p.info?.name || 'مريض', p.info?.phone || '');
   }
 
-  document.getElementById('patFileContent').innerHTML = generatePatientFileHTML(uid);
-
+  // PROGRESSIVE RENDERING: 
+  // 1. Render Shell immediately (Fast First Paint)
+  document.getElementById('patFileContent').innerHTML = generatePatientFileHTML(uid, { shellOnly: true });
   sw('patFile');
+
+  // 2. Render Heavy Historical Data asynchronously with strict session/UID guards
+  setTimeout(() => {
+    // PROTECT PROGRESSIVE RENDERING: Abort if the doctor clicked another patient while we were waiting!
+    if (window.EMRContext.renderToken !== token) {
+      console.warn('Progressive rendering aborted: Doctor switched to another patient');
+      return;
+    }
+    // Strict UID Guarantee: double check the global context is still for this UID
+    if (window.EMRContext.activePatientId !== uid) return;
+
+    const contentDiv = document.getElementById('patFileContent');
+    if (contentDiv) {
+       contentDiv.innerHTML = generatePatientFileHTML(uid, { shellOnly: false });
+    }
+  }, 10);
 }
 
 // Load Visit Form
