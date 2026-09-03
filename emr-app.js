@@ -2872,6 +2872,7 @@ async function safeViewPatientFile(phoneOrUid) {
   const _hasBypass = window.EMRContext.bypassedPatients[uid];
   const _hasNID = ArgonNID.isValidNID(_patData?.info?.nationalId || '') || _hasBypass;
 
+  /*
   if (!_hasNID) {
     // أفرج عن القفل مؤقتاً
     window.EMRContext.sessionLock = false;
@@ -2905,6 +2906,7 @@ async function safeViewPatientFile(phoneOrUid) {
     });
     return;
   }
+  */
 
   activePatientId = uid;
   const p = _patients[uid];
