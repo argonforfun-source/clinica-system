@@ -2333,7 +2333,7 @@
                 <div style="font-size:0.8rem;font-weight:600;margin-bottom:8px">شركات التأمين المعتمدة ونسبة التغطية:</div>
                 <div id="insuranceProvidersList" style="margin-bottom:10px"></div>
                 <div style="display:flex;gap:8px">
-                  <select id="insProviderId" class="seti" style="flex:2;font-size:0.8rem;padding:6px;margin:0">
+                  <select id="insProviderId" class="seti" style="flex:2;font-size:0.8rem;padding:6px;margin:0" onchange="document.getElementById('customInsDiv').style.display = this.value === 'other' ? 'flex' : 'none'">
                     <option value="">— اختر شركة —</option>
                     <option value="nathealth">نات هيلث (NatHealth)</option>
                     <option value="gig">الخليج للتأمين (GIG)</option>
@@ -2343,9 +2343,14 @@
                     <option value="jic">الأردنية للتأمين (JIC)</option>
                     <option value="nic">الوطنية للتأمين (NIC)</option>
                     <option value="solidarity">سوليدرتي (Solidarity)</option>
+                    <option value="medexa">ميديكسا (Medexa)</option>
+                    <option value="other">أخرى (إضافة يدوية)</option>
                   </select>
                   <input type="number" id="insCoveragePct" class="seti" placeholder="التغطية (%)" step="1" min="1" max="100" style="flex:1;font-size:0.8rem;padding:6px;margin:0">
                   <button type="button" onclick="window.addInsuranceProvider()" style="background:var(--purple);color:white;border:none;border-radius:6px;padding:6px 12px;font-size:0.8rem;cursor:pointer"><i class="fas fa-plus"></i> إضافة</button>
+                </div>
+                <div id="customInsDiv" style="display:none;gap:8px;margin-top:8px">
+                  <input type="text" id="customInsName" class="seti" placeholder="اسم الشركة المخصصة..." style="flex:1;font-size:0.8rem;padding:6px;margin:0">
                 </div>
               </div>
               <div style="display:flex;gap:8px">
@@ -2598,10 +2603,11 @@
           style="font-size:.75rem;color:var(--teal);font-weight:800;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px">
           بيانات المريض</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div style="grid-column:1/-1">
+          <div style="grid-column:1/-1;position:relative;">
             <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">اسم المريض الكامل
               *</label>
-            <input type="text" id="rbPatName" class="mfi" placeholder="مثال: محمد أحمد السرّاحين" autocomplete="off">
+            <input type="text" id="rbPatName" class="mfi" placeholder="مثال: محمد أحمد السرّاحين" autocomplete="off" oninput="if(typeof window.onRbPatNameInput === 'function') window.onRbPatNameInput(this.value)">
+            <div id="rbLiveSearchDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surf);border:1px solid var(--border);border-radius:8px;max-height:200px;overflow-y:auto;z-index:1000;box-shadow:0 10px 25px rgba(0,0,0,0.2);"></div>
           </div>
           <div>
             <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">رقم الهاتف *</label>
@@ -2624,6 +2630,10 @@
           <div>
             <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">تاريخ الميلاد</label>
             <input type="date" id="rbPatDob" class="mfi">
+          </div>
+          <div style="grid-column:1/-1">
+            <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px">رقم الملف (اختياري)</label>
+            <input type="text" id="rbPatFileNo" class="mfi" placeholder="مثال: 124" dir="ltr">
           </div>
         </div>
       </div>
@@ -2675,15 +2685,6 @@
               <select id="rbInsProv" class="mfi"
                 style="background:var(--surf);color:var(--text);border:1px solid var(--border)">
                 <option value="">— اختر شركة التأمين —</option>
-                <option value="nathealth">نات هيلث (NatHealth)</option>
-                <option value="gig">الخليج للتأمين (GIG)</option>
-                <option value="mednet">ميد نت (MedNet)</option>
-                <option value="globe">جلوب ميد (GlobeMed)</option>
-                <option value="omn">أومني كير (OmniCare)</option>
-                <option value="jic">الأردنية للتأمين (JIC)</option>
-                <option value="nic">الوطنية للتأمين (NIC)</option>
-                <option value="solidarity">سوليدرتي (Solidarity)</option>
-                <option value="other">أخرى</option>
               </select>
             </div>
             <div>
@@ -2840,25 +2841,43 @@
       const PROVIDER_NAMES = {
         nathealth: "نات هيلث (NatHealth)", gig: "الخليج للتأمين (GIG)", mednet: "ميد نت (MedNet)",
         globe: "جلوب ميد (GlobeMed)", omn: "أومني كير (OmniCare)", jic: "الأردنية للتأمين (JIC)",
-        nic: "الوطنية للتأمين (NIC)", solidarity: "سوليدرتي (Solidarity)"
+        nic: "الوطنية للتأمين (NIC)", solidarity: "سوليدرتي (Solidarity)", medexa: "ميديكسا (Medexa)"
       };
 
       container.innerHTML = providers.map(([id, provider]) => `
     <div style="display:flex;justify-content:space-between;align-items:center;background:white;border:1px solid var(--border);border-radius:6px;padding:6px 10px;margin-bottom:6px">
-      <span style="font-size:0.8rem;font-weight:600"><i class="fas fa-shield-halved" style="color:var(--purple);margin-left:5px"></i>${PROVIDER_NAMES[id] || id}</span>
+      <span style="font-size:0.8rem;font-weight:600"><i class="fas fa-shield-halved" style="color:var(--purple);margin-left:5px"></i>${PROVIDER_NAMES[id] || provider.name || id}</span>
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--purple);font-weight:bold">${Number(provider.coveragePct).toFixed(0)}%</span>
         <button onclick="delete window._insuranceProviders['${id}'];window.renderInsuranceProviders()" style="background:none;border:none;color:var(--red);cursor:pointer;padding:0"><i class="fas fa-trash"></i></button>
       </div>
     </div>
   `).join('');
+
+      // Populate reception dropdown dynamically to include custom providers
+      const rbSelect = document.getElementById('rbInsProv');
+      if (rbSelect) {
+        rbSelect.innerHTML = \`<option value="">— اختر شركة التأمين —</option>\` + 
+          providers.map(([id, provider]) => \`<option value="\${id}">\${PROVIDER_NAMES[id] || provider.name || id}</option>\`).join('');
+      }
     };
 
     window.addInsuranceProvider = function () {
-      const id = document.getElementById('insProviderId').value;
+      let id = document.getElementById('insProviderId').value;
       const pct = parseFloat(document.getElementById('insCoveragePct').value);
       if (!id || isNaN(pct) || pct <= 0 || pct > 100) { toast('⚠️ أدخل شركة تأمين ونسبة تغطية صحيحة (1-100)', 'err'); return; }
-      window._insuranceProviders[id] = { coveragePct: pct };
+      
+      if (id === 'other') {
+        const customName = document.getElementById('customInsName').value.trim();
+        if (!customName) { toast('⚠️ يرجى إدخال اسم الشركة المخصصة', 'err'); return; }
+        id = 'custom_' + Date.now().toString(36);
+        window._insuranceProviders[id] = { coveragePct: pct, name: customName };
+        document.getElementById('customInsName').value = '';
+        document.getElementById('customInsDiv').style.display = 'none';
+      } else {
+        window._insuranceProviders[id] = { coveragePct: pct };
+      }
+      
       document.getElementById('insProviderId').value = '';
       document.getElementById('insCoveragePct').value = '';
       window.renderInsuranceProviders();
@@ -4131,7 +4150,9 @@
       if (dobEl) dobEl.max = now.toLocaleDateString('en-CA');
 
       // Reset form fields
-      ['rbPatName', 'rbPatPhone', 'rbPatNID', 'rbNotes', 'rbInsPol'].forEach(id => {
+      window._rbSelectedUid = null;
+      if (document.getElementById('rbLiveSearchDropdown')) document.getElementById('rbLiveSearchDropdown').style.display = 'none';
+      ['rbPatName', 'rbPatPhone', 'rbPatNID', 'rbNotes', 'rbInsPol', 'rbPatFileNo'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
       document.getElementById('rbPatGender').value = '';
@@ -4224,6 +4245,66 @@
       el.classList.add('sel');
     }
 
+    let _rbSearchTimer = null;
+    window._rbSelectedUid = null;
+    window._rbLiveSearchResults = {};
+
+    window.onRbPatNameInput = function(val) {
+      window._rbSelectedUid = null;
+      const q = val.trim();
+      const dd = document.getElementById('rbLiveSearchDropdown');
+      if (q.length < 2) {
+        dd.style.display = 'none';
+        return;
+      }
+      clearTimeout(_rbSearchTimer);
+      _rbSearchTimer = setTimeout(async () => {
+        try {
+          const snap = await db.ref(`${BASE}/patients`).orderByChild('info/name').startAt(q).endAt(q + "\uf8ff").limitToFirst(5).once('value');
+          const results = [];
+          if (snap.exists()) {
+             const data = snap.val();
+             for (let uid in data) {
+               results.push({ uid, info: data[uid].info });
+               window._rbLiveSearchResults[uid] = data[uid].info;
+             }
+          }
+          if (results.length > 0) {
+            dd.innerHTML = results.map(r => `
+              <div style="padding:10px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;" 
+                   onmouseover="this.style.background='var(--hover)'" 
+                   onmouseout="this.style.background=''" 
+                   onclick="window.selectRbPatient('${r.uid}')">
+                <div>
+                  <div style="font-weight:bold;color:var(--text);font-size:0.85rem">${sanitize(r.info.name)}</div>
+                  <div style="font-size:0.7rem;color:var(--muted)">📞 ${sanitize(r.info.phone || 'بدون')} | 🆔 ${sanitize(r.info.nationalId || 'بدون')}</div>
+                </div>
+                <div style="font-size:0.7rem;color:var(--teal);font-weight:bold;background:rgba(13,148,136,0.1);padding:2px 6px;border-radius:12px;">اختيار المريض</div>
+              </div>
+            `).join('');
+            dd.style.display = 'block';
+          } else {
+            dd.style.display = 'none';
+          }
+        } catch(e) { console.error('Live search err', e); }
+      }, 400);
+    };
+
+    window.selectRbPatient = function(uid) {
+      const info = window._rbLiveSearchResults[uid];
+      if (!info) return;
+      window._rbSelectedUid = uid;
+      document.getElementById('rbPatName').value = info.name || '';
+      document.getElementById('rbPatPhone').value = info.phone || '';
+      document.getElementById('rbPatNID').value = info.nationalId || '';
+      document.getElementById('rbPatGender').value = info.gender || '';
+      if (document.getElementById('rbPatDob')) document.getElementById('rbPatDob').value = info.dob || '';
+      if (document.getElementById('rbPatFileNo')) document.getElementById('rbPatFileNo').value = info.fileNumber || '';
+      
+      document.getElementById('rbLiveSearchDropdown').style.display = 'none';
+      toast('تم تعبئة بيانات المريض تلقائياً', 'ok');
+    };
+
     async function submitReceptionBooking() {
       // ── Validation ──
       const patName = (document.getElementById('rbPatName').value || '').trim();
@@ -4269,11 +4350,16 @@
         let matchedName = null;
         let cleanNID = patNID ? (window.ArgonNID ? ArgonNID.cleanNID(patNID) : patNID) : null;
 
-        if (cleanNID && cleanNID.length >= 9) {
-          const snap = await db.ref(`${BASE}/patients`).orderByChild('info/nationalId').equalTo(cleanNID).once('value');
-          if (snap.exists()) {
-            matchedId = Object.keys(snap.val())[0];
-            matchedName = snap.val()[matchedId]?.info?.name || '';
+        if (window._rbSelectedUid) {
+          matchedId = window._rbSelectedUid;
+          matchedName = window._rbLiveSearchResults[matchedId] ? window._rbLiveSearchResults[matchedId].name : patName;
+        } else {
+          if (cleanNID && cleanNID.length >= 9) {
+            const snap = await db.ref(`${BASE}/patients`).orderByChild('info/nationalId').equalTo(cleanNID).once('value');
+            if (snap.exists()) {
+              matchedId = Object.keys(snap.val())[0];
+              matchedName = snap.val()[matchedId]?.info?.name || '';
+            }
           }
         }
         
@@ -4337,14 +4423,33 @@
 
            if (finalPatientId) bookingObj.patientId = finalPatientId;
 
+           if (finalPatientId && window._rbSelectedUid === finalPatientId) {
+             const pRef = db.ref(`${BASE}/patients/${finalPatientId}/info`);
+             const snap = await pRef.once('value');
+             if (snap.exists()) {
+               const pInfo = snap.val();
+               let changed = false;
+               const updates = {};
+               if (patPhone && pInfo.phone !== patPhone) { updates.phone = patPhone; changed = true; }
+               if (patNID && pInfo.nationalId !== patNID) { updates.nationalId = patNID; changed = true; }
+               if (gender && pInfo.gender !== gender) { updates.gender = gender; changed = true; }
+               if (dob && pInfo.dob !== dob) { updates.dob = dob; updates.age = window.ArgonCalcAge(dob); changed = true; }
+               const fileNo = document.getElementById('rbPatFileNo') ? document.getElementById('rbPatFileNo').value.trim() : '';
+               if (fileNo && pInfo.fileNumber !== fileNo) { updates.fileNumber = fileNo; changed = true; }
+               if (changed) { await pRef.update(updates); }
+             }
+           }
+
            await db.ref(`${BASE}/bookings`).push(bookingObj);
            toast(`✅ تم حجز موعد لـ ${patName} في تمام ${bTime}`, 'ok');
            
            // clear and close
+           window._rbSelectedUid = null;
            document.getElementById('rbPatName').value = '';
            document.getElementById('rbPatPhone').value = '';
            document.getElementById('rbPatNID').value = '';
            document.getElementById('rbNotes').value = '';
+           if(document.getElementById('rbPatFileNo')) document.getElementById('rbPatFileNo').value = '';
            if(document.getElementById('rbInsPol')) document.getElementById('rbInsPol').value = '';
            closeReceptionBooking();
            

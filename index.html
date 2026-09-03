@@ -2663,17 +2663,17 @@
       const isAllZeros = /^0+$/.test(rawNid);
       const looksLikeBirthdate = rawNid.length === 8 && /^(19|20)\d{6}$/.test(rawNid);
 
-      if (rawNid.length < 9) {
+      if (rawNid.length > 0 && rawNid.length < 9) {
         nidInp.classList.add('err');
         nidErr.textContent = 'الرقم الوطني يجب أن لا يقل عن 9 أرقام';
         nidErr.style.display = 'block';
         ok = false;
-      } else if (isAllZeros) {
+      } else if (rawNid.length > 0 && isAllZeros) {
         nidInp.classList.add('err');
         nidErr.textContent = '⚠️ الرقم الوطني لا يمكن أن يكون أصفاراً';
         nidErr.style.display = 'block';
         ok = false;
-      } else if (looksLikeBirthdate) {
+      } else if (rawNid.length > 0 && looksLikeBirthdate) {
         nidInp.classList.add('err');
         nidErr.textContent = '⚠️ يبدو هذا تاريخ ميلاد — الرجاء إدخال الرقم الوطني الصحيح';
         nidErr.style.display = 'block';
@@ -2722,7 +2722,7 @@
 
       // المزيد من التحقق الأمني قبل الإرسال
       if (!isName(name) || !isPhone(phone)) { toast(T('errData'), 'err'); return; }
-      if (_nidFinal.length < 9 || /^0+$/.test(_nidFinal)) {
+      if (_nidFinal.length > 0 && (_nidFinal.length < 9 || /^0+$/.test(_nidFinal))) {
         toast(T('errNid') || '⚠️ يرجى إدخال رقم وطني صحيح', 'err');
         return;
       }

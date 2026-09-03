@@ -1707,6 +1707,20 @@ async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = f
 // Modal management
 function openNewPatient() {
   document.getElementById('newPatModal').style.display = 'flex';
+  
+  let maxFileNo = 0;
+  if (typeof _patients !== 'undefined') {
+    Object.values(_patients).forEach(p => {
+      if (p.info && p.info.fileNumber) {
+        const fn = parseInt(p.info.fileNumber);
+        if (!isNaN(fn) && fn > maxFileNo) maxFileNo = fn;
+      }
+    });
+  }
+  const hintEl = document.getElementById('npFileHint');
+  if (hintEl) {
+    hintEl.textContent = maxFileNo > 0 ? `(آخر رقم ملف: ${maxFileNo})` : '';
+  }
 }
 function closeModal(id) {
   document.getElementById(id).style.display = 'none';
@@ -1736,6 +1750,7 @@ function openEditPatient(uid) {
   document.getElementById('epName').value = p.info.name || '';
   document.getElementById('epPhone').value = p.info.phone || uid;
   document.getElementById('epNationalId').value = p.info.nationalId || '';
+  if (document.getElementById('epFileNo')) document.getElementById('epFileNo').value = p.info.fileNumber || '';
   const _epDobEl = document.getElementById('epDob');
   if (_epDobEl) {
     _epDobEl.value = p.info.dob || '';
@@ -1858,10 +1873,13 @@ async function saveEditPatient() {
     return;
   }
 
+  const fileNumber = document.getElementById('epFileNo') ? document.getElementById('epFileNo').value.trim() : '';
+
   const updates = {
     name: sanitize(name),
     phone: sanitize(phone),
     nationalId: nationalId ? sanitize(nationalId) : null,
+    fileNumber: fileNumber || null,
     dob: _dob_ep || null,
     age: _dob_ep ? window.ArgonCalcAge(_dob_ep) : null,
     gender: sanitize(gender),
@@ -2012,8 +2030,8 @@ async function saveNewPatient() {
   const notes = document.getElementById('npNotes').value.trim();
 
   const cleanNid = ArgonNID.cleanNID(nationalId);
-  if (!name || !phone || !ArgonNID.isValidNID(cleanNid)) {
-    toast('⚠️ يرجى إدخال الاسم، رقم الهاتف، والرقم الوطني (9 أرقام كحد أدنى)', 'err');
+  if (!name || !phone || (cleanNid && !ArgonNID.isValidNID(cleanNid))) {
+    toast('⚠️ يرجى إدخال الاسم ورقم الهاتف. (الرقم الوطني يجب أن يكون 9 أرقام في حال إدخاله)', 'err');
     return;
   }
 
@@ -2126,11 +2144,13 @@ async function _executeSaveNewPatient(name, phone, nationalId, dob, age, gender,
   const loggedInDoctorId = session.staffId || null;
 
   const mrn = genMRN();
+  const fileNumber = document.getElementById('npFileNo') ? document.getElementById('npFileNo').value.trim() : '';
   const patObj = {
     info: {
       name: sanitize(name),
       phone: sanitize(phone),
       nationalId: nationalId ? sanitize(nationalId) : null,
+      fileNumber: fileNumber || null,
       dob: dob || null,
       age: dob ? window.ArgonCalcAge(dob) : (age || null),
       gender: sanitize(gender),
@@ -2159,7 +2179,7 @@ async function _executeSaveNewPatient(name, phone, nationalId, dob, age, gender,
     logAudit('CREATE_PATIENT', `تم تسجيل مريض جديد ${patObj.info.name} (${newUid}) - MRN: ${mrn}`, 'EMR');
     toast(`✅ تم تسجيل المريض بنجاح — ${mrn}`, 'ok');
     closeModal('newPatModal');
-    ['npName', 'npPhone', 'npNationalId', 'npDob', 'npAllergies', 'npChronic', 'npNotes'].forEach(id => {
+    ['npName', 'npPhone', 'npNationalId', 'npFileNo', 'npDob', 'npAllergies', 'npChronic', 'npNotes'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -3699,7 +3719,7 @@ function printPrescription(vk) {
         
         <div class="header">
           <div class="clinic-info">
-            <h1><i class="fas fa-clinic-medical" style="color:#10b981; margin-left:8px;"></i>${sanitize(clinicName)}</h1>
+            <h1>${(typeof _sets !== 'undefined' && _sets.logoUrl) ? `<img src="${_sets.logoUrl}" style="max-height:50px; margin-left:10px; vertical-align:middle; border-radius:8px;">` : `<i class="fas fa-clinic-medical" style="color:#10b981; margin-left:8px;"></i>`}${sanitize(clinicName)}</h1>
             <p>سجل طبي إلكتروني معتمد - ARGON EMR</p>
           </div>
           <div class="doc-info">
@@ -3883,9 +3903,9 @@ function printVisitSummary(vk) {
         <!-- Header -->
         <div class="hdr">
           <div class="clinic-brand">
-            <div class="clinic-logo-placeholder">
+            ${(typeof _sets !== 'undefined' && _sets.logoUrl) ? `<img src="${_sets.logoUrl}" style="max-height:60px; max-width:60px; border-radius:12px; object-fit:contain;">` : `<div class="clinic-logo-placeholder">
                <i class="fas fa-hospital-symbol">H</i>
-            </div>
+            </div>`}
             <div>
               <div class="title">${_sets.name || 'العيادة الطبية'}</div>
               <div class="subtitle">${_sets.specialty || 'عيادة تخصصية متكاملة'} | هاتف: <span dir="ltr">${_sets.phone || 'غير مدرج'}</span></div>

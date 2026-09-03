@@ -939,7 +939,7 @@ window.ArgonMedical.PatientMatch = (() => {
     // ══════════════════════════════════════════════════════════
     // 🔒 ABSOLUTE RULE #2 — لا رقم وطني = لا ملف جديد
     // ══════════════════════════════════════════════════════════
-    if (!ArgonNID.isValidNID(inNID)) {
+    if (inNID && !ArgonNID.isValidNID(inNID)) {
       return {
         result:      'NEEDS_NID',
         confidence:  0,

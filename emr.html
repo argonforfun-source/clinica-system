@@ -445,7 +445,13 @@
         <div class="fg"><label>رقم الهاتف *</label><input class="fi" id="npPhone" placeholder="07XXXXXXXX" dir="ltr" oninput="detectNewPatDuplicates()"></div>
       </div>
       <div id="npDupWarning"></div>
-      <div class="fg" style="margin-bottom:12px"><label><i class="fas fa-id-card"></i> الرقم الوطني / الهوية *</label><input class="fi" id="npNationalId" placeholder="إجباري (9 أرقام على الأقل)" dir="ltr"></div>
+      <div class="fi-row" style="margin-bottom:12px">
+        <div class="fg"><label><i class="fas fa-id-card"></i> الرقم الوطني / الهوية</label><input class="fi" id="npNationalId" placeholder="اختياري (9 أرقام على الأقل)" dir="ltr"></div>
+        <div class="fg"><label><i class="fas fa-folder"></i> رقم الملف (اختياري)</label>
+          <input class="fi" id="npFileNo" placeholder="مثال: 124" dir="ltr">
+          <div id="npFileHint" style="font-size:0.75rem;color:var(--teal);margin-top:4px;font-weight:bold;"></div>
+        </div>
+      </div>
       <div class="fg" style="margin-bottom:12px">
         <label><i class="fas fa-camera"></i> صورة المريض (اختياري)</label>
         <div style="display:flex;gap:12px;align-items:center">
@@ -507,7 +513,12 @@
         <div class="fg"><label>اسم المريض *</label><input class="fi" id="epName" placeholder="مثال: أحمد"></div>
         <div class="fg"><label>رقم الهاتف *</label><input class="fi" id="epPhone" placeholder="07XXXXXXXX" dir="ltr"></div>
       </div>
-      <div class="fg" style="margin-bottom:12px"><label><i class="fas fa-id-card"></i> الرقم الوطني / الهوية *</label><input class="fi" id="epNationalId" placeholder="إجباري (9 أرقام على الأقل)" dir="ltr"></div>
+      <div class="fi-row" style="margin-bottom:12px">
+        <div class="fg"><label><i class="fas fa-id-card"></i> الرقم الوطني / الهوية</label><input class="fi" id="epNationalId" placeholder="اختياري (9 أرقام على الأقل)" dir="ltr"></div>
+        <div class="fg"><label><i class="fas fa-folder"></i> رقم الملف (اختياري)</label>
+          <input class="fi" id="epFileNo" placeholder="مثال: 124" dir="ltr">
+        </div>
+      </div>
       <div class="fg" style="margin-bottom:12px">
         <label><i class="fas fa-camera"></i> صورة المريض (اختياري)</label>
         <div style="display:flex;gap:12px;align-items:center">
