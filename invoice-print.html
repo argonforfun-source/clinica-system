@@ -599,7 +599,6 @@
         <div class="inv-id-label">رقم الفاتورة · Invoice No.</div>
         <div class="inv-id-number" id="invNumber">INV-—</div>
         <div class="inv-id-meta" id="invMeta">—</div>
-        <div class="inv-qr-placeholder" title="QR Code">⬛</div>
       </div>
     </div>
 
@@ -797,8 +796,16 @@ function renderInvoice(inv, settings) {
 
   if (settings.logoUrl) {
     const fallbackEmoji = sanitize(settings.emoji || '🏥');
-    document.getElementById('clinicLogoWrap').innerHTML =
-      `<img src="${sanitize(settings.logoUrl)}" alt="logo" onerror="this.outerHTML='${fallbackEmoji}'">`;
+    const img = document.createElement('img');
+    img.src = settings.logoUrl;
+    img.alt = 'logo';
+    img.onerror = function() {
+       const wrap = document.getElementById('clinicLogoWrap');
+       wrap.innerHTML = fallbackEmoji;
+    };
+    const wrap = document.getElementById('clinicLogoWrap');
+    wrap.innerHTML = '';
+    wrap.appendChild(img);
   } else {
     document.getElementById('clinicLogoWrap').textContent = settings.emoji || '🏥';
   }
