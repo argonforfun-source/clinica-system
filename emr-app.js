@@ -1872,8 +1872,8 @@ async function saveEditPatient() {
   const notes = document.getElementById('epNotes').value.trim();
 
   const cleanNid = ArgonNID.cleanNID(nationalId);
-  if (!name || !phone || !ArgonNID.isValidNID(cleanNid)) {
-    toast('⚠️ يرجى إدخال الاسم ورقم الهاتف والرقم الوطني (9 أرقام على الأقل)', 'err');
+  if (!name || !phone || (cleanNid && !ArgonNID.isValidNID(cleanNid))) {
+    toast('⚠️ يرجى إدخال الاسم ورقم الهاتف. (الرقم الوطني يجب أن يكون 9 أرقام في حال إدخاله)', 'err');
     return;
   }
 
