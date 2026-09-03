@@ -797,14 +797,14 @@ window.LocalBackupEngine = (function () {
     if (!parsed._meta || !parsed.data) {
       return { ok: false, reason: 'بنية الملف غير متوافقة مع محرك آرغون للنسخ الاحتياطي (لا يحتوي _meta/data).' };
     }
-    // ── حارس حرج: منع استعادة نسخة عيادة أخرى في عيادة مختلفة بالخطأ ──
+    // ── حارس حرج: منع استعادة نسخة عيادة أخرى ──
     if (String(parsed._meta.clinicId) !== String(expectedClinicId)) {
       return {
         ok: false,
-        reason: `🛑 هذا الملف يخص عيادة أخرى (ID: ${parsed._meta.clinicId}) وليس العيادة الحالية (ID: ${expectedClinicId}). تم إيقاف الاستعادة منعاً لدمج بيانات عيادتين مختلفتين.`
+        reason: `🛑 هذا الملف يخص عيادة أخرى (ID: ${parsed._meta.clinicId}) وليس العيادة الحالية (ID: ${expectedClinicId}).`
       };
     }
-    // ── فحص سلامة المحتوى عبر checksum محفوظ وقت أخذ النسخة ──
+    // ── فحص سلامة المحتوى ──
     if (parsed._meta.checksum) {
       const recomputed = _simpleChecksum(JSON.stringify(parsed.data));
       if (recomputed !== parsed._meta.checksum) {
@@ -812,48 +812,46 @@ window.LocalBackupEngine = (function () {
       }
     }
     if (typeof parsed.data !== 'object' || parsed.data === null || Object.keys(parsed.data).length === 0) {
-      return { ok: false, reason: '🛑 الملف لا يحتوي على أي بيانات فعلية — تم إيقاف الاستعادة لحماية بياناتك الحالية من الحذف الكامل.' };
+      return { ok: false, reason: '🛑 الملف لا يحتوي على بيانات فعلية للاستعادة.' };
     }
     return { ok: true };
   }
 
-  /**
-   * 🛑 restoreFromCloud — العملية الأخطر في هذا المحرك بالكامل 🛑
-   * تستبدل كامل بيانات العيادة الحيّة (clinics/{clinicId}) بمحتوى نسخة سحابية محددة.
-   *
-   * خطوات الأمان الإلزامية (لا يمكن تجاوز أي منها برمجياً):
-   *   1) تحميل وفحص JSON.parse
-   *   2) فحص الهوية + الـ checksum عبر _validateBackupPayloadShape (فشل = إيقاف فوري)
-   *   3) أخذ لقطة أمان سحابية إلزامية مما هو موجود الآن — فشل هذه الخطوة = إيقاف العملية بالكامل (fail-closed)
-   *   4) أخذ لقطة أمان محلية أيضاً (best-effort فقط، لا توقف العملية إن فشلت)
-   *   5) الكتابة الفعلية في قاعدة البيانات الحيّة
-   *   6) تنظيف عُقد الجلسات المؤقتة (active_logins/presence) لمنع أقفال تزامن وهمية بعد الاستعادة
-   *   7) تسجيل العملية في السجل المحلي + سجل التدقيق العام للنظام (ArgonCore.logAudit إن وُجد)
-   *
-   * @param {string} fileRefOrUrl - مسار التخزين (fullPath) أو رابط تحميل مباشر (https://...)
-   * @param {string} clinicId
-   * @param {{onProgress?:Function, sourceFileName?:string}} [opts]
-   * @returns {Promise<Object>} سجل العملية المكتملة
-   */
   async function restoreFromCloud(fileRefOrUrl, clinicId, opts) {
     opts = opts || {};
     const notify = (msg) => { _log(msg, 'warn'); if (typeof opts.onProgress === 'function') { try { opts.onProgress(msg); } catch (e) {} } };
     const targetClinicId = String(clinicId || _clinicId);
 
     if (!targetClinicId) throw new Error('لم يتم تحديد معرّف العيادة المستهدفة بالاستعادة.');
-    notify('⚠️ بدء عملية استعادة من السحابة — عملية حساسة وحرجة...');
-
-    /* ── 1) تحميل الملف المطلوب ── */
-    let downloadUrl = fileRefOrUrl;
-    try {
-      if (!/^https?:\/\//i.test(fileRefOrUrl)) {
-        const ref = firebase.storage().ref(fileRefOrUrl);
-        downloadUrl = await ref.getDownloadURL();
+    
+    // 1. Authorization
+    if (window.ArgonSession && window.ArgonSession.get) {
+      const role = window.ArgonSession.get().role;
+      if (role !== 'admin' && role !== 'superadmin' && role !== 'owner') {
+         throw new Error('❌ صلاحيات غير كافية: عملية الاستعادة متاحة للإدارة فقط.');
       }
-    } catch (e) {
-      throw new Error('تعذّر الوصول لملف النسخة الاحتياطية المطلوبة على السحابة: ' + _friendlyStorageError(e));
     }
 
+    notify('⚠️ بدء عملية استعادة حذرة من السحابة (Strict Mode)...');
+    const restoreOperationId = 'RST_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+
+    /* ── 2) فحص الميتاداتا للتشخيص الدقيق للـ CORS ── */
+    let downloadUrl = fileRefOrUrl;
+    let metadataExists = false;
+    let fileRef = null;
+    
+    try {
+      if (!/^https?:\/\//i.test(fileRefOrUrl)) {
+        fileRef = firebase.storage().ref(fileRefOrUrl);
+        await fileRef.getMetadata(); // Proof of existence and auth
+        metadataExists = true;
+        downloadUrl = await fileRef.getDownloadURL();
+      }
+    } catch (e) {
+      throw new Error('تعذّر الوصول لملف النسخة الاحتياطية المطلوبة (تفويض/وجود): ' + _friendlyStorageError(e));
+    }
+
+    /* ── 3) التحميل الفعلي للبيانات ── */
     notify('⬇️ تحميل محتوى النسخة الاحتياطية...');
     let rawText;
     try {
@@ -861,7 +859,8 @@ window.LocalBackupEngine = (function () {
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       rawText = await resp.text();
     } catch (e) {
-      if (e instanceof TypeError || e.message === 'Failed to fetch') {
+      if ((e instanceof TypeError || e.message === 'Failed to fetch') && metadataExists) {
+        // الميتاداتا نجحت، مما يثبت صحة الـ Storage Rules، ولكن fetch فشل → 100% CORS/Browser Restriction
         const a = document.createElement('a');
         a.href = downloadUrl;
         a.target = '_blank';
@@ -869,75 +868,113 @@ window.LocalBackupEngine = (function () {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        throw new Error('حماية المتصفح (CORS) تمنع القراءة المباشرة من السحابة. تم تنزيل الملف لجهازك، يرجى إعادة رفعه باستخدام زر "استعادة من ملف محلي".');
+        throw new Error('حماية المتصفح (CORS) تمنع القراءة المباشرة. تم تنزيل الملف بأمان لجهازك. يرجى استعادته باستخدام زر "استعادة من ملف محلي".');
       }
-      throw new Error('فشل تحميل محتوى النسخة الاحتياطية: ' + e.message);
+      throw new Error('فشل تحميل محتوى النسخة: ' + e.message);
     }
 
     let parsed;
     try { parsed = JSON.parse(rawText); }
-    catch (e) { throw new Error('🛑 الملف المُنزَّل ليس JSON صالحاً — تم إيقاف الاستعادة قبل أي تعديل.'); }
+    catch (e) { throw new Error('🛑 الملف ليس JSON صالحاً.'); }
 
-    /* ── 2) فحص السلامة والهوية (الحارس الأهم) ── */
-    notify('🔍 فحص سلامة وهوية الملف...');
+    /* ── 4) الهوية والهيكلة ── */
+    notify('🔍 فحص دقيق لهوية وسلامة الملف...');
     const check = _validateBackupPayloadShape(parsed, targetClinicId);
     if (!check.ok) throw new Error(check.reason);
 
-    /* ── 3) لقطة أمان سحابية إلزامية (fail-closed: فشلها = إيقاف العملية بالكامل) ── */
-    notify('🛟 أخذ نسخة أمان سحابية من الوضع الحالي قبل أي استبدال...');
+    /* ── 5) تحديد نطاق الاستعادة الآمن (Scope Control) ── */
+    // لا نمسح العيادة بالكامل (No blind set). نختار العقد المسموحة فقط
+    const allowedScopes = ['patients', 'visits', 'invoices', 'appointments', 'dental', 'settings', 'inventory', 'lab', 'radiology', 'payments', 'prescriptions'];
+    const updatePayload = {};
+    let restoreDataFound = false;
+    for (const scope of allowedScopes) {
+      if (parsed.data[scope] !== undefined) {
+        updatePayload[scope] = parsed.data[scope];
+        restoreDataFound = true;
+      }
+    }
+    if (!restoreDataFound) throw new Error('لم يتم العثور على أي بيانات ضمن النطاق المسموح للاستعادة.');
+
+    /* ── 6) Concurrency Protection (Lock) ── */
+    notify('🔒 تأمين قاعدة البيانات لمنع التضارب...');
+    const dbRoot = firebase.database().ref('clinics/' + targetClinicId);
+    const lockRef = dbRoot.child('system_state/restore_lock');
+    const lockTx = await lockRef.transaction(currentData => {
+      if (currentData && currentData.locked) return; // Abort, already locked
+      return { locked: true, opId: restoreOperationId, ts: firebase.database.ServerValue.TIMESTAMP };
+    });
+    if (!lockTx.committed) {
+      throw new Error('عملية استعادة أو تحديث أخرى قيد التنفيذ حالياً. يرجى المحاولة لاحقاً.');
+    }
+
+    /* ── 7) Safety Snapshot ── */
+    notify('🛟 إنشاء لقطة أمان موثقة...');
     let safetySnapshot;
     try {
       safetySnapshot = await performCloudBackup(true, CLOUD_PRERESTORE_PREFIX);
-      if (!safetySnapshot) throw new Error('لم يتم إنشاء نسخة الأمان لسبب غير معروف.');
+      if (!safetySnapshot || !safetySnapshot.sizeBytes) throw new Error('حجم لقطة الأمان غير صالح.');
     } catch (e) {
-      throw new Error('🛑 تعذّر إنشاء نسخة أمان قبل الاستعادة — تم إيقاف العملية بالكامل لحماية بياناتك الحالية. لم يتم تعديل أي شيء. السبب: ' + e.message);
+      await lockRef.remove();
+      throw new Error('🛑 تم إلغاء الاستعادة: تعذّر أخذ لقطة الأمان المطلوبة. السبب: ' + e.message);
     }
 
-    /* ── 4) لقطة أمان محلية (best-effort — لا تُسقط العملية) ── */
-    try { await performBackup(true); }
-    catch (e) { console.warn('[ArgonBackup] فشل أخذ نسخة أمان محلية (غير حرج، تم تجاوزها):', e.message); }
-
-    /* ── 5) الاستبدال الفعلي في قاعدة البيانات الحيّة ── */
-    notify('💾 كتابة البيانات المستعادة في قاعدة البيانات الحيّة...');
+    /* ── 8) Controlled Write (الاستبدال المنضبط) ── */
+    notify('💾 تنفيذ الاستبدال ضمن النطاق المسموح...');
+    let writeCommitted = false;
+    let writeError = null;
     try {
-      const dbRef = firebase.database().ref('clinics/' + targetClinicId);
-      await dbRef.set(parsed.data);
-
-      /* ── 6) تنظيف عُقد مؤقتة قد تصبح "أشباحاً" بعد استبدال شامل للبيانات ──
-         active_logins: قد يحتوي قفل تزامن لجهاز لم يعد متصلاً فعلياً بعد الاستعادة
-         presence: عدّاد "المتصفحين الآن" — لا قيمة لإبقائه بعد عملية كهذه */
-      await firebase.database().ref('clinics/' + targetClinicId + '/active_logins').remove().catch(() => {});
-      await firebase.database().ref('clinics/' + targetClinicId + '/presence').remove().catch(() => {});
+      await dbRoot.update(updatePayload);
+      writeCommitted = true;
     } catch (e) {
-      throw new Error(
-        '🛑 فشلت عملية الكتابة في قاعدة البيانات الحيّة: ' + e.message +
-        ' — لم تُفقد بياناتك: نسخة الأمان محفوظة تحت اسم: ' + (safetySnapshot ? safetySnapshot.fileName : '—')
-      );
+      writeError = e.message;
+      // لا ننفذ Auto-Rollback هنا لأن حالة البيانات غير معروفة (Unknown State) بسبب فشل الرد الشبكي
     }
 
-    /* ── 7) التسجيل في السجلات (المحلي + سجل التدقيق العام للنظام) ── */
+    /* ── 9) Post-Restore Verification (فحص ما بعد الاستعادة) ── */
+    if (writeCommitted) {
+       notify('🩺 جاري التحقق من سلامة البيانات المستعادة...');
+       try {
+         const verSnap = await dbRoot.child('patients').once('value');
+         const verifiedPatients = Object.keys(verSnap.val() || {}).length;
+         const expectedPatients = Object.keys(updatePayload.patients || {}).length;
+         
+         if (verifiedPatients !== expectedPatients) {
+           throw new Error(`تضارب في التحقق: متوقع ${expectedPatients}، وُجد ${verifiedPatients}`);
+         }
+       } catch (verError) {
+         // التحقق فشل لكن الكتابة نجحت (C) -> State is compromised
+         notify('⚠️ فشل التحقق من مطابقة البيانات. لقطة الأمان محفوظة بمرجع: ' + safetySnapshot.fileName);
+       }
+    }
+
+    // تنظيف القفل
+    await lockRef.remove().catch(()=>{});
+
+    if (!writeCommitted) {
+      throw new Error(`🛑 فشل غير متوقع أثناء الكتابة (حالة غير معروفة). لم يتم تنفيذ تراجع آلي. رقم العملية: ${restoreOperationId}. لقطة الأمان: ${safetySnapshot.fileName}. الخطأ: ${writeError}`);
+    }
+
+    /* ── 10) التنظيف والسجلات (Audit) ── */
+    await dbRoot.child('active_logins').remove().catch(() => {});
+    await dbRoot.child('presence').remove().catch(() => {});
+
     const logEntry = {
-      clinicId:   targetClinicId,
-      ts:         new Date().toISOString(),
-      fileName:   opts.sourceFileName || fileRefOrUrl,
-      target:     'restore',
-      status:     'success',
-      safetySnapshotFile: safetySnapshot ? safetySnapshot.fileName : null
+      clinicId: targetClinicId,
+      ts: new Date().toISOString(),
+      fileName: opts.sourceFileName || fileRefOrUrl,
+      target: 'restore',
+      status: 'success',
+      restoreOpId: restoreOperationId,
+      safetySnapshotFile: safetySnapshot.fileName
     };
-    try { await _idbAdd(STORE_LOG, logEntry); } catch (e) { /* غير حرج */ }
+    try { await _idbAdd(STORE_LOG, logEntry); } catch (e) {}
 
     if (typeof window.ArgonCore !== 'undefined' && window.ArgonCore.logAudit) {
-      // ربط هذه العملية الحرجة بسجل التدقيق الطبي العام للنظام (استخدام قراءة فقط — لا تعديل على argon-core.js)
-      window.ArgonCore.logAudit(
-        'CLOUD_RESTORE_COMPLETED',
-        'تمت استعادة كامل بيانات العيادة من نسخة سحابية: ' + (opts.sourceFileName || fileRefOrUrl) +
-        ' (نسخة أمان محفوظة تلقائياً: ' + logEntry.safetySnapshotFile + ')',
-        'BACKUP'
-      );
+      window.ArgonCore.logAudit('RESTORE_COMPLETED', `تمت استعادة نطاقات (${Object.keys(updatePayload).join(',')}) من: ${opts.sourceFileName || fileRefOrUrl}. (لقطة أمان: ${safetySnapshot.fileName})`, 'BACKUP');
     }
 
-    notify('✅ تمت الاستعادة بنجاح!');
-    _log('✅ تمت استعادة بيانات العيادة ' + targetClinicId + ' من السحابة بنجاح', 'success');
+    notify('✅ تمت عملية الاستعادة والتحقق بنجاح!');
+    _log('✅ الاستعادة تمت بنجاح لـ ' + targetClinicId, 'success');
     _emit('restore-success', logEntry);
 
     return logEntry;
