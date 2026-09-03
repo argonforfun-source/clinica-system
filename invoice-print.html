@@ -796,8 +796,9 @@ function renderInvoice(inv, settings) {
   document.getElementById('footerClinic').textContent = `${sanitize(settings.name || 'العيادة')} · ARGON MEDICAL OS · argonforfun.com`;
 
   if (settings.logoUrl) {
+    const fallbackEmoji = sanitize(settings.emoji || '🏥');
     document.getElementById('clinicLogoWrap').innerHTML =
-      `<img src="${sanitize(settings.logoUrl)}" alt="logo">`;
+      `<img src="${sanitize(settings.logoUrl)}" alt="logo" onerror="this.outerHTML='${fallbackEmoji}'">`;
   } else {
     document.getElementById('clinicLogoWrap').textContent = settings.emoji || '🏥';
   }

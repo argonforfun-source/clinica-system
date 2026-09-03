@@ -321,6 +321,24 @@ const BillingEngine = {
     let grossPrice = eventData.price !== undefined ? parseFloat(eventData.price) : priceFromCatalog;
     let requiresReview = false;
 
+    // --- ARGON ENTERPRISE: PATIENT-SPECIFIC OVERRIDE ---
+    let overridePrice = null;
+    // We only apply override to actual catalog items (serviceId !== 'external' and valid string)
+    if (eventData.patientId && eventData.serviceId && eventData.serviceId !== 'external' && this._patientsRef && this._patientsRef[eventData.patientId]) {
+      const pInfo = this._patientsRef[eventData.patientId].info || {};
+      if (pInfo.procedureOverrides && pInfo.procedureOverrides[eventData.serviceId] !== undefined) {
+         let op = parseFloat(pInfo.procedureOverrides[eventData.serviceId].price !== undefined ? pInfo.procedureOverrides[eventData.serviceId].price : pInfo.procedureOverrides[eventData.serviceId]);
+         if (!isNaN(op)) {
+             overridePrice = op;
+         }
+      }
+    }
+
+    if (overridePrice !== null) {
+      grossPrice = overridePrice;
+      _B.audit('PRICE_OVERRIDE', `استخدام السعر المخصص للمريض لإجراء ${eventData.serviceId}: ${grossPrice}`, 'BILLING');
+    }
+
     if (grossPrice === null || isNaN(grossPrice)) {
       grossPrice = 0;
       requiresReview = true;

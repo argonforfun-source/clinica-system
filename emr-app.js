@@ -1284,8 +1284,9 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
     }
   }
 
-  // ── ARGON ENTERPRISE: Zero Auto-Merge Without NID ──
-  // بدلاً من إيقاف التنفيذ كلياً، نعرض نافذة تتيح للطاقم الربط اليدوي أو البحث بالاسم/الهاتف
+  // ── ARGON ENTERPRISE: Doctor is allowed to bypass NID linking ──
+  // The blocking dialog is suppressed for doctors to allow fast workflow
+  /*
   if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
     if (window.ArgonMedical && window.ArgonMedical.ShadowLog) {
       window.ArgonMedical.ShadowLog.log(CID,
@@ -1297,6 +1298,7 @@ async function openPatientFromBooking(bookingKey, startVisit = false) {
     _showNIDLinkDialog(bookingKey, booking, bookingName, startVisit);
     return;
   }
+  */
 
   // 2️⃣ Search by Phone
   const phone = cleanPhone(booking.patPhone || rawUid);
@@ -1603,6 +1605,8 @@ async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = f
   const _legacyNID = ArgonNID.cleanNID(booking.patNationalId || booking.nationalId || '');
 
   // ── ARGON ENTERPRISE: Block creation without NID — show dialog instead of silent error ──
+  // Doctor bypass: allow creating the patient record even if NID is missing
+  /*
   if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING) {
     if (!ArgonNID.isValidNID(_legacyNID)) {
       if (window.ArgonMedical && window.ArgonMedical.ShadowLog) {
@@ -1616,6 +1620,7 @@ async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = f
       return;
     }
   }
+  */
 
   // ── ARGON ENTERPRISE: Prevent duplicating existing NID (Dual-Layer Check) ──
   if (ArgonNID.isValidNID(_legacyNID)) {
@@ -1681,9 +1686,11 @@ async function _openPatientFromBookingLegacy(bookingKey, booking, startVisit = f
       name: booking.patName || 'مريض',
       phone: cleanPhoneStr,
       nationalId: booking.patNationalId || booking.nationalId || '',
+      dob: booking.patDob || null,
       age: booking.patAge ? parseInt(booking.patAge) : null,
       gender: booking.patGender || '',
       mrn: 'MRN-' + Math.floor(100000 + Math.random() * 900000),
+      fileNumber: booking.patFileNo || booking.fileNumber || '',
       createdAt: new Date().toISOString(),
       createdBy: loggedInDoctorId
     }
