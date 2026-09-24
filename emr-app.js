@@ -3787,6 +3787,11 @@ function saveLegacyVisitRecord(uid) {
     document.getElementById('_legNotes').value = '';
     const cEl = document.getElementById('_legCounter');
     if (cEl) { cEl.style.display = 'block'; cEl.innerHTML = `✅ تم حفظ ${window._legCount} سجل/سجلات لهذا المريض حتى الآن.`; }
+    
+    // 🔥 التعديل الجراحي: تحديث الذاكرة المحلية (الكاش) حتى يظهر السجل في الواجهة فوراً
+    if (!_patients[uid].visits) _patients[uid].visits = {};
+    _patients[uid].visits[visitId] = legacyVisitObj;
+
     toast('✅ تم الحفظ — أضف السجل التالي أو اضغط "إنهاء وإغلاق"', 'ok');
     refreshPatientFileUI(uid);
   }).catch(() => toast('❌ فشل حفظ السجل القديم', 'err'));
