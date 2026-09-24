@@ -261,16 +261,16 @@
         teethUpper: [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28],
         teethLower: [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38],
         statuses: {
-          healthy:    { labelAr: 'سليم',          color: '#10b981', emoji: '🦷' },
-          filling:    { labelAr: 'حشوة',           color: '#f59e0b', emoji: '✏️' },
-          crown:      { labelAr: 'تاج',            color: '#3b82f6', emoji: '👑' },
-          missing:    { labelAr: 'مفقود/مخلوع',   color: '#94a3b8', emoji: '❌' },
-          implant:    { labelAr: 'زرع',            color: '#8b5cf6', emoji: '🔩' },
-          root_canal: { labelAr: 'علاج عصب',       color: '#ef4444', emoji: '⚠️' },
-          bridge:     { labelAr: 'جسر',            color: '#0891b2', emoji: '🌉' },
-          decay:      { labelAr: 'نخر/تسوس',       color: '#dc2626', emoji: '🔴' },
-          veneer:     { labelAr: 'قشرة تجميلية',   color: '#ec4899', emoji: '✨' },
-          partial_rp: { labelAr: 'طقم جزئي',       color: '#6366f1', emoji: '🦷' }
+          healthy:    { labelAr: 'سن سليم',          color: '#10b981', emoji: '🦷' },
+          filling:    { labelAr: 'ترميم سابق (حشوة)',           color: '#f59e0b', emoji: '✏️' },
+          crown:      { labelAr: 'تتويج سابق (تاج)',            color: '#3b82f6', emoji: '👑' },
+          missing:    { labelAr: 'سن مفقود / مقلوع',   color: '#94a3b8', emoji: '❌' },
+          implant:    { labelAr: 'غرسة سنية سابقة',            color: '#8b5cf6', emoji: '🔩' },
+          root_canal: { labelAr: 'معالجة لبية سابقة',       color: '#ef4444', emoji: '⚠️' },
+          bridge:     { labelAr: 'تعويض جسر ثابت',            color: '#0891b2', emoji: '🌉' },
+          decay:      { labelAr: 'آفة نخرية (تسوس)',       color: '#dc2626', emoji: '🔴' },
+          veneer:     { labelAr: 'وجه تجميلي (Veneer)',   color: '#ec4899', emoji: '✨' },
+          partial_rp: { labelAr: 'بدلة سنية جزئية',       color: '#6366f1', emoji: '🦷' }
         }
       },
 

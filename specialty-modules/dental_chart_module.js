@@ -41,22 +41,22 @@
   var PRIMARY_LOWER = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
 
   var TOOTH_STATUSES = {
-    healthy: { labelAr: 'سليم', color: '#10b981', emoji: '🦷' },
-    crown: { labelAr: 'تاج', color: '#3b82f6', emoji: '👑' },
-    root_canal: { labelAr: 'علاج عصب', color: '#ef4444', emoji: '🩹' },
-    veneer: { labelAr: 'قشرة تجميلية', color: '#ec4899', emoji: '✨' },
-    bridge_abutment: { labelAr: 'دعامة جسر', color: '#0891b2', emoji: '🌉' },
-    bridge_pontic: { labelAr: 'تعويض جسر (فاقد)', color: '#0891b2', emoji: '➖' },
-    implant: { labelAr: 'زرعة', color: '#8b5cf6', emoji: '🔩' },
-    impacted: { labelAr: 'مطمور', color: '#7c3aed', emoji: '🔒' },
-    unerupted: { labelAr: 'لم يبزغ بعد', color: '#cbd5e1', emoji: '⏳' },
-    missing: { labelAr: 'مفقود / مخلوع', color: '#94a3b8', emoji: '❌' }
+    healthy: { labelAr: 'سن سليم', color: '#10b981', emoji: '🦷' },
+    crown: { labelAr: 'تتويج سابق (تاج صناعي)', color: '#3b82f6', emoji: '👑' },
+    root_canal: { labelAr: 'معالجة لبية سابقة', color: '#ef4444', emoji: '🩹' },
+    veneer: { labelAr: 'وجه تجميلي (Veneer)', color: '#ec4899', emoji: '✨' },
+    bridge_abutment: { labelAr: 'دعامة جسر ثابت', color: '#0891b2', emoji: '🌉' },
+    bridge_pontic: { labelAr: 'تعويض جسر ثابت (جُسيرة)', color: '#0891b2', emoji: '➖' },
+    implant: { labelAr: 'غرسة سنية سابقة', color: '#8b5cf6', emoji: '🔩' },
+    impacted: { labelAr: 'ضرس مطمور', color: '#7c3aed', emoji: '🔒' },
+    unerupted: { labelAr: 'سن غير بازغ', color: '#cbd5e1', emoji: '⏳' },
+    missing: { labelAr: 'سن مفقود / مقلوع', color: '#94a3b8', emoji: '❌' }
   };
 
   var SURFACE_CONDITIONS = {
-    decay: { labelAr: 'تسوس', color: '#dc2626', glyph: '🔴' },
-    filling: { labelAr: 'حشوة', color: '#f59e0b', glyph: '🟧' },
-    sealant: { labelAr: 'مادة سادة', color: '#38bdf8', glyph: '🔵' },
+    decay: { labelAr: 'آفة نخرية (تسوس)', color: '#dc2626', glyph: '🔴' },
+    filling: { labelAr: 'ترميم سابق (حشوة)', color: '#f59e0b', glyph: '🟧' },
+    sealant: { labelAr: 'مادة سادة للشقوق', color: '#38bdf8', glyph: '🔵' },
     fracture: { labelAr: 'كسر / شرخ', color: '#7f1d1d', glyph: '⚡' },
     wear: { labelAr: 'تآكل/برادة', color: '#a16207', glyph: '🟫' }
   };
