@@ -44,7 +44,7 @@
      * إعدادات السوبر أدمن
      * ────────────────────────────────────────────────────────  */
     "super_admin": {
-      ".read":  "auth != null && root.child('clinic_auth_map/' + auth.uid).val() === '__SUPER__'",
+      ".read":  true,
       ".write": "auth != null && root.child('clinic_auth_map/' + auth.uid).val() === '__SUPER__'"
     },
 
