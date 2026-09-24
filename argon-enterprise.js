@@ -891,6 +891,49 @@ window.ArgonMedical.PatientMatch = (() => {
   }
 
   // ─────────────────────────────────────────────────────────
+  // 🧬 Identity Signals — DOB / Gender
+  // ─────────────────────────────────────────────────────────
+  function refineWithIdentitySignals(base, incoming, candidate) {
+    const inDob      = (incoming.dob    || '').trim();
+    const candDob    = (candidate.dob    || '').trim();
+    const inGender   = (incoming.gender  || '').trim();
+    const candGender = (candidate.gender || '').trim();
+
+    const haveBothDob    = !!inDob    && !!candDob;
+    const haveBothGender = !!inGender && !!candGender;
+
+    if (haveBothGender && inGender !== candGender) {
+      return {
+        ...base,
+        result:           MatchResult.POSSIBLE,
+        confidence:       0.1,
+        reason:           '⚠️ نفس الهاتف، لكن الجنس المسجّل مختلف — شخص آخر بالتأكيد (فرد عائلة)',
+        identityConflict: true
+      };
+    }
+
+    if (haveBothDob && inDob !== candDob) {
+      return {
+        ...base,
+        result:           MatchResult.POSSIBLE,
+        confidence:       0.15,
+        reason:           '⚠️ نفس الهاتف، الاسم متشابه، لكن تاريخ الميلاد مختلف — الأرجح فرد آخر من العائلة',
+        identityConflict: true
+      };
+    }
+
+    if (haveBothDob && inDob === candDob && base.result === MatchResult.POSSIBLE) {
+      return {
+        ...base,
+        result:     MatchResult.STRONG,
+        confidence: Math.max(base.confidence, 0.9),
+        reason:     base.reason + ' + تاريخ ميلاد مطابق تماماً'
+      };
+    }
+    return base;
+  }
+
+  // ─────────────────────────────────────────────────────────
   // 🔍 الدالة الرئيسية: findMatch
   // ─────────────────────────────────────────────────────────
 
@@ -976,32 +1019,35 @@ window.ArgonMedical.PatientMatch = (() => {
       if (score > bestScore) { bestScore = score; best = c; }
     }
 
+    let baseResult;
     if (bestScore >= 0.85) {
-      return {
+      baseResult = {
         result:      MatchResult.STRONG,
         confidence:  bestScore,
         matchedId:   best.id,
         matchedName: best.name,
         reason:      `Phone + name similarity ${(bestScore*100).toFixed(1)}%`
       };
-    }
-    if (bestScore >= 0.5) {
-      return {
+    } else if (bestScore >= 0.5) {
+      baseResult = {
         result:      MatchResult.POSSIBLE,
         confidence:  bestScore,
         matchedId:   best.id,
         matchedName: best.name,
         reason:      `Phone match, name similarity ${(bestScore*100).toFixed(1)}% — needs confirmation`
       };
+    } else {
+      baseResult = {
+        result:      MatchResult.POSSIBLE,
+        confidence:  0.3,
+        matchedId:   candidates[0].id,
+        matchedName: candidates[0].name,
+        reason:      'Same phone, different name — possible family member'
+      };
     }
 
-    return {
-      result:      MatchResult.POSSIBLE,
-      confidence:  0.3,
-      matchedId:   candidates[0].id,
-      matchedName: candidates[0].name,
-      reason:      'Same phone, different name — possible family member'
-    };
+    const matchedCandidate = candidates.find(c => c.id === baseResult.matchedId) || candidates[0];
+    return refineWithIdentitySignals(baseResult, incoming, matchedCandidate);
   }
   return { findMatch, normalizeArabic, normalizePhone, nameSimilarity, MatchResult };
 })();
@@ -1072,9 +1118,11 @@ window.ArgonMedical.showMatchDialog = function(matchResult, onUseExisting, onCre
 
   const conf = Math.round((matchResult.confidence || 0) * 100);
   const isFamily = matchResult.reason && matchResult.reason.includes('family member');
-  const reasonText = isFamily
-    ? 'نفس رقم الهاتف — قد يكون فرداً من العائلة'
-    : `نسبة تشابه الاسم: ${conf}%`;
+  const reasonText = matchResult.identityConflict
+    ? matchResult.reason
+    : (isFamily
+        ? 'نفس رقم الهاتف — قد يكون فرداً من العائلة'
+        : `نسبة تشابه الاسم: ${conf}%`);
 
   const overlay = document.createElement('div');
   overlay.id = '_argonMatchOverlay';

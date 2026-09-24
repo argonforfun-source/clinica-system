@@ -318,7 +318,7 @@
         cleaning: { intervalDays: 180, message: 'تنظيف دوري كل 6 أشهر' }
       },
 
-      specialModules: ['dental_chart_module', 'treatment_plan_module', 'perio_module'],
+      specialModules: ['dental_procedure_catalog', 'dental_label_registry', 'dental_chart_module', 'treatment_plan_module', 'perio_module'],
       printTemplates: ['dental_treatment_plan', 'dental_report', 'referral_letter', 'consent_form']
     },
 

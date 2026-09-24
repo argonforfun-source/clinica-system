@@ -1,0 +1,29 @@
+--- /home/claude/clinica-system/dashboard.html	2026-09-22 17:04:43.526607518 +0000
++++ /home/claude/argon-tenant-fix/dashboard.html	2026-09-23 19:48:03.595163692 +0000
+@@ -2785,8 +2785,24 @@
+     const storage = firebase.storage();
+ 
+     const uP = new URLSearchParams(window.location.search);
+-    let CID = uP.get('id') || localStorage.getItem('argon_id') || '1';
+-    if (uP.get('id')) localStorage.setItem('argon_id', CID);
++    const _urlCID = uP.get('id');
++    // Tenant identity resolution (hardened — see SURGICAL_REPAIR_REPORT.md):
++    // 1) An explicit ?id= in the URL is always authoritative — unchanged.
++    // 2) If absent, fall back to the SAME-SESSION value already cached in
++    //    localStorage (this is what keeps emr.html's "back to dashboard"
++    //    link working — it carries no ?id= of its own). This is session
++    //    continuity, not a way to *determine* which clinic to open.
++    // 3) There is NO further fallback. The previous `|| '1'` silently
++    //    opened a real clinic's live data whenever both of the above were
++    //    missing (e.g. a Home Screen icon whose start_url had no query
++    //    string) — removed. Missing identity now fails safe instead of
++    //    guessing a tenant.
++    let CID = _urlCID || localStorage.getItem('argon_id') || '';
++    if (_urlCID) localStorage.setItem('argon_id', CID);
++    if (!CID) {
++      document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#031a15;color:#fff;font-family:Tajawal,sans-serif;direction:rtl;text-align:center;padding:24px"><div style="max-width:420px"><div style="font-size:3rem;margin-bottom:12px">⚠️</div><div style="font-size:1.25rem;font-weight:800;margin-bottom:10px">لم يتم تحديد العيادة</div><div style="font-size:0.9rem;color:#9ca3af;line-height:1.8">لا يمكن فتح لوحة التحكم بدون تحديد العيادة بشكل صريح. الرجاء العودة إلى رابط العيادة الصحيح، أو إعادة إضافة اختصار الشاشة الرئيسية لهذه العيادة.</div></div></div>';
++      throw new Error('ARGON: no explicit or session clinic id — refusing to load a default/guessed tenant.');
++    }
+     const BASE = 'clinics/' + CID;
+ 
+     let _pass = '1122', _logins = 0, _lockUntil = 0;

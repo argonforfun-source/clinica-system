@@ -121,12 +121,25 @@
                 ".write": "auth != null && (
                   root.child('clinic_auth_map/' + auth.uid).val() === $clinicId ||
                   root.child('clinic_auth_map/' + auth.uid).val() === '__SUPER__'
-                ) && (
+                ) && !(data.exists() && data.child('status').val() === 'signed') && (
                   !data.exists() ||
                   (newData.exists() && !newData.child('status').exists()) ||
                   (newData.exists() && newData.child('status').val() === 'archived') ||
                   (newData.exists() && newData.child('status').val() === 'signed')
                 )"
+              }
+            },
+            "specialty_data": {
+              "dental_history": {
+                ".indexOn": ["toothCode", "procedureCode", "doctorId"],
+                "$eventId": {
+                  ".write": "auth != null && (
+                    root.child('clinic_auth_map/' + auth.uid).val() === $clinicId ||
+                    root.child('clinic_auth_map/' + auth.uid).val() === '__SUPER__'
+                  ) && !data.exists()",
+                  ".validate": "newData.hasChildren(['patientId', 'procedureCode', 'doctorId', 'date']) &&
+                    newData.child('patientId').val() === $patientId"
+                }
               }
             }
           }
@@ -307,6 +320,15 @@
          * ════════════════════════════════ */
         "specialty_data": {
           ".indexOn": ["specialty"]
+        },
+        "doctor_dental_labels": {
+          "$doctorId": {
+            "$labelType": {
+              "$stableKey": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+              }
+            }
+          }
         }
 
       }
