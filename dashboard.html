@@ -3421,7 +3421,10 @@
 
       const F = { sN: 'name', sP: 'phone', sTaxNumber: 'taxNumber', sSpec: 'specialty', sEm: 'emoji', sBookingDays: 'bookingDays', sWs: 'clinicStart', sWe: 'clinicEnd' };
       for (let id in F) { const el = document.getElementById(id); if (el && !el.matches(':focus')) el.value = s[F[id]] || ''; }
-      const st = document.getElementById('sSt'); if (st && s.status !== 'suspended') st.value = s.status || 'active';
+      const st = document.getElementById('sSt'); 
+      if (st && s.status !== 'suspended') {
+        st.value = (s.status === 'open' ? 'active' : (s.status === 'closed' ? 'maintenance' : (s.status || 'active')));
+      }
       const ssd = document.getElementById('sSameDay'); if (ssd) ssd.value = (s.sameDayBooking !== false) ? 'true' : 'false';
       if (!s.bookingDays) document.getElementById('sBookingDays').value = '10';
       if (!s.clinicStart) document.getElementById('sWs').value = '09:00';
