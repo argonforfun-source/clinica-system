@@ -700,11 +700,16 @@
       var matStr = mObj ? _label('material', mObj[0], mObj[1]) : (b.material || 'غير محدد');
       var tStr = (b.teeth || []).join(' - ');
       var pCount = (b.pontics || []).length;
+      var ts = b.id && b.id.indexOf('_') > -1 ? parseInt(b.id.split('_')[1], 10) : null;
+      var dateStr = ts && !isNaN(ts) ? new Date(ts).toLocaleString('ar-JO', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
       return '<div class="bridge-list-item" style="padding: 12px; margin-bottom: 10px; background: var(--surf); border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
         '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px dashed var(--border); padding-bottom: 8px;">' +
         '<b style="color: var(--text); font-size: 0.95rem;"><i class="fas fa-link" style="color: var(--oc); margin-left: 5px;"></i> 🌉 جسر للأسنان (' + tStr + ')</b>' +
+        '<div style="display:flex; align-items:center; gap:10px;">' +
+        (dateStr ? '<span style="font-size: 0.75rem; color: #94a3b8;"><i class="far fa-clock"></i> ' + dateStr + '</span>' : '') +
         '<button type="button" class="det-btn det-btn-cancel" style="padding: 4px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;" onclick="DentalChartModule.removeBridge(\'' + b.id + '\')"><i class="fas fa-trash-alt"></i> إزالة</button>' +
+        '</div>' +
         '</div>' +
         '<div style="font-size: 0.85rem; color: var(--muted); display: flex; gap: 15px; flex-wrap: wrap;">' +
         '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-tooth" style="color: #94a3b8;"></i> <b>المادة:</b> ' + matStr + '</span>' +
@@ -736,7 +741,7 @@
         var stObj = TOOTH_STATUSES[data.status];
         if (stObj) {
           if (!groups[data.status]) groups[data.status] = { label: _label('status', data.status, stObj.labelAr), icon: stObj.emoji, color: stObj.color, items: [] };
-          groups[data.status].items.push({ num: num, origin: origin, notes: data.notes, reqRx: data.requiresTreatment, material: data.material });
+          groups[data.status].items.push({ num: num, origin: origin, notes: data.notes, reqRx: data.requiresTreatment, material: data.material, updatedAt: data.updatedAt });
           hasData = true;
         }
       }
@@ -750,7 +755,7 @@
             if (cObj) {
               var gKey = 'surf_' + sData.condition;
               if (!groups[gKey]) groups[gKey] = { label: _label('condition', sData.condition, cObj.labelAr), icon: cObj.glyph, color: cObj.color, items: [] };
-              groups[gKey].items.push({ num: num, surface: surf, origin: ORIGINS[sData.origin] || ORIGINS.existing });
+              groups[gKey].items.push({ num: num, surface: surf, origin: ORIGINS[sData.origin] || ORIGINS.existing, updatedAt: data.updatedAt });
               hasData = true;
             }
           }
@@ -775,7 +780,7 @@
       var toothMap = {};
 
       group.items.forEach(function (item) {
-        if (!toothMap[item.num]) toothMap[item.num] = { num: item.num, surfaces: [], notes: item.notes, origin: item.origin, material: item.material, reqRx: item.reqRx };
+        if (!toothMap[item.num]) toothMap[item.num] = { num: item.num, surfaces: [], notes: item.notes, origin: item.origin, material: item.material, reqRx: item.reqRx, updatedAt: item.updatedAt };
         if (item.surface) {
           var sName = { top: 'العلوي', bottom: 'السفلي', center: 'المركز', left: 'اليسار', right: 'اليمين' }[item.surface] || item.surface;
           if (toothMap[item.num].surfaces.indexOf(sName) === -1) toothMap[item.num].surfaces.push(sName);
@@ -793,12 +798,15 @@
         }
         var mHtml = matStr ? '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-fill-drip" style="color: #94a3b8;"></i> <b>المادة:</b> ' + matStr + '</span>' : '';
         var rHtml = tData.reqRx ? '<span style="display: flex; align-items: center; gap: 4px; color: #ef4444;"><i class="fas fa-prescription" style="color: #ef4444;"></i> بحاجة لوصفة</span>' : '';
+        var dateStr = tData.updatedAt ? new Date(tData.updatedAt).toLocaleString('ar-JO', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
         return '<div class="summary-tooth-item" style="padding: 12px; background: var(--surf); border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
           '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '8px' : '0') + '; border-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '1px dashed #e2e8f0' : 'none') + '; padding-bottom: ' + (sHtml || nHtml || mHtml || rHtml ? '8px' : '0') + ';">' +
           '<b style="color: var(--text); font-size: 0.95rem;"><i class="fas fa-tooth" style="color: ' + group.color + '; margin-left: 5px;"></i> السن رقم (' + tData.num + ')</b>' +
+          '<div style="display:flex; align-items:center; gap:8px;">' +
+          (dateStr ? '<span style="font-size: 0.75rem; color: #94a3b8;"><i class="far fa-clock"></i> ' + dateStr + '</span>' : '') +
           '<span style="font-size: 0.8rem; background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 12px; color: var(--muted);"><i class="fas fa-tag"></i> ' + tData.origin.labelAr + '</span>' +
-          '</div>' +
+          '</div></div>' +
           (sHtml || nHtml || mHtml || rHtml ? '<div style="font-size: 0.85rem; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap;">' + sHtml + mHtml + rHtml + nHtml + '</div>' : '') +
           '</div>';
       }).join('');
