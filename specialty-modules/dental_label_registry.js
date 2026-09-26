@@ -84,6 +84,10 @@
     _listenerDoc = doctorId;
     db.ref(BASE + '/doctor_dental_labels/' + doctorId).on('value', function (snap) {
       _cache[doctorId] = snap.val() || {};
+      if (global.DentalChartModule) {
+        if (typeof global.DentalChartModule._updateSummaryUI === 'function') global.DentalChartModule._updateSummaryUI();
+        if (typeof global.DentalChartModule._rerenderChart === 'function') global.DentalChartModule._rerenderChart();
+      }
     });
   }
 
@@ -122,6 +126,7 @@
    */
   function getDentalDisplayLabel(type, stableKey, doctorId) {
     doctorId = doctorId || _currentDoctorId();
+    if (doctorId && _listenerDoc !== doctorId) initForDoctor(doctorId);
     var custom = doctorId && _cache[doctorId] && _cache[doctorId][type] ? _cache[doctorId][type][stableKey] : null;
     if (custom) return custom;
     var canonical = _canonicalLabel(type, stableKey);

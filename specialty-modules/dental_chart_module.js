@@ -1039,7 +1039,8 @@
     getChartData: getChartData, getTextSummary: getTextSummary,
     _onToothClick: _onToothClick, _onStatusChange: _onStatusChange,
     _selectPalette: _selectPalette, _applySurface: _applySurface,
-    _applyOriginHighlight: _applyOriginHighlight,
+    _applyOriginHighlight: _applyOriginHighlight, _updateSummaryUI: _updateSummaryUI,
+    _rerenderChart: _rerenderChart,
     // v2.1 — additive, read-only exports so dental_label_registry.js has a
     // single source of truth for canonical text instead of a second copy.
     // Callers must treat these as read-only reference data.
