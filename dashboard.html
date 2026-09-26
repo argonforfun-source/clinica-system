@@ -1749,7 +1749,7 @@
             <div class="pt">📊 الإحصائيات</div>
             <div class="ps">نظرة شاملة على أداء العيادة</div>
           </div>
-          <button class="tbtn" onclick="window.ArgonEnterprise.Excel.exportComprehensiveReport(CID)"
+          <button class="tbtn" onclick="exportProfessionalExcel()"
             style="background:var(--green);color:#fff;border:none;padding:8px 16px;font-weight:bold;display:flex;align-items:center;gap:8px;border-radius:10px;"><i
               class="fas fa-file-excel" style="font-size:1.2rem;"></i> تقرير احترافي (Excel)</button>
         </div>
@@ -5171,6 +5171,11 @@
 
   <script src="specialty-config.js?v=1.0"></script>
   <script src="billing-engine.js?v=13.005"></script>
+
+  <!-- Excel Export Requirements -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="excel-export.js?v=4.0"></script>
 
   <script src="client-local-backup.js?v=3.0.7"></script>
   <script>

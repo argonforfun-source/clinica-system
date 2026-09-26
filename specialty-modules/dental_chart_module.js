@@ -279,7 +279,7 @@
     return [
       '<div class="argon-dental-chart-v2" dir="rtl">',
       _buildToolbarHTML(),
-      '<div id="_dental-unsaved" style="display:', (_unsavedChanges ? 'block' : 'none'), ';font-size:0.75rem;color:#f59e0b;font-weight:700;margin-bottom:8px">● تغييرات غير محفوظة</div>',
+      '<div id="_dental-unsaved" style="visibility:', (_unsavedChanges ? 'visible' : 'hidden'), '; height:20px; font-size:0.75rem;color:#f59e0b;font-weight:700;margin-bottom:8px">● تغييرات غير محفوظة</div>',
       '<div id="_dental-bridge-panel"></div>',
       sections,
       _buildBridgeListPanel(),
@@ -791,14 +791,41 @@
   function _refreshToothCell(num) {
     var cell = document.querySelector('.argon-tooth-cell-v2[data-tooth="' + num + '"]');
     if (!cell) return;
-    var temp = document.createElement('div');
-    temp.innerHTML = _buildToothCell(num);
-    cell.parentNode.replaceChild(temp.firstElementChild, cell);
+    var data = _chart[num] || {};
+    var svg = _buildToothSVG(num, data);
+    var anat = _anatomicalName(num);
+    var uni = _fdiToUniversal(num);
+    var tooltip = 'FDI ' + num + ' (Universal ' + uni + ') — ' + anat;
+    if (data.notes) tooltip += '\n📝 ' + data.notes;
+
+    var badges = '';
+    if (_toothHasOrigin(data, 'planned')) badges += '<span class="tb tb-tl">🗓️</span>';
+    if (_toothHasOrigin(data, 'completed')) badges += '<span class="tb tb-tl2">✅</span>';
+    if (data.requiresTreatment) badges += '<span class="tb tb-tr">⚠️</span>';
+    if (data.notes) badges += '<span class="tb tb-br">📝</span>';
+
+    var hlClass = '';
+    if (_highlightOrigin) {
+      if (_toothHasOrigin(data, _highlightOrigin)) {
+        hlClass = ' origin-glow origin-glow-' + _highlightOrigin;
+      } else if (data.status && data.status !== 'healthy') {
+        hlClass = ' origin-dim';
+      }
+    }
+
+    cell.className = 'argon-tooth-cell-v2' + hlClass;
+    cell.setAttribute('data-status', data.status || 'healthy');
+    cell.setAttribute('title', tooltip);
+    
+    var wrap = cell.querySelector('.tooth-svg-wrap');
+    if (wrap) {
+      wrap.innerHTML = svg + badges;
+    }
   }
 
   function _showUnsaved() {
     var el = document.getElementById('_dental-unsaved');
-    if (el) el.style.display = _unsavedChanges ? 'block' : 'none';
+    if (el) el.style.visibility = _unsavedChanges ? 'visible' : 'hidden';
   }
 
   function _onToothClick(num) {

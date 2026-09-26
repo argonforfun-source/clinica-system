@@ -233,8 +233,10 @@
     if (cfg.features && cfg.features.dentalChart) {
       var customLbl = document.createElement('div');
       customLbl.className = 'ni argon-spec-sidebar-item';
-      customLbl.style.cssText = 'color:' + cfg.color + ';opacity:0.85;font-size:0.82rem;';
-      customLbl.innerHTML = '<i class="fas fa-palette" style="color:' + cfg.color + '"></i> تخصيص المصطلحات';
+      customLbl.style.cssText = 'color: #fff; background: linear-gradient(135deg, ' + cfg.color + ', #0284c7); font-size: 0.85rem; font-weight: bold; border-radius: 8px; margin: 8px 12px; padding: 8px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(14,165,233,0.3); transition: transform 0.2s;';
+      customLbl.onmouseover = function() { this.style.transform = 'translateY(-2px) scale(1.02)'; };
+      customLbl.onmouseout = function() { this.style.transform = 'translateY(0) scale(1)'; };
+      customLbl.innerHTML = '<i class="fas fa-palette"></i> <span>تخصيص المصطلحات</span>';
       customLbl.addEventListener('click', function () {
         if (typeof window.DentalLabelRegistry !== 'undefined') {
           window.DentalLabelRegistry.openCustomizationModal();

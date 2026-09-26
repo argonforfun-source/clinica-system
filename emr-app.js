@@ -2526,7 +2526,10 @@ function generatePatientFileHTML(uid, options = {}) {
         ${activeAvatarHTML}
         <div style="flex:1">
           <div class="pat-name">${sanitize(info.name)}</div>
-          <div class="pat-mrn">الملف الطبي: ${info.mrn || 'MRN-NEW'}</div>
+          <div class="pat-mrn" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span>الملف الطبي: ${info.mrn || 'MRN-NEW'}</span>
+            ${info.fileNumber ? `<span style="background:rgba(14,165,233,0.1); color:var(--sky); padding:2px 8px; border-radius:6px; font-weight:bold; font-size:0.85rem;"><i class="fas fa-folder-open"></i> رقم الملف بالعيادة: ${sanitize(info.fileNumber)}</span>` : ''}
+          </div>
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn-secondary btn-sm" onclick="openEditPatient('${uid}')"><i class="fas fa-edit"></i> تعديل</button>
@@ -2535,12 +2538,12 @@ function generatePatientFileHTML(uid, options = {}) {
         </div>
       </div>
       <div class="pat-grid">
-        <div class="pat-field"><div class="pfl">📋 رقم الملف الطبي (MRN)</div><div class="pfv" style="font-weight:700;color:var(--sky);font-family:'IBM Plex Mono',monospace;font-size:0.95rem;letter-spacing:0.5px">${info.mrn || '—'}</div></div>
+        <div class="pat-field"><div class="pfl">📁 رقم الملف (العيادة)</div><div class="pfv" style="font-weight:700;color:var(--sky);font-family:'IBM Plex Mono',monospace;font-size:0.95rem;">${info.fileNumber ? sanitize(info.fileNumber) : '<span style="color:var(--muted);font-weight:normal;font-size:0.8rem">لا يوجد رقم</span>'}</div></div>
+        <div class="pat-field"><div class="pfl">📋 الملف الطبي (MRN)</div><div class="pfv" style="font-weight:700;color:var(--sky);font-family:'IBM Plex Mono',monospace;font-size:0.85rem;letter-spacing:0.5px">${info.mrn || '—'}</div></div>
         <div class="pat-field"><div class="pfl">رقم الهاتف</div><div class="pfv">${sanitize(info.phone || '—')}</div></div>
         <div class="pat-field"><div class="pfl">الرقم الوطني / الهوية</div><div class="pfv" style="font-weight:700;color:var(--teal)">${sanitize(info.nationalId || '—')}</div></div>
         <div class="pat-field"><div class="pfl">العمر / الجنس</div><div class="pfv">${info.dob ? window.ArgonAgeDisplay(info.dob) : (info.age ? `${info.age} سنة (تقريبي)` : 'غير محدد')} · ${info.gender || 'غير محدد'}</div></div>
-        <div class="pat-field"><div class="pfl">فصيلة الدم</div><div class="pfv" style="color:var(--red)">${info.bloodType || '—'}</div></div>
-        <div class="pat-field"><div class="pfl">تاريخ التسجيل</div><div class="pfv" style="font-size:.78rem;font-family:'IBM Plex Mono',monospace">${(info.createdAt || '').substring(0, 10)}</div></div>
+        <div class="pat-field"><div class="pfl">فصيلة الدم / التسجيل</div><div class="pfv" style="color:var(--red)">${info.bloodType || '—'} <span style="color:var(--muted);font-size:0.75rem;margin-right:6px;font-family:'IBM Plex Mono',monospace">(${ (info.createdAt || '').substring(0, 10) })</span></div></div>
       </div>
       <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <div class="pat-field" style="grid-column:span 1"><div class="pfl">الحساسية والأدوية المرفوضة</div><div>${allergiesHTML}</div></div>
@@ -2658,7 +2661,7 @@ function generatePatientFileHTML(uid, options = {}) {
     <div id="emr-tab-dental-chart" class="emr-tab-content ${activeEmrTab === 'dental-chart-tab' ? 'active-content' : ''}" style="display:${activeEmrTab === 'dental-chart-tab' ? 'block' : 'none'}">
       <div class="ph" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
         <div><div class="pt" style="font-size:1.15rem;color:#3b82f6">🦷 الرسم البياني للأسنان — FDI (ISO 3950)</div><div class="ps">خريطة تفاعلية لأسنان المريض — اضغط على أي سن لتعديل حالته</div></div>
-        <button type="button" class="btn-secondary btn-sm" style="border-radius:8px;padding:6px 14px;white-space:nowrap" onclick="window.DentalLabelRegistry && window.DentalLabelRegistry.openCustomizationModal()"><i class="fas fa-palette"></i> تخصيص المصطلحات</button>
+        <button type="button" style="background: linear-gradient(135deg, #3b82f6, #0284c7); color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-weight: bold; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(59,130,246,0.3); transition: all 0.2s ease;" onmouseover="this.style.transform='translateY(-2px) scale(1.02)'; this.style.boxShadow='0 6px 15px rgba(59,130,246,0.4)';" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 10px rgba(59,130,246,0.3)';" onclick="window.DentalLabelRegistry && window.DentalLabelRegistry.openCustomizationModal()"><i class="fas fa-palette" style="font-size: 1.1rem;"></i> <span>تخصيص المصطلحات</span></button>
       </div>
       <div id="_patFileDentalChart" style="padding:10px"></div>
     </div>` : ''}
