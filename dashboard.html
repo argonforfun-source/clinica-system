@@ -4693,11 +4693,11 @@
             rad: bpRadVal,
             pharmacy: bpPharmVal
           },
-          autoFees: window._autoFees,
+          autoFees: window._autoFees || [],
           insuranceProviders: window._insuranceProviders || {},
           globalDiscountPct: parseFloat(document.getElementById('globalDiscountPct')?.value) || 0
         },
-        color
+        color: color || '#0d9488'
       };
 
       const currentPassInput = document.getElementById('sPwCurrent');
@@ -4718,16 +4718,16 @@
 
       const pharPass = document.getElementById('sPassPhar');
       if (pharPass && !pharPass.disabled) {
-        if (document.getElementById('sPassPhar').value.trim().length >= 4) {
+        if (document.getElementById('sPassPhar') && document.getElementById('sPassPhar').value.trim().length >= 4) {
           update['portalPasswords/pharmacy'] = await ArgonEnterpriseAuth.hashPassword(document.getElementById('sPassPhar').value.trim());
         }
-        if (document.getElementById('sPassLab').value.trim().length >= 4) {
+        if (document.getElementById('sPassLab') && document.getElementById('sPassLab').value.trim().length >= 4) {
           update['portalPasswords/lab'] = await ArgonEnterpriseAuth.hashPassword(document.getElementById('sPassLab').value.trim());
         }
-        if (document.getElementById('sPassRad').value.trim().length >= 4) {
+        if (document.getElementById('sPassRad') && document.getElementById('sPassRad').value.trim().length >= 4) {
           update['portalPasswords/radiology'] = await ArgonEnterpriseAuth.hashPassword(document.getElementById('sPassRad').value.trim());
         }
-        if (document.getElementById('sPassRec').value.trim().length >= 4) {
+        if (document.getElementById('sPassRec') && document.getElementById('sPassRec').value.trim().length >= 4) {
           update['portalPasswords/reception'] = await ArgonEnterpriseAuth.hashPassword(document.getElementById('sPassRec').value.trim());
         }
       }
@@ -4742,7 +4742,7 @@
         const p2 = document.getElementById('sPwCurrent');
         if (p1) p1.value = '';
         if (p2) p2.value = '';
-      }).catch(e => toast('❌ فشل الحفظ', 'err'));
+      }).catch(e => { console.error("Settings save error:", e); toast('❌ فشل الحفظ: ' + (e.message || ''), 'err'); });
     }
 
     async function unlockRbacPasswords() {
