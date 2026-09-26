@@ -500,6 +500,15 @@ window.LocalBackupEngine = (function () {
      10-B. ☁️ محرك النسخ السحابي — Cloud Engine (جديد بالكامل في v3.0)
   ════════════════════════════════════════ */
 
+  async function _ensureAuth() {
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      const auth = firebase.auth();
+      if (!auth.currentUser) {
+        try { await auth.signInAnonymously(); } catch(e) { console.warn('[ArgonBackup] فشل المصادقة المجهولة:', e); }
+      }
+    }
+  }
+
   /**
    * يرفع نص/كائن JSON كملف إلى Firebase Storage داخل مجلد العيادة
    * المسار: backups/{clinicId}/{fileName}
@@ -513,6 +522,7 @@ window.LocalBackupEngine = (function () {
     if (typeof firebase === 'undefined' || typeof firebase.storage !== 'function') {
       throw new Error('Firebase Storage SDK غير متاح. تأكد من تضمين firebase-storage-compat.js في الصفحة.');
     }
+    await _ensureAuth();
     const path = 'backups/' + String(clinicId) + '/' + fileName;
 
     // قبول نص JSON أو Blob جاهز (مرونة في الاستخدام)
@@ -560,6 +570,7 @@ window.LocalBackupEngine = (function () {
     if (typeof firebase === 'undefined' || typeof firebase.storage !== 'function') {
       throw new Error('Firebase Storage SDK غير متاح في هذه الصفحة.');
     }
+    await _ensureAuth();
     const folderRef = firebase.storage().ref('backups/' + String(clinicId));
 
     let list;
@@ -607,6 +618,7 @@ window.LocalBackupEngine = (function () {
    */
   async function _rotateCloudByPrefix(clinicId, prefix, maxCount) {
     if (typeof firebase === 'undefined' || typeof firebase.storage !== 'function') return { deleted: 0 };
+    await _ensureAuth();
     const folderRef = firebase.storage().ref('backups/' + String(clinicId));
     let list;
     try { list = await folderRef.listAll(); } catch (e) { return { deleted: 0 }; }
@@ -765,6 +777,7 @@ window.LocalBackupEngine = (function () {
     if (typeof firebase === 'undefined' || typeof firebase.storage !== 'function') {
       throw new Error('Firebase Storage SDK غير متاح.');
     }
+    await _ensureAuth();
     const ref = firebase.storage().ref(fullPath);
     const url = await ref.getDownloadURL();
 
