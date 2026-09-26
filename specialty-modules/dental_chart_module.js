@@ -953,7 +953,7 @@
       if (data.status && data.status !== 'healthy' && data.status !== 'bridge_abutment' && data.status !== 'bridge_pontic') {
         var stObj = TOOTH_STATUSES[data.status];
         if (stObj) {
-          if (!groups[data.status]) groups[data.status] = { label: stObj.labelAr, icon: stObj.emoji, color: stObj.color, items: [] };
+          if (!groups[data.status]) groups[data.status] = { label: _label('status', data.status, stObj.labelAr), icon: stObj.emoji, color: stObj.color, items: [] };
           groups[data.status].items.push({ num: num, origin: origin, notes: data.notes, reqRx: data.requiresTreatment, material: data.material });
           hasData = true;
         }
@@ -967,7 +967,7 @@
             var cObj = SURFACE_CONDITIONS[sData.condition];
             if (cObj) {
               var gKey = 'surf_' + sData.condition;
-              if (!groups[gKey]) groups[gKey] = { label: cObj.labelAr, icon: cObj.glyph, color: cObj.color, items: [] };
+              if (!groups[gKey]) groups[gKey] = { label: _label('surface', sData.condition, cObj.labelAr), icon: cObj.glyph, color: cObj.color, items: [] };
               groups[gKey].items.push({ num: num, surface: surf, origin: ORIGINS[sData.origin] || ORIGINS.existing });
               hasData = true;
             }
@@ -1029,9 +1029,10 @@
       var histRows = window._dentalGlobalHistory.map(function(e) {
         var o = ORIGINS[e.origin] || ORIGINS.existing;
         var d = e.date ? new Date(e.date).toLocaleDateString('ar-JO') + ' ' + new Date(e.date).toLocaleTimeString('ar-JO', {hour: '2-digit', minute:'2-digit'}) : '';
+        var procDisp = _label('procedure', e.procedureCode, e.procedureNameSnapshot || e.procedureCode);
         return '<div style="padding: 10px; background: var(--surf); border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
           '<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 6px; margin-bottom: 6px;">' +
-          '<b style="color: var(--text); font-size: 0.95rem;">' + (e.toothCode ? '<i class="fas fa-tooth" style="color: var(--oc); margin-left: 5px;"></i> السن (' + e.toothCode + ') - ' : '') + _esc(e.procedureNameSnapshot || e.procedureCode) + '</b>' +
+          '<b style="color: var(--text); font-size: 0.95rem;">' + (e.toothCode ? '<i class="fas fa-tooth" style="color: var(--oc); margin-left: 5px;"></i> السن (' + e.toothCode + ') - ' : '') + _esc(procDisp) + '</b>' +
           '<span style="font-size: 0.8rem; background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 12px; color: var(--muted);">' + o.badge + ' ' + o.labelAr + '</span>' +
           '</div>' +
           '<div style="font-size: 0.85rem; color: var(--muted); display: flex; gap: 15px; flex-wrap: wrap;">' +
