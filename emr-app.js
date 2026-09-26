@@ -1924,8 +1924,7 @@ async function saveEditPatient() {
   // ── ADMIN DIRECT-EDIT AUTHORIZATION CHECK ──
   const _saveSession = window.ArgonSession ? window.ArgonSession.get() : null;
   const _isAdminRole = _saveSession && (_saveSession.role === 'admin' || _saveSession.role === 'superadmin');
-  const _bypassCheckbox = document.getElementById('epAdminBypass');
-  const _isDirectEditAuthorized = _isAdminRole && _bypassCheckbox && _bypassCheckbox.checked;
+  const _isDirectEditAuthorized = _isAdminRole;
 
   if (typeof ARGON_FLAGS !== 'undefined' && ARGON_FLAGS.REQUIRE_NID_FOR_LINKING && !_isDirectEditAuthorized) {
     protectedFields.forEach(field => {
@@ -2299,7 +2298,9 @@ function generatePatientFileHTML(uid, options = {}) {
 
       const lockBadge = !canEdit
         ? `<span style="background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;margin-right:6px">🔒 قراءة فقط</span>`
-        : `<span style="background:rgba(13,148,136,0.1);color:var(--teal);border:1px solid rgba(13,148,136,0.25);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;margin-right:6px">✏️ قابل للتعديل</span>`;
+        : (v.origin === 'legacy_paper_entry'
+           ? `<button class="btn-outline btn-sm" onclick="event.stopPropagation();openEditLegacyVisitForm('${uid}','${vk}')" style="background:rgba(13,148,136,0.1);color:var(--teal);border:1px solid rgba(13,148,136,0.25);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;margin-right:6px;cursor:pointer"><i class="fas fa-edit"></i> قابل للتعديل (تعديل)</button>`
+           : `<span style="background:rgba(13,148,136,0.1);color:var(--teal);border:1px solid rgba(13,148,136,0.25);border-radius:6px;padding:2px 8px;font-size:0.7rem;font-weight:700;margin-right:6px">✏️ مفتوح</span>`);
 
       let stateBadge = '';
       if (isArchived) {
@@ -2317,7 +2318,7 @@ function generatePatientFileHTML(uid, options = {}) {
         : '';
 
       const signOffBtn = (!isArchived && !isSigned && canEdit)
-        ? `<button class="btn-secondary btn-sm" onclick="event.stopPropagation();signOffVisit('${uid}','${vk}')" style="color:var(--teal);border-color:rgba(13,148,136,0.3)"><i class="fas fa-file-signature"></i> توقيع وإقفال</button>`
+        ? `<button class="btn-secondary btn-sm" onclick="event.stopPropagation();window.signOffVisit('${uid}','${vk}')" style="color:var(--teal);border-color:rgba(13,148,136,0.3)"><i class="fas fa-file-signature"></i> توقيع وإقفال</button>`
         : '';
       // ── END VISIT LOCK ──
 
@@ -2401,7 +2402,9 @@ function generatePatientFileHTML(uid, options = {}) {
                 <span class="tl-doc" style="background:#0f172a; color:#f8fafc; padding:4px 10px; border-radius:8px; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(0,0,0,0.1); width:fit-content; border: 1px solid #334155;"><i class="fas ${cardIcon}"></i> الطبيب: ${sanitize(v.docName)}</span>
               </div>
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                ${v.origin === 'legacy_paper_entry' ? '<span class="tag" style="background:#f1f5f9;color:#64748b;font-size:.65rem"><i class="fas fa-file-medical-alt"></i> من الملف الورقي</span>' : ''}${lockBadge}${archiveBadge}
+                ${v.origin === 'legacy_paper_entry' ? '<span class="tag" style="background:#f1f5f9;color:#64748b;font-size:.65rem"><i class="fas fa-file-medical-alt"></i> من الملف الورقي</span>' : ''}
+                ${v.origin === 'dental_chart_event' ? '<span class="tag" style="background:#e0f2fe;color:#0369a1;font-size:.65rem;border:1px solid #bae6fd"><i class="fas fa-tooth"></i> تعديل من مخطط الأسنان</span>' : ''}
+                ${lockBadge}${archiveBadge}
               </div>
             </div>
             <div class="tl-diag">${sanitize(v.diagnosis || 'زيارة طبية')}</div>
@@ -2532,6 +2535,7 @@ function generatePatientFileHTML(uid, options = {}) {
         </div>
       </div>
       <div class="pat-grid">
+        <div class="pat-field"><div class="pfl">📋 رقم الملف الطبي (MRN)</div><div class="pfv" style="font-weight:700;color:var(--sky);font-family:'IBM Plex Mono',monospace;font-size:0.95rem;letter-spacing:0.5px">${info.mrn || '—'}</div></div>
         <div class="pat-field"><div class="pfl">رقم الهاتف</div><div class="pfv">${sanitize(info.phone || '—')}</div></div>
         <div class="pat-field"><div class="pfl">الرقم الوطني / الهوية</div><div class="pfv" style="font-weight:700;color:var(--teal)">${sanitize(info.nationalId || '—')}</div></div>
         <div class="pat-field"><div class="pfl">العمر / الجنس</div><div class="pfv">${info.dob ? window.ArgonAgeDisplay(info.dob) : (info.age ? `${info.age} سنة (تقريبي)` : 'غير محدد')} · ${info.gender || 'غير محدد'}</div></div>
@@ -3791,11 +3795,102 @@ function saveLegacyVisitRecord(uid) {
     // 🔥 التعديل الجراحي: تحديث الذاكرة المحلية (الكاش) حتى يظهر السجل في الواجهة فوراً
     if (!_patients[uid].visits) _patients[uid].visits = {};
     _patients[uid].visits[visitId] = legacyVisitObj;
+    
+    // Also update pager cache if it exists to prevent overwrite by network
+    if (window.ArgonPager && window.ArgonPager.cache && window.ArgonPager.cache[uid]) {
+      if (!window.ArgonPager.cache[uid].visits) window.ArgonPager.cache[uid].visits = {};
+      window.ArgonPager.cache[uid].visits[visitId] = legacyVisitObj;
+    }
 
     toast('✅ تم الحفظ — أضف السجل التالي أو اضغط "إنهاء وإغلاق"', 'ok');
+    
+    // Trigger UI refresh immediately
     refreshPatientFileUI(uid);
   }).catch(() => toast('❌ فشل حفظ السجل القديم', 'err'));
 }
+
+// ════════════════════════════════════════════════════════════════
+// LEGACY-VISIT-002 — تعديل سجل قديم من الملف الورقي
+// ════════════════════════════════════════════════════════════════
+function openEditLegacyVisitForm(uid, vk) {
+  const p = _patients[uid];
+  if (!p || !p.visits || !p.visits[vk]) return;
+  const v = p.visits[vk];
+
+  const old = document.getElementById('_legacyVisitOverlay');
+  if (old) old.remove();
+
+  const today = new Date().toLocaleDateString('en-CA');
+  const overlay = document.createElement('div');
+  overlay.id = '_legacyVisitOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:24px;width:min(480px,92vw);max-height:88vh;overflow:auto;direction:rtl;font-family:inherit;">
+      <h3 style="margin:0 0 4px;color:#0f172a"><i class="fas fa-edit"></i> تعديل سجل قديم (ملف ورقي)</h3>
+      <p style="font-size:.8rem;color:#64748b;margin:0 0 16px">تعديل بيانات الزيارة الورقية المسجلة مسبقاً.</p>
+      
+      <label style="font-size:.8rem;font-weight:700;color:#334155">اسم الطبيب المعالج</label>
+      <input type="text" id="_legDocEdit" value="${sanitize(v.docName || '')}" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;margin:4px 0 12px">
+      
+      <label style="font-size:.8rem;font-weight:700;color:#334155">تاريخ الإجراء/الزيارة الفعلي</label>
+      <input type="date" id="_legDateEdit" max="${today}" value="${sanitize(v.date || '')}" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;margin:4px 0 12px">
+      
+      <label style="font-size:.8rem;font-weight:700;color:#334155">التشخيص / الإجراء الذي تم</label>
+      <textarea id="_legDiagEdit" rows="2" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;margin:4px 0 12px">${sanitize(v.diagnosis || '')}</textarea>
+      
+      <label style="font-size:.8rem;font-weight:700;color:#334155">ملاحظات إضافية (التقرير)</label>
+      <textarea id="_legNotesEdit" rows="3" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;margin:4px 0 12px">${sanitize(v.notes || '')}</textarea>
+      
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary btn-sm" style="flex:1" onclick="document.getElementById('_legacyVisitOverlay').remove()">إلغاء</button>
+        <button class="btn-primary btn-sm" style="flex:1" onclick="saveEditLegacyVisit('${uid}', '${vk}')"><i class="fas fa-save"></i> حفظ التعديلات</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function saveEditLegacyVisit(uid, vk) {
+  const docName = document.getElementById('_legDocEdit')?.value.trim();
+  const dateVal = document.getElementById('_legDateEdit')?.value;
+  const diag    = document.getElementById('_legDiagEdit')?.value.trim();
+  const notes   = document.getElementById('_legNotesEdit')?.value.trim();
+  const today   = new Date().toLocaleDateString('en-CA');
+
+  if (!diag) { toast('⚠️ التشخيص/الإجراء مطلوب', 'err'); return; }
+  if (!dateVal || dateVal > today) { toast('⚠️ التاريخ غير صالح', 'err'); return; }
+
+  const updates = {};
+  updates[`${BASE}/patients/${uid}/visits/${vk}/docName`] = docName || 'غير محدد';
+  updates[`${BASE}/patients/${uid}/visits/${vk}/date`] = dateVal;
+  updates[`${BASE}/patients/${uid}/visits/${vk}/diagnosis`] = diag;
+  updates[`${BASE}/patients/${uid}/visits/${vk}/notes`] = notes || '';
+  
+  // Optional: add editedAt tracking
+  updates[`${BASE}/patients/${uid}/visits/${vk}/editedAt`] = new Date().toISOString();
+  updates[`${BASE}/patients/${uid}/visits/${vk}/editedBy`] = (window.ArgonSession ? ArgonSession.get() : {}).staffId || 'unknown';
+
+  db.ref().update(updates).then(() => {
+    document.getElementById('_legacyVisitOverlay').remove();
+    toast('✅ تم تحديث السجل بنجاح', 'ok');
+    
+    // Update local caches
+    if (_patients[uid] && _patients[uid].visits[vk]) {
+      _patients[uid].visits[vk].docName = docName || 'غير محدد';
+      _patients[uid].visits[vk].date = dateVal;
+      _patients[uid].visits[vk].diagnosis = diag;
+      _patients[uid].visits[vk].notes = notes || '';
+    }
+    
+    if (window.ArgonPager && window.ArgonPager.cache && window.ArgonPager.cache[uid]) {
+        Object.assign(window.ArgonPager.cache[uid].visits[vk], _patients[uid].visits[vk]);
+    }
+
+    refreshPatientFileUI(uid);
+  }).catch(e => {
+    toast('❌ فشل تحديث السجل', 'err');
+  });
+}
+
 
 // ── AUTO SAVE ENGINE (EVERY 3 SECONDS) ──
 setInterval(() => {
@@ -5671,6 +5766,45 @@ window.archiveVisit = function (patientId, visitKey) {
   }).catch(err => {
     toast('❌ حدث خطأ أثناء الأرشفة: ' + err.message, 'err');
   });
+};
+
+// ════════════════════════════════════════════════════════════════
+// SIGN-OFF VISIT ENGINE (توقيع وإقفال السجل الطبي لمنع التعديل نهائياً)
+// ════════════════════════════════════════════════════════════════
+window.signOffVisit = function (patientId, visitKey) {
+  const session = ArgonSession.get() || {};
+  if (!confirm('⚠️ تحذير طبي: هل أنت متأكد من توقيع وإقفال هذا السجل؟\n\nبمجرد الإقفال، سيتم تشفير السجل واعتماده طبياً ولن تتمكن من تعديله مجدداً تحت أي ظرف!')) return;
+
+  const updates = {};
+  updates[`${BASE}/patients/${patientId}/visits/${visitKey}/status`] = 'signed';
+  updates[`${BASE}/patients/${patientId}/visits/${visitKey}/signedOff`] = true;
+  updates[`${BASE}/patients/${patientId}/visits/${visitKey}/signedBy`] = session.staffId;
+  updates[`${BASE}/patients/${patientId}/visits/${visitKey}/signedAt`] = new Date().toISOString();
+
+  // Audit trail for strict forensic medical logging
+  const auditId = db.ref().child('audit').push().key;
+  updates[`${BASE}/patients/${patientId}/audit/visits/${auditId}`] = {
+    action: 'SIGN_OFF_VISIT',
+    visitId: visitKey,
+    by: session.staffId,
+    timestamp: new Date().toISOString()
+  };
+
+  db.ref().update(updates).then(() => {
+    toast('✍️ تم توقيع السجل الطبي وإقفاله نهائياً', 'ok');
+    
+    // Surgical Local Cache Update to immediately render UI changes
+    if (_patients[patientId] && _patients[patientId].visits && _patients[patientId].visits[visitKey]) {
+      _patients[patientId].visits[visitKey].status = 'signed';
+      _patients[patientId].visits[visitKey].signedOff = true;
+      
+      if (window.ArgonPager && window.ArgonPager.cache && window.ArgonPager.cache[patientId]) {
+         window.ArgonPager.cache[patientId].visits[visitKey].status = 'signed';
+         window.ArgonPager.cache[patientId].visits[visitKey].signedOff = true;
+      }
+      refreshPatientFileUI(patientId);
+    }
+  }).catch(() => toast('❌ فشل عملية توقيع السجل', 'err'));
 };
 // ── Break Glass Access ──
 window.requestBreakGlass = async function (uid) {

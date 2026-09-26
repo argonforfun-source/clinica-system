@@ -261,7 +261,11 @@
     _screenFilter = val;
     var doctorId = _currentDoctorId();
     var card = document.querySelector('#_dental-labels-overlay .dental-editor-card');
-    if (card) card.innerHTML = _buildCustomizationHTML(doctorId);
+    if (card) {
+      card.innerHTML = _buildCustomizationHTML(doctorId);
+      var inp = document.querySelector('#_dental-labels-overlay input[type="text"]');
+      if (inp) { inp.focus(); inp.selectionStart = inp.selectionEnd = inp.value.length; }
+    }
   }
 
   function _resetRow(type, code) {

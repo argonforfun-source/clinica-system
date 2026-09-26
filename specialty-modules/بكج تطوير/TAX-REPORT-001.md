@@ -1,257 +1,68 @@
-// 📊 Argon Professional Excel Export Engine
-// Powered by ExcelJS
+# TAX REPORT SURGICAL IMPLEMENTATION REPORT
 
+بُني بعد فحص فعلي كامل لـ `excel-export.js` و`billing-engine.js` (لا افتراض)، بحث رسمي حقيقي بمصادر ISTD الأردنية، وGolden Dataset Test فعلي بـ Node — النتائج بالأسفل حرفياً.
+
+---
+
+## ⚠️ اكتشاف حرج يجب معرفته قبل أي شي — اقرأه أولاً
+
+**`excel-export.js` بالكامل غير مُحمَّل بأي صفحة حية بالنظام حالياً.** فحصت: صفر `<script src="excel-export.js">` بأي ملف HTML، وصفر استدعاء لـ `exportProfessionalExcel()` من أي مكان. يعني ميزة التصدير **الحالية بالكامل (الشيتات الخمسة القديمة + إضافتي الجديدة) غير قابلة للوصول فعلياً من أي مستخدم اليوم** — نفس وضع `argon-nid-security.js` اللي لقيناه سابقاً (كود حقيقي، صفر تفعيل).
+
+هذا **خارج نطاق هذه المهمة تحديداً** (المطلوب تعديل `excel-export.js` فقط، سطر ٣٣) فما لمسته ولا أضفت `<script>` tag ولا زر تفعيل — بس لازم تعرف: حتى لو كل شي تحت مضبوط ١٠٠٪، **لازم توصلني بملف/زر التفعيل الفعلي بعدين** (نفس نمط ملف `DEPLOY_PATCH.md` يلي شفناه بالجلسة التانية) عشان يصير الفيتشر قابل للاستخدام فعلياً. مسجَّلة تحت **OUT OF SCOPE** رسمياً بالأسفل.
+
+---
+
+## 1. What Was Added
+
+تبويبة إكسل جديدة "التقرير الضريبي والمالي" — قسم واحد جديد بالكامل (Sections A–I) فوق ملف التصدير الموجود، صفر تعديل على الشيتات الخمس الحالية.
+
+## 2. Exact Files Modified
+
+`excel-export.js` فقط — لا ملف آخر لُمس (تحقق: `billing-engine.js`, `firebase-rules.json`, `dashboard.html` — صفر تعديل).
+
+## 3. Exact Functions Added
+
+`_taxToJordanDate(value)`, `_taxInRange(dateStr, from, to)`, `_taxJod(n)`, `_taxCalcPaidForInvoice(invId, transactions)`, `addTaxComplianceWorksheet(wb, data, styleHeader, styleDataRow, fromDate, toDate)`.
+
+## 4. Exact Functions Modified
+
+`exportProfessionalExcel()` — تعديل التوقيع فقط (إضافة معاملين اختياريين) + سطر استدعاء واحد جديد قبل `writeBuffer`. **صفر سطر من الشيتات الخمس القديمة تغيّر.**
+
+---
+
+## الباتش الجاهز للّصق
+
+### أ) `excel-export.js` — تعديل التوقيع (سطر ٤)
+
+**الحالي:**
+```js
+async function exportProfessionalExcel() {
+```
+**الاستبدال:**
+```js
 async function exportProfessionalExcel(fromDate = null, toDate = null) {
-  toast('⏳ جاري تجميع وتحليل البيانات... يرجى الانتظار', '');
-  
-  try {
-    // 1. Fetch entire clinic snapshot for comprehensive export
-    const snap = await db.ref(BASE).once('value');
-    const data = snap.val() || {};
-    
-    // 2. Initialize ExcelJS Workbook
-    const wb = new ExcelJS.Workbook();
-    wb.creator = 'Argon Medical OS';
-    wb.lastModifiedBy = 'Argon System Admin';
-    wb.created = new Date();
-    
-    // ── Helper: Style Header Row ──
-    const styleHeader = (row, ws) => {
-      row.eachCell((cell) => {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } }; // Teal
-        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, name: 'Tajawal', size: 12 };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.border = {
-          top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}
-        };
-      });
-      row.height = 25;
-      ws.views = [{ rightToLeft: true }];
-    };
+```
+*(بدون تغيير أي استدعاء موجود — الاستدعاء الحالي `exportProfessionalExcel()` بدون معاملات يستمر يعمل تماماً كالسابق، لأنه ما فيه أي استدعاء حقيقي أصلاً بالنظام كما وضّحت أعلاه.)*
 
-    // ── Helper: Style Data Row ──
-    const styleDataRow = (row) => {
-      row.eachCell((cell) => {
-        cell.font = { name: 'Tajawal', size: 11 };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.border = {
-          top: {style:'thin', color: {argb:'FFEEEEEE'}}, 
-          left: {style:'thin', color: {argb:'FFEEEEEE'}}, 
-          bottom: {style:'thin', color: {argb:'FFEEEEEE'}}, 
-          right: {style:'thin', color: {argb:'FFEEEEEE'}}
-        };
-      });
-      row.height = 20;
-    };
+### ب) استدعاء الدالة الجديدة — سطر واحد فقط، قبل "Generate File"
 
-    // ==========================================
-    // SHEET 1: GENERAL SUMMARY (ملخص العيادة)
-    // ==========================================
-    const ws1 = wb.addWorksheet('ملخص العيادة', { views: [{ rightToLeft: true }] });
-    
-    const settings = data.settings || {};
-    const stats = data.stats || {};
-    
-    ws1.getColumn('A').width = 30;
-    ws1.getColumn('B').width = 40;
-    
-    // Title
-    ws1.mergeCells('A1:B2');
-    const titleCell = ws1.getCell('A1');
-    titleCell.value = 'التقرير الشامل - ' + (settings.name || 'العيادة');
-    titleCell.font = { name: 'Tajawal', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
-    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
-    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-
-    const genData = [
-      ['تاريخ استخراج التقرير', new Date().toLocaleString('ar-JO')],
-      ['إجمالي الحجوزات المسجلة', stats.totalBookings || 0],
-      ['إجمالي الإيرادات (المحسوبة)', (stats.totalIncome || 0).toFixed(2) + ' د.أ'],
-      ['إجمالي زيارات النظام الإلكتروني', stats.visitors || 0],
-      ['حالة العيادة الحالية', settings.status === 'open' ? 'مفتوحة' : 'مغلقة'],
-      ['نمط التشغيل', settings.mode === 'medical_complex' ? 'مجمع طبي متكامل' : 'عيادة منفردة']
-    ];
-
-    let rIdx = 4;
-    genData.forEach(item => {
-      const row = ws1.getRow(rIdx++);
-      row.values = item;
-      row.getCell(1).font = { bold: true, name: 'Tajawal', size: 12 };
-      row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
-      styleDataRow(row);
-    });
-
-    // ==========================================
-    // SHEET 2: ALL BOOKINGS (سجل الحجوزات)
-    // ==========================================
-    const ws2 = wb.addWorksheet('سجل الحجوزات', { views: [{ rightToLeft: true }] });
-    ws2.columns = [
-      { header: 'رقم المرجع', key: 'ref', width: 15 },
-      { header: 'التاريخ', key: 'date', width: 15 },
-      { header: 'الوقت', key: 'time', width: 12 },
-      { header: 'اسم المريض', key: 'patName', width: 30 },
-      { header: 'رقم الهاتف', key: 'phone', width: 20 },
-      { header: 'الطبيب المعالج', key: 'docName', width: 25 },
-      { header: 'التكلفة (د.أ)', key: 'cost', width: 15 },
-      { header: 'الحالة', key: 'status', width: 15 },
-      { header: 'تاريخ الإنشاء', key: 'created', width: 20 }
-    ];
-    styleHeader(ws2.getRow(1), ws2);
-
-    const bookings = data.bookings || {};
-    const doctors = data.doctors || {};
-    let totalConfirmedRev = 0;
-
-    Object.entries(bookings).forEach(([bk, bv]) => {
-      let stTxt = bv.status === 'new' ? 'جديد' : 
-                 (bv.status === 'confirmed' ? 'مؤكد' : 
-                 (bv.status === 'waiting' ? 'انتظار' : 
-                 (bv.status === 'completed' ? 'مكتمل' : 'ملغي')));
-                 
-      const doc = doctors[bv.docKey] || {};
-      const docName = doc.name ? 'د. ' + doc.name : (bv.docKey === 'clinic' ? 'العيادة العامة' : 'غير محدد');
-      const cost = parseFloat(bv.fee || doc.fee || 0);
-
-      if(bv.status === 'completed' || bv.status === 'confirmed') totalConfirmedRev += cost;
-
-      const row = ws2.addRow({
-        ref: bk.substring(1, 8),
-        date: bv.date,
-        time: bv.time,
-        patName: bv.name,
-        phone: bv.phone,
-        docName: docName,
-        cost: cost.toFixed(2),
-        status: stTxt,
-        created: new Date(bv.createdAt).toLocaleString('ar-JO')
-      });
-      styleDataRow(row);
-      
-      // Status coloring
-      const stCell = row.getCell('status');
-      if(bv.status === 'completed') stCell.font = { color: { argb: 'FF10B981' }, bold: true };
-      if(bv.status === 'cancelled') stCell.font = { color: { argb: 'FFEF4444' }, bold: true };
-    });
-
-    // ==========================================
-    // SHEET 3: DOCTORS PERFORMANCE (أداء الأطباء)
-    // ==========================================
-    const ws3 = wb.addWorksheet('أداء الأطباء', { views: [{ rightToLeft: true }] });
-    ws3.columns = [
-      { header: 'اسم الطبيب', key: 'name', width: 30 },
-      { header: 'التخصص', key: 'spec', width: 25 },
-      { header: 'كشفية الطبيب (د.أ)', key: 'fee', width: 18 },
-      { header: 'متوسط التقييم', key: 'rating', width: 15 },
-      { header: 'إجمالي الحجوزات', key: 'totalBooks', width: 18 },
-      { header: 'إجمالي الإيرادات المباشرة (د.أ)', key: 'rev', width: 25 }
-    ];
-    styleHeader(ws3.getRow(1), ws3);
-
-    Object.entries(doctors).forEach(([dk, dv]) => {
-      // Calculate revenue and bookings per doctor
-      let dBooks = 0;
-      let dRev = 0;
-      Object.values(bookings).forEach(b => {
-        if(b.docKey === dk && b.status !== 'cancelled') {
-          dBooks++;
-          if(b.status === 'completed' || b.status === 'confirmed') {
-            dRev += parseFloat(b.fee || dv.fee || 0);
-          }
-        }
-      });
-
-      const row = ws3.addRow({
-        name: 'د. ' + (dv.name || 'غير محدد'),
-        spec: dv.specialty || 'غير محدد',
-        fee: parseFloat(dv.fee || 0).toFixed(2),
-        rating: parseFloat(dv.avgRating || 0).toFixed(1) + ' / 5.0',
-        totalBooks: dBooks,
-        rev: dRev.toFixed(2)
-      });
-      styleDataRow(row);
-    });
-
-    // ==========================================
-    // SHEET 4: INVOICES & FINANCIALS (المالية والفواتير)
-    // ==========================================
-    if (data.invoices) {
-      const ws4 = wb.addWorksheet('الفواتير التفصيلية', { views: [{ rightToLeft: true }] });
-      ws4.columns = [
-        { header: 'رقم الفاتورة', key: 'id', width: 15 },
-        { header: 'التاريخ', key: 'date', width: 20 },
-        { header: 'اسم المريض', key: 'patName', width: 30 },
-        { header: 'اسم الطبيب', key: 'docName', width: 25 },
-        { header: 'قيمة الكشفية', key: 'fee', width: 15 },
-        { header: 'قيمة الخدمات والأدوية', key: 'items', width: 20 },
-        { header: 'الإجمالي (د.أ)', key: 'total', width: 15 }
-      ];
-      styleHeader(ws4.getRow(1), ws4);
-
-      Object.entries(data.invoices).forEach(([ik, iv]) => {
-        let itemsSum = 0;
-        if(iv.items && Array.isArray(iv.items)) {
-            iv.items.forEach(i => itemsSum += parseFloat(i.price || 0));
-        }
-        
-        const row = ws4.addRow({
-          id: ik.substring(1, 8),
-          date: iv.createdAt ? new Date(iv.createdAt).toLocaleString('ar-JO') : '-',
-          patName: iv.patientName || 'غير محدد',
-          docName: iv.docName || '-',
-          fee: parseFloat(iv.doctorFee || 0).toFixed(2),
-          items: itemsSum.toFixed(2),
-          total: parseFloat(iv.total || 0).toFixed(2)
-        });
-        styleDataRow(row);
-      });
-    }
-
-    // ==========================================
-    // SHEET 5: PHARMACY INVENTORY (مخزون الصيدلية)
-    // ==========================================
-    if (data.pharmacy_inventory) {
-        const ws5 = wb.addWorksheet('مخزون الصيدلية', { views: [{ rightToLeft: true }] });
-        ws5.columns = [
-          { header: 'اسم الدواء / العلاج', key: 'name', width: 35 },
-          { header: 'الكمية المتوفرة', key: 'stock', width: 15 },
-          { header: 'سعر الوحدة (د.أ)', key: 'price', width: 15 },
-          { header: 'وحدة القياس', key: 'unit', width: 15 },
-          { header: 'الحد الأدنى للإنذار', key: 'min', width: 18 }
-        ];
-        styleHeader(ws5.getRow(1), ws5);
-  
-        Object.values(data.pharmacy_inventory).forEach(item => {
-          const row = ws5.addRow({
-            name: item.name || '-',
-            stock: item.stock || 0,
-            price: parseFloat(item.price || 0).toFixed(2),
-            unit: item.unit || 'علبة',
-            min: item.lowStockAlert || 5
-          });
-          styleDataRow(row);
-          if (item.stock <= (item.lowStockAlert || 5)) {
-              row.getCell('stock').font = { color: { argb: 'FFEF4444' }, bold: true }; // Red if low
-          }
-        });
-    }
-
+**الحالي:**
+```js
+    // 3. Generate File and Trigger Download
+    const buffer = await wb.xlsx.writeBuffer();
+```
+**الاستبدال:**
+```js
     // 3. Tax & Financial Support Report (إضافي — Section 32)
     addTaxComplianceWorksheet(wb, data, styleHeader, styleDataRow, fromDate, toDate);
 
     // 4. Generate File and Trigger Download
     const buffer = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const fileName = `التقرير_الشامل_لعيادة_${(settings.name || 'أرغون').replace(/ /g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    
-    saveAs(blob, fileName);
-    toast('✅ تم تصدير ملف الإكسيل بنجاح!', 'ok');
+```
 
-  } catch (error) {
-    console.error('Excel Export Error:', error);
-    toast('❌ حدث خطأ أثناء استخراج البيانات: ' + error.message, 'err');
-  }
-}
+### ج) الكود الكامل — يُضاف بنهاية الملف (بعد إغلاق `exportProfessionalExcel`)
 
+```js
 // ════════════════════════════════════════════════════════════════════════
 // 📑 TAX-REPORT-001 — التقرير الضريبي والمالي (Tax & Financial Support Report)
 // إضافة جراحية فوق excel-export.js — صفر تعديل على الشيتات ١-٥ الموجودة.
@@ -519,3 +330,107 @@ function addTaxComplianceWorksheet(wb, data, styleHeader, styleDataRow, fromDate
   addTitle('ملاحظة قانونية مهمة', 'FF7C2D12');
   addNote('هذا التقرير أداة دعم إداري ومحاسبي فقط، وليس الإقرار الضريبي الرسمي ولا نموذجًا معتمدًا من دائرة ضريبة الدخل والمبيعات (ISTD). الأرقام مشتقة مباشرة من سجلات ARGON دون أي افتراض قانوني. لا تُستخدم أي نسبة ضريبية أو معالجة قانونية بهذا التقرير إلا بعد تأكيد محاسب/مستشار ضريبي مرخَّص، خصوصًا فيما يتعلق بالمعالجة الضريبية الخاصة بالإجراءات السنية أو أي بند مُعلَّم "TAX REVIEW REQUIRED".');
 }
+```
+
+---
+
+## 5. Data Sources Used (كلها فُحصت مباشرة بالكود، صفر تخمين)
+
+| البيان | المصدر الحقيقي |
+|---|---|
+| نشاط المريض/تواريخ الزيارة | `patients/{id}/visits/{visitId}.date` |
+| الإيراد/الخصم/التأمين | `invoices/{id}.grossTotal/discountTotal/insuranceTotal/total` |
+| المدفوعات/الاسترجاع | `financial_transactions/{id}` (type: PAYMENT/REVERSAL) |
+| المستحق | `invoice.total − calcPaid()` — نفس صيغة `billing-engine.js:recordBillingPayment` حرفياً |
+| إجراءات الأسنان | `invoice.items[].department === 'dental'` (+ `tooth`) |
+| جاهزية الفوترة الوطنية | `invoice.nationalInvoiceNumber` / `taxNumber` (حقول موجودة أصلاً بالنظام) |
+
+## 6-9. Revenue / Payment / Visit / Dental Source of Truth
+
+مذكورة بالجدول أعلاه بالضبط — **مصدر واحد لكل رقم**، صفر ازدواج (Section 18 محقَّقة، انظر Golden Test أدناه).
+
+## 10. Tax Rules Verified From Official Sources
+
+بحثت فعلياً (٣ عمليات بحث ويب منفصلة، مصادر ISTD ومتعددة مستقلة):
+
+| القاعدة | التصنيف | المصدر |
+|---|---|---|
+| تسجيل الأطباء/النقابات المهنية إلزامي بنظام الفوترة الوطني الإلكتروني (JoFotara) | **A — Verified by Official Source** | إشارات مباشرة لموقع ISTD الرسمي + تغطية إخبارية لقرار إلزام النقابات المهنية |
+| خدمات العيادات/المستشفيات المرخَّصة معفاة من ضريبة المبيعات العامة | **B — مدعومة بعدة مصادر مستقلة، لم تُتحقَّق من النص القانوني الأساسي مباشرة بهذه الجلسة** | مصادر متعددة تشير لقانون ضريبة المبيعات العامة رقم ٦ لسنة ١٩٩٤ وتعديلاته |
+| ضريبة الدخل للأطباء/المهن الحرة: شرائح تصاعدية على الدخل الشخصي (٥٪–٣٠٪ حسب المصادر)، **ليست نسبة ثابتة على مستوى العيادة** | **B** | مواقع حاسبة ضريبة أردنية متعددة |
+| وجود خلاف/نقاش فعلي وموثَّق بين نقابة أطباء الأسنان ودائرة ضريبة الدخل حول معالجة ضريبية خاصة | **A — مؤكَّد وجوده كخبر** (تفاصيل التسوية نفسها لم تُتحقَّق بعمق) | خبر إخباري مباشر بعنوان "حل خلاف جذري بين نقابة أطباء الأسنان ودائرة ضريبة الدخل" |
+
+## 11. Tax Rules NOT Assumed
+
+**لم أكتب أي نسبة ضريبية بالكود إطلاقاً.** لا 16%، لا أي رقم. التقرير كله أرقام دعم (Gross/Net/Paid/Outstanding) بدون أي حساب "ضريبة مستحقة" — هذا مقصود ومباشر بند ٣٩/١٣ من طلبك، ومؤكَّد إضافياً بوجود الخلاف الحقيقي الموثَّق بالبند السابق (لا أحد يقدر يفترض معالجة موحّدة).
+
+## 12. New Excel Worksheets
+
+شيت واحد جديد: **"التقرير الضريبي والمالي"** — بأقسام A إلى I داخله (وليس ٩ شيتات منفصلة، حفاظاً على البساطة وسهولة القراءة — قرار تصميم مبرَّر، يمكن تقسيمه لشيتات منفصلة لاحقاً لو احتجت).
+
+## 13. Date Range Behavior
+
+`fromDate`/`toDate` اختياريان (`YYYY-MM-DD`)، Inclusive بالكامل (مؤكَّد بـ Golden Test). بدون تمريرهما: من بداية السجلات لليوم — نفس سلوك عدم-الكسر المطلوب.
+
+## 14-15. Patient-Level / Payment-Level Report
+
+Section D و E أعلاه — مبنية بالكامل من snapshot واحد، صفر استعلام إضافي لكل مريض (Section 25 محقَّقة).
+
+## 16. Outstanding Balance Logic
+
+`Math.max(invoice.total − calcPaid(), 0)` — لحظي دائماً، غير مرتبط بالفترة (موثَّق بالملاحظة داخل الشيت نفسه لمنع لخبطة المستخدم).
+
+## 17. Reconciliation Logic
+
+`صافي فواتير الفترة = مدفوعات هذه الفواتير (بأي وقت) + المستحق الناتج عنها`. حالة `MATCHED`/`WARNING`/`MISMATCH` معروضة صراحة بالشيت.
+
+## 18. Dental-specific Logic
+
+مصدر واحد فقط (`invoice.items[department=dental]`) — **ليس** `dental_history` (السجل السريري من الجلسة التانية) — تفادياً للازدواج، موثَّق بالكود والشيت.
+
+## 19. Performance Impact
+
+صفر استعلام Firebase إضافي — كله من نفس `data` الموجود مسبقاً (Section 25 محقَّقة، تأكَّدت بقراءة الكود قبل الكتابة).
+
+## 20. Privacy Considerations
+
+لا تشخيص، لا ملاحظات سريرية، لا حساسيات — فقط بيانات مالية/إدارية (اسم، MRN، تاريخ، مبلغ). Section 23 محقَّقة.
+
+## 21. Existing Functionality Preserved
+
+صفر سطر تغيّر بالشيتات الخمس القديمة — تحققت بمقارنة نصية مباشرة.
+
+## 22. Regression Test Results — Golden Dataset (Section 37/38)، **تشغيل حقيقي بـ Node**
+
+```
+TEST 1: فاتورة ملغاة مُستثناة من كل الحسابات → PASS
+TEST 2: مجموع Gross/Discount/Net للفترة صحيح (220/15/205) → PASS
+TEST 3: دفعة voided تُتجاهل كليًا من حساب المدفوع → PASS
+TEST 4: دفعة كاملة + استرجاع كامل = صافي مدفوع صفر → PASS
+TEST 5: الرصيد المستحق الكلي = 150 → PASS (بعد تصحيح خطأ حسابي بتوقعي الشخصي، ليس بالكود — موثَّق بالأسفل)
+TEST 6: تسوية فواتير الفترة → MATCHED, Diff=0 → PASS
+TEST 7: بنود الأسنان (2 بند من فاتورة واحدة، صفر ازدواج) → PASS
+TEST 8: مريض بزيارة موجودة لكن فاتورة ملغاة → يظهر بالنشاط السريري صح → PASS
+TEST 9: زيارة خارج نطاق الشهر المطلوب لا تُحسب → PASS
+```
+**9/9 PASS.**
+
+**أمانة مهمة:** أول تشغيل لـ TEST 5 فشل (توقعت ٩٠، الكود أعطى ١٥٠). رجعت وحسبتها يدوياً بدقة ولقيت **توقعي أنا كان غلط** (فاتورة مدفوعة بالكامل ثم مُسترجَعة بالكامل ترجع مستحقة بكامل قيمتها، لا صفر — هذا منطقي وصحيح). صحّحت التوقع وأعدت التشغيل. **الكود كان صحيحاً من البداية، الخطأ كان بتوقعي أنا فقط** — أذكر هذا بصراحة بدل إخفائه.
+
+## 23. Known Limitations
+
+1. **`excel-export.js` غير مُفعَّل بأي صفحة حالياً (انظر الاكتشاف الحرج أعلاه).**
+2. لا يوجد Date Range Picker بواجهة المستخدم — الدالة تقبل المعاملين برمجياً، لكن ربطهما بحقلي تاريخ فعليين بالواجهة **لم يُطلب صراحة** (بند ٥ سمح بعدم إضافة واجهة لو غير ضروري، وبما إنه الملف كله غير مفعَّل أصلاً، ما بنيت واجهة لشي مش موصول).
+3. تصنيف "المصاريف المقبولة ضريبياً" (Section 12) غير مطبَّق — **لأنه لا يوجد أصلاً مسار بيانات مصاريف بـ ARGON** (تحقَّقت، صفر نتيجة).
+4. الإعفاء الضريبي على خدمات العيادات مصنَّف B لا A — يحتاج تأكيد محاسب لعيادتك تحديداً (خصوصاً مع الخلاف الموثَّق حول أطباء الأسنان تحديداً).
+
+## 24. OUT OF SCOPE Findings
+
+- **`excel-export.js` بالكامل orphaned/غير محمَّل بأي HTML.** (الأهم)
+- لم ألاحظ أي bug إضافي غير مرتبط أثناء هذا العمل تحديداً (الملف صغير ومركّز، ٢٥٠ سطر فقط).
+
+## 25. Final Verdict
+
+**PASS WITH KNOWN LIMITATION**
+
+كل الشيتات الخمس القديمة سليمة (صفر تعديل)، التقرير الجديد يعمل ويُصالح بشكل صحيح على بيانات اختبار حقيقية (9/9)، صفر قاعدة ضريبية مُخترَعة، صفر ازدواج بالأسنان، صفر استعلام إضافي. القيد الوحيد الحقيقي: **الميزة كلها (قديمها وجديدها) غير قابلة للوصول فعلياً لحد ما يتربط `excel-export.js` بزر/صفحة حقيقية** — هذا خارج نطاق طلبك المحدَّد لهذه المهمة (تعديل الملف نفسه فقط)، فوثّقته ولم أتجاوزه.

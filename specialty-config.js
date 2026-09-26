@@ -261,16 +261,16 @@
         teethUpper: [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28],
         teethLower: [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38],
         statuses: {
-          healthy:    { labelAr: 'سن سليم',          color: '#10b981', emoji: '🦷' },
-          filling:    { labelAr: 'ترميم سابق (حشوة)',           color: '#f59e0b', emoji: '✏️' },
-          crown:      { labelAr: 'تتويج سابق (تاج)',            color: '#3b82f6', emoji: '👑' },
-          missing:    { labelAr: 'سن مفقود / مقلوع',   color: '#94a3b8', emoji: '❌' },
-          implant:    { labelAr: 'غرسة سنية سابقة',            color: '#8b5cf6', emoji: '🔩' },
-          root_canal: { labelAr: 'معالجة لبية سابقة',       color: '#ef4444', emoji: '⚠️' },
-          bridge:     { labelAr: 'تعويض جسر ثابت',            color: '#0891b2', emoji: '🌉' },
-          decay:      { labelAr: 'آفة نخرية (تسوس)',       color: '#dc2626', emoji: '🔴' },
-          veneer:     { labelAr: 'وجه تجميلي (Veneer)',   color: '#ec4899', emoji: '✨' },
-          partial_rp: { labelAr: 'بدلة سنية جزئية',       color: '#6366f1', emoji: '🦷' }
+          healthy:    { labelAr: 'Intact / Sound',          color: '#10b981', emoji: '🦷' },
+          filling:    { labelAr: 'Existing Restoration',           color: '#f59e0b', emoji: '✏️' },
+          crown:      { labelAr: 'Existing Crown',            color: '#3b82f6', emoji: '👑' },
+          missing:    { labelAr: 'Missing',   color: '#94a3b8', emoji: '❌' },
+          implant:    { labelAr: 'Dental Implant',            color: '#8b5cf6', emoji: '🔩' },
+          root_canal: { labelAr: 'Endodontically Treated',       color: '#ef4444', emoji: '⚠️' },
+          bridge:     { labelAr: 'Bridge Abutment/Pontic',            color: '#0891b2', emoji: '🌉' },
+          decay:      { labelAr: 'Dental Caries',       color: '#dc2626', emoji: '🔴' },
+          veneer:     { labelAr: 'Porcelain Veneer',   color: '#ec4899', emoji: '✨' },
+          partial_rp: { labelAr: 'Removable Partial Denture',       color: '#6366f1', emoji: '🦷' }
         }
       },
 

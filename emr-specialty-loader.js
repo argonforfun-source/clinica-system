@@ -231,6 +231,19 @@
 
     /* وحدات الأسنان: إضافة روابط مرجعية أنيقة تلفت الانتباه وتوجه للمكان الصحيح */
     if (cfg.features && cfg.features.dentalChart) {
+      var customLbl = document.createElement('div');
+      customLbl.className = 'ni argon-spec-sidebar-item';
+      customLbl.style.cssText = 'color:' + cfg.color + ';opacity:0.85;font-size:0.82rem;';
+      customLbl.innerHTML = '<i class="fas fa-palette" style="color:' + cfg.color + '"></i> تخصيص المصطلحات';
+      customLbl.addEventListener('click', function () {
+        if (typeof window.DentalLabelRegistry !== 'undefined') {
+          window.DentalLabelRegistry.openCustomizationModal();
+        } else {
+          if (typeof window.toast === 'function') window.toast('جاري تحميل وحدة التخصيص...', 'warn');
+        }
+      });
+      sidebarContainer.appendChild(customLbl);
+
       addEmbeddedSidebarItem(sidebarContainer, 'dental-chart-tab', 'الرسم البياني للأسنان', 'fa-tooth', cfg.color);
     }
     if (cfg.features && cfg.features.treatmentPlan) {

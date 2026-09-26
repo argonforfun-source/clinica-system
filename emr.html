@@ -634,5 +634,18 @@
 <!-- Specialty System -->
 <script src="specialty-config.js?v=3"></script>
 <script src="emr-specialty-loader.js?v=6"></script>
+
+<!-- Background Backup Engine -->
+<script src="client-local-backup.js?v=3.0.7"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Initialize after a short delay to ensure CID is loaded
+    setTimeout(() => {
+      if (typeof LocalBackupEngine !== 'undefined' && typeof CID !== 'undefined' && CID) {
+        LocalBackupEngine.init(CID);
+      }
+    }, 2000);
+  });
+</script>
 </body>
 </html>
