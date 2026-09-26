@@ -745,7 +745,7 @@
             var cObj = SURFACE_CONDITIONS[sData.condition];
             if (cObj) {
               var gKey = 'surf_' + sData.condition;
-              if (!groups[gKey]) groups[gKey] = { label: _label('surface', sData.condition, cObj.labelAr), icon: cObj.glyph, color: cObj.color, items: [] };
+              if (!groups[gKey]) groups[gKey] = { label: _label('condition', sData.condition, cObj.labelAr), icon: cObj.glyph, color: cObj.color, items: [] };
               groups[gKey].items.push({ num: num, surface: surf, origin: ORIGINS[sData.origin] || ORIGINS.existing });
               hasData = true;
             }
