@@ -252,7 +252,7 @@
       container.innerHTML = _buildChartHTML();
       _attachStyles();
     }).catch(function (err) {
-      _chart = {}; _meta = { dentitionMode: 'adult', bridges: [] }; window._dentalGlobalHistory = [];
+      _chart = {}; _meta = { dentitionMode: 'adult', bridges: [] };
       container.innerHTML = _buildChartHTML();
       _attachStyles();
     });
@@ -260,17 +260,8 @@
 
   function _loadChart(patientId) {
     if (typeof db === 'undefined' || typeof BASE === 'undefined') return Promise.resolve({ chart: {}, meta: {} });
-    
-    var p1 = db.ref(BASE + '/patients/' + patientId + '/specialty_data/dental').once('value');
-    var p2 = db.ref(BASE + '/patients/' + patientId + '/specialty_data/dental_history').once('value');
-    
-    return Promise.all([p1, p2]).then(function (snaps) {
-      var v = snaps[0].val() || {};
-      window._dentalGlobalHistory = [];
-      if (snaps[1].exists()) {
-        snaps[1].forEach(function(child) { window._dentalGlobalHistory.push(child.val()); });
-        window._dentalGlobalHistory.sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
-      }
+    return db.ref(BASE + '/patients/' + patientId + '/specialty_data/dental').once('value').then(function (snap) {
+      var v = snap.val() || {};
       return { chart: v.chart || {}, meta: v.meta || {} };
     });
   }
@@ -465,199 +456,15 @@
       '<div class="det-section det-row"><input type="checkbox" id="_dental-needs-rx" ', (data.requiresTreatment ? 'checked' : ''), '><label for="_dental-needs-rx" class="det-check-label">⚠️ مُدرج ضمن خطة العلاج الحالية</label></div>',
       '<div class="det-section"><label class="det-label">📝 ملاحظة سريرية (اختياري)</label><input type="text" id="_dental-note-inp" class="det-input" value="', _esc(data.notes || ''), '" placeholder="ملاحظات..."></div>',
       bridgeBlock,
-      '<div class="det-section"><label class="det-label">🧾 الإجراءات (كتالوج الأسعار الرسمي)</label><button type="button" class="det-btn" style="background:#0891b2;color:#fff;width:100%" onclick="DentalChartModule.openProcedurePicker(', num, ')">➕ اختيار إجراء رسمي لهذا السن</button><div id="_dental-tooth-procs-', num, '" style="margin-top:8px"></div></div>',
-      '<div class="det-section"><label class="det-label">🕓 السجل التاريخي لهذا السن</label><div id="_dental-tooth-hist-', num, '" style="font-size:0.78rem;color:var(--muted)">جاري التحميل...</div></div>',
       '<div class="det-actions"><button onclick="DentalChartModule.saveToothData(', num, ')" class="det-btn det-btn-save"><i class="fas fa-save"></i> حفظ</button><button onclick="document.getElementById(\'_dental-editor-overlay\').remove()" class="det-btn det-btn-cancel">إلغاء</button></div>',
       '</div>'
     ].join('');
 
     document.body.appendChild(overlay);
     overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
-    _loadToothHistory(num);
   }
 
-  /* ══════════════════════════════════════════════════════════════════
-   * v2.1 — PROCEDURE CATALOG PICKER (additive, section 5/22 of spec)
-   * Reads window.DentalProcedureCatalog (128 official codes) and
-   * window.DentalLabelRegistry (doctor aliases). Writes ONLY to the new
-   * append-only dental_history node — never touches _chart/_meta/saveChart.
-   * ══════════════════════════════════════════════════════════════════ */
 
-  var _pickerState = { num: null, category: '', query: '' };
-
-  function openProcedurePicker(num) {
-    if (!global.DentalProcedureCatalog) { if (typeof window.toast === 'function') window.toast('⚠️ كتالوج الإجراءات الرسمي لم يتم تحميله بعد', 'err'); return; }
-    var existing = document.getElementById('_dental-picker-overlay');
-    if (existing) existing.remove();
-    _pickerState = { num: num, category: '', query: '' };
-
-    var overlay = document.createElement('div');
-    overlay.id = '_dental-picker-overlay';
-    overlay.className = 'dental-editor-overlay';
-    overlay.style.zIndex = 10001;
-    overlay.innerHTML = '<div class="dental-editor-card" style="max-width:520px">' + _buildProcedurePickerHTML() + '</div>';
-    document.body.appendChild(overlay);
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
-  }
-
-  function _buildProcedurePickerHTML() {
-    var CAT = global.DentalProcedureCatalog;
-    var cats = CAT.getAllCategories();
-    var catOptions = '<option value="">كل الفئات</option>' + cats.map(function (c) {
-      return '<option value="' + c.key + '" ' + (c.key === _pickerState.category ? 'selected' : '') + '>' + c.nameAr + '</option>';
-    }).join('');
-
-    var results = _pickerState.query ? CAT.searchProcedures(_pickerState.query) : CAT.getAllProcedures();
-    if (_pickerState.category) results = results.filter(function (p) { return p.category === _pickerState.category; });
-
-    var rows = results.slice(0, 60).map(function (p) {
-      var display = _label('procedure', p.code, p.nameAr);
-      var priceTxt = p.priceNote ? p.priceNote : (p.priceMinJOD != null ? (p.priceMinJOD + '–' + p.priceMaxJOD + ' د.أ') : '');
-      return '<div class="proc-row" style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;cursor:pointer" onclick="DentalChartModule.selectProcedureForTooth(' + _pickerState.num + ', \'' + p.code + '\')">' +
-        '<div style="min-width:0"><div style="font-weight:bold;font-size:0.85rem;font-family:monospace;color:#0891b2">' + p.code + '</div><div style="font-size:0.8rem">' + _esc(display) + '</div></div>' +
-        '<div style="font-size:0.72rem;color:var(--muted);white-space:nowrap">' + _esc(priceTxt) + '</div>' +
-        '</div>';
-    }).join('') || '<div style="text-align:center;color:var(--muted);padding:20px">لا توجد نتائج مطابقة</div>';
-
-    return [
-      '<div class="dental-editor-head"><div class="det-title">🧾 كتالوج الإجراءات السنية الرسمي (128)</div></div>',
-      '<div class="det-section"><input type="text" class="det-input" placeholder="ابحث بالكود أو بالاسم..." value="', _esc(_pickerState.query), '" oninput="DentalChartModule._onPickerSearch(this.value)"></div>',
-      '<div class="det-section"><select class="det-input" onchange="DentalChartModule._onPickerCategory(this.value)">', catOptions, '</select></div>',
-      '<div class="det-section" style="max-height:340px;overflow-y:auto">', rows, '</div>',
-      '<div class="det-actions"><button class="det-btn det-btn-cancel" onclick="document.getElementById(\'_dental-picker-overlay\').remove()">إغلاق</button></div>'
-    ].join('');
-  }
-
-  function _onPickerSearch(val) {
-    _pickerState.query = val;
-    var card = document.querySelector('#_dental-picker-overlay .dental-editor-card');
-    if (card) card.innerHTML = _buildProcedurePickerHTML();
-    // refocus the search box after re-render
-    var inp = document.querySelector('#_dental-picker-overlay input[type="text"]');
-    if (inp) { inp.focus(); inp.selectionStart = inp.selectionEnd = inp.value.length; }
-  }
-
-  function _onPickerCategory(val) {
-    _pickerState.category = val;
-    var card = document.querySelector('#_dental-picker-overlay .dental-editor-card');
-    if (card) card.innerHTML = _buildProcedurePickerHTML();
-  }
-
-  /**
-   * Doctor picked one official procedure for one tooth. This does NOT
-   * write to _chart/_meta and does NOT change saveChart()'s data — it
-   * appends one immutable record to specialty_data/dental_history.
-   * Correcting a mistaken entry means adding a new record, per
-   * argon-governance ("append-only, never destructive"); there is no
-   * edit/delete path for history records by design.
-   */
-  function selectProcedureForTooth(num, code) {
-    var overlay = document.getElementById('_dental-picker-overlay');
-    if (overlay) overlay.remove();
-    logToothProcedureEvent(num, code, _currentOriginMode, null);
-  }
-
-  function logToothProcedureEvent(num, procedureCode, origin, notes) {
-    if (typeof db === 'undefined' || typeof BASE === 'undefined' || !_currentPatientId) return Promise.resolve(null);
-    var CAT = global.DentalProcedureCatalog;
-    var proc = CAT ? CAT.getProcedureByCode(procedureCode) : null;
-    var session = (global.ArgonSession && global.ArgonSession.get) ? global.ArgonSession.get() : null;
-    var ref = db.ref(BASE + '/patients/' + _currentPatientId + '/specialty_data/dental_history').push();
-    var record = {
-      patientId: _currentPatientId,
-      toothCode: num || null,
-      procedureCode: procedureCode,
-      procedureNameSnapshot: proc ? proc.nameAr : null, // frozen at write time — section 31 (medico-legal immutability)
-      visitId: null, // dental_chart_module has no active-visit context today — see FINAL_IMPLEMENTATION_REPORT.md "Remaining Risks"
-      doctorId: (session && session.staffId) || null,
-      doctorNameSnapshot: (session && session.displayName) || null,
-      origin: origin || 'existing',
-      notes: notes || null,
-      date: new Date().toISOString()
-    };
-    return ref.set(record).then(function () {
-      if (typeof window.toast === 'function') window.toast('✅ تم تسجيل الإجراء في السجل التاريخي', 'ok');
-      _loadToothHistory(num);
-      var panel = document.getElementById('_dental-tooth-procs-' + num);
-      if (panel) panel.innerHTML = '<div style="font-size:0.75rem;color:#0891b2">آخر إجراء مسجّل: ' + _esc(record.procedureCode) + ' — ' + _esc(record.procedureNameSnapshot || '') + '</div>';
-
-      // 🔥 الجراحة الطبية: تسجيل الإجراء الرسمي في السجل الطبي الزمني الرئيسي
-      _logDentalChangeToMainTimeline(num, "إجراء سني رسمي", proc ? proc.nameAr : procedureCode, procedureCode);
-
-      if (!window._dentalGlobalHistory) window._dentalGlobalHistory = [];
-      window._dentalGlobalHistory.unshift(record);
-      window._dentalGlobalHistory.sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
-      _updateSummaryUI();
-
-      return record;
-    }).catch(function (err) {
-      console.error('[DentalChartModule] logToothProcedureEvent failed:', err);
-      if (typeof window.toast === 'function') window.toast('⚠️ تعذر حفظ الإجراء في السجل التاريخي', 'err');
-      return null;
-    });
-  }
-
-  function _logDentalChangeToMainTimeline(num, actionTitle, detailsStr, procCode) {
-    if (typeof db === 'undefined' || typeof BASE === 'undefined' || !_currentPatientId) return;
-    var session = (global.ArgonSession && global.ArgonSession.get) ? global.ArgonSession.get() : null;
-    var visitKey = db.ref(BASE + '/patients/' + _currentPatientId + '/visits').push().key;
-
-    var now = new Date();
-    var dateVal = now.toLocaleDateString('en-CA');
-    var hours = now.getHours();
-    var mins = String(now.getMinutes()).padStart(2, '0');
-    var ampm = hours >= 12 ? 'م' : 'ص';
-    var hours12 = hours % 12 || 12;
-    var timeVal = hours12 + ':' + mins + ' ' + ampm;
-
-    var diag = '🦷 ' + actionTitle + ' (السن ' + num + ')';
-    if (procCode) diag += ' [' + procCode + ']';
-
-    var visitObj = {
-      date: dateVal,
-      time: timeVal,
-      docName: session ? session.displayName : 'طبيب الأسنان',
-      diagnosis: diag,
-      notes: detailsStr || 'لا يوجد تفاصيل',
-      origin: 'dental_chart_event',
-      status: 'signed',
-      toothNumber: num,
-      procedureCode: procCode || null
-    };
-
-    db.ref(BASE + '/patients/' + _currentPatientId + '/visits/' + visitKey).set(visitObj).then(function () {
-      if (global._patients && global._patients[_currentPatientId]) {
-        if (!global._patients[_currentPatientId].visits) global._patients[_currentPatientId].visits = {};
-        global._patients[_currentPatientId].visits[visitKey] = visitObj;
-      }
-      if (global.ArgonPager && global.ArgonPager.cache && global.ArgonPager.cache[_currentPatientId]) {
-        if (!global.ArgonPager.cache[_currentPatientId].visits) global.ArgonPager.cache[_currentPatientId].visits = {};
-        global.ArgonPager.cache[_currentPatientId].visits[visitKey] = visitObj;
-      }
-      if (typeof global.refreshPatientFileUI === 'function') {
-        global.refreshPatientFileUI(_currentPatientId);
-      }
-    }).catch(function (e) { console.error('Failed to log to timeline', e); });
-  }
-
-  function _loadToothHistory(num) {
-    var box = document.getElementById('_dental-tooth-hist-' + num);
-    if (!box) return;
-    if (typeof db === 'undefined' || typeof BASE === 'undefined' || !_currentPatientId) { box.innerHTML = 'غير متاح'; return; }
-    db.ref(BASE + '/patients/' + _currentPatientId + '/specialty_data/dental_history')
-      .orderByChild('toothCode').equalTo(num)
-      .once('value').then(function (snap) {
-        var events = [];
-        snap.forEach(function (child) { events.push(child.val()); });
-        events.sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); });
-        if (!events.length) { box.innerHTML = 'لا يوجد سجل سابق لهذا السن.'; return; }
-        box.innerHTML = events.map(function (e) {
-          var o = ORIGINS[e.origin] || ORIGINS.existing;
-          var d = e.date ? new Date(e.date).toLocaleDateString('ar-JO') : '';
-          return '<div style="padding:6px 0;border-bottom:1px dashed var(--border)"><b>' + o.badge + ' ' + _esc(e.procedureNameSnapshot || e.procedureCode) + '</b><br>' + _esc(d) + (e.doctorNameSnapshot ? ' — د. ' + _esc(e.doctorNameSnapshot) : '') + '</div>';
-        }).join('');
-      }).catch(function () { box.innerHTML = 'تعذر تحميل السجل.'; });
-  }
 
   function _selectPalette(key) {
     _selectedSurfaceCond = key;
@@ -745,36 +552,7 @@
 
     if (!_chart[num]) _chart[num] = { surfaces: { center: null, top: null, bottom: null, left: null, right: null }, _v2: true };
 
-    // 🔥 الجراحة الطبية: تسجيل كل تعديل في السجل الطبي الزمني الرئيسي (Timeline)
-    var statusName = TOOTH_STATUSES[status] ? TOOTH_STATUSES[status].labelAr : status;
-    var matName = '';
-    for (var i = 0; i < MATERIALS.length; i++) { if (MATERIALS[i][0] === material) { matName = MATERIALS[i][1]; break; } }
-    var rxText = requiresTreatment ? 'نعم (مُدرج ضمن خطة العلاج)' : 'لا';
-    var detailText = 'الحالة العامة للسن: ' + statusName + '\nالمادة المستخدمة: ' + (matName || 'بدون') + '\nخطة علاجية: ' + rxText;
-    if (notes) detailText += '\nملاحظات الطبيب السريرية: ' + notes;
-    _logDentalChangeToMainTimeline(num, "تعديل تشريحي / سريري", detailText, null);
 
-    // 🔥 تسجيل التعديل في السجل التاريخي الخاص بالأسنان (dental_history)
-    if (typeof db !== 'undefined' && typeof BASE !== 'undefined' && _currentPatientId) {
-      var session = (global.ArgonSession && global.ArgonSession.get) ? global.ArgonSession.get() : null;
-      var histRef = db.ref(BASE + '/patients/' + _currentPatientId + '/specialty_data/dental_history').push();
-      var histRecord = {
-        patientId: _currentPatientId,
-        toothCode: num || null,
-        procedureCode: 'STATE_CHANGE',
-        procedureNameSnapshot: 'تعديل حالة السن: ' + statusName,
-        visitId: null,
-        doctorId: (session && session.staffId) || null,
-        doctorNameSnapshot: (session && session.displayName) || null,
-        origin: _currentOriginMode || 'existing',
-        notes: detailText,
-        date: new Date().toISOString()
-      };
-      histRef.set(histRecord).catch(function(e) { console.error('Failed to log tooth state change to history', e); });
-      if (!window._dentalGlobalHistory) window._dentalGlobalHistory = [];
-      window._dentalGlobalHistory.unshift(histRecord);
-      window._dentalGlobalHistory.sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
-    }
 
     var oldStatus = _chart[num].status || 'healthy';
     if (status !== oldStatus) {
@@ -1025,32 +803,7 @@
         '</div>';
     });
 
-    if (window._dentalGlobalHistory && window._dentalGlobalHistory.length > 0) {
-      var histRows = window._dentalGlobalHistory.map(function(e) {
-        var o = ORIGINS[e.origin] || ORIGINS.existing;
-        var d = e.date ? new Date(e.date).toLocaleDateString('ar-JO') + ' ' + new Date(e.date).toLocaleTimeString('ar-JO', {hour: '2-digit', minute:'2-digit'}) : '';
-        var procDisp = _label('procedure', e.procedureCode, e.procedureNameSnapshot || e.procedureCode);
-        return '<div style="padding: 10px; background: var(--surf); border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
-          '<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 6px; margin-bottom: 6px;">' +
-          '<b style="color: var(--text); font-size: 0.95rem;">' + (e.toothCode ? '<i class="fas fa-tooth" style="color: var(--oc); margin-left: 5px;"></i> السن (' + e.toothCode + ') - ' : '') + _esc(procDisp) + '</b>' +
-          '<span style="font-size: 0.8rem; background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 12px; color: var(--muted);">' + o.badge + ' ' + o.labelAr + '</span>' +
-          '</div>' +
-          '<div style="font-size: 0.85rem; color: var(--muted); display: flex; gap: 15px; flex-wrap: wrap;">' +
-          '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-clock" style="color: #94a3b8;"></i> ' + _esc(d) + '</span>' +
-          (e.doctorNameSnapshot ? '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-user-md" style="color: #94a3b8;"></i> د. ' + _esc(e.doctorNameSnapshot) + '</span>' : '') +
-          (e.notes ? '<span style="display: flex; align-items: center; gap: 4px; color: #b45309;"><i class="fas fa-sticky-note" style="color: #f59e0b;"></i> ' + _esc(e.notes) + '</span>' : '') +
-          '</div>' +
-          '</div>';
-      }).join('');
 
-      html += '<div class="summary-group-panel" style="background: var(--bg); border-radius: 10px; border: 1px solid var(--border); padding: 15px; margin-top: 15px;">' +
-        '<div style="font-weight: bold; color: var(--text); font-size: 1.05rem; margin-bottom: 15px; border-bottom: 2px solid var(--border); padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">' +
-        '<span style="font-size: 1.2rem; color: #0ea5e9;"><i class="fas fa-history"></i></span> <span style="color: #0ea5e9;">السجل التاريخي للإجراءات (Procedures)</span>' +
-        '<span style="background: #e0f2fe; color: #0284c7; font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; margin-right: auto; font-weight: bold;">' + window._dentalGlobalHistory.length + ' إجراء مسجل</span>' +
-        '</div>' +
-        '<div style="display: flex; flex-direction: column; gap: 8px;">' + histRows + '</div>' +
-        '</div>';
-    }
 
     html += '</div>';
     return html;
@@ -1292,10 +1045,6 @@
     // Callers must treat these as read-only reference data.
     TOOTH_STATUSES: TOOTH_STATUSES, SURFACE_CONDITIONS: SURFACE_CONDITIONS, MATERIALS: MATERIALS,
     getAnatomicalName: _anatomicalName,
-    // v2.1 — official procedure catalog picker + read-only tooth history
-    openProcedurePicker: openProcedurePicker, selectProcedureForTooth: selectProcedureForTooth,
-    logToothProcedureEvent: logToothProcedureEvent,
-    _onPickerSearch: _onPickerSearch, _onPickerCategory: _onPickerCategory,
     init: function () { console.log('[DentalChartModule] v2.1 "Clinical Pro + Procedures" initialized.'); }
   };
 }(window));
