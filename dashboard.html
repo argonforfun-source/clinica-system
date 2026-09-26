@@ -2229,6 +2229,7 @@
         </div>
         <div class="setp">
           <div class="setg"><label class="setl">اسم العيادة</label><input type="text" id="sN" class="seti"></div>
+          <div class="setg"><label class="setl">الرقم الضريبي (اختياري)</label><input type="text" id="sTaxNumber" class="seti" dir="ltr" placeholder="مثال: 123456789"></div>
           <div class="setg"><label class="setl">رقم الواتساب</label><input type="text" id="sP" class="seti"
               placeholder="+962..."></div>
           <div class="setg" style="display:grid;grid-template-columns:1fr;gap:12px">
@@ -3418,7 +3419,7 @@
       const pLinkInput = document.getElementById('patPortalLinkUrl');
       if (pLinkInput) pLinkInput.value = portalUrl;
 
-      const F = { sN: 'name', sP: 'phone', sSpec: 'specialty', sEm: 'emoji', sBookingDays: 'bookingDays', sWs: 'clinicStart', sWe: 'clinicEnd' };
+      const F = { sN: 'name', sP: 'phone', sTaxNumber: 'taxNumber', sSpec: 'specialty', sEm: 'emoji', sBookingDays: 'bookingDays', sWs: 'clinicStart', sWe: 'clinicEnd' };
       for (let id in F) { const el = document.getElementById(id); if (el && !el.matches(':focus')) el.value = s[F[id]] || ''; }
       const st = document.getElementById('sSt'); if (st && s.status !== 'suspended') st.value = s.status || 'open';
       const ssd = document.getElementById('sSameDay'); if (ssd) ssd.value = (s.sameDayBooking !== false) ? 'true' : 'false';
@@ -4671,6 +4672,7 @@
       const update = {
         name: sanitize(sN),
         phone: sanitize(sP),
+        taxNumber: document.getElementById('sTaxNumber') ? sanitize(document.getElementById('sTaxNumber').value) : '',
         status: document.getElementById('sSt').value,
         is24Hours: document.getElementById('s24h').checked,
         clinicStart: document.getElementById('sWs').value,
