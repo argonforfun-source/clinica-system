@@ -440,9 +440,11 @@
 
     var palette = Object.keys(SURFACE_CONDITIONS).map(function (k) {
       var c = SURFACE_CONDITIONS[k];
-      return '<button type="button" class="palette-btn' + (_selectedSurfaceCond === k ? ' palette-active' : '') + '" style="--pc:' + c.color + '" title="' + _esc(_label('condition', k, c.labelAr)) + '" onclick="DentalChartModule._selectPalette(\'' + k + '\')">' + c.glyph + '</button>';
+      var lbl = _esc(_label('condition', k, c.labelAr));
+      return '<div style="display:flex; flex-direction:column; align-items:center; gap:4px;"><button type="button" class="palette-btn' + (_selectedSurfaceCond === k ? ' palette-active' : '') + '" style="--pc:' + c.color + '" title="' + lbl + '" onclick="DentalChartModule._selectPalette(\'' + k + '\')">' + c.glyph + '</button><span style="font-size:0.65rem; color:var(--text); text-align:center; line-height:1.2; word-break:break-word;">' + lbl + '</span></div>';
     }).join('');
-    palette += '<button type="button" class="palette-btn' + (_selectedSurfaceCond === 'clear' ? ' palette-active' : '') + '" style="--pc:#94a3b8" onclick="DentalChartModule._selectPalette(\'clear\')">⌫</button>';
+    var clearLbl = 'مسح (Clear)';
+    palette += '<div style="display:flex; flex-direction:column; align-items:center; gap:4px;"><button type="button" class="palette-btn' + (_selectedSurfaceCond === 'clear' ? ' palette-active' : '') + '" style="--pc:#94a3b8" onclick="DentalChartModule._selectPalette(\'clear\')" title="' + clearLbl + '">⌫</button><span style="font-size:0.65rem; color:var(--text); text-align:center; line-height:1.2; word-break:break-word;">' + clearLbl + '</span></div>';
 
     overlay.innerHTML = [
       '<div class="dental-editor-card">',
@@ -615,7 +617,8 @@
     if (!panel) return;
     if (!_bridgeMode) { panel.innerHTML = ''; return; }
     var chips = _bridgeSelection.map(function (n) { return '<span class="chip">' + n + '</span>'; }).join('<span class="chip-sep"> – </span>');
-    var body = _bridgeSelection.length >= 2 ? '<div class="bridge-panel-form"><select id="_bridge-material" class="det-input"><option value="pfm">خزف-معدن (PFM)</option><option value="zirconia">زيركونيا</option></select><button class="det-btn det-btn-save" onclick="DentalChartModule.createBridge()">✅ إنشاء الجسر</button></div>' : '<div class="bridge-panel-hint">اختر سنّين متجاورين لإنشاء جسر.</div>';
+    var bMatOpts = MATERIALS.filter(function(m){return m[0] === 'pfm' || m[0] === 'zirconia';}).map(function(m){ return '<option value="' + m[0] + '">' + _label('material', m[0], m[1]) + '</option>'; }).join('');
+    var body = _bridgeSelection.length >= 2 ? '<div class="bridge-panel-form"><select id="_bridge-material" class="det-input">' + bMatOpts + '</select><button class="det-btn det-btn-save" onclick="DentalChartModule.createBridge()">✅ إنشاء الجسر</button></div>' : '<div class="bridge-panel-hint">اختر سنّين متجاورين لإنشاء جسر.</div>';
     panel.innerHTML = '<div class="bridge-panel"><div class="bridge-panel-title">🔗 وضع الربط نشط — (' + _bridgeSelection.length + ' محدد)</div><div class="bridge-panel-chips">' + chips + '</div>' + body + '<button class="det-btn det-btn-cancel" onclick="DentalChartModule.toggleBridgeMode()">إنهاء</button></div>';
   }
 
@@ -693,7 +696,8 @@
     if (!bridges.length) return '';
     var rows = bridges.map(function (b) {
       var origin = ORIGINS[b.origin] || ORIGINS.existing;
-      var matStr = b.material === 'zirconia' ? 'زيركونيا' : (b.material === 'pfm' ? 'بورسلان-معدن (PFM)' : (b.material || 'غير محدد'));
+      var mObj = MATERIALS.filter(function(m){ return m[0] === b.material; })[0];
+      var matStr = mObj ? _label('material', mObj[0], mObj[1]) : (b.material || 'غير محدد');
       var tStr = (b.teeth || []).join(' - ');
       var pCount = (b.pontics || []).length;
 
@@ -782,7 +786,12 @@
         var tData = toothMap[numStr];
         var sHtml = tData.surfaces.length > 0 ? '<span style="display: flex; align-items: center; gap: 4px; background: var(--bg); padding: 2px 8px; border-radius: 4px;"><i class="fas fa-border-all" style="color: #94a3b8;"></i> <b>الأسطح:</b> ' + tData.surfaces.join('، ') + '</span>' : '';
         var nHtml = tData.notes ? '<span style="display: flex; align-items: center; gap: 4px; width: 100%; margin-top: 5px; color: #b45309;"><i class="fas fa-sticky-note" style="color: #f59e0b;"></i> <b>ملاحظات:</b> ' + tData.notes + '</span>' : '';
-        var mHtml = tData.material ? '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-fill-drip" style="color: #94a3b8;"></i> <b>المادة:</b> ' + tData.material + '</span>' : '';
+        var matStr = '';
+        if (tData.material) {
+          var mObj = MATERIALS.filter(function(m){ return m[0] === tData.material; })[0];
+          matStr = mObj ? _label('material', mObj[0], mObj[1]) : tData.material;
+        }
+        var mHtml = matStr ? '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-fill-drip" style="color: #94a3b8;"></i> <b>المادة:</b> ' + matStr + '</span>' : '';
         var rHtml = tData.reqRx ? '<span style="display: flex; align-items: center; gap: 4px; color: #ef4444;"><i class="fas fa-prescription" style="color: #ef4444;"></i> بحاجة لوصفة</span>' : '';
 
         return '<div class="summary-tooth-item" style="padding: 12px; background: var(--surf); border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
