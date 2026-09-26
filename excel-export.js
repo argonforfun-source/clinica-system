@@ -238,6 +238,71 @@ async function exportProfessionalExcel(fromDate = null, toDate = null) {
     // 3. Tax & Financial Support Report (إضافي — Section 32)
     addTaxComplianceWorksheet(wb, data, styleHeader, styleDataRow, fromDate, toDate);
 
+    // SHEET 6: PATIENTS LIST (قائمة المرضى)
+    const ws6 = wb.addWorksheet('قائمة المرضى', { views: [{ rightToLeft: true }] });
+    ws6.columns = [
+      { header: 'اسم المريض', key: 'name', width: 25 },
+      { header: 'رقم الهاتف', key: 'phone', width: 20 },
+      { header: 'الرقم الوطني / الهوية', key: 'nid', width: 20 },
+      { header: 'الجنس', key: 'gender', width: 10 },
+      { header: 'تاريخ الميلاد / العمر', key: 'age', width: 20 },
+      { header: 'رقم الملف الطبي (MRN)', key: 'mrn', width: 30 },
+      { header: 'رقم العيادة (اليدوي)', key: 'fileNo', width: 20 },
+      { header: 'تاريخ التسجيل', key: 'createdAt', width: 15 }
+    ];
+    styleHeader(ws6.getRow(1), ws6);
+
+    const genderMap = { 'male': 'ذكر', 'female': 'أنثى', 'ذكر': 'ذكر', 'أنثى': 'أنثى' };
+    if(data.patients) {
+      Object.values(data.patients).forEach(p => {
+        const row = ws6.addRow({
+          name: p.info?.name || '-',
+          phone: p.info?.phone || '-',
+          nid: p.info?.nationalId || '-',
+          gender: genderMap[p.info?.gender] || p.info?.gender || '-',
+          age: p.info?.age || '-',
+          mrn: p.info?.mrn || '-',
+          fileNo: p.info?.fileNumber || '-',
+          createdAt: p.info?.createdAt ? new Date(p.info.createdAt).toLocaleDateString('ar-JO') : '-'
+        });
+        styleDataRow(row);
+      });
+    }
+
+    // SHEET 7: STAFF AND DOCTORS (الموظفين والأطباء)
+    const ws7 = wb.addWorksheet('الموظفين والأطباء', { views: [{ rightToLeft: true }] });
+    ws7.columns = [
+      { header: 'الاسم', key: 'name', width: 25 },
+      { header: 'النوع (طبيب/موظف)', key: 'type', width: 20 },
+      { header: 'المنصب / التخصص', key: 'role', width: 25 },
+      { header: 'رقم الهاتف', key: 'phone', width: 20 }
+    ];
+    styleHeader(ws7.getRow(1), ws7);
+
+    if(data.doctors) {
+      Object.values(data.doctors).forEach(d => {
+        const row = ws7.addRow({
+          name: d.name || '-',
+          type: 'طبيب',
+          role: d.specialty || '-',
+          phone: d.phone || '-'
+        });
+        styleDataRow(row);
+      });
+    }
+    if(data.staff) {
+      const roleMap = { 'reception': 'استقبال', 'nurse': 'ممرض/ة', 'admin': 'مدير نظام', 'accountant': 'محاسب' };
+      Object.values(data.staff).forEach(s => {
+        const row = ws7.addRow({
+          name: s.name || '-',
+          type: 'موظف',
+          role: roleMap[s.role] || s.role || '-',
+          phone: s.phone || '-'
+        });
+        styleDataRow(row);
+      });
+    }
+
     // 4. Generate File and Trigger Download
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });

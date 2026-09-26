@@ -279,7 +279,7 @@
     return [
       '<div class="argon-dental-chart-v2" dir="rtl">',
       _buildToolbarHTML(),
-      '<div id="_dental-unsaved" style="visibility:', (_unsavedChanges ? 'visible' : 'hidden'), '; height:20px; font-size:0.75rem;color:#f59e0b;font-weight:700;margin-bottom:8px">● تغييرات غير محفوظة</div>',
+      '<div id="_dental-unsaved" style="display:', (_unsavedChanges ? 'block' : 'none'), ';font-size:0.75rem;color:#f59e0b;font-weight:700;margin-bottom:8px">● تغييرات غير محفوظة</div>',
       '<div id="_dental-bridge-panel"></div>',
       sections,
       _buildBridgeListPanel(),
@@ -439,10 +439,9 @@
 
     var palette = Object.keys(SURFACE_CONDITIONS).map(function (k) {
       var c = SURFACE_CONDITIONS[k];
-      var labelText = _esc(_label('condition', k, c.labelAr));
-      return '<button type="button" class="palette-btn' + (_selectedSurfaceCond === k ? ' palette-active' : '') + '" style="--pc:' + c.color + ';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 2px;" title="' + labelText + '" onclick="DentalChartModule._selectPalette(\'' + k + '\')"><div style="font-size:1.2rem;">' + c.glyph + '</div><div style="font-size:0.65rem;line-height:1.2;font-weight:700;color:inherit;text-align:center;word-break:break-word;">' + labelText + '</div></button>';
+      return '<button type="button" class="palette-btn' + (_selectedSurfaceCond === k ? ' palette-active' : '') + '" style="--pc:' + c.color + '" title="' + _esc(_label('condition', k, c.labelAr)) + '" onclick="DentalChartModule._selectPalette(\'' + k + '\')">' + c.glyph + '</button>';
     }).join('');
-    palette += '<button type="button" class="palette-btn' + (_selectedSurfaceCond === 'clear' ? ' palette-active' : '') + '" style="--pc:#94a3b8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 2px;" onclick="DentalChartModule._selectPalette(\'clear\')"><div style="font-size:1.2rem;">⌫</div><div style="font-size:0.65rem;line-height:1.2;font-weight:700;color:inherit;text-align:center;word-break:break-word;">مسح</div></button>';
+    palette += '<button type="button" class="palette-btn' + (_selectedSurfaceCond === 'clear' ? ' palette-active' : '') + '" style="--pc:#94a3b8" onclick="DentalChartModule._selectPalette(\'clear\')">⌫</button>';
 
     overlay.innerHTML = [
       '<div class="dental-editor-card">',
@@ -571,17 +570,10 @@
       _loadToothHistory(num);
       var panel = document.getElementById('_dental-tooth-procs-' + num);
       if (panel) panel.innerHTML = '<div style="font-size:0.75rem;color:#0891b2">آخر إجراء مسجّل: ' + _esc(record.procedureCode) + ' — ' + _esc(record.procedureNameSnapshot || '') + '</div>';
-      
+
       // 🔥 الجراحة الطبية: تسجيل الإجراء الرسمي في السجل الطبي الزمني الرئيسي
       _logDentalChangeToMainTimeline(num, "إجراء سني رسمي", proc ? proc.nameAr : procedureCode, procedureCode);
-      
-      // Update chart state to show in the summary
-      if (!_chart[num]) _chart[num] = { surfaces: { center: null, top: null, bottom: null, left: null, right: null }, _v2: true };
-      if (!_chart[num].procs) _chart[num].procs = [];
-      _chart[num].procs.push({ code: procedureCode, name: proc ? proc.nameAr : procedureCode });
-      _unsavedChanges = true;
-      _updateSummaryUI();
-      
+
       return record;
     }).catch(function (err) {
       console.error('[DentalChartModule] logToothProcedureEvent failed:', err);
@@ -594,7 +586,7 @@
     if (typeof db === 'undefined' || typeof BASE === 'undefined' || !_currentPatientId) return;
     var session = (global.ArgonSession && global.ArgonSession.get) ? global.ArgonSession.get() : null;
     var visitKey = db.ref(BASE + '/patients/' + _currentPatientId + '/visits').push().key;
-    
+
     var now = new Date();
     var dateVal = now.toLocaleDateString('en-CA');
     var hours = now.getHours();
@@ -602,10 +594,10 @@
     var ampm = hours >= 12 ? 'م' : 'ص';
     var hours12 = hours % 12 || 12;
     var timeVal = hours12 + ':' + mins + ' ' + ampm;
-    
+
     var diag = '🦷 ' + actionTitle + ' (السن ' + num + ')';
     if (procCode) diag += ' [' + procCode + ']';
-    
+
     var visitObj = {
       date: dateVal,
       time: timeVal,
@@ -617,20 +609,20 @@
       toothNumber: num,
       procedureCode: procCode || null
     };
-    
-    db.ref(BASE + '/patients/' + _currentPatientId + '/visits/' + visitKey).set(visitObj).then(function() {
+
+    db.ref(BASE + '/patients/' + _currentPatientId + '/visits/' + visitKey).set(visitObj).then(function () {
       if (global._patients && global._patients[_currentPatientId]) {
-         if (!global._patients[_currentPatientId].visits) global._patients[_currentPatientId].visits = {};
-         global._patients[_currentPatientId].visits[visitKey] = visitObj;
+        if (!global._patients[_currentPatientId].visits) global._patients[_currentPatientId].visits = {};
+        global._patients[_currentPatientId].visits[visitKey] = visitObj;
       }
       if (global.ArgonPager && global.ArgonPager.cache && global.ArgonPager.cache[_currentPatientId]) {
-         if (!global.ArgonPager.cache[_currentPatientId].visits) global.ArgonPager.cache[_currentPatientId].visits = {};
-         global.ArgonPager.cache[_currentPatientId].visits[visitKey] = visitObj;
+        if (!global.ArgonPager.cache[_currentPatientId].visits) global.ArgonPager.cache[_currentPatientId].visits = {};
+        global.ArgonPager.cache[_currentPatientId].visits[visitKey] = visitObj;
       }
       if (typeof global.refreshPatientFileUI === 'function') {
-         global.refreshPatientFileUI(_currentPatientId);
+        global.refreshPatientFileUI(_currentPatientId);
       }
-    }).catch(function(e){ console.error('Failed to log to timeline', e); });
+    }).catch(function (e) { console.error('Failed to log to timeline', e); });
   }
 
   function _loadToothHistory(num) {
@@ -647,8 +639,7 @@
         box.innerHTML = events.map(function (e) {
           var o = ORIGINS[e.origin] || ORIGINS.existing;
           var d = e.date ? new Date(e.date).toLocaleDateString('ar-JO') : '';
-          var notesHtml = e.notes ? '<div style="margin-top:4px;font-size:0.7rem;color:var(--text);white-space:pre-wrap;background:#f8fafc;padding:4px;border-radius:4px;border:1px solid #e2e8f0">' + _esc(e.notes) + '</div>' : '';
-          return '<div style="padding:6px 0;border-bottom:1px dashed var(--border)"><b>' + o.badge + ' ' + _esc(e.procedureNameSnapshot || e.procedureCode) + '</b><br><span style="color:var(--muted)">' + _esc(d) + (e.doctorNameSnapshot ? ' — د. ' + _esc(e.doctorNameSnapshot) : '') + '</span>' + notesHtml + '</div>';
+          return '<div style="padding:6px 0;border-bottom:1px dashed var(--border)"><b>' + o.badge + ' ' + _esc(e.procedureNameSnapshot || e.procedureCode) + '</b><br>' + _esc(d) + (e.doctorNameSnapshot ? ' — د. ' + _esc(e.doctorNameSnapshot) : '') + '</div>';
         }).join('');
       }).catch(function () { box.innerHTML = 'تعذر تحميل السجل.'; });
   }
@@ -738,33 +729,15 @@
     var requiresTreatment = document.getElementById('_dental-needs-rx').checked;
 
     if (!_chart[num]) _chart[num] = { surfaces: { center: null, top: null, bottom: null, left: null, right: null }, _v2: true };
-    
+
     // 🔥 الجراحة الطبية: تسجيل كل تعديل في السجل الطبي الزمني الرئيسي (Timeline)
     var statusName = TOOTH_STATUSES[status] ? TOOTH_STATUSES[status].labelAr : status;
     var matName = '';
-    for(var i=0; i<MATERIALS.length; i++) { if(MATERIALS[i][0] === material) { matName = MATERIALS[i][1]; break; } }
+    for (var i = 0; i < MATERIALS.length; i++) { if (MATERIALS[i][0] === material) { matName = MATERIALS[i][1]; break; } }
     var rxText = requiresTreatment ? 'نعم (مُدرج ضمن خطة العلاج)' : 'لا';
     var detailText = 'الحالة العامة للسن: ' + statusName + '\nالمادة المستخدمة: ' + (matName || 'بدون') + '\nخطة علاجية: ' + rxText;
     if (notes) detailText += '\nملاحظات الطبيب السريرية: ' + notes;
     _logDentalChangeToMainTimeline(num, "تعديل تشريحي / سريري", detailText, null);
-    
-    // 🔥 إضافة التعديل لسجل السن التاريخي داخل المخطط نفسه
-    var session = (global.ArgonSession && global.ArgonSession.get) ? global.ArgonSession.get() : null;
-    var historyRecord = {
-      patientId: _currentPatientId,
-      toothCode: num || null,
-      procedureCode: 'MODIFICATION',
-      procedureNameSnapshot: 'تعديل حالة السن',
-      visitId: null,
-      doctorId: (session && session.staffId) || null,
-      doctorNameSnapshot: (session && session.displayName) || null,
-      origin: _currentOriginMode || 'existing',
-      notes: detailText,
-      date: new Date().toISOString()
-    };
-    db.ref(BASE + '/patients/' + _currentPatientId + '/specialty_data/dental_history').push(historyRecord).then(function() {
-      _loadToothHistory(num); // تحديث القائمة المنبثقة
-    });
 
     var oldStatus = _chart[num].status || 'healthy';
     if (status !== oldStatus) {
@@ -791,41 +764,14 @@
   function _refreshToothCell(num) {
     var cell = document.querySelector('.argon-tooth-cell-v2[data-tooth="' + num + '"]');
     if (!cell) return;
-    var data = _chart[num] || {};
-    var svg = _buildToothSVG(num, data);
-    var anat = _anatomicalName(num);
-    var uni = _fdiToUniversal(num);
-    var tooltip = 'FDI ' + num + ' (Universal ' + uni + ') — ' + anat;
-    if (data.notes) tooltip += '\n📝 ' + data.notes;
-
-    var badges = '';
-    if (_toothHasOrigin(data, 'planned')) badges += '<span class="tb tb-tl">🗓️</span>';
-    if (_toothHasOrigin(data, 'completed')) badges += '<span class="tb tb-tl2">✅</span>';
-    if (data.requiresTreatment) badges += '<span class="tb tb-tr">⚠️</span>';
-    if (data.notes) badges += '<span class="tb tb-br">📝</span>';
-
-    var hlClass = '';
-    if (_highlightOrigin) {
-      if (_toothHasOrigin(data, _highlightOrigin)) {
-        hlClass = ' origin-glow origin-glow-' + _highlightOrigin;
-      } else if (data.status && data.status !== 'healthy') {
-        hlClass = ' origin-dim';
-      }
-    }
-
-    cell.className = 'argon-tooth-cell-v2' + hlClass;
-    cell.setAttribute('data-status', data.status || 'healthy');
-    cell.setAttribute('title', tooltip);
-    
-    var wrap = cell.querySelector('.tooth-svg-wrap');
-    if (wrap) {
-      wrap.innerHTML = svg + badges;
-    }
+    var temp = document.createElement('div');
+    temp.innerHTML = _buildToothCell(num);
+    cell.parentNode.replaceChild(temp.firstElementChild, cell);
   }
 
   function _showUnsaved() {
     var el = document.getElementById('_dental-unsaved');
-    if (el) el.style.visibility = _unsavedChanges ? 'visible' : 'hidden';
+    if (el) el.style.display = _unsavedChanges ? 'block' : 'none';
   }
 
   function _onToothClick(num) {
@@ -970,7 +916,7 @@
       if (data.status && data.status !== 'healthy' && data.status !== 'bridge_abutment' && data.status !== 'bridge_pontic') {
         var stObj = TOOTH_STATUSES[data.status];
         if (stObj) {
-          if (!groups[data.status]) groups[data.status] = { label: _label('status', data.status, stObj.labelAr), icon: stObj.emoji, color: stObj.color, items: [] };
+          if (!groups[data.status]) groups[data.status] = { label: stObj.labelAr, icon: stObj.emoji, color: stObj.color, items: [] };
           groups[data.status].items.push({ num: num, origin: origin, notes: data.notes, reqRx: data.requiresTreatment, material: data.material });
           hasData = true;
         }
@@ -984,31 +930,23 @@
             var cObj = SURFACE_CONDITIONS[sData.condition];
             if (cObj) {
               var gKey = 'surf_' + sData.condition;
-              if (!groups[gKey]) groups[gKey] = { label: _label('condition', sData.condition, cObj.labelAr), icon: cObj.glyph, color: cObj.color, items: [] };
+              if (!groups[gKey]) groups[gKey] = { label: cObj.labelAr, icon: cObj.glyph, color: cObj.color, items: [] };
               groups[gKey].items.push({ num: num, surface: surf, origin: ORIGINS[sData.origin] || ORIGINS.existing });
               hasData = true;
             }
           }
         });
       }
-
-      // Group by official procedures
-      if (data.procs && data.procs.length > 0) {
-        data.procs.forEach(function (procObj) {
-          var pKey = 'proc_' + procObj.code;
-          if (!groups[pKey]) groups[pKey] = { label: procObj.name, icon: '📋', color: '#0891b2', items: [] };
-          groups[pKey].items.push({ num: num, origin: origin });
-          hasData = true;
-        });
-      }
     });
 
-    if (!hasData) {
+    if (!hasData && (!_meta || !_meta.bridges || _meta.bridges.length === 0)) {
       return '<div style="text-align:center; padding: 30px; background: var(--bg); border-radius: 10px; border: 1px dashed #cbd5e1; margin-top: 20px;">' +
         '<i class="fas fa-smile-beam" style="font-size: 2.5rem; color: #10b981; margin-bottom: 15px; display: block;"></i>' +
         '<div style="font-weight: bold; color: var(--text); font-size: 1.1rem;">أسنان سليمة (لا يوجد تدخلات)</div>' +
         '<div style="color: #64748b; font-size: 0.9rem; margin-top: 5px;">لم يتم تسجيل أي تسوس، حشوات، أو تركيبات على المخطط حتى الآن.</div>' +
         '</div>';
+    } else if (!hasData) {
+      return ''; // If there are bridges but no other data, don't show the "healthy teeth" message, just return nothing.
     }
 
     var html = '<div class="chart-full-summary" style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">';
