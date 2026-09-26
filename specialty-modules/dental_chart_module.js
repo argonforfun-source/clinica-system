@@ -552,8 +552,6 @@
 
     if (!_chart[num]) _chart[num] = { surfaces: { center: null, top: null, bottom: null, left: null, right: null }, _v2: true };
 
-
-
     var oldStatus = _chart[num].status || 'healthy';
     if (status !== oldStatus) {
       _chart[num].surfaces = { center: null, top: null, bottom: null, left: null, right: null };
@@ -573,7 +571,7 @@
     _refreshToothCell(num);
     _updateSummaryUI();
     _showUnsaved();
-    if (typeof window.toast === 'function') window.toast('✅ تم تحديث السن ' + num, 'ok');
+    saveChart(); // Auto-save to Firebase
   }
 
   function _refreshToothCell(num) {
@@ -640,6 +638,7 @@
 
     _unsavedChanges = true; _bridgeSelection = []; _bridgeMode = false;
     _rerenderChart();
+    saveChart();
   }
 
   function removeBridge(bridgeId) {
@@ -660,6 +659,7 @@
     var overlay = document.getElementById('_dental-editor-overlay');
     if (overlay) overlay.remove();
     _rerenderChart();
+    saveChart();
   }
 
   function _buildBridgeConnectorRow(teethArr) {
