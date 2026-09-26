@@ -252,7 +252,7 @@
       container.innerHTML = _buildChartHTML();
       _attachStyles();
     }).catch(function (err) {
-      _chart = {}; _meta = { dentitionMode: 'adult', bridges: [] };
+      _chart = {}; _meta = { dentitionMode: 'adult', bridges: [] }; window._dentalGlobalHistory = [];
       container.innerHTML = _buildChartHTML();
       _attachStyles();
     });
@@ -260,8 +260,18 @@
 
   function _loadChart(patientId) {
     if (typeof db === 'undefined' || typeof BASE === 'undefined') return Promise.resolve({ chart: {}, meta: {} });
-    return db.ref(BASE + '/patients/' + patientId + '/specialty_data/dental').once('value').then(function (snap) {
-      var v = snap.val() || {}; return { chart: v.chart || {}, meta: v.meta || {} };
+    
+    var p1 = db.ref(BASE + '/patients/' + patientId + '/specialty_data/dental').once('value');
+    var p2 = db.ref(BASE + '/patients/' + patientId + '/specialty_data/dental_history').once('value');
+    
+    return Promise.all([p1, p2]).then(function (snaps) {
+      var v = snaps[0].val() || {};
+      window._dentalGlobalHistory = [];
+      if (snaps[1].exists()) {
+        snaps[1].forEach(function(child) { window._dentalGlobalHistory.push(child.val()); });
+        window._dentalGlobalHistory.sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
+      }
+      return { chart: v.chart || {}, meta: v.meta || {} };
     });
   }
 
@@ -574,6 +584,11 @@
       // 🔥 الجراحة الطبية: تسجيل الإجراء الرسمي في السجل الطبي الزمني الرئيسي
       _logDentalChangeToMainTimeline(num, "إجراء سني رسمي", proc ? proc.nameAr : procedureCode, procedureCode);
 
+      if (!window._dentalGlobalHistory) window._dentalGlobalHistory = [];
+      window._dentalGlobalHistory.unshift(record);
+      window._dentalGlobalHistory.sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
+      _updateSummaryUI();
+
       return record;
     }).catch(function (err) {
       console.error('[DentalChartModule] logToothProcedureEvent failed:', err);
@@ -738,6 +753,28 @@
     var detailText = 'الحالة العامة للسن: ' + statusName + '\nالمادة المستخدمة: ' + (matName || 'بدون') + '\nخطة علاجية: ' + rxText;
     if (notes) detailText += '\nملاحظات الطبيب السريرية: ' + notes;
     _logDentalChangeToMainTimeline(num, "تعديل تشريحي / سريري", detailText, null);
+
+    // 🔥 تسجيل التعديل في السجل التاريخي الخاص بالأسنان (dental_history)
+    if (typeof db !== 'undefined' && typeof BASE !== 'undefined' && _currentPatientId) {
+      var session = (global.ArgonSession && global.ArgonSession.get) ? global.ArgonSession.get() : null;
+      var histRef = db.ref(BASE + '/patients/' + _currentPatientId + '/specialty_data/dental_history').push();
+      var histRecord = {
+        patientId: _currentPatientId,
+        toothCode: num || null,
+        procedureCode: 'STATE_CHANGE',
+        procedureNameSnapshot: 'تعديل حالة السن: ' + statusName,
+        visitId: null,
+        doctorId: (session && session.staffId) || null,
+        doctorNameSnapshot: (session && session.displayName) || null,
+        origin: _currentOriginMode || 'existing',
+        notes: detailText,
+        date: new Date().toISOString()
+      };
+      histRef.set(histRecord).catch(function(e) { console.error('Failed to log tooth state change to history', e); });
+      if (!window._dentalGlobalHistory) window._dentalGlobalHistory = [];
+      window._dentalGlobalHistory.unshift(histRecord);
+      window._dentalGlobalHistory.sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
+    }
 
     var oldStatus = _chart[num].status || 'healthy';
     if (status !== oldStatus) {
@@ -987,6 +1024,32 @@
         '<div style="display: flex; flex-direction: column; gap: 8px;">' + rows + '</div>' +
         '</div>';
     });
+
+    if (window._dentalGlobalHistory && window._dentalGlobalHistory.length > 0) {
+      var histRows = window._dentalGlobalHistory.map(function(e) {
+        var o = ORIGINS[e.origin] || ORIGINS.existing;
+        var d = e.date ? new Date(e.date).toLocaleDateString('ar-JO') + ' ' + new Date(e.date).toLocaleTimeString('ar-JO', {hour: '2-digit', minute:'2-digit'}) : '';
+        return '<div style="padding: 10px; background: var(--surf); border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
+          '<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 6px; margin-bottom: 6px;">' +
+          '<b style="color: var(--text); font-size: 0.95rem;">' + (e.toothCode ? '<i class="fas fa-tooth" style="color: var(--oc); margin-left: 5px;"></i> السن (' + e.toothCode + ') - ' : '') + _esc(e.procedureNameSnapshot || e.procedureCode) + '</b>' +
+          '<span style="font-size: 0.8rem; background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 12px; color: var(--muted);">' + o.badge + ' ' + o.labelAr + '</span>' +
+          '</div>' +
+          '<div style="font-size: 0.85rem; color: var(--muted); display: flex; gap: 15px; flex-wrap: wrap;">' +
+          '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-clock" style="color: #94a3b8;"></i> ' + _esc(d) + '</span>' +
+          (e.doctorNameSnapshot ? '<span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-user-md" style="color: #94a3b8;"></i> د. ' + _esc(e.doctorNameSnapshot) + '</span>' : '') +
+          (e.notes ? '<span style="display: flex; align-items: center; gap: 4px; color: #b45309;"><i class="fas fa-sticky-note" style="color: #f59e0b;"></i> ' + _esc(e.notes) + '</span>' : '') +
+          '</div>' +
+          '</div>';
+      }).join('');
+
+      html += '<div class="summary-group-panel" style="background: var(--bg); border-radius: 10px; border: 1px solid var(--border); padding: 15px; margin-top: 15px;">' +
+        '<div style="font-weight: bold; color: var(--text); font-size: 1.05rem; margin-bottom: 15px; border-bottom: 2px solid var(--border); padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">' +
+        '<span style="font-size: 1.2rem; color: #0ea5e9;"><i class="fas fa-history"></i></span> <span style="color: #0ea5e9;">السجل التاريخي للإجراءات (Procedures)</span>' +
+        '<span style="background: #e0f2fe; color: #0284c7; font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; margin-right: auto; font-weight: bold;">' + window._dentalGlobalHistory.length + ' إجراء مسجل</span>' +
+        '</div>' +
+        '<div style="display: flex; flex-direction: column; gap: 8px;">' + histRows + '</div>' +
+        '</div>';
+    }
 
     html += '</div>';
     return html;
